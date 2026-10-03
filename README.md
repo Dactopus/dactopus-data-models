@@ -197,8 +197,22 @@ See its [model authoring guide](https://github.com/Dactopus/ossie-clickhouse/blo
 
 ## Versioning
 
-<!-- TBD: how library versions relate to Ossie schema versions; how a
-deployment stays on an old version until it migrates -->
+One version for the whole repository, [SemVer](https://semver.org), tags
+`vX.Y.Z`. The Ossie schema version (`0.2.0.dev0`) is separate: the model
+files carry it, and the changelog names it for every release.
+
+A breaking change is anything that stops a deployment working or changes
+its numbers: renaming or removing a field, metric or column; changing what
+a metric means (the same columns, different numbers); a new required
+column in a package's input. Before 1.0 such changes come in a minor
+release, after 1.0 in a major one. New fields and metrics are minor, fixes
+are patches.
+
+A deployment pins a tag: the dbt package from the git tag with its
+subdirectory (`sources/ga4`), the Ossie model from the same tag. Upgrading
+is changing the tag and running `dbt build --full-refresh`: a package never
+writes its input table, so every canonical table rebuilds from it. The
+changelog marks releases that need the rebuild.
 
 ## License
 
