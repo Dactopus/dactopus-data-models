@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  ga4:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        dbt:
+          - {name: v2, from: "dbt-oss", with: ""}
+          - {name: v1, from: "dbt-core~=1.11.0", with: "dbt-clickhouse"}
+    name: GA4 package (dbt ${{ matrix.dbt.name }})
+    services:
+      clickhouse:
+        image: clickhouse/clickhouse-server:26.9
+        ports: ["8123:8123"]
+        env:
+          CLICKHOUSE_SKIP_USER_SETUP: 1  # passwordless default user over the network
+        options: >-
+          --health-cmd "wget -qO- http://localhost:8123/ping || exit 1"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      # The GA4 sample needs a Google login, so CI builds on an empty input
+      # table: it catches SQL, schema and model errors; numbers are checked
+      # on the sample by hand (AGENTS.md, Verifying work).
+      - name: Create the input table
+        run: |
+          python3 -c "
+          import pathlib, urllib.request
+          for s in pathlib.Path('sources/ga4/input.sql').read_text().split(';\n'):
+              if s.strip():
+                  urllib.request.urlopen('http://127.0.0.1:8123', s.encode())"
+      - name: dbt build (models, tests, unit tests)
+        run: >-
+          uvx --from "${{ matrix.dbt.from }}" ${{ matrix.dbt.with && format('--with {0}', matrix.dbt.with) || '' }}
+          dbt build --project-dir sources/ga4 --profiles-dir sources/ga4
+      - name: Validate the Ossie model against the built tables
+        run: >-
+          uvx --from "ossie-clickhouse @ git+https://github.com/Dactopus/ossie-clickhouse"
+          ossie-clickhouse validate entities/web_analytics.yaml --url http://127.0.0.1:8123
