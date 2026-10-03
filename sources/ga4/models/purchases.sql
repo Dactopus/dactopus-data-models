@@ -13,6 +13,7 @@ SELECT
     toDate(parseDateTime(argMin(event_date, event_timestamp), '%Y%m%d')) AS purchase_date,
     fromUnixTimestamp64Micro(min(event_timestamp), 'UTC') AS purchase_time,
     argMin(ecommerce.purchase_revenue, event_timestamp) AS revenue,
+    argMin(ecommerce.purchase_revenue_in_usd, event_timestamp) AS revenue_usd,
     argMin(ecommerce.tax_value, event_timestamp) AS tax,
     argMin(ecommerce.shipping_value, event_timestamp) AS shipping
 FROM

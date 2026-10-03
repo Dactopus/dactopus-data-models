@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS ga4_raw.events
     geo Tuple(country Nullable(String)),
     ecommerce Tuple(
         purchase_revenue Nullable(Float64),
+        purchase_revenue_in_usd Nullable(Float64),
         tax_value Nullable(Float64),
         shipping_value Nullable(Float64),
         transaction_id Nullable(String)),

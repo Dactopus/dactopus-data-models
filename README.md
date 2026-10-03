@@ -81,7 +81,8 @@ Try the GA4 package on Google's public sample
      SELECT event_date, event_timestamp, event_name, event_params,
             user_pseudo_id, user_id,
             tuple(device.category) AS device, tuple(geo.country) AS geo,
-            tuple(ecommerce.purchase_revenue, ecommerce.tax_value,
+            tuple(ecommerce.purchase_revenue, ecommerce.purchase_revenue_in_usd,
+                  ecommerce.tax_value,
                   ecommerce.shipping_value, ecommerce.transaction_id) AS ecommerce
      FROM file('data/ga4/*.parquet') FORMAT Native" |
    clickhouse client --query "
@@ -101,7 +102,7 @@ Try the GA4 package on Google's public sample
 4. **Validate** the model against the loaded tables:
 
    ```bash
-   ossie-clickhouse validate <model> --url http://user:password@host:8123
+   ossie-clickhouse validate entities/web_analytics.yaml --url http://user:password@host:8123
    ```
 
 5. **Ask.** Serve the model to an AI agent over MCP with
@@ -110,14 +111,15 @@ Try the GA4 package on Google's public sample
 
 ## Layout
 
-    entities/                 one entity per Ossie YAML file
+    entities/<domain>.yaml    one Ossie model per domain (web_analytics, ...)
     sources/<source>/         one package per source, a dbt project:
       input.sql               the input table the package accepts
       models/                 one model per entity, named after it
       models/schema.yml       structural checks (dbt tests)
 
 A package's model writes the entity's table in the `dactopus` database;
-the entity's Ossie `source` points at it, and
+the entity's dataset in the domain's Ossie model points at it (an Ossie
+model is one file, since relationships and metrics span entities), and
 `ossie-clickhouse validate --url` checks that the package delivers every
 column the entity declares. A deployment picks one package per entity.
 
