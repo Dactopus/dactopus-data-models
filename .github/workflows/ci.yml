@@ -24,24 +24,35 @@ jobs:
         options: >-
           --health-cmd "wget -qO- http://localhost:8123/ping || exit 1"
           --health-interval 5s --health-timeout 3s --health-retries 20
+    env:
+      DBT_BUILD: >-
+        uvx --from ${{ matrix.dbt.from }} ${{ matrix.dbt.with && format('--with {0}', matrix.dbt.with) || '' }}
+        dbt build --project-dir sources/ga4 --profiles-dir sources/ga4
+      OSSIE_CLICKHOUSE_URL: http://127.0.0.1:8123
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
-      # The GA4 sample needs a Google login, so CI builds on an empty input
-      # table: it catches SQL, schema and model errors; numbers are checked
-      # on the sample by hand (AGENTS.md, Verifying work).
-      - name: Create the input table
+      - name: Install ossie-clickhouse
+        run: uv tool install "ossie-clickhouse @ git+https://github.com/Dactopus/ossie-clickhouse"
+      # The GA4 sample needs a Google login, so CI runs on hand-written rows
+      # (tests/ga4/fixture.sql) and checks the model's answers against numbers
+      # derived from them by hand. The first build runs on an empty input, as
+      # a deployment set up before its first load would.
+      - name: Build (models, tests, unit tests) and check numbers
         run: |
-          python3 -c "
-          import pathlib, urllib.request
-          for s in pathlib.Path('sources/ga4/input.sql').read_text().split(';\n'):
+          load() { python3 -c "
+          import pathlib, sys, urllib.request
+          for s in pathlib.Path(sys.argv[1]).read_text().split(';\n'):
               if s.strip():
-                  urllib.request.urlopen('http://127.0.0.1:8123', s.encode())"
-      - name: dbt build (models, tests, unit tests)
-        run: >-
-          uvx --from "${{ matrix.dbt.from }}" ${{ matrix.dbt.with && format('--with {0}', matrix.dbt.with) || '' }}
-          dbt build --project-dir sources/ga4 --profiles-dir sources/ga4
+                  urllib.request.urlopen('http://127.0.0.1:8123', s.encode())" "$1"; }
+          load sources/ga4/input.sql
+          $DBT_BUILD
+          load tests/ga4/fixture.sql
+          $DBT_BUILD                 # incremental into empty tables
+          python3 tests/ga4/check_numbers.py
+          $DBT_BUILD                 # incremental over unchanged input
+          python3 tests/ga4/check_numbers.py
+          $DBT_BUILD --full-refresh
+          python3 tests/ga4/check_numbers.py
       - name: Validate the Ossie model against the built tables
-        run: >-
-          uvx --from "ossie-clickhouse @ git+https://github.com/Dactopus/ossie-clickhouse"
-          ossie-clickhouse validate entities/web_analytics.yaml --url http://127.0.0.1:8123
+        run: ossie-clickhouse validate entities/web_analytics.yaml

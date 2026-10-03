@@ -27,6 +27,8 @@ Everything must be releasable under Apache 2.0. Do not add:
       input.sql               the input table the package accepts
       models/<entity>.sql     one model per entity, named after it
       models/schema.yml       structural checks (dbt tests only)
+    tests/<source>/           hand-written input rows and the numbers the
+                              model must answer over them
 
 An entity holds schema (grain, keys), field descriptions and simple
 metrics. A package holds the mapping from the source, the refresh
@@ -88,6 +90,10 @@ model:
    `--full-refresh` build row for row.
 4. A number the change affects matches a hand-written ClickHouse query
    over the same data. Show both queries and both results.
+5. `tests/<source>/check_numbers.py` passes over that source's fixture
+   (CI runs it). A changed number gets a new expected value with its
+   derivation; a new source behaviour gets fixture rows. Check that a
+   new case fails against the old code.
 
 Facts about ClickHouse behaviour and the GA4 export schema come from
 running queries (`clickhouse local` or a server), not from memory.

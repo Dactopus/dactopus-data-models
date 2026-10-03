@@ -92,10 +92,11 @@ Try the GA4 package on Google's public sample
    ```
 
    The sample is older than the `session_traffic_source_last_click`
-   column. When your export has it, load it too: add the column to the
-   `INSERT` list and this expression to the `SELECT`. Without it the
-   package falls back to the first source seen in a session, and revenue
-   by source will not match the GA4 interface.
+   column. Exports from October 2024 on have it with the
+   `cross_channel_campaign` record the package reads: load it too, adding
+   the column to the `INSERT` list and this expression to the `SELECT`.
+   Without it the package falls back to the first source seen in a
+   session, and revenue by source will not match the GA4 interface.
 
    ```sql
    tuple(tuple(session_traffic_source_last_click.cross_channel_campaign.source,
@@ -129,6 +130,8 @@ Try the GA4 package on Google's public sample
       input.sql               the input table the package accepts
       models/                 one model per entity, named after it
       models/schema.yml       structural checks (dbt tests)
+    tests/<source>/           hand-written input rows and the numbers the
+                              model must answer over them
 
 A package's model writes the entity's table in the `dactopus` database;
 the entity's dataset in the domain's Ossie model points at it (an Ossie
@@ -181,9 +184,10 @@ that any Ossie tool reads. The only extension used is ossie-clickhouse's
 `CLICKHOUSE` namespace and its `dedup` key.
 
 **The canon is selected, not designed.** A field that at least two sources
-provide goes into the canonical entity. A field only one source has stays
-in that source's extension (a `source_attrs` map or a separate table) until
-a second source needs it.
+provide goes into the canonical entity. While a domain has a single source
+(GA4 for events), a field qualifies when its meaning does not depend on
+that source. A field only one source has is not modelled until a second
+source needs it.
 
 **Descriptions are part of the model.** Agents answer from descriptions,
 synonyms and `ai_context`. Without them even strong models guess. A dbt

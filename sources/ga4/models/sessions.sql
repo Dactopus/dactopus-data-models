@@ -38,14 +38,15 @@ FROM
         session_traffic_source_last_click.cross_channel_campaign.medium AS stslc_medium,
         session_traffic_source_last_click.cross_channel_campaign.campaign_name AS stslc_campaign
     FROM {{ source('ga4_raw', 'events') }}
+    -- Events without a session id form no session. Filter here: in the outer
+    -- query the alias assumeNotNull(ga_session_id) would shadow this column.
+    WHERE ga_session_id IS NOT NULL
     {% if is_incremental() %}
     -- One day earlier than the window: a session that crosses midnight into
     -- the window must be rebuilt whole or not at all.
-    WHERE {{ ga4_raw_window('session_date', extra_days=1) }}
+    AND {{ ga4_raw_window('session_date', extra_days=1) }}
     {% endif %}
 )
--- Events without a session id form no session.
-WHERE ga_session_id IS NOT NULL
 GROUP BY user_pseudo_id, ga_session_id
 )
 {% if is_incremental() %}

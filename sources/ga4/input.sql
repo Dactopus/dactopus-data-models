@@ -26,7 +26,8 @@ CREATE TABLE IF NOT EXISTS ga4_raw.events
         tax_value Nullable(Float64),
         shipping_value Nullable(Float64),
         transaction_id Nullable(String)),
-    -- Since October 2024; absent in older exports (NULL).
+    -- The record since July 2024, cross_channel_campaign in it since October
+    -- 2024; NULL in older exports.
     session_traffic_source_last_click Tuple(
         cross_channel_campaign Tuple(
             source Nullable(String),

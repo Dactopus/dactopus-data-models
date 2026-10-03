@@ -15,9 +15,12 @@ ai_context:
     Session and user counts are exact; the GA4 interface estimates them, so
     its numbers can be slightly different. "Conversion rate" without a
     qualifier means session_conversion_rate; name the definition in the
-    answer and mention user_conversion_rate. Revenue is in the store's
-    currency (revenue); use revenue_usd only when asked for US dollars or
-    when comparing stores or periods with different currencies.
+    answer and mention user_conversion_rate. Revenue (revenue) is in the
+    currency the site sent with each purchase, which GA4 calls "local
+    currency": for a store that sells in one currency, that currency. If
+    the store sells in several currencies, say that the total may mix them
+    and offer revenue_usd. Use revenue_usd also when asked for US dollars
+    or when comparing stores with different currencies.
 
 datasets:
   - name: sessions
@@ -202,9 +205,11 @@ datasets:
       - name: revenue
         expression: {dialects: [{dialect: ANSI_SQL, expression: revenue}]}
         description: >
-          Order value in the store's currency (GA4 "local currency"), including
-          tax and shipping as the site reported them. Empty when the site sent
-          no value.
+          Order value as the site reported it, including tax and shipping, in
+          the currency the site sent (GA4 "local currency"). For a store that
+          sells in one currency this is that currency; a store that sells in
+          several may have values in different currencies. Empty when the
+          site sent no value.
         datatype: Float
         ai_context:
           synonyms: [order value, purchase amount]
@@ -216,11 +221,11 @@ datasets:
         datatype: Float
       - name: tax
         expression: {dialects: [{dialect: ANSI_SQL, expression: tax}]}
-        description: Tax in the order, in the store's currency.
+        description: Tax in the order, in the same currency as revenue.
         datatype: Float
       - name: shipping
         expression: {dialects: [{dialect: ANSI_SQL, expression: shipping}]}
-        description: Shipping cost in the order, in the store's currency.
+        description: Shipping cost in the order, in the same currency as revenue.
         datatype: Float
 
   - name: events
@@ -346,8 +351,10 @@ metrics:
   - name: revenue
     expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(purchases.revenue)}]}
     description: >
-      Total value of purchases in the store's currency. Purchases the site
-      sent without a value add nothing.
+      Total value of purchases in the currency the site sent (see the
+      revenue field). If the store sells in several currencies the total
+      may mix them; revenue_usd does not. Purchases the site sent without a
+      value add nothing.
     datatype: Float
     ai_context:
       synonyms: [sales, turnover, purchase revenue, total revenue, income]
@@ -360,8 +367,8 @@ metrics:
   - name: average_order_value
     expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(purchases.revenue) / COUNT(purchases.revenue)}]}
     description: >
-      Average value of a purchase in the store's currency, over purchases
-      that have a value.
+      Average value of a purchase in the same currency as revenue, over
+      purchases that have a value.
     datatype: Float
     ai_context:
       synonyms: [AOV, average order, average check, basket size]

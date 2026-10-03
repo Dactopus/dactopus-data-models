@@ -53,9 +53,15 @@ An incremental run over unchanged input must change nothing and match a
 a hand-written ClickHouse query over the sample; put both queries and
 both results in the pull request.
 
-CI builds every package on dbt v2 and v1 over an empty input table and
-validates the models. It catches SQL, schema and model errors, not wrong
-numbers: those need the sample.
+CI builds every package on dbt v2 and v1, first over an empty input table,
+then over hand-written rows (`tests/ga4/fixture.sql`): incrementally into
+the empty tables, again over unchanged input, and with `--full-refresh`.
+After each build `tests/ga4/check_numbers.py` asks the model questions and
+compares the answers with numbers derived by hand from those rows. A
+change that alters a number updates the expected value there, with how it
+was derived. A case the fixture misses, such as a new source behaviour,
+gets rows of its own. The fixture is small, so it does not replace the
+check on the sample.
 
 ## Adding a source package
 
