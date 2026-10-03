@@ -14,3 +14,43 @@ models:
               arguments:
                 to: ref('sessions')
                 field: session_key
+
+unit_tests:
+  # The sample predates session_traffic_source_last_click (October 2024), so
+  # these rows, typed as in the official export schema, cover that path.
+  - name: session_source_prefers_last_click_record
+    model: sessions
+    overrides:
+      macros:
+        is_incremental: false
+    given:
+      - input: source('ga4_raw', 'events')
+        format: sql
+        rows: |
+          WITH
+              'Array(Tuple(key Nullable(String), value Tuple(string_value Nullable(String), int_value Nullable(Int64), float_value Nullable(Float64), double_value Nullable(Float64))))' AS params_type,
+              'Tuple(cross_channel_campaign Tuple(source Nullable(String), medium Nullable(String), campaign_name Nullable(String)))' AS stslc_type
+          SELECT
+              e.1 AS event_date, toInt64(e.2) AS event_timestamp, e.3 AS event_name,
+              CAST(e.4, params_type) AS event_params,
+              e.5 AS user_pseudo_id, CAST(NULL, 'Nullable(String)') AS user_id,
+              CAST(tuple('desktop'), 'Tuple(category Nullable(String))') AS device,
+              CAST(tuple('US'), 'Tuple(country Nullable(String))') AS geo,
+              CAST((NULL, NULL, NULL, NULL), 'Tuple(purchase_revenue Nullable(Float64), tax_value Nullable(Float64), shipping_value Nullable(Float64), transaction_id Nullable(String))') AS ecommerce,
+              CAST(e.6, stslc_type) AS session_traffic_source_last_click
+          FROM (SELECT arrayJoin([
+              -- New export: the record wins over event parameters.
+              ('20250101', 1735700000000000, 'session_start', [('ga_session_id', (NULL, 1, NULL, NULL)), ('source', ('google', NULL, NULL, NULL)), ('medium', ('organic', NULL, NULL, NULL))], 'u1', tuple(('newsletter', 'email', 'spring'))),
+              ('20250101', 1735700001000000, 'page_view', [('ga_session_id', (NULL, 1, NULL, NULL))], 'u1', tuple(('newsletter', 'email', 'spring'))),
+              -- Old export: first source seen in the session's parameters.
+              ('20250101', 1735700000000000, 'session_start', [('ga_session_id', (NULL, 2, NULL, NULL))], 'u2', tuple((NULL, NULL, NULL))),
+              ('20250101', 1735700002000000, 'page_view', [('ga_session_id', (NULL, 2, NULL, NULL)), ('source', ('google', NULL, NULL, NULL)), ('medium', ('cpc', NULL, NULL, NULL)), ('campaign', ('brand', NULL, NULL, NULL))], 'u2', tuple((NULL, NULL, NULL))),
+              ('20250101', 1735700003000000, 'page_view', [('ga_session_id', (NULL, 2, NULL, NULL)), ('source', ('bing', NULL, NULL, NULL)), ('medium', ('organic', NULL, NULL, NULL))], 'u2', tuple((NULL, NULL, NULL))),
+              -- No source anywhere.
+              ('20250101', 1735700000000000, 'session_start', [('ga_session_id', (NULL, 3, NULL, NULL))], 'u3', tuple((NULL, NULL, NULL)))
+          ]) AS e)
+    expect:
+      rows:
+        - {session_key: u1.1, source: newsletter, medium: email, campaign: spring}
+        - {session_key: u2.2, source: google, medium: cpc, campaign: brand}
+        - {session_key: u3.3, source: (not set), medium: (not set), campaign: (not set)}
