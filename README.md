@@ -28,29 +28,98 @@ it. One source alone cannot show which fields are canonical.
 ## Quick start
 
 Try the GA4 package on Google's public sample
-[`ga4_obfuscated_sample_ecommerce`](https://developers.google.com/analytics/bigquery/web-ecommerce-demo-dataset)
-(BigQuery; a free-tier GCP account is enough).
+[`ga4_obfuscated_sample_ecommerce`](https://developers.google.com/analytics/bigquery/web-ecommerce-demo-dataset):
+4.3 million events from November 2020 to January 2021. You need
+[ClickHouse](https://clickhouse.com/docs/install), the
+[gcloud CLI](https://cloud.google.com/sdk/docs/install),
+[uv](https://docs.astral.sh/uv/) and dbt v2 (`pip install dbt-oss`).
 
-1. **Load.** Export the sample to Parquet in GCS and read it into ClickHouse
-   with the `gcs()` table function.
-   <!-- TBD: exact export and load commands -->
-2. **Build.** <!-- TBD: depends on the transformation runner -->
-3. **Validate** the model against the loaded tables:
+1. **Export.** A Google Cloud project in the
+   [BigQuery sandbox](https://cloud.google.com/bigquery/docs/sandbox) is
+   enough: no billing account, no Cloud Storage bucket.
+
+   ```bash
+   gcloud auth login
+   gcloud projects create <project-id>
+   gcloud services enable bigquery.googleapis.com --project <project-id>
+   uv run --with google-cloud-bigquery --with google-cloud-bigquery-storage \
+       --with pyarrow export_ga4.py <project-id> data/ga4
+   ```
+
+   `export_ga4.py` reads the daily tables with the BigQuery Storage Read
+   API and writes one Parquet file per day (about 200 MB, 10 minutes). It
+   passes the gcloud login token explicitly, so a
+   `GOOGLE_APPLICATION_CREDENTIALS` set for another project does not get
+   in the way:
+
+   ```python
+   import pathlib, subprocess, sys
+   import pyarrow.parquet as pq
+   from google.cloud import bigquery
+   from google.oauth2.credentials import Credentials
+
+   project, out = sys.argv[1], pathlib.Path(sys.argv[2])
+   out.mkdir(parents=True, exist_ok=True)
+   token = subprocess.check_output(["gcloud", "auth", "print-access-token"], text=True).strip()
+   client = bigquery.Client(project=project, credentials=Credentials(token))
+   dataset = "bigquery-public-data.ga4_obfuscated_sample_ecommerce"
+   for table in client.list_tables(dataset):
+       path = out / f"{table.table_id}.parquet"
+       if not path.exists():
+           rows = client.list_rows(client.get_table(table)).to_arrow(create_bqstorage_client=True)
+           pq.write_table(rows, path, compression="zstd")
+   ```
+
+2. **Load** into the package's input table
+   [`sources/ga4/input.sql`](sources/ga4/input.sql). It declares only the
+   columns the package reads; any other way of delivering the export must
+   fill the same table.
+
+   ```bash
+   clickhouse client --multiquery < sources/ga4/input.sql
+   clickhouse local --query "
+     SELECT event_date, event_timestamp, event_name, event_params,
+            user_pseudo_id, user_id,
+            tuple(device.category) AS device, tuple(geo.country) AS geo,
+            tuple(ecommerce.purchase_revenue, ecommerce.tax_value,
+                  ecommerce.shipping_value, ecommerce.transaction_id) AS ecommerce
+     FROM file('data/ga4/*.parquet') FORMAT Native" |
+   clickhouse client --query "
+     INSERT INTO ga4_raw.events (event_date, event_timestamp, event_name,
+       event_params, user_pseudo_id, user_id, device, geo, ecommerce)
+     FORMAT Native"
+   ```
+
+3. **Build** the canonical tables in the `dactopus` database. Connection
+   settings come from `CLICKHOUSE_HOST`, `CLICKHOUSE_PORT` (HTTP, default
+   8123), `CLICKHOUSE_USER` and `CLICKHOUSE_PASSWORD`.
+
+   ```bash
+   dbt build --project-dir sources/ga4 --profiles-dir sources/ga4
+   ```
+
+4. **Validate** the model against the loaded tables:
 
    ```bash
    ossie-clickhouse validate <model> --url http://user:password@host:8123
    ```
 
-4. **Ask.** Serve the model to an AI agent over MCP with
+5. **Ask.** Serve the model to an AI agent over MCP with
    `ossie-clickhouse serve`. Try sessions, conversion, revenue from
    `purchase`, each by traffic source and date.
 
 ## Layout
 
-    entities/            one entity per Ossie YAML file
-    sources/<source>/    one package per source; references entities
+    entities/                 one entity per Ossie YAML file
+    sources/<source>/         one package per source, a dbt project:
+      input.sql               the input table the package accepts
+      models/                 one model per entity, named after it
+      models/schema.yml       structural checks (dbt tests)
 
-<!-- TBD: layout inside a package once the extension schema is settled -->
+A package's model writes the entity's table in the `dactopus` database;
+the entity's Ossie `source` points at it, and
+`ossie-clickhouse validate --url` checks that the package delivers every
+column the entity declares. A deployment picks one package per entity.
 
 This is one repository, not one per source. Packages map onto shared
 entities, so they are released together with them under a single version.
@@ -91,10 +160,10 @@ does not belong here.
 
 **Format.** Ossie schema `0.2.0.dev0`, the only version the upstream
 schema accepts today. Write expressions in `ANSI_SQL`; ossie-clickhouse
-also accepts `OSSIE_SQL_2026`. Anything outside the standard (mapping,
-refresh, checks) goes in `custom_extensions` under the
-<!-- TBD: namespace --> namespace. The `CLICKHOUSE` namespace belongs to
-ossie-clickhouse; its only key is `dedup`.
+also accepts `OSSIE_SQL_2026`. Mapping, refresh and checks live in the
+package's dbt project, not in the Ossie files, so entities stay plain Ossie
+that any Ossie tool reads. The only extension used is ossie-clickhouse's
+`CLICKHOUSE` namespace and its `dedup` key.
 
 **The canon is selected, not designed.** A field that at least two sources
 provide goes into the canonical entity. A field only one source has stays

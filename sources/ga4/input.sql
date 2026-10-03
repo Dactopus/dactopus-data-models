@@ -1,0 +1,36 @@
+-- Input of the GA4 package: the GA4 BigQuery export, one row per event.
+-- Only the columns the package reads, with types from the official export
+-- schema (https://support.google.com/analytics/answer/7029846).
+-- Any transport may deliver more columns; it must deliver these.
+CREATE DATABASE IF NOT EXISTS ga4_raw;
+
+CREATE TABLE IF NOT EXISTS ga4_raw.events
+(
+    event_date String,                -- YYYYMMDD in the property's time zone
+    event_timestamp Int64,            -- microseconds, UTC
+    event_name String,
+    event_params Array(Tuple(
+        key Nullable(String),
+        value Tuple(
+            string_value Nullable(String),
+            int_value Nullable(Int64),
+            float_value Nullable(Float64),
+            double_value Nullable(Float64)))),
+    user_pseudo_id String,
+    user_id Nullable(String),
+    device Tuple(category Nullable(String)),
+    geo Tuple(country Nullable(String)),
+    ecommerce Tuple(
+        purchase_revenue Nullable(Float64),
+        tax_value Nullable(Float64),
+        shipping_value Nullable(Float64),
+        transaction_id Nullable(String)),
+    -- Since October 2024; absent in older exports (NULL).
+    session_traffic_source_last_click Tuple(
+        cross_channel_campaign Tuple(
+            source Nullable(String),
+            medium Nullable(String),
+            campaign_name Nullable(String)))
+)
+ENGINE = MergeTree
+ORDER BY (event_date, event_name, user_pseudo_id);

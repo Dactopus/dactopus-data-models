@@ -1,0 +1,14 @@
+dactopus:
+  target: default
+  outputs:
+    default:
+      type: clickhouse
+      schema: dactopus
+      host: "{{ env_var('CLICKHOUSE_HOST', 'localhost') }}"
+      port: "{{ env_var('CLICKHOUSE_PORT', '8123') | int }}"
+      user: "{{ env_var('CLICKHOUSE_USER', 'default') }}"
+      password: "{{ env_var('CLICKHOUSE_PASSWORD', '') }}"
+      custom_settings:
+        # The dbt v2 ClickHouse adapter (beta) decompresses LZ4 only, while
+        # ClickHouse 26.x compresses HTTP responses with ZSTD by default.
+        network_compression_method: LZ4

@@ -1,0 +1,13 @@
+name: dactopus_ga4
+version: "0.0.1"
+profile: dactopus
+model-paths: ["models"]
+macro-paths: ["macros"]
+vars:
+  # GA4 keeps updating a daily export table for up to 72 hours after its date:
+  # https://support.google.com/analytics/answer/9358801
+  ga4_lookback_days: 3
+models:
+  dactopus_ga4:
+    +materialized: incremental
+    +incremental_strategy: delete+insert

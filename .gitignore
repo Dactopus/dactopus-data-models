@@ -1,3 +1,8 @@
 CLAUDE.local.md
 .claude/
 .DS_Store
+data/
+target/
+logs/
+dbt_packages/
+.user.yml

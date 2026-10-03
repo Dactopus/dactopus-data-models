@@ -1,0 +1,16 @@
+version: 2
+models:
+  - name: sessions
+    columns:
+      - name: session_key
+        data_tests: [unique, not_null]
+  - name: purchases
+    columns:
+      - name: purchase_key
+        data_tests: [unique, not_null]
+      - name: session_key
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('sessions')
+                field: session_key
