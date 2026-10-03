@@ -91,6 +91,19 @@ Try the GA4 package on Google's public sample
      FORMAT Native"
    ```
 
+   The sample is older than the `session_traffic_source_last_click`
+   column. When your export has it, load it too: add the column to the
+   `INSERT` list and this expression to the `SELECT`. Without it the
+   package falls back to the first source seen in a session, and revenue
+   by source will not match the GA4 interface.
+
+   ```sql
+   tuple(tuple(session_traffic_source_last_click.cross_channel_campaign.source,
+               session_traffic_source_last_click.cross_channel_campaign.medium,
+               session_traffic_source_last_click.cross_channel_campaign.campaign_name))
+     AS session_traffic_source_last_click
+   ```
+
 3. **Build** the canonical tables in the `dactopus` database. Connection
    settings come from `CLICKHOUSE_HOST`, `CLICKHOUSE_PORT` (HTTP, default
    8123), `CLICKHOUSE_USER` and `CLICKHOUSE_PASSWORD`.

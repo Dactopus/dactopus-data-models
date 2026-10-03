@@ -41,7 +41,7 @@ FROM
     {% if is_incremental() %}
     -- One day earlier than the window: a session that crosses midnight into
     -- the window must be rebuilt whole or not at all.
-    WHERE toDate(parseDateTime(event_date, '%Y%m%d')) >= {{ ga4_window_start('session_date') }} - 1
+    WHERE {{ ga4_raw_window('session_date', extra_days=1) }}
     {% endif %}
 )
 -- Events without a session id form no session.

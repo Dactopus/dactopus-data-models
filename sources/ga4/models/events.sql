@@ -17,6 +17,6 @@ FROM
     -- Filter here: in the outer query the alias event_date (Date) would
     -- shadow the raw column (String).
     {% if is_incremental() %}
-    WHERE toDate(parseDateTime(event_date, '%Y%m%d')) >= {{ ga4_window_start('event_date') }}
+    WHERE {{ ga4_raw_window('event_date') }}
     {% endif %}
 )

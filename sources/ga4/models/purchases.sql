@@ -27,7 +27,7 @@ FROM
     WHERE event_name = 'purchase'
     {% if is_incremental() %}
     -- One day earlier than the window, as in sessions.
-    AND toDate(parseDateTime(event_date, '%Y%m%d')) >= {{ ga4_window_start('purchase_date') }} - 1
+    AND {{ ga4_raw_window('purchase_date', extra_days=1) }}
     {% endif %}
 )
 GROUP BY user_pseudo_id, purchase_id
