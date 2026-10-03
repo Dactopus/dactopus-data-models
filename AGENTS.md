@@ -106,4 +106,6 @@ dbt build --project-dir sources/ga4 --profiles-dir sources/ga4 --full-refresh  #
 
 The package profile sets `network_compression_method: LZ4`: the dbt v2
 ClickHouse adapter (beta) cannot read the ZSTD responses ClickHouse 26.x
-sends by default.
+sends by default. `dbt source freshness` fails on that adapter for any
+project (it selects `now()`, which arrives as an integer); run freshness
+on dbt v1.

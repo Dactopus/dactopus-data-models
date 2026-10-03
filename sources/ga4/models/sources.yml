@@ -4,3 +4,11 @@ sources:
     schema: ga4_raw
     tables:
       - name: events
+        # `dbt source freshness`: is the GA4 export still arriving? A daily
+        # table usually lands the next afternoon and can slip a day
+        # (https://support.google.com/analytics/answer/9358801).
+        config:
+          loaded_at_field: fromUnixTimestamp64Micro(event_timestamp)
+          freshness:
+            warn_after: {count: 2, period: day}
+            error_after: {count: 3, period: day}

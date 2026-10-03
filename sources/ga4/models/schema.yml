@@ -1,13 +1,27 @@
 version: 2
+# Structural checks only; descriptions live in entities/web_analytics.yaml.
 models:
+  - name: events
+    columns:
+      - {name: event_name, data_tests: [not_null]}
+      - {name: event_date, data_tests: [not_null]}
+      - {name: event_time, data_tests: [not_null]}
+      - {name: user_pseudo_id, data_tests: [not_null]}
   - name: sessions
     columns:
       - name: session_key
         data_tests: [unique, not_null]
+      - {name: user_pseudo_id, data_tests: [not_null]}
+      - {name: session_date, data_tests: [not_null]}
+      - {name: source, data_tests: [not_null]}
+      - {name: medium, data_tests: [not_null]}
+      - {name: campaign, data_tests: [not_null]}
   - name: purchases
     columns:
       - name: purchase_key
         data_tests: [unique, not_null]
+      - {name: user_pseudo_id, data_tests: [not_null]}
+      - {name: purchase_date, data_tests: [not_null]}
       - name: session_key
         data_tests:
           - relationships:
