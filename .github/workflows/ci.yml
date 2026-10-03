@@ -33,7 +33,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
       - name: Install ossie-clickhouse
-        run: uv tool install "ossie-clickhouse @ git+https://github.com/Dactopus/ossie-clickhouse"
+        run: uv tool install "ossie-clickhouse @ git+https://github.com/Dactopus/ossie-clickhouse@v0.2.0"
       # The GA4 sample needs a Google login, so CI runs on hand-written rows
       # (tests/ga4/fixture.sql) and checks the model's answers against numbers
       # derived from them by hand. The first build runs on an empty input, as
