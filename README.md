@@ -151,7 +151,12 @@ vars:
 
 Point ossie-clickhouse at your target's database
 (`--url http://host:8123/<database>`) and take the Ossie model from the
-same tag. On dbt v2 with ClickHouse 26.x, set
+same tag.
+
+Several GA4 properties: each exports to its own BigQuery dataset. Build
+the package once per property, each with its own input and target
+database, and serve the model once per target. A total across properties
+is not modelled. On dbt v2 with ClickHouse 26.x, set
 `custom_settings: {network_compression_method: LZ4}` in your profile, as
 [`sources/ga4/profiles.yml`](sources/ga4/profiles.yml) does: the v2
 ClickHouse adapter (beta) cannot read ClickHouse's default ZSTD
