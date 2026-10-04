@@ -25,15 +25,19 @@ jobs:
           --health-cmd "wget -qO- http://localhost:8123/ping || exit 1"
           --health-interval 5s --health-timeout 3s --health-retries 20
     env:
+      # Databases other than the defaults (ga4_raw, dactopus): nothing may
+      # assume a database name. The input database is ga4_input.
+      CLICKHOUSE_DATABASE: analytics
       DBT_BUILD: >-
         uvx --from ${{ matrix.dbt.from }} ${{ matrix.dbt.with && format('--with {0}', matrix.dbt.with) || '' }}
         dbt build --project-dir sources/ga4 --profiles-dir sources/ga4
-      OSSIE_CLICKHOUSE_URL: http://127.0.0.1:8123
+        --vars {"ga4_input_database":"ga4_input"}
+      OSSIE_CLICKHOUSE_URL: http://127.0.0.1:8123/analytics
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
       - name: Install ossie-clickhouse
-        run: uv tool install "ossie-clickhouse @ git+https://github.com/Dactopus/ossie-clickhouse@v0.2.1"
+        run: uv tool install "ossie-clickhouse @ git+https://github.com/Dactopus/ossie-clickhouse@v0.2.2"
       # The GA4 sample needs a Google login, so CI runs on hand-written rows
       # (tests/ga4/fixture.sql) and checks the model's answers against numbers
       # derived from them by hand. The first build runs on an empty input, as
@@ -44,7 +48,7 @@ jobs:
           import pathlib, sys, urllib.request
           for s in pathlib.Path(sys.argv[1]).read_text().split(';\n'):
               if s.strip():
-                  urllib.request.urlopen('http://127.0.0.1:8123', s.encode())" "$1"; }
+                  urllib.request.urlopen('http://127.0.0.1:8123/?param_db=ga4_input', s.encode())" "$1"; }
           load sources/ga4/input.sql
           $DBT_BUILD
           load tests/ga4/fixture.sql
@@ -55,4 +59,4 @@ jobs:
           $DBT_BUILD --full-refresh
           python3 tests/ga4/check_numbers.py
       - name: Validate the Ossie model against the built tables
-        run: ossie-clickhouse validate entities/web_analytics.yaml
+        run: ossie-clickhouse validate entities/web_analytics.yaml --url "$OSSIE_CLICKHOUSE_URL"

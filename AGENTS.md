@@ -33,9 +33,17 @@ Everything must be releasable under Apache 2.0. Do not add:
 An entity holds schema (grain, keys), field descriptions and simple
 metrics. A package holds the mapping from the source, the refresh
 strategy and structural checks. Never put source-specific logic in an
-entity. A model writes `dactopus.<entity>`, the table the entity's
-`source` names. Descriptions live in the Ossie entity only; do not repeat
-them in `schema.yml`.
+entity. A model writes the table `<entity>`, which the entity's `source`
+names. Descriptions live in the Ossie entity only; do not repeat them in
+`schema.yml`.
+
+No database name is written into a model, an entity or a package: the
+deployment chooses them. A `source` is a bare table name, read in the
+database ossie-clickhouse connects to; a package writes to its dbt
+target's database and reads its input from a variable
+(`ga4_input_database`); `input.sql` takes the database as a query
+parameter. `dactopus` and `ga4_raw` are only defaults for the standalone
+profile and the sample. CI builds into other databases to keep it so.
 
 ## Model format
 
@@ -47,7 +55,7 @@ them in `schema.yml`.
 - Models must work within ossie-clickhouse limits: one root dataset per
   question; many-to-one joins on a declared primary or unique key; no
   metric referencing another metric by name (repeat the expression); one
-  field per time grain; `source` is `database.table`, never a query.
+  field per time grain; `source` is a bare table name, never a query.
   Details: its [model authoring guide](https://github.com/Dactopus/ossie-clickhouse/blob/main/docs/model-authoring.md).
 
 ## Authoring rules
@@ -83,8 +91,8 @@ them in `schema.yml`.
 A model that validates can still return wrong numbers. For a change to a
 model:
 
-1. `ossie-clickhouse validate <model> --url <clickhouse>` passes against
-   loaded data.
+1. `ossie-clickhouse validate <model> --url <clickhouse>/<database>`
+   passes against loaded data.
 2. `dbt build` of the package passes: models and their tests.
 3. An incremental run over unchanged input changes nothing, and matches a
    `--full-refresh` build row for row.
@@ -103,7 +111,8 @@ running queries (`clickhouse local` or a server), not from memory.
 Packages run on dbt v2 (`pip install dbt-oss`, tested 2.0.5) and on dbt
 v1 (`dbt-core` 1.11 with `dbt-clickhouse` 1.10), with identical results.
 Sample data and loading: README, Quick start. Connection: `CLICKHOUSE_HOST`, `CLICKHOUSE_PORT` (HTTP),
-`CLICKHOUSE_USER`, `CLICKHOUSE_PASSWORD`.
+`CLICKHOUSE_USER`, `CLICKHOUSE_PASSWORD`; target database
+`CLICKHOUSE_DATABASE` (default `dactopus`).
 
 ```bash
 dbt build --project-dir sources/ga4 --profiles-dir sources/ga4                 # models + tests

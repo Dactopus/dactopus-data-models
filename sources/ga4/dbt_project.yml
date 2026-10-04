@@ -4,6 +4,8 @@ profile: dactopus
 model-paths: ["models"]
 macro-paths: ["macros"]
 vars:
+  # The database holding the input table events (input.sql).
+  ga4_input_database: ga4_raw
   # GA4 keeps updating a daily export table for up to 72 hours after its date:
   # https://support.google.com/analytics/answer/9358801
   ga4_lookback_days: 3

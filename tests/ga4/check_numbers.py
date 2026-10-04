@@ -1,8 +1,10 @@
 """Ask the web_analytics model questions over tests/ga4/fixture.sql and compare
 the answers with numbers derived by hand from those rows.
 
-Run from the repository root after loading the fixture and building the GA4
-package; the ClickHouse URL comes from $OSSIE_CLICKHOUSE_URL:
+Run from the repository root after loading the fixture (the query parameter
+db names the input database, as in .github/workflows/ci.yml) and building
+the GA4 package; $OSSIE_CLICKHOUSE_URL is the ClickHouse URL with the
+package's target database, e.g. http://127.0.0.1:8123/dactopus:
 
     python3 tests/ga4/check_numbers.py
 

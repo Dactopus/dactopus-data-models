@@ -73,10 +73,11 @@ Try the GA4 package on Google's public sample
 2. **Load** into the package's input table
    [`sources/ga4/input.sql`](sources/ga4/input.sql). It declares only the
    columns the package reads; any other way of delivering the export must
-   fill the same table.
+   fill the same table. Its database is a parameter, `ga4_raw` here; the
+   package reads another one from the dbt variable `ga4_input_database`.
 
    ```bash
-   clickhouse client --multiquery < sources/ga4/input.sql
+   clickhouse client --param_db=ga4_raw --multiquery < sources/ga4/input.sql
    clickhouse local --query "
      SELECT event_date, event_timestamp, event_name, event_params,
             user_pseudo_id, user_id,
@@ -105,23 +106,56 @@ Try the GA4 package on Google's public sample
      AS session_traffic_source_last_click
    ```
 
-3. **Build** the canonical tables in the `dactopus` database. Connection
-   settings come from `CLICKHOUSE_HOST`, `CLICKHOUSE_PORT` (HTTP, default
-   8123), `CLICKHOUSE_USER` and `CLICKHOUSE_PASSWORD`.
+3. **Build** the canonical tables. Connection settings come from
+   `CLICKHOUSE_HOST`, `CLICKHOUSE_PORT` (HTTP, default 8123),
+   `CLICKHOUSE_USER` and `CLICKHOUSE_PASSWORD`; the database the tables go
+   to from `CLICKHOUSE_DATABASE` (default `dactopus`).
 
    ```bash
    dbt build --project-dir sources/ga4 --profiles-dir sources/ga4
    ```
 
-4. **Validate** the model against the loaded tables:
+4. **Validate** the model against the built tables. The model names its
+   tables without a database: [ossie-clickhouse](https://github.com/Dactopus/ossie-clickhouse)
+   (0.2.2 or later) reads them in the database of its URL.
 
    ```bash
-   ossie-clickhouse validate entities/web_analytics.yaml --url http://user:password@host:8123
+   ossie-clickhouse validate entities/web_analytics.yaml --url http://user:password@host:8123/dactopus
    ```
 
 5. **Ask.** Serve the model to an AI agent over MCP with
-   `ossie-clickhouse serve`. Try sessions, conversion, revenue from
-   `purchase`, each by traffic source and date.
+   `ossie-clickhouse serve entities/web_analytics.yaml --url ...`, the
+   same URL. Try sessions, conversion, revenue from `purchase`, each by
+   traffic source and date.
+
+## Use in your dbt project
+
+Add the package to your project's `packages.yml`, pinned to a release tag:
+
+```yaml
+packages:
+  - git: https://github.com/Dactopus/dactopus-data-models.git
+    revision: v0.1.0
+    subdirectory: sources/ga4
+```
+
+It writes `events`, `sessions` and `purchases` to your target's database
+and reads its input from `ga4_raw.events` unless you name another
+database:
+
+```yaml
+vars:
+  dactopus_ga4:
+    ga4_input_database: my_ga4_export
+```
+
+Point ossie-clickhouse at your target's database
+(`--url http://host:8123/<database>`) and take the Ossie model from the
+same tag. On dbt v2 with ClickHouse 26.x, set
+`custom_settings: {network_compression_method: LZ4}` in your profile, as
+[`sources/ga4/profiles.yml`](sources/ga4/profiles.yml) does: the v2
+ClickHouse adapter (beta) cannot read ClickHouse's default ZSTD
+responses.
 
 ## Layout
 
@@ -133,9 +167,11 @@ Try the GA4 package on Google's public sample
     tests/<source>/           hand-written input rows and the numbers the
                               model must answer over them
 
-A package's model writes the entity's table in the `dactopus` database;
-the entity's dataset in the domain's Ossie model points at it (an Ossie
-model is one file, since relationships and metrics span entities), and
+A package's model writes the entity's table, named after it, in the
+database the deployment chooses. The entity's dataset in the domain's
+Ossie model names that table without a database (an Ossie model is one
+file, since relationships and metrics span entities), so one model serves
+any database ossie-clickhouse connects to, and
 `ossie-clickhouse validate --url` checks that the package delivers every
 column the entity declares. A deployment picks one package per entity.
 
@@ -206,7 +242,8 @@ A package states which one it uses and why.
 - A metric cannot reference another metric by name; repeat the
   expression.
 - No time grain or derived dimensions: declare one field per grain.
-- `source` is `database.table`, not a query.
+- `source` is a table name without a database, not a query: the
+  deployment picks the database.
 
 See its [model authoring guide](https://github.com/Dactopus/ossie-clickhouse/blob/main/docs/model-authoring.md).
 

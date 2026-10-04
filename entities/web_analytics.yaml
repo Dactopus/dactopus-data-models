@@ -26,7 +26,7 @@ ai_context:
 
 datasets:
   - name: sessions
-    source: dactopus.sessions
+    source: sessions
     primary_key: [session_key]
     description: >
       One row per visit to the site. A session ends after 30 minutes without
@@ -154,7 +154,7 @@ datasets:
           synonyms: [geo, location]
 
   - name: purchases
-    source: dactopus.purchases
+    source: purchases
     primary_key: [purchase_key]
     description: >
       One row per purchase recorded by web analytics. A thank-you page
@@ -233,7 +233,7 @@ datasets:
         datatype: Float
 
   - name: events
-    source: dactopus.events
+    source: events
     description: >
       One row per action recorded on the site: page_view, view_item,
       add_to_cart, begin_checkout, purchase and others. Use for funnels and

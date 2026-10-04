@@ -32,7 +32,7 @@ network):
 ```bash
 docker run -d --name ch -p 8123:8123 -p 9000:9000 -e CLICKHOUSE_SKIP_USER_SETUP=1 clickhouse/clickhouse-server:26.9
 pip install dbt-oss                     # dbt v2; or dbt-core~=1.11 with dbt-clickhouse (v1)
-pip install "ossie-clickhouse @ git+https://github.com/Dactopus/ossie-clickhouse@v0.2.1"
+pip install "ossie-clickhouse @ git+https://github.com/Dactopus/ossie-clickhouse@v0.2.2"
 ```
 
 Load the GA4 sample as the README's [Quick start](README.md#quick-start)
@@ -45,7 +45,7 @@ package or a model:
 
 ```bash
 dbt build --project-dir sources/ga4 --profiles-dir sources/ga4      # models and tests
-ossie-clickhouse validate entities/web_analytics.yaml --url http://127.0.0.1:8123
+ossie-clickhouse validate entities/web_analytics.yaml --url http://127.0.0.1:8123/dactopus
 ```
 
 An incremental run over unchanged input must change nothing and match a
@@ -70,9 +70,11 @@ project in `sources/<source>/`:
 
 - `input.sql`: the input table the package accepts. Only the columns the
   package reads, with types from the source's official schema, not from
-  one sample of it.
+  one sample of it. The database is the query parameter
+  `{db:Identifier}`; the models read it from a dbt variable.
 - `models/<entity>.sql`: one model per entity, named after it, writing
-  `dactopus.<entity>`. The columns are the entity's fields.
+  the table `<entity>` in the dbt target's database. The columns are the
+  entity's fields. No database name in the code.
 - `models/schema.yml`: structural checks as dbt tests. Descriptions live
   in the Ossie model only.
 

@@ -1,7 +1,8 @@
 -- Hand-written GA4 export rows for check_numbers.py, loaded into the package
 -- input (sources/ga4/input.sql). Each session is a case the package must get
 -- right; check_numbers.py derives the expected numbers from these rows.
-INSERT INTO ga4_raw.events
+-- The input database is the query parameter db, as in input.sql.
+INSERT INTO {db:Identifier}.events
 WITH
     'Array(Tuple(key Nullable(String), value Tuple(string_value Nullable(String), int_value Nullable(Int64), float_value Nullable(Float64), double_value Nullable(Float64))))' AS params_type,
     'Tuple(purchase_revenue Nullable(Float64), purchase_revenue_in_usd Nullable(Float64), tax_value Nullable(Float64), shipping_value Nullable(Float64), transaction_id Nullable(String))' AS ecommerce_type,

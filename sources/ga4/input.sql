@@ -2,9 +2,11 @@
 -- Only the columns the package reads, with types from the official export
 -- schema (https://support.google.com/analytics/answer/7029846).
 -- Any transport may deliver more columns; it must deliver these.
-CREATE DATABASE IF NOT EXISTS ga4_raw;
+-- The database is a query parameter, the package's ga4_input_database:
+--   clickhouse client --param_db=ga4_raw --multiquery < input.sql
+CREATE DATABASE IF NOT EXISTS {db:Identifier};
 
-CREATE TABLE IF NOT EXISTS ga4_raw.events
+CREATE TABLE IF NOT EXISTS {db:Identifier}.events
 (
     event_date String,                -- YYYYMMDD in the property's time zone
     event_timestamp Int64,            -- microseconds, UTC
