@@ -1,5 +1,5 @@
 name: dactopus_ga4
-version: "0.0.1"
+version: "0.1.0"
 profile: dactopus
 model-paths: ["models"]
 macro-paths: ["macros"]
