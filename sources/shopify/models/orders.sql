@@ -30,7 +30,10 @@ SELECT
     -- (https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/default-reports/finances-report).
     l.discount_total AS discount_total,
     o.total_refunded AS refunded_total,
-    total - refunded_total AS net_total,
+    -- What the order earned after refunds. A cancelled order earned
+    -- nothing: cancelled unpaid, nothing was paid or refunded, yet
+    -- total less refunded would count it whole.
+    if(o.cancelled_at IS NOT NULL, toDecimal64(0, 4), total - refunded_total) AS net_total,
     o.taxes_included AS taxes_included,
     -- https://shopify.dev/docs/api/admin-graphql/latest/enums/OrderDisplayFinancialStatus
     -- A value not listed here is NULL and fails the not_null test.
@@ -65,7 +68,9 @@ SELECT
     -- guests have no number.
     if(o.customer_id IS NULL OR is_cancelled, NULL,
        row_number() OVER (PARTITION BY o.customer_id, is_cancelled ORDER BY o.processed_at, o.id)) AS customer_order_number,
-    multiIf(customer_order_number = 1, 'new', customer_order_number > 1, 'repeat', NULL) AS new_vs_repeat
+    multiIf(customer_order_number = 1, 'new', customer_order_number > 1, 'repeat', NULL) AS new_vs_repeat,
+    -- When the version was loaded; the next incremental run starts from it.
+    o.loaded_at AS loaded_at
 FROM {{ shopify_latest('orders', 'id') }} AS o
 LEFT JOIN
 (
@@ -76,13 +81,15 @@ LEFT JOIN
 WHERE NOT o.test
 )
 {% if is_incremental() %}
--- Orders changed since the last run, and every order of their customers,
+-- Orders loaded since the last run, orders whose lines were (their counts
+-- and discounts come from the lines), and every order of their customers,
 -- under any version: a cancel or a back-dated order renumbers the others.
 -- The sequence is numbered over all orders first, then filtered, so every
 -- run reads every version of every order: cheap for orders, and a
 -- deployment can collapse old versions (input.sql).
-WHERE order_id IN (SELECT id FROM {{ source('shopify_raw', 'orders') }} WHERE updated_at >= {{ shopify_window_start('updated_at') }})
+WHERE order_id IN {{ shopify_loaded_since('orders') }}
+   OR order_id IN {{ shopify_loaded_since('order_lines', 'order_id') }}
    OR customer_id IN (
        SELECT customer_id FROM {{ source('shopify_raw', 'orders') }}
-       WHERE id IN (SELECT id FROM {{ source('shopify_raw', 'orders') }} WHERE updated_at >= {{ shopify_window_start('updated_at') }}))
+       WHERE id IN {{ shopify_loaded_since('orders') }} OR id IN {{ shopify_loaded_since('order_lines', 'order_id') }})
 {% endif %}

@@ -13,20 +13,26 @@ SELECT
     r.updated_at AS updated_at,
     r.total_refunded AS refunded_amount,
     -- Items refunded; 0 for a refund of shipping or an amount alone.
-    rl.quantity AS refunded_quantity
+    rl.quantity AS refunded_quantity,
+    -- When the version was loaded; the next incremental run starts from it.
+    r.loaded_at AS loaded_at
+{% if is_incremental() %}
+{# Refunds loaded since the last run, and refunds whose lines were. #}
+{% set refunds_loaded = shopify_loaded_since('refunds') %}
+{% set lines_loaded = shopify_loaded_since('refund_lines', 'refund_id') %}
+FROM {{ shopify_latest('refunds', 'id', where="id IN " ~ refunds_loaded ~ " OR id IN " ~ lines_loaded) }} AS r
+{% else %}
 FROM {{ shopify_latest('refunds', 'id') }} AS r
+{% endif %}
 LEFT JOIN
 (
     SELECT refund_id, refund_updated_at, sum(quantity) AS quantity
-    FROM
-    (
-        SELECT * FROM {{ source('shopify_raw', 'refund_lines') }}
-        ORDER BY loaded_at DESC
-        LIMIT 1 BY refund_id, line_item_id, refund_updated_at
-    )
+    {% if is_incremental() %}
+    FROM {{ shopify_latest('refund_lines', 'refund_id, line_item_id, refund_updated_at', version='refund_updated_at',
+                           where="refund_id IN " ~ refunds_loaded ~ " OR refund_id IN " ~ lines_loaded) }}
+    {% else %}
+    FROM {{ shopify_latest('refund_lines', 'refund_id, line_item_id, refund_updated_at', version='refund_updated_at') }}
+    {% endif %}
     GROUP BY refund_id, refund_updated_at
 ) AS rl ON rl.refund_id = r.id AND rl.refund_updated_at = r.updated_at
 WHERE r.order_id IN (SELECT order_id FROM {{ ref('orders') }})
-{% if is_incremental() %}
-AND r.id IN (SELECT id FROM {{ source('shopify_raw', 'refunds') }} WHERE updated_at >= {{ shopify_window_start('updated_at') }})
-{% endif %}

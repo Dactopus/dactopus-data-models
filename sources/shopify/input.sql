@@ -26,6 +26,10 @@
 -- The package therefore takes the lines with the order's latest
 -- order_updated_at and of each line its latest load, never lines whose
 -- loaded_at equals the order's.
+-- An incremental build rereads what was loaded since its last run by
+-- loaded_at, so rows may arrive in any order of updated_at (a loader
+-- catching up, a backfill); a loader that sends loaded_at must send the
+-- time of the insert, not an older one.
 --
 -- The tables keep every version, and the package does not depend on the
 -- engine. A deployment may collapse old versions to save space with

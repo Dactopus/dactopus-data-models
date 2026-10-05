@@ -6,11 +6,14 @@
 WITH
 orders AS (
     SELECT id, updated_at, processed_at, taxes_included
-    FROM {{ shopify_latest('orders', 'id') }}
-    WHERE NOT test
     {% if is_incremental() %}
-    AND id IN (SELECT id FROM {{ source('shopify_raw', 'orders') }} WHERE updated_at >= {{ shopify_window_start('order_updated_at') }})
+    -- Orders loaded since the last run, and orders whose lines were: the
+    -- lines of a version may come in a later insert than the order.
+    FROM {{ shopify_latest('orders', 'id', where="id IN " ~ shopify_loaded_since('orders') ~ " OR id IN " ~ shopify_loaded_since('order_lines', 'order_id')) }}
+    {% else %}
+    FROM {{ shopify_latest('orders', 'id') }}
     {% endif %}
+    WHERE NOT test
 )
 SELECT
     l.id AS line_id,
@@ -38,12 +41,10 @@ SELECT
     -- development store: 1399.90 at 13% with 10 off, tax 161.05).
     -- ponytail: a line's rates are added up; compound taxes would need
     -- their order.
-    if(o.taxes_included, toDecimal64(round(toDecimal64(l.original_total, 6) / (1 + l.tax_rate), 2), 4) - line_total, l.discount_allocated) AS discount_total
-FROM
-(
-    SELECT * FROM {{ source('shopify_raw', 'order_lines') }}
-    WHERE order_id IN (SELECT id FROM orders)
-    ORDER BY loaded_at DESC
-    LIMIT 1 BY order_id, id, order_updated_at
-) AS l
+    -- Divided in Decimal128: Decimal64 at scale 6 overflows from a line of
+    -- about 9.2 million, common in currencies such as IDR or VND.
+    if(o.taxes_included, toDecimal64(round(toDecimal128(l.original_total, 6) / (1 + l.tax_rate), 2), 4) - line_total, l.discount_allocated) AS discount_total,
+    -- When the line was loaded; the next incremental run starts from it.
+    l.loaded_at AS loaded_at
+FROM {{ shopify_latest('order_lines', 'order_id, id, order_updated_at', version='order_updated_at', where='order_id IN (SELECT id FROM orders)') }} AS l
 INNER JOIN orders AS o ON l.order_id = o.id AND l.order_updated_at = o.updated_at
