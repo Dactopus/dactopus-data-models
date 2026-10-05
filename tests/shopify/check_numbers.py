@@ -117,8 +117,10 @@ CASES = [
      [{"new_vs_repeat": "new", "orders": 2, "revenue": 140, "net_revenue": 140},
       {"new_vs_repeat": "repeat", "orders": 5, "revenue": 737.5, "net_revenue": 482.5},
       {"new_vs_repeat": None, "orders": 3, "revenue": 210, "net_revenue": 80}]),
-    # Repeat orders over all orders: 5 / 10.
-    (["-m", "repeat_order_share"], [{"repeat_order_share": 0.5}]),
+    # Repeat orders over the orders that have a customer and are not
+    # cancelled, the ones numbered in sequence: 5 / 7. Guests (1002, 1010)
+    # and cancelled 1005 are not counted; over all orders it would be 5 / 10.
+    (["-m", "repeat_order_share"], [{"repeat_order_share": 5 / 7}]),
     # Lines of the 10 orders: 16 items ordered, 12 left after refunds and
     # cancels (1004 -1, 1005 -1, 1006 -1, 1010 -1; 13 if 1005's earlier
     # version were read). line_revenue is after discounts and without tax:
