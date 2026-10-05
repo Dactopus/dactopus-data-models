@@ -1,0 +1,44 @@
+version: 2
+# Structural checks only; descriptions live in entities/commerce.yaml.
+models:
+  - name: orders
+    columns:
+      - name: order_id
+        data_tests: [unique, not_null]
+      - {name: order_date, data_tests: [not_null]}
+      - {name: currency, data_tests: [not_null]}
+      - name: financial_status
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [unpaid, paid, partially_refunded, refunded, voided]
+      - name: fulfillment_status
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [unfulfilled, partially_fulfilled, fulfilled]
+  - name: order_lines
+    columns:
+      - name: line_id
+        data_tests: [unique, not_null]
+      - name: order_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('orders')
+                field: order_id
+  - name: refunds
+    columns:
+      - name: refund_id
+        data_tests: [unique, not_null]
+      - {name: refund_date, data_tests: [not_null]}
+      - name: order_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('orders')
+                field: order_id
