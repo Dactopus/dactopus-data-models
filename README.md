@@ -13,9 +13,12 @@ A store on Shopify and a store on its own Postgres look the same once both
 are mapped: one query works on both. The same model serves BI tools through
 ClickHouse tables and AI agents through
 [ossie-clickhouse](https://github.com/Dactopus/ossie-clickhouse).
-How the GA4 package fits with GA4, ClickHouse, BI tools and AI agents,
-including one purchase followed end to end:
-[interactive diagram](https://dactopus.github.io/dactopus-data-models/).
+
+<a href="https://dactopus.github.io/dactopus-data-models/"><img src="docs/architecture.svg" width="680" alt="How the GA4 package works: the GA4 export is loaded into an input table in your ClickHouse; the dbt package builds the canonical tables; BI tools read them directly and AI agents through ossie-clickhouse and the Ossie model."></a>
+
+Click the diagram for the [interactive version](https://dactopus.github.io/dactopus-data-models/):
+what each part does and where it takes its settings from, and one
+purchase followed from GA4 to an AI agent's answer.
 
 ## Sources
 
@@ -174,7 +177,7 @@ responses.
       models/schema.yml       structural checks (dbt tests)
     tests/<source>/           hand-written input rows and the numbers the
                               model must answer over them
-    docs/index.html           the interactive diagram (GitHub Pages)
+    docs/                     the diagram above and its interactive page
 
 A package's model writes the entity's table, named after it, in the
 database the deployment chooses. The entity's dataset in the domain's
