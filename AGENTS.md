@@ -29,6 +29,8 @@ Everything must be releasable under Apache 2.0. Do not add:
       models/schema.yml       structural checks (dbt tests only)
     tests/<source>/           hand-written input rows and the numbers the
                               model must answer over them
+    docs/index.html           interactive diagram on GitHub Pages; update
+                              it in the change that alters what it shows
 
 An entity holds schema (grain, keys), field descriptions and simple
 metrics. A package holds the mapping from the source, the refresh
