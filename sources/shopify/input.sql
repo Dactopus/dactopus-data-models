@@ -66,8 +66,9 @@ CREATE TABLE IF NOT EXISTS {db:Identifier}.orders
     total_price Decimal(18, 4),                 -- totalPriceSet, before refunds
     -- Sum of shippingLines.discountedPriceSet: after shipping discounts (a
     -- free-shipping code included, as of API 2024-07), tax inside when
-    -- taxesIncluded. totalShippingPriceSet is not used: its description
-    -- does not say whether discounts are taken off.
+    -- taxesIncluded. totalShippingPriceSet is not used: it is before
+    -- shipping discounts, and totalDiscountsSet includes them (a
+    -- free-shipping order on a development store: 10, 10, and 0 here).
     -- https://shopify.dev/docs/api/admin-graphql/latest/objects/ShippingLine
     shipping_price Decimal(18, 4),
     shipping_tax Decimal(18, 4),                -- sum of shippingLines.taxLines.priceSet
