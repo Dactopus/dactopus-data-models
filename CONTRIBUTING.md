@@ -65,6 +65,10 @@ check on the sample.
 
 ## Adding a source package
 
+[ROADMAP.md](ROADMAP.md) lists what is planned. Open an issue before you
+start a package, so the input and the entities it maps to are agreed
+first.
+
 A package maps one source onto the canonical entities. It is a dbt
 project in `sources/<source>/`:
 
@@ -109,7 +113,8 @@ For maintainers.
    `## [X.Y.Z] - YYYY-MM-DD` with the Ossie schema version the release
    targets, and mark it if it needs a full refresh.
 2. Set `version` in every `sources/*/dbt_project.yml` to `X.Y.Z`.
-3. Merge after CI passes, then tag the commit on `main`:
+3. Merge after CI passes, then tag the commit on `main`. A published tag
+   never moves: a fix is a new version.
 
 ```bash
 git switch main && git pull --ff-only

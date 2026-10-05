@@ -4,23 +4,31 @@ Open data models for e-commerce on [ClickHouse](https://clickhouse.com/docs),
 written in the [Apache Ossie](https://github.com/apache/ossie) semantic model
 format. Two kinds of content:
 
-- **Canonical entities**: orders, line items, customers, sessions, events,
-  purchases. They have the same shape whatever the data came from.
-- **Source packages**: they map one source (GA4, Shopify, WooCommerce, ...)
-  onto those entities.
+- **Canonical entities**: sessions, events and purchases. They have the
+  same shape whatever the data came from.
+- **Source packages**: each maps one source onto those entities. GA4 is
+  available.
 
-A store on Shopify and a store on its own Postgres look the same once both
-are mapped: one query works on both. The same model serves BI tools through
-ClickHouse tables and AI agents through
+Orders, Shopify and what comes after are in [ROADMAP.md](ROADMAP.md).
+
+The aim: a store on Shopify and a store on its own Postgres look the same
+once both are mapped, and one query works on both. The same model serves
+BI tools through ClickHouse tables and AI agents through
 [ossie-clickhouse](https://github.com/Dactopus/ossie-clickhouse).
+
+<a href="https://dactopus.github.io/dactopus-data-models/"><img src="docs/architecture.svg" width="680" alt="How the GA4 package works: the GA4 export is loaded into an input table in your ClickHouse; the dbt package builds the canonical tables; BI tools read them directly and AI agents through ossie-clickhouse and the Ossie model."></a>
+
+Click the diagram for the [interactive version](https://dactopus.github.io/dactopus-data-models/):
+what each part does and where it takes its settings from, and one
+purchase followed from GA4 to an AI agent's answer.
 
 ## Sources
 
 | Source | Entities | Status |
 | --- | --- | --- |
 | GA4 (BigQuery export) | `events`, `sessions`, `purchases` | available |
-| Shopify | `orders`, line items, customers | next |
-| WooCommerce | `orders`, line items, customers | planned |
+| Shopify | `orders`, line items, customers | [next](ROADMAP.md#next) |
+| WooCommerce | `orders`, line items, customers | [later](ROADMAP.md#later) |
 
 The `orders` entity is provisional until a second orders source maps onto
 it. One source alone cannot show which fields are canonical.
@@ -32,11 +40,16 @@ Try the GA4 package on Google's public sample
 4.3 million events from November 2020 to January 2021. You need
 [ClickHouse](https://clickhouse.com/docs/install), the
 [gcloud CLI](https://cloud.google.com/sdk/docs/install),
-[uv](https://docs.astral.sh/uv/) and dbt v2 (`pip install dbt-oss`).
+[uv](https://docs.astral.sh/uv/), dbt v2 (`pip install dbt-oss`) and
+[ossie-clickhouse](https://github.com/Dactopus/ossie-clickhouse) 0.2.2 or
+later with its MCP server
+(`pip install "ossie-clickhouse[mcp] @ git+https://github.com/Dactopus/ossie-clickhouse@v0.2.2"`).
+Tested on ClickHouse 26.9.
 
 1. **Export.** A Google Cloud project in the
    [BigQuery sandbox](https://cloud.google.com/bigquery/docs/sandbox) is
-   enough: no billing account, no Cloud Storage bucket.
+   enough: no billing account, no Cloud Storage bucket. Save the script
+   below as `export_ga4.py` and run:
 
    ```bash
    gcloud auth login
@@ -46,8 +59,8 @@ Try the GA4 package on Google's public sample
        --with pyarrow export_ga4.py <project-id> data/ga4
    ```
 
-   `export_ga4.py` reads the daily tables with the BigQuery Storage Read
-   API and writes one Parquet file per day (about 200 MB, 10 minutes). It
+   The script reads the daily tables with the BigQuery Storage Read API
+   and writes one Parquet file per day (about 200 MB, 10 minutes). It
    passes the gcloud login token explicitly, so a
    `GOOGLE_APPLICATION_CREDENTIALS` set for another project does not get
    in the way:
@@ -116,8 +129,8 @@ Try the GA4 package on Google's public sample
    ```
 
 4. **Validate** the model against the built tables. The model names its
-   tables without a database: [ossie-clickhouse](https://github.com/Dactopus/ossie-clickhouse)
-   (0.2.2 or later) reads them in the database of its URL.
+   tables without a database: ossie-clickhouse reads them in the database
+   of its URL.
 
    ```bash
    ossie-clickhouse validate entities/web_analytics.yaml --url http://user:password@host:8123/dactopus
@@ -125,8 +138,48 @@ Try the GA4 package on Google's public sample
 
 5. **Ask.** Serve the model to an AI agent over MCP with
    `ossie-clickhouse serve entities/web_analytics.yaml --url ...`, the
-   same URL. Try sessions, conversion, revenue from `purchase`, each by
-   traffic source and date.
+   same URL; its [README](https://github.com/Dactopus/ossie-clickhouse#readme)
+   shows how to connect an agent. Try sessions, conversion rate and
+   revenue, by traffic source, device, country and date.
+
+## What the GA4 model answers
+
+[`entities/web_analytics.yaml`](entities/web_analytics.yaml) has 12
+metrics:
+
+- sessions: `sessions`, `engaged_sessions`, `engagement_rate`, `users`,
+  `session_conversion_rate`, `user_conversion_rate`, `page_views`. They
+  break down by the session's date, week and month; traffic source,
+  medium and campaign; landing page, device and country.
+- purchases: `purchases`, `revenue`, `revenue_usd`, `average_order_value`.
+  They break down by the session fields above, and by the purchase's own
+  date, week, month and currency.
+- events: `events`. It breaks down by the session fields above, and by
+  the event's own date, name, page, device and country.
+
+The descriptions in the file say what each one counts.
+
+## Known differences from the GA4 interface
+
+Numbers from the model and from the GA4 interface can differ for reasons
+the model states in its descriptions:
+
+- **Sessions and users** are counted exactly; the GA4 interface estimates
+  them, so they differ slightly. A user is a browser on a device
+  (`user_pseudo_id`), not a person.
+- **Traffic source** matches the interface (last non-direct click) only
+  for exports from October 2024 on, loaded with the
+  `session_traffic_source_last_click` column. Older exports fall back to
+  the first source seen in the session.
+- **Purchases** are what the site sent to GA4, not the store's orders:
+  purchases made with tracking blocked are missing. A purchase sent twice
+  by the same user with the same transaction id counts once, as in GA4.
+- **Revenue** is in the currency of each purchase. A store that sells in
+  several currencies has to read it by `purchases.currency`;
+  `revenue_usd` is converted by Google at a rate it does not document.
+- **Dates** are in the GA4 property's time zone; a session that crosses
+  midnight counts once, on the day it started. Properties outside UTC
+  are not tested yet ([#1](https://github.com/Dactopus/dactopus-data-models/issues/1)).
 
 ## Use in your dbt project
 
@@ -151,16 +204,16 @@ vars:
 
 Point ossie-clickhouse at your target's database
 (`--url http://host:8123/<database>`) and take the Ossie model from the
-same tag.
-
-Several GA4 properties: each exports to its own BigQuery dataset. Build
-the package once per property, each with its own input and target
-database, and serve the model once per target. A total across properties
-is not modelled. On dbt v2 with ClickHouse 26.x, set
+same tag. On dbt v2 with ClickHouse 26.x, set
 `custom_settings: {network_compression_method: LZ4}` in your profile, as
 [`sources/ga4/profiles.yml`](sources/ga4/profiles.yml) does: the v2
 ClickHouse adapter (beta) cannot read ClickHouse's default ZSTD
 responses.
+
+Several GA4 properties: each exports to its own BigQuery dataset. Build
+the package once per property, each with its own input and target
+database, and serve the model once per target. A total across properties
+is not modelled.
 
 ## Layout
 
@@ -169,8 +222,10 @@ responses.
       input.sql               the input table the package accepts
       models/                 one model per entity, named after it
       models/schema.yml       structural checks (dbt tests)
+      tests/                  checks that need their own SQL
     tests/<source>/           hand-written input rows and the numbers the
                               model must answer over them
+    docs/                     the diagram above and its interactive page
 
 A package's model writes the entity's table, named after it, in the
 database the deployment chooses. The entity's dataset in the domain's
@@ -198,10 +253,11 @@ parts:
 | 5. Field descriptions | entity | plus `ai_context` and synonyms |
 | 6. Simple metrics | entity | net revenue = `total - refunded_total` |
 
-Part 2 is where the value is. Shopify counts a refund still in processing
-as a refund and WooCommerce does not. GA4 records a purchase twice when the
-thank-you page is reloaded. A package that gets the schema right and the
-mapping wrong returns wrong numbers that look plausible.
+Part 2 is where the value is. Sources differ in what a status means,
+when a refund counts and when the same thing is sent twice: GA4, for one,
+sends a purchase again when the thank-you page is reloaded. A package
+that gets the schema right and the mapping wrong returns wrong numbers
+that look plausible.
 
 ## Out of scope
 

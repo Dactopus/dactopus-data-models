@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>dactopus-data-models: how it fits together</title>
+<meta name="description" content="How the GA4 package and the Ossie model of dactopus-data-models work with GA4, ClickHouse, BI tools and AI agents.">
+<style>
+:root {
+  --bg: #ffffff; --text: #2c2c2a; --muted: #5f5e5a; --border: #d3d1c7; --surface: #f1efe8; --accent: #534ab7;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1f1e1d; --text: #f1efe8; --muted: #b4b2a9; --border: #444441; --surface: #2c2c2a; --accent: #afa9ec;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+main { max-width: 720px; margin: 0 auto; padding: 32px 16px 48px; }
+h1 { font-size: 22px; font-weight: 600; margin: 0 0 4px; }
+.lead { color: var(--muted); margin: 0 0 24px; }
+a { color: var(--accent); }
+svg { display: block; width: 100%; height: auto; }
+.cta { display: none; }
+.node { cursor: pointer; transition: opacity .2s; }
+.node:hover rect, .node:focus-visible rect { stroke-width: 1.5; }
+.node:focus { outline: none; }
+.dim { opacity: .3; }
+.controls { display: flex; align-items: center; gap: 8px; margin: 16px 0 8px; flex-wrap: wrap; }
+button { font: inherit; font-size: 14px; color: var(--text); background: transparent; border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px; cursor: pointer; }
+button:hover:not(:disabled) { background: var(--surface); }
+button:disabled { opacity: .4; cursor: default; }
+.pill { font-size: 13px; color: var(--muted); background: var(--surface); border-radius: 8px; padding: 2px 10px; }
+#panel { border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; min-height: 120px; }
+#p-title { font-weight: 600; margin: 0 0 4px; }
+#p-text { color: var(--muted); margin: 0; }
+#p-cfg { font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--accent); margin: 8px 0 0; }
+footer { margin-top: 24px; font-size: 14px; color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>dactopus-data-models: how it fits together</h1>
+<p class="lead">The GA4 package and the Ossie model, and what they work with. Select a box, or follow one purchase from GA4 to an AI agent's answer.</p>
+
+<div id="diagram"></div>
+
+<div class="controls">
+<button id="prev" aria-label="Previous step" disabled>&larr;</button>
+<button id="next">Follow a purchase &rarr;</button>
+<span class="pill" id="step">overview</span>
+<button id="reset" style="margin-left:auto">Reset</button>
+</div>
+<div id="panel" aria-live="polite">
+<p id="p-title"></p>
+<p id="p-text"></p>
+<p id="p-cfg"></p>
+</div>
+
+<footer>Source: <a href="https://github.com/Dactopus/dactopus-data-models">github.com/Dactopus/dactopus-data-models</a>. The diagram is <code>docs/architecture.svg</code>, also shown in the README; this page adds the text in <code>docs/index.html</code>. Change both in the pull request that changes what they show.</footer>
+</main>
+
+<script>
+const INFO = {
+  export: ["GA4 export to BigQuery", "Google exports each GA4 property to its own BigQuery dataset, analytics_<property_id>: one table per day, updated for up to 72 hours. Only the export has single events; the GA4 Data API returns aggregates.", ""],
+  transport: ["Transport", "Not part of this repository. The README has a recipe: BigQuery Storage Read API, Parquet files, clickhouse client. Any loader works if it fills the input table.", ""],
+  input: ["Input table", "The package's contract: only the columns it reads, typed from the official export schema. The package never writes this table, so the canonical tables can always be rebuilt from it.", "database: query parameter db in input.sql, dbt variable ga4_input_database (default ga4_raw)"],
+  dbt: ["dbt package sources/ga4", "Collapses repeated purchases, builds sessions, takes each session's source (last click when the export has it) and each purchase's currency. Incremental runs re-read the last 3 days. 17 data tests and a unit test; the same results on dbt v2 and v1.", "writes to: the dbt target's database (CLICKHOUSE_DATABASE in the package's profile, default dactopus)"],
+  canon: ["Canonical tables", "events, sessions and purchases have the same shape whatever the source. BI tools read them directly; AI agents read them through the Ossie model.", "in the database the deployment chooses"],
+  bi: ["BI tools and dashboards", "Metabase, Grafana and the like read the canonical tables in ClickHouse directly, without Ossie.", ""],
+  model: ["Ossie model web_analytics", "3 datasets, 36 fields and 12 metrics, with the descriptions and ai_context that agents answer from. Tables are named without a database, so one model serves any deployment.", "Ossie schema 0.2.0.dev0"],
+  oc: ["ossie-clickhouse", "A separate project: an Apache Ossie executor and MCP server for ClickHouse. It turns metrics and dimensions into one ClickHouse query and does not depend on this repository.", "database: from its URL, e.g. http://host:8123/dactopus"],
+  agents: ["AI agents", "Agents ask for metrics and dimensions by name and never write SQL: ossie-clickhouse writes it.", ""]
+};
+const STEPS = [
+  [["export"], "A shopper pays 100 EUR for order T1. GA4 records a purchase event; the thank-you page reloads and sends it again."],
+  [["transport"], "The daily table events_20250301 is loaded into ClickHouse."],
+  [["input"], "Both copies of the event land in the input table as they are."],
+  [["dbt"], "The package collapses them on user and transaction_id: one purchase of 100 EUR, in session u1.100, from newsletter / email."],
+  [["canon"], "One row in purchases. The next incremental run re-reads the window and does not count it twice."],
+  [["model", "oc"], "An agent asks for revenue. The model tells it to break revenue down by currency; ossie-clickhouse runs SUM(revenue) ... GROUP BY currency."],
+  [["agents"], "On the repository's test rows (tests/ga4) the answer is EUR 180 and GBP 20, not 200; in US dollars the total is 220."]
+];
+const OVERVIEW = ["Select a box, or follow a purchase", "Purple is what this repository holds. Everything else is what it works with.", ""];
+const $ = id => document.getElementById(id);
+let nodes = [];
+let step = -1;
+
+function show([title, text, cfg]) { $("p-title").textContent = title; $("p-text").textContent = text; $("p-cfg").textContent = cfg; }
+function dim(keys) { nodes.forEach(n => n.classList.toggle("dim", keys.length > 0 && !keys.includes(n.dataset.k))); }
+const LAST = STEPS.length - 1;
+// The walkthrough runs overview -> steps 1..N -> back to overview.
+function controls() {
+  $("prev").disabled = step < 0;
+  $("next").textContent = step < 0 ? "Follow a purchase \u2192" : step === LAST ? "Back to overview" : "Next step \u2192";
+  $("step").textContent = step < 0 ? "overview" : `step ${step + 1} of ${STEPS.length}`;
+}
+function select(k) { step = -1; dim([k]); controls(); show(INFO[k]); }
+function go(i) {
+  if (i < 0 || i > LAST) return reset();
+  step = i;
+  const [keys, text] = STEPS[step];
+  dim(keys); controls();
+  show([INFO[keys[0]][0], text, ""]);
+}
+function reset() { step = -1; dim([]); controls(); show(OVERVIEW); }
+
+async function loadDiagram() {
+  // One SVG for the README image and this page: load it and wire it up.
+  try {
+    const res = await fetch("architecture.svg");
+    if (!res.ok) throw new Error(res.status);
+    $("diagram").innerHTML = await res.text();
+  } catch {
+    // Opened as a local file, fetch is blocked; the steps still work without the diagram.
+    $("diagram").innerHTML = '<p class="lead">The diagram did not load. <a href="architecture.svg">Open it on its own</a>, or serve <code>docs/</code> over HTTP to preview this page, for example with <code>python3 -m http.server -d docs</code>.</p>';
+    return;
+  }
+  // The SVG says role="img" for the README; here its boxes are buttons, which an img would hide.
+  $("diagram").querySelector("svg").setAttribute("role", "group");
+  nodes = [...document.querySelectorAll(".node")];
+  nodes.forEach(n => {
+    const label = n.querySelector(".th").textContent;
+    n.setAttribute("tabindex", "0"); n.setAttribute("role", "button"); n.setAttribute("aria-label", label);
+    n.addEventListener("click", () => select(n.dataset.k));
+    n.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(n.dataset.k); } });
+  });
+}
+
+$("next").addEventListener("click", () => go(step + 1));
+$("prev").addEventListener("click", () => go(step - 1));
+$("reset").addEventListener("click", reset);
+reset();
+loadDiagram();
+</script>
+</body>
+</html>
