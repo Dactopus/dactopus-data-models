@@ -72,7 +72,7 @@ CREATE TABLE IF NOT EXISTS {db:Identifier}.orders
     -- https://shopify.dev/docs/api/admin-graphql/latest/objects/ShippingLine
     shipping_price Decimal(18, 4),
     shipping_tax Decimal(18, 4),                -- sum of shippingLines.taxLines.priceSet
-    total_tax Decimal(18, 4),                   -- totalTaxSet, before refunds
+    total_tax Decimal(18, 4),                   -- totalTaxSet, before refunds; lines and shipping
     total_refunded Decimal(18, 4),              -- totalRefundedSet
     current_total_price Decimal(18, 4),         -- currentTotalPriceSet, after refunds
     discount_codes Array(String),               -- discountCodes

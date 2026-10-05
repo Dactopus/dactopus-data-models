@@ -104,7 +104,8 @@ INSERT INTO {db:Identifier}.orders VALUES
 -- the fourth. SEPT10 takes 10% off:
 -- 11.30 and 5.65, tax included. Line tax on what is left: 101.70 * 13/113
 -- = 11.70, 50.85 * 13/113 = 5.85. Shipping 16.95 is taxed too, 1.95
--- inside (not yet seen on the store). Without tax the lines are 113 -
+-- inside, and total_tax counts it, as on the development store (#1015:
+-- 113 + 16.95 = 129.95, tax 13 + 1.95). Without tax the lines are 113 -
 -- 11.30 - 11.70 = 90 and 56.50 - 5.65 - 5.85 = 45 and shipping 15, which
 -- is the order's 169.50 - 19.50 tax = 150.
 (1008, '#1008', '2026-10-02 10:00:00', '2026-09-12 15:00:00', '2026-10-02 10:00:00', NULL, NULL, false,
