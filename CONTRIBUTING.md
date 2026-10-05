@@ -109,7 +109,8 @@ For maintainers.
    `## [X.Y.Z] - YYYY-MM-DD` with the Ossie schema version the release
    targets, and mark it if it needs a full refresh.
 2. Set `version` in every `sources/*/dbt_project.yml` to `X.Y.Z`.
-3. Merge after CI passes, then tag the commit on `main`:
+3. Merge after CI passes, then tag the commit on `main`. A published tag
+   never moves: a fix is a new version.
 
 ```bash
 git switch main && git pull --ff-only

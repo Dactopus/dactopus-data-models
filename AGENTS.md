@@ -27,6 +27,8 @@ Everything must be releasable under Apache 2.0. Do not add:
       input.sql               the input table the package accepts
       models/<entity>.sql     one model per entity, named after it
       models/schema.yml       structural checks (dbt tests only)
+      tests/                  singular dbt tests, for checks a generic
+                              test cannot express
     tests/<source>/           hand-written input rows and the numbers the
                               model must answer over them
     docs/architecture.svg     the diagram, shown in the README and, with
@@ -114,9 +116,10 @@ running queries (`clickhouse local` or a server), not from memory.
 
 Packages run on dbt v2 (`pip install dbt-oss`, tested 2.0.5) and on dbt
 v1 (`dbt-core` 1.11 with `dbt-clickhouse` 1.10), with identical results.
-Sample data and loading: README, Quick start. Connection: `CLICKHOUSE_HOST`, `CLICKHOUSE_PORT` (HTTP),
-`CLICKHOUSE_USER`, `CLICKHOUSE_PASSWORD`; target database
-`CLICKHOUSE_DATABASE` (default `dactopus`).
+Sample data and loading: README, Quick start. Connection:
+`CLICKHOUSE_HOST`, `CLICKHOUSE_PORT` (HTTP), `CLICKHOUSE_USER`,
+`CLICKHOUSE_PASSWORD`; target database `CLICKHOUSE_DATABASE` (default
+`dactopus`).
 
 ```bash
 dbt build --project-dir sources/ga4 --profiles-dir sources/ga4                 # models + tests

@@ -4,14 +4,15 @@ Open data models for e-commerce on [ClickHouse](https://clickhouse.com/docs),
 written in the [Apache Ossie](https://github.com/apache/ossie) semantic model
 format. Two kinds of content:
 
-- **Canonical entities**: orders, line items, customers, sessions, events,
-  purchases. They have the same shape whatever the data came from.
-- **Source packages**: they map one source (GA4, Shopify, WooCommerce, ...)
-  onto those entities.
+- **Canonical entities**: sessions, events and purchases today; orders,
+  line items and customers next. They have the same shape whatever the
+  data came from.
+- **Source packages**: each maps one source onto those entities. GA4 is
+  available; Shopify and WooCommerce are planned.
 
-A store on Shopify and a store on its own Postgres look the same once both
-are mapped: one query works on both. The same model serves BI tools through
-ClickHouse tables and AI agents through
+The aim: a store on Shopify and a store on its own Postgres look the same
+once both are mapped, and one query works on both. The same model serves
+BI tools through ClickHouse tables and AI agents through
 [ossie-clickhouse](https://github.com/Dactopus/ossie-clickhouse).
 
 <a href="https://dactopus.github.io/dactopus-data-models/"><img src="docs/architecture.svg" width="680" alt="How the GA4 package works: the GA4 export is loaded into an input table in your ClickHouse; the dbt package builds the canonical tables; BI tools read them directly and AI agents through ossie-clickhouse and the Ossie model."></a>
@@ -38,11 +39,16 @@ Try the GA4 package on Google's public sample
 4.3 million events from November 2020 to January 2021. You need
 [ClickHouse](https://clickhouse.com/docs/install), the
 [gcloud CLI](https://cloud.google.com/sdk/docs/install),
-[uv](https://docs.astral.sh/uv/) and dbt v2 (`pip install dbt-oss`).
+[uv](https://docs.astral.sh/uv/), dbt v2 (`pip install dbt-oss`) and
+[ossie-clickhouse](https://github.com/Dactopus/ossie-clickhouse) 0.2.2 or
+later with its MCP server
+(`pip install "ossie-clickhouse[mcp] @ git+https://github.com/Dactopus/ossie-clickhouse@v0.2.2"`).
+Tested on ClickHouse 26.9.
 
 1. **Export.** A Google Cloud project in the
    [BigQuery sandbox](https://cloud.google.com/bigquery/docs/sandbox) is
-   enough: no billing account, no Cloud Storage bucket.
+   enough: no billing account, no Cloud Storage bucket. Save the script
+   below as `export_ga4.py` and run:
 
    ```bash
    gcloud auth login
@@ -52,8 +58,8 @@ Try the GA4 package on Google's public sample
        --with pyarrow export_ga4.py <project-id> data/ga4
    ```
 
-   `export_ga4.py` reads the daily tables with the BigQuery Storage Read
-   API and writes one Parquet file per day (about 200 MB, 10 minutes). It
+   The script reads the daily tables with the BigQuery Storage Read API
+   and writes one Parquet file per day (about 200 MB, 10 minutes). It
    passes the gcloud login token explicitly, so a
    `GOOGLE_APPLICATION_CREDENTIALS` set for another project does not get
    in the way:
@@ -122,8 +128,8 @@ Try the GA4 package on Google's public sample
    ```
 
 4. **Validate** the model against the built tables. The model names its
-   tables without a database: [ossie-clickhouse](https://github.com/Dactopus/ossie-clickhouse)
-   (0.2.2 or later) reads them in the database of its URL.
+   tables without a database: ossie-clickhouse reads them in the database
+   of its URL.
 
    ```bash
    ossie-clickhouse validate entities/web_analytics.yaml --url http://user:password@host:8123/dactopus
@@ -131,8 +137,9 @@ Try the GA4 package on Google's public sample
 
 5. **Ask.** Serve the model to an AI agent over MCP with
    `ossie-clickhouse serve entities/web_analytics.yaml --url ...`, the
-   same URL. Try sessions, conversion, revenue from `purchase`, each by
-   traffic source and date.
+   same URL; its [README](https://github.com/Dactopus/ossie-clickhouse#readme)
+   shows how to connect an agent. Try sessions, conversion rate and
+   revenue, by traffic source, device, country and date.
 
 ## Use in your dbt project
 
@@ -157,16 +164,16 @@ vars:
 
 Point ossie-clickhouse at your target's database
 (`--url http://host:8123/<database>`) and take the Ossie model from the
-same tag.
-
-Several GA4 properties: each exports to its own BigQuery dataset. Build
-the package once per property, each with its own input and target
-database, and serve the model once per target. A total across properties
-is not modelled. On dbt v2 with ClickHouse 26.x, set
+same tag. On dbt v2 with ClickHouse 26.x, set
 `custom_settings: {network_compression_method: LZ4}` in your profile, as
 [`sources/ga4/profiles.yml`](sources/ga4/profiles.yml) does: the v2
 ClickHouse adapter (beta) cannot read ClickHouse's default ZSTD
 responses.
+
+Several GA4 properties: each exports to its own BigQuery dataset. Build
+the package once per property, each with its own input and target
+database, and serve the model once per target. A total across properties
+is not modelled.
 
 ## Layout
 
@@ -175,6 +182,7 @@ responses.
       input.sql               the input table the package accepts
       models/                 one model per entity, named after it
       models/schema.yml       structural checks (dbt tests)
+      tests/                  checks that need their own SQL
     tests/<source>/           hand-written input rows and the numbers the
                               model must answer over them
     docs/                     the diagram above and its interactive page

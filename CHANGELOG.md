@@ -8,6 +8,19 @@ names the Ossie schema version its models carry.
 
 ## [Unreleased]
 
+### Added
+
+- A diagram of how the GA4 package works with GA4, ClickHouse, BI tools
+  and AI agents: an image in the README and an interactive page on GitHub
+  Pages (`docs/`).
+- README: deploying the package once per GA4 property.
+
+### Fixed
+
+- README: the opening no longer lists orders, line items and customers as
+  available; the Quick start names ossie-clickhouse with its MCP server
+  among the requirements.
+
 ## [0.1.0] - 2026-10-05
 
 Ossie schema `0.2.0.dev0`. Requires ossie-clickhouse 0.2.2 or later: the
