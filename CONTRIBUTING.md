@@ -65,6 +65,10 @@ check on the sample.
 
 ## Adding a source package
 
+[ROADMAP.md](ROADMAP.md) lists what is planned. Open an issue before you
+start a package, so the input and the entities it maps to are agreed
+first.
+
 A package maps one source onto the canonical entities. It is a dbt
 project in `sources/<source>/`:
 

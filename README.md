@@ -4,11 +4,12 @@ Open data models for e-commerce on [ClickHouse](https://clickhouse.com/docs),
 written in the [Apache Ossie](https://github.com/apache/ossie) semantic model
 format. Two kinds of content:
 
-- **Canonical entities**: sessions, events and purchases today; orders,
-  line items and customers next. They have the same shape whatever the
-  data came from.
+- **Canonical entities**: sessions, events and purchases. They have the
+  same shape whatever the data came from.
 - **Source packages**: each maps one source onto those entities. GA4 is
-  available; Shopify and WooCommerce are planned.
+  available.
+
+Orders, Shopify and what comes after are in [ROADMAP.md](ROADMAP.md).
 
 The aim: a store on Shopify and a store on its own Postgres look the same
 once both are mapped, and one query works on both. The same model serves
@@ -26,8 +27,8 @@ purchase followed from GA4 to an AI agent's answer.
 | Source | Entities | Status |
 | --- | --- | --- |
 | GA4 (BigQuery export) | `events`, `sessions`, `purchases` | available |
-| Shopify | `orders`, line items, customers | next |
-| WooCommerce | `orders`, line items, customers | planned |
+| Shopify | `orders`, line items, customers | [next](ROADMAP.md#next) |
+| WooCommerce | `orders`, line items, customers | [later](ROADMAP.md#later) |
 
 The `orders` entity is provisional until a second orders source maps onto
 it. One source alone cannot show which fields are canonical.
@@ -249,10 +250,11 @@ parts:
 | 5. Field descriptions | entity | plus `ai_context` and synonyms |
 | 6. Simple metrics | entity | net revenue = `total - refunded_total` |
 
-Part 2 is where the value is. Shopify counts a refund still in processing
-as a refund and WooCommerce does not. GA4 records a purchase twice when the
-thank-you page is reloaded. A package that gets the schema right and the
-mapping wrong returns wrong numbers that look plausible.
+Part 2 is where the value is. Sources differ in what a status means,
+when a refund counts and when the same thing is sent twice: GA4, for one,
+sends a purchase again when the thank-you page is reloaded. A package
+that gets the schema right and the mapping wrong returns wrong numbers
+that look plausible.
 
 ## Out of scope
 

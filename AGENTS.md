@@ -19,6 +19,9 @@ Everything must be releasable under Apache 2.0. Do not add:
 - Query execution. That is ossie-clickhouse.
 - Placeholders or stubs for any of the above.
 
+The README describes what works today. Plans go in
+[ROADMAP.md](ROADMAP.md), never into the README as if they existed.
+
 ## Layout
 
     entities/<domain>.yaml    one Ossie model per domain: its entities,

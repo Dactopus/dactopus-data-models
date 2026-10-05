@@ -15,12 +15,15 @@ names the Ossie schema version its models carry.
   Pages (`docs/`).
 - README: deploying the package once per GA4 property, the metrics the
   GA4 model answers, and the known differences from the GA4 interface.
+- `ROADMAP.md`: what comes next, without dates. The README links to it
+  instead of listing planned sources as if they existed.
 
 ### Fixed
 
 - README: the opening no longer lists orders, line items and customers as
   available; the Quick start names ossie-clickhouse with its MCP server
-  among the requirements.
+  among the requirements. Its example of how sources differ no longer
+  states an unchecked claim about Shopify and WooCommerce refunds.
 
 ## [0.1.0] - 2026-10-05
 
