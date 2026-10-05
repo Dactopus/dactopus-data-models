@@ -49,15 +49,15 @@ CASES = [
     # Shopify's Discounts are ("product discount + the product's
     # proportional share of a cart-wide discount", https://help.shopify.com/
     # en/manual/reports-and-analytics/shopify-reports/report-types/
-    # default-reports/finances-report): 29 (1004) + 16.95 (1008); 1011's
-    # free shipping is not there. Shipping after its discounts and without tax: 10 + 10 +
+    # default-reports/finances-report), without tax: 29 (1004) + 15 (1008,
+    # 16.95 with tax); 1011's free shipping is not there. Shipping after its discounts and without tax: 10 + 10 +
     # 10 + 5 + 15 (1008's 16.95 less 1.95 tax) + 10 + 0 (1011). Tax 12
     # (1007) + 17.55 + 1.95 (1008). Customers 1 and 2; guests do not count.
     (["-m", "orders", "-m", "revenue", "-m", "refunded_amount", "-m", "net_revenue",
       "-m", "refund_rate", "-m", "average_order_value", "-m", "discount_total",
       "-m", "shipping_total", "-m", "tax_total", "-m", "customers"],
      [{"orders": 10, "revenue": 1087.5, "refunded_amount": 315, "net_revenue": 702.5,
-       "refund_rate": 315 / 1087.5, "average_order_value": 108.75, "discount_total": 45.95,
+       "refund_rate": 315 / 1087.5, "average_order_value": 108.75, "discount_total": 44,
        "shipping_total": 60, "tax_total": 31.5, "customers": 2}]),
     # By month of processed_at in New York. 1003 is August (September in
     # UTC); 1008 is September (created in October). September net:

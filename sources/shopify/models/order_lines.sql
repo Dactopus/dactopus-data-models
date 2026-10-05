@@ -26,12 +26,19 @@ SELECT
     l.current_quantity AS current_quantity,
     -- After every discount and without tax, whether or not the shop's prices
     -- include tax. With taxes included, original_total and the discounts
-    -- have tax inside, and the line's tax lines are already computed on the
-    -- discounted price (seen on a development store: 1399.90 - 10 - 161.05
-    -- = 1228.85, the order's total less shipping and tax).
+    -- have tax inside, and taking the line's tax off leaves the order's
+    -- total less shipping and tax (seen on a development store: 1399.90 -
+    -- 10 - 161.05 = 1228.85).
     l.original_total - l.discount_allocated - if(o.taxes_included, l.total_tax, toDecimal64(0, 4)) AS line_total,
     l.total_tax AS line_tax,
-    l.discount_allocated AS discount_allocated
+    -- The line's discounts without tax: its price without tax before
+    -- discounts less after. With taxes included, discountAllocations have
+    -- tax inside; the tax is not taken from them in proportion, as Shopify
+    -- may compute the line's tax on the price before discounts (seen on a
+    -- development store: 1399.90 at 13% with 10 off, tax 161.05).
+    -- ponytail: a line's rates are added up; compound taxes would need
+    -- their order.
+    if(o.taxes_included, toDecimal64(round(toDecimal64(l.original_total, 6) / (1 + l.tax_rate), 2), 4) - line_total, l.discount_allocated) AS discount_total
 FROM
 (
     SELECT * FROM {{ source('shopify_raw', 'order_lines') }}

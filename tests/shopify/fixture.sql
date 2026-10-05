@@ -35,7 +35,7 @@ INSERT INTO {db:Identifier}.orders VALUES
  60, 0, 0, 0, 0, 60, [], 'CA', 'ON', 'Toronto', 'M5V 2T6', '2026-09-08 18:00:01');
 
 INSERT INTO {db:Identifier}.order_lines VALUES
-(51,  1005, '2026-09-08 18:00:00', 105, 1051, 'CAP',     'Cap',         NULL,  1,  1,  60,    60,    0,     0,     true,  true,  false, '2026-09-08 18:00:02');
+(51,  1005, '2026-09-08 18:00:00', 105, 1051, 'CAP',     'Cap',         NULL,  1,  1,  60,    60,    0,     0,     0,     true,  true,  false, '2026-09-08 18:00:02');
 
 -- The load on October 4: each order's latest version.
 INSERT INTO {db:Identifier}.orders VALUES
@@ -102,7 +102,8 @@ INSERT INTO {db:Identifier}.orders VALUES
 -- created October 2: a September order, and customer 1's third order by
 -- processed_at, before 1007 (September 15); by created_at it would be
 -- the fourth. SEPT10 takes 10% off:
--- 11.30 and 5.65, tax included. Line tax on what is left: 101.70 * 13/113
+-- 11.30 and 5.65, tax included; 10 and 5 without (113 / 1.13 = 100 less
+-- the line's 90, 56.50 / 1.13 = 50 less 45). Line tax on what is left: 101.70 * 13/113
 -- = 11.70, 50.85 * 13/113 = 5.85. Shipping 16.95 is taxed too, 1.95
 -- inside, and total_tax counts it, as on the development store (#1015:
 -- 113 + 16.95 = 129.95, tax 13 + 1.95). Without tax the lines are 113 -
@@ -136,21 +137,21 @@ INSERT INTO {db:Identifier}.orders VALUES
 
 INSERT INTO {db:Identifier}.order_lines VALUES
 -- (id, order_id, order_updated_at, product_id, variant_id, sku, title, variant_title, quantity, current_quantity,
---  original_unit_price, original_total, discount_allocated, total_tax, taxable, requires_shipping, is_gift_card, loaded_at)
-(11,  1001, '2026-08-11 09:00:00', 101, 1011, 'TEE-M',   'T-shirt',     'M',   2,  2,  50,    100,   0,     0,     true,  true,  false, '2026-10-04 00:00:01'),
-(21,  1002, '2026-08-20 15:00:01', 102, 1021, 'MUG',     'Mug',         NULL,  1,  1,  80,    80,    0,     0,     true,  true,  false, '2026-10-04 00:00:01'),
-(31,  1003, '2026-09-01 02:00:00', 103, 1031, 'EBOOK',   'Field guide', 'PDF', 1,  1,  30,    30,    0,     0,     false, false, false, '2026-10-04 00:00:01'),
-(41,  1004, '2026-10-03 15:00:00', 104, 1041, 'HOODIE',  'Hoodie',      'M',   1,  1,  100,   100,   19,    0,     true,  true,  false, '2026-10-04 00:00:01'),
-(42,  1004, '2026-10-03 15:00:00', 101, 1011, 'TEE-M',   'T-shirt',     'M',   2,  1,  50,    100,   10,    0,     true,  true,  false, '2026-10-04 00:00:01'),
-(51,  1005, '2026-09-08 18:00:00', 105, 1051, 'CAP',     'Cap',         NULL,  1,  0,  60,    60,    0,     0,     true,  true,  false, '2026-10-04 00:00:01'),
-(61,  1006, '2026-10-01 02:00:00', 106, 1061, 'JACKET',  'Jacket',      'L',   1,  0,  200,   200,   0,     0,     true,  true,  false, '2026-10-04 00:00:01'),
-(71,  1007, '2026-09-16 15:00:00', 104, 1041, 'HOODIE',  'Hoodie',      'M',   1,  1,  100,   100,   0,     10,    true,  true,  false, '2026-10-04 00:00:01'),
-(72,  1007, '2026-09-16 15:00:00', NULL, NULL, NULL,     'Gift wrap',   NULL,  1,  1,  20,    20,    0,     2,     true,  false, false, '2026-10-04 00:00:01'),
-(81,  1008, '2026-10-02 10:00:00', 107, 1071, 'BLANKET', 'Blanket',     NULL,  1,  1,  113,   113,   11.30, 11.70, true,  true,  false, '2026-10-04 00:00:01'),
-(82,  1008, '2026-10-02 10:00:00', 102, 1021, 'MUG',     'Mug',         NULL,  1,  1,  56.50, 56.50, 5.65,  5.85,  true,  true,  false, '2026-10-04 00:00:01'),
-(91,  1009, '2026-09-21 15:00:00', 101, 1011, 'TEE-M',   'T-shirt',     'M',   10, 0,  50,    500,   0,     0,     true,  true,  false, '2026-10-04 00:00:01'),
-(101, 1010, '2026-09-25 18:00:00', 105, 1051, 'CAP',     'Cap',         NULL,  1,  0,  60,    60,    0,     0,     true,  true,  false, '2026-10-04 00:00:01'),
-(111, 1011, '2026-10-02 15:00:00', 108, 1081, 'SOCKS',   'Socks',       NULL,  2,  2,  20,    40,    0,     0,     true,  true,  false, '2026-10-04 00:00:01');
+--  original_unit_price, original_total, discount_allocated, total_tax, tax_rate, taxable, requires_shipping, is_gift_card, loaded_at)
+(11,  1001, '2026-08-11 09:00:00', 101, 1011, 'TEE-M',   'T-shirt',     'M',   2,  2,  50,    100,   0,     0,     0,     true,  true,  false, '2026-10-04 00:00:01'),
+(21,  1002, '2026-08-20 15:00:01', 102, 1021, 'MUG',     'Mug',         NULL,  1,  1,  80,    80,    0,     0,     0,     true,  true,  false, '2026-10-04 00:00:01'),
+(31,  1003, '2026-09-01 02:00:00', 103, 1031, 'EBOOK',   'Field guide', 'PDF', 1,  1,  30,    30,    0,     0,     0,     false, false, false, '2026-10-04 00:00:01'),
+(41,  1004, '2026-10-03 15:00:00', 104, 1041, 'HOODIE',  'Hoodie',      'M',   1,  1,  100,   100,   19,    0,     0,     true,  true,  false, '2026-10-04 00:00:01'),
+(42,  1004, '2026-10-03 15:00:00', 101, 1011, 'TEE-M',   'T-shirt',     'M',   2,  1,  50,    100,   10,    0,     0,     true,  true,  false, '2026-10-04 00:00:01'),
+(51,  1005, '2026-09-08 18:00:00', 105, 1051, 'CAP',     'Cap',         NULL,  1,  0,  60,    60,    0,     0,     0,     true,  true,  false, '2026-10-04 00:00:01'),
+(61,  1006, '2026-10-01 02:00:00', 106, 1061, 'JACKET',  'Jacket',      'L',   1,  0,  200,   200,   0,     0,     0,     true,  true,  false, '2026-10-04 00:00:01'),
+(71,  1007, '2026-09-16 15:00:00', 104, 1041, 'HOODIE',  'Hoodie',      'M',   1,  1,  100,   100,   0,     10,    0.10,  true,  true,  false, '2026-10-04 00:00:01'),
+(72,  1007, '2026-09-16 15:00:00', NULL, NULL, NULL,     'Gift wrap',   NULL,  1,  1,  20,    20,    0,     2,     0.10,  true,  false, false, '2026-10-04 00:00:01'),
+(81,  1008, '2026-10-02 10:00:00', 107, 1071, 'BLANKET', 'Blanket',     NULL,  1,  1,  113,   113,   11.30, 11.70, 0.13,  true,  true,  false, '2026-10-04 00:00:01'),
+(82,  1008, '2026-10-02 10:00:00', 102, 1021, 'MUG',     'Mug',         NULL,  1,  1,  56.50, 56.50, 5.65,  5.85,  0.13,  true,  true,  false, '2026-10-04 00:00:01'),
+(91,  1009, '2026-09-21 15:00:00', 101, 1011, 'TEE-M',   'T-shirt',     'M',   10, 0,  50,    500,   0,     0,     0,     true,  true,  false, '2026-10-04 00:00:01'),
+(101, 1010, '2026-09-25 18:00:00', 105, 1051, 'CAP',     'Cap',         NULL,  1,  0,  60,    60,    0,     0,     0,     true,  true,  false, '2026-10-04 00:00:01'),
+(111, 1011, '2026-10-02 15:00:00', 108, 1081, 'SOCKS',   'Socks',       NULL,  2,  2,  20,    40,    0,     0,     0,     true,  true,  false, '2026-10-04 00:00:01');
 
 INSERT INTO {db:Identifier}.refunds VALUES
 -- (id, order_id, created_at, updated_at, note, total_refunded, loaded_at)
@@ -178,8 +179,8 @@ INSERT INTO {db:Identifier}.orders VALUES
  181, 10, 0, 0, 0, 181, ['FALL10'], 'US', 'NY', 'New York', '10001', '2026-09-05 16:00:00');
 
 INSERT INTO {db:Identifier}.order_lines VALUES
-(41,  1004, '2026-09-05 15:00:00', 104, 1041, 'HOODIE',  'Hoodie',      'M',   1,  1,  100,   100,   19,    0,     true,  true,  false, '2026-09-05 16:00:01'),
-(42,  1004, '2026-09-05 15:00:00', 101, 1011, 'TEE-M',   'T-shirt',     'M',   2,  2,  50,    100,   10,    0,     true,  true,  false, '2026-09-05 16:00:01');
+(41,  1004, '2026-09-05 15:00:00', 104, 1041, 'HOODIE',  'Hoodie',      'M',   1,  1,  100,   100,   19,    0,     0,     true,  true,  false, '2026-09-05 16:00:01'),
+(42,  1004, '2026-09-05 15:00:00', 101, 1011, 'TEE-M',   'T-shirt',     'M',   2,  2,  50,    100,   10,    0,     0,     true,  true,  false, '2026-09-05 16:00:01');
 
 -- 1011 and 1006's refund delivered again unchanged, as a rerun of a load
 -- does.
@@ -189,7 +190,7 @@ INSERT INTO {db:Identifier}.orders VALUES
  40, 0, 0, 0, 0, 40, ['FREESHIP'], 'CA', 'ON', 'Toronto', 'M5V 2T6', '2026-10-04 06:00:00');
 
 INSERT INTO {db:Identifier}.order_lines VALUES
-(111, 1011, '2026-10-02 15:00:00', 108, 1081, 'SOCKS',   'Socks',       NULL,  2,  2,  20,    40,    0,     0,     true,  true,  false, '2026-10-04 06:00:01');
+(111, 1011, '2026-10-02 15:00:00', 108, 1081, 'SOCKS',   'Socks',       NULL,  2,  2,  20,    40,    0,     0,     0,     true,  true,  false, '2026-10-04 06:00:01');
 
 INSERT INTO {db:Identifier}.refunds VALUES
 (503, 1006, '2026-10-01 02:00:00', '2026-10-01 02:00:00', '',               210, '2026-10-04 06:00:02');

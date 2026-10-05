@@ -105,6 +105,7 @@ CREATE TABLE IF NOT EXISTS {db:Identifier}.order_lines
     -- include order-level discounts", so it is not used.
     discount_allocated Decimal(18, 4),
     total_tax Decimal(18, 4),                   -- sum of taxLines.priceSet
+    tax_rate Decimal(9, 6),                     -- sum of taxLines.rate, 0.13 for 13%
     taxable Bool,                               -- taxable
     requires_shipping Bool,                     -- requiresShipping
     is_gift_card Bool,                          -- isGiftCard

@@ -24,8 +24,9 @@ SELECT
     o.shipping_price - if(o.taxes_included, o.shipping_tax, toDecimal64(0, 4)) AS shipping_total,
     o.total_tax AS tax_total,
     total - shipping_total - tax_total AS subtotal,
-    -- The lines' discounts, their share of order-level discounts included,
-    -- as Shopify's Discounts are; a shipping discount is not one of them
+    -- The lines' discounts without tax, their share of order-level
+    -- discounts included, as Shopify's Discounts are; a shipping discount
+    -- is not one of them
     -- (https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/default-reports/finances-report).
     l.discount_total AS discount_total,
     o.total_refunded AS refunded_total,
@@ -68,7 +69,7 @@ SELECT
 FROM {{ shopify_latest('orders', 'id') }} AS o
 LEFT JOIN
 (
-    SELECT order_id, count() AS line_item_count, sum(quantity) AS item_quantity, toDecimal64(sum(discount_allocated), 4) AS discount_total
+    SELECT order_id, count() AS line_item_count, sum(quantity) AS item_quantity, toDecimal64(sum(discount_total), 4) AS discount_total
     FROM {{ ref('order_lines') }}
     GROUP BY order_id
 ) AS l ON l.order_id = o.id
