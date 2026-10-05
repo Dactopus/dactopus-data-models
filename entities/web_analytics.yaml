@@ -16,13 +16,15 @@ ai_context:
     its numbers can be slightly different. "Conversion rate" without a
     qualifier means session_conversion_rate; name the definition in the
     answer and mention user_conversion_rate by name, giving its value only
-    if you queried it. Revenue (revenue) is in the currency the site sent
-    with each purchase, which GA4 calls "local currency": for a store that
-    sells in one currency, that currency. If the store sells in several
-    currencies, say that the total may mix them and offer revenue_usd. Use
-    revenue_usd also when asked for US dollars or when comparing stores
-    with different currencies. The model does not say which currency
-    revenue is in, so do not add a currency sign to it.
+    if you queried it. Revenue, tax, shipping and average_order_value are
+    in the currency the site sent with each purchase (purchases.currency),
+    which GA4 calls "local currency". Query revenue and average_order_value
+    with purchases.currency as a dimension. With one currency, answer in it
+    and name its code. With several, give each currency separately and
+    offer revenue_usd for a single total; never add up amounts in
+    different currencies. Use revenue_usd also when asked for US dollars.
+    Name the currency by the code purchases.currency returns; do not guess
+    a currency sign.
 
 datasets:
   - name: sessions
@@ -210,13 +212,23 @@ datasets:
         expression: {dialects: [{dialect: ANSI_SQL, expression: revenue}]}
         description: >
           Order value as the site reported it, including tax and shipping, in
-          the currency the site sent (GA4 "local currency"). For a store that
-          sells in one currency this is that currency; a store that sells in
-          several may have values in different currencies. Empty when the
-          site sent no value.
+          the currency of the purchase (currency field, GA4 "local
+          currency"). A store that sells in several currencies has values in
+          different currencies. Empty when the site sent no value.
         datatype: Float
         ai_context:
           synonyms: [order value, purchase amount]
+      - name: currency
+        expression: {dialects: [{dialect: ANSI_SQL, expression: currency}]}
+        description: >
+          Currency of the purchase's revenue, tax and shipping: the code the
+          site sent with the purchase (ISO 4217, such as USD or EUR), as
+          sent. Empty when the site sent none, usually for a purchase
+          without a value.
+        datatype: String
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [currency code, purchase currency]
       - name: revenue_usd
         expression: {dialects: [{dialect: ANSI_SQL, expression: revenue_usd}]}
         description: >
@@ -355,10 +367,10 @@ metrics:
   - name: revenue
     expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(purchases.revenue)}]}
     description: >
-      Total value of purchases in the currency the site sent (see the
-      revenue field). If the store sells in several currencies the total
-      may mix them; revenue_usd does not. Purchases the site sent without a
-      value add nothing.
+      Total value of purchases in their currency (purchases.currency).
+      Amounts in different currencies are added as they are: break revenue
+      down by purchases.currency, or use revenue_usd for a single total.
+      Purchases the site sent without a value add nothing.
     datatype: Float
     ai_context:
       synonyms: [sales, turnover, purchase revenue, total revenue, income]
@@ -371,8 +383,9 @@ metrics:
   - name: average_order_value
     expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(purchases.revenue) / COUNT(purchases.revenue)}]}
     description: >
-      Average value of a purchase in the same currency as revenue, over
-      purchases that have a value.
+      Average value of a purchase over purchases that have a value, in
+      their currency (purchases.currency); break it down by currency when
+      there are several.
     datatype: Float
     ai_context:
       synonyms: [AOV, average order, average check, basket size]

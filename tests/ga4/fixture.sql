@@ -22,6 +22,8 @@ SELECT
     tuple(CAST(r.8, campaign_type)) AS session_traffic_source_last_click
 FROM (SELECT arrayJoin([
     -- (event_date, time UTC, event_name, user, ga_session_id or 0, params, ecommerce, last-click source)
+    -- Purchases are in two currencies, EUR and GBP; T9 has neither value nor
+    -- currency.
 
     -- u1.100: a new export, engaged as the string '1'. The last-click record
     -- (newsletter) wins over the event parameters (google). The thank-you
@@ -30,8 +32,8 @@ FROM (SELECT arrayJoin([
     ('20250301', '2025-03-01 10:00:05', 'page_view',     'u1', 100, [('page_location', ('https://shop.example/', NULL, NULL, NULL))], (NULL, NULL, NULL, NULL, NULL), ('newsletter', 'email', 'spring')),
     ('20250301', '2025-03-01 10:01:00', 'page_view',     'u1', 100, [], (NULL, NULL, NULL, NULL, NULL), ('newsletter', 'email', 'spring')),
     ('20250301', '2025-03-01 10:02:00', 'add_to_cart',   'u1', 100, [], (NULL, NULL, NULL, NULL, NULL), ('newsletter', 'email', 'spring')),
-    ('20250301', '2025-03-01 10:05:00', 'purchase',      'u1', 100, [], (100., 110., 10., 5., 'T1'), ('newsletter', 'email', 'spring')),
-    ('20250301', '2025-03-01 10:06:00', 'purchase',      'u1', 100, [], (100., 110., 10., 5., 'T1'), ('newsletter', 'email', 'spring')),
+    ('20250301', '2025-03-01 10:05:00', 'purchase',      'u1', 100, [('currency', ('EUR', NULL, NULL, NULL))], (100., 110., 10., 5., 'T1'), ('newsletter', 'email', 'spring')),
+    ('20250301', '2025-03-01 10:06:00', 'purchase',      'u1', 100, [('currency', ('EUR', NULL, NULL, NULL))], (100., 110., 10., 5., 'T1'), ('newsletter', 'email', 'spring')),
 
     -- u1.200: an old export (no last-click record), engaged as the integer 1,
     -- crosses midnight: one session, dated the day it started.
@@ -42,8 +44,8 @@ FROM (SELECT arrayJoin([
     -- ('(not set)' and missing) are two purchases.
     ('20250302', '2025-03-02 09:00:00', 'session_start', 'u2', 300, [('source', ('google', NULL, NULL, NULL)), ('medium', ('cpc', NULL, NULL, NULL)), ('campaign', ('brand', NULL, NULL, NULL))], (NULL, NULL, NULL, NULL, NULL), (NULL, NULL, NULL)),
     ('20250302', '2025-03-02 09:00:10', 'page_view',     'u2', 300, [], (NULL, NULL, NULL, NULL, NULL), (NULL, NULL, NULL)),
-    ('20250302', '2025-03-02 09:05:00', 'purchase',      'u2', 300, [], (50., 55., NULL, NULL, '(not set)'), (NULL, NULL, NULL)),
-    ('20250302', '2025-03-02 09:07:00', 'purchase',      'u2', 300, [], (30., 33., NULL, NULL, NULL), (NULL, NULL, NULL)),
+    ('20250302', '2025-03-02 09:05:00', 'purchase',      'u2', 300, [('currency', ('EUR', NULL, NULL, NULL))], (50., 55., NULL, NULL, '(not set)'), (NULL, NULL, NULL)),
+    ('20250302', '2025-03-02 09:07:00', 'purchase',      'u2', 300, [('currency', ('EUR', NULL, NULL, NULL))], (30., 33., NULL, NULL, NULL), (NULL, NULL, NULL)),
 
     -- u3.400: no source anywhere; a purchase sent without a value.
     ('20250302', '2025-03-02 12:00:00', 'session_start', 'u3', 400, [], (NULL, NULL, NULL, NULL, NULL), (NULL, NULL, NULL)),
@@ -53,7 +55,7 @@ FROM (SELECT arrayJoin([
     -- u4: events without a session id, as server-side tracking sends them:
     -- events and a purchase, but no session.
     ('20250302', '2025-03-02 13:00:00', 'page_view',     'u4', 0,   [], (NULL, NULL, NULL, NULL, NULL), (NULL, NULL, NULL)),
-    ('20250302', '2025-03-02 13:10:00', 'purchase',      'u4', 0,   [], (20., 22., NULL, NULL, 'T4'), (NULL, NULL, NULL)),
+    ('20250302', '2025-03-02 13:10:00', 'purchase',      'u4', 0,   [('currency', ('GBP', NULL, NULL, NULL))], (20., 22., NULL, NULL, 'T4'), (NULL, NULL, NULL)),
 
     -- u5.300: the same ga_session_id as u2's session, another user: another session.
     ('20250302', '2025-03-02 15:00:00', 'session_start', 'u5', 300, [], (NULL, NULL, NULL, NULL, NULL), (NULL, NULL, NULL))

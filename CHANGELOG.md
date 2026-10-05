@@ -8,7 +8,7 @@ names the Ossie schema version its models carry.
 
 ## [Unreleased]
 
-## [0.1.0] - 2026-10-04
+## [0.1.0] - 2026-10-05
 
 Ossie schema `0.2.0.dev0`. Requires ossie-clickhouse 0.2.2 or later: the
 model names its tables without a database. Tested with dbt v2 (`dbt-oss`
@@ -27,7 +27,10 @@ ClickHouse 26.9.
   `ga4_raw`).
 - Ossie model `entities/web_analytics.yaml` over those tables: 3 datasets,
   2 relationships, 12 metrics (sessions, engagement, users, conversion,
-  purchases, revenue, average order value, events, page views).
+  purchases, revenue, average order value, events, page views). Revenue
+  is in each purchase's own currency (`purchases.currency`); the model
+  tells agents to break it down by currency and never to add amounts in
+  different currencies.
 - Hand-written GA4 rows and the numbers the model must answer over them
   (`tests/ga4`), checked in CI on both dbt versions.
 

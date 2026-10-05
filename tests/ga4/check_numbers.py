@@ -45,6 +45,14 @@ CASES = [
       {"source_medium": "google / cpc", "revenue": 80},
       {"source_medium": "newsletter / email", "revenue": 100},
       {"source_medium": None, "revenue": 20}]),
+    # Two currencies: EUR is T1 100 + u2.300's 50 + 30 = 180 over 3
+    # purchases, GBP is T4 20; T9 has neither value nor currency. The total
+    # of 200 above adds both, which is why the model breaks revenue down by
+    # currency.
+    (["-m", "purchases", "-m", "revenue", "-d", "purchases.currency", "-o", "purchases.currency"],
+     [{"currency": "EUR", "purchases": 3, "revenue": 180},
+      {"currency": "GBP", "purchases": 1, "revenue": 20},
+      {"currency": None, "purchases": 1, "revenue": None}]),
     # u1.200 crosses midnight and belongs to March 1.
     (["-m", "sessions", "-d", "sessions.session_date", "-o", "sessions.session_date"],
      [{"session_date": "2025-03-01", "sessions": 2}, {"session_date": "2025-03-02", "sessions": 3}]),
