@@ -1,5 +1,9 @@
 # dactopus-data-models
 
+[![CI](https://github.com/Dactopus/dactopus-data-models/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Dactopus/dactopus-data-models/actions/workflows/ci.yml)
+[![License](https://img.shields.io/github/license/Dactopus/dactopus-data-models)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/Dactopus/dactopus-data-models)](https://github.com/Dactopus/dactopus-data-models/releases)
+
 Open data models for e-commerce on [ClickHouse](https://clickhouse.com/docs),
 written in the [Apache Ossie](https://github.com/apache/ossie) semantic model
 format. Two kinds of content:
