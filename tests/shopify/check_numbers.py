@@ -88,16 +88,17 @@ CASES = [
       {"shipping_country": None, "revenue": 110, "net_revenue": 110}]),
     # AUTHORIZED (1003) and PENDING (1002) are unpaid; 1010 is voided. 1005
     # is refunded: its earlier version, paid, has the same updated_at but an
-    # earlier load. The mapping is proposed, not yet decided in #4.
+    # earlier load. The mapping of every Shopify status is decided in #4.
     (["-m", "orders", "-d", "orders.financial_status", "-o", "orders.financial_status"],
      [{"financial_status": "paid", "orders": 4}, {"financial_status": "partially_refunded", "orders": 1},
       {"financial_status": "refunded", "orders": 2}, {"financial_status": "unpaid", "orders": 2},
       {"financial_status": "voided", "orders": 1}]),
-    # FULFILLMENT_NOT_REQUIRED (1003) is fulfilled, ON_HOLD (1011) is
-    # unfulfilled. The mapping is proposed, not yet decided in #4.
+    # Fulfilled: 1001; partially: 1007; ON_HOLD (1011) and the download
+    # 1003, which Shopify leaves unfulfilled, are unfulfilled. The mapping
+    # of every Shopify status is decided in #4.
     (["-m", "orders", "-d", "orders.fulfillment_status", "-o", "orders.fulfillment_status"],
-     [{"fulfillment_status": "fulfilled", "orders": 2}, {"fulfillment_status": "partially_fulfilled", "orders": 1},
-      {"fulfillment_status": "unfulfilled", "orders": 7}]),
+     [{"fulfillment_status": "fulfilled", "orders": 1}, {"fulfillment_status": "partially_fulfilled", "orders": 1},
+      {"fulfillment_status": "unfulfilled", "orders": 8}]),
     # The customer's orders in sequence of processed_at, cancelled ones
     # skipped: 1001 110 and 1003 30 are first; 1004 181 and 1006 210
     # second (1006 would be third if cancelled 1005 counted); 1008 169.50
