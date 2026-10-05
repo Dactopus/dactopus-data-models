@@ -141,6 +141,42 @@ Tested on ClickHouse 26.9.
    shows how to connect an agent. Try sessions, conversion rate and
    revenue, by traffic source, device, country and date.
 
+## What the GA4 model answers
+
+[`entities/web_analytics.yaml`](entities/web_analytics.yaml) has 12
+metrics:
+
+- sessions: `sessions`, `engaged_sessions`, `engagement_rate`, `users`,
+  `session_conversion_rate`, `user_conversion_rate`;
+- purchases: `purchases`, `revenue`, `revenue_usd`, `average_order_value`;
+- events: `events`, `page_views`.
+
+They break down by date, week and month; traffic source, medium and
+campaign; landing page, device and country; purchase currency; event
+name and page. The descriptions in the file say what each one counts.
+
+## Known differences from the GA4 interface
+
+Numbers from the model and from the GA4 interface can differ for reasons
+the model states in its descriptions:
+
+- **Sessions and users** are counted exactly; the GA4 interface estimates
+  them, so they differ slightly. A user is a browser on a device
+  (`user_pseudo_id`), not a person.
+- **Traffic source** matches the interface (last non-direct click) only
+  for exports from October 2024 on, loaded with the
+  `session_traffic_source_last_click` column. Older exports fall back to
+  the first source seen in the session.
+- **Purchases** are what the site sent to GA4, not the store's orders:
+  purchases made with tracking blocked are missing. A purchase sent twice
+  with the same transaction id counts once, as in GA4.
+- **Revenue** is in the currency of each purchase. A store that sells in
+  several currencies has to read it by `purchases.currency`;
+  `revenue_usd` is converted by Google at a rate it does not document.
+- **Dates** are in the GA4 property's time zone; a session that crosses
+  midnight counts once, on the day it started. Properties outside UTC
+  are not tested yet ([#1](https://github.com/Dactopus/dactopus-data-models/issues/1)).
+
 ## Use in your dbt project
 
 Add the package to your project's `packages.yml`, pinned to a release tag:

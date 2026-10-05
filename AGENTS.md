@@ -108,6 +108,11 @@ model:
    (CI runs it). A changed number gets a new expected value with its
    derivation; a new source behaviour gets fixture rows. Check that a
    new case fails against the old code.
+6. A change to descriptions, `ai_context` or model instructions changes
+   what agents answer. Ask the questions it affects through
+   `ossie-clickhouse serve` (MCP), in fresh sessions, with more than one
+   AI model, and compare every number in the answers with the
+   hand-written queries.
 
 Facts about ClickHouse behaviour and the GA4 export schema come from
 running queries (`clickhouse local` or a server), not from memory.
