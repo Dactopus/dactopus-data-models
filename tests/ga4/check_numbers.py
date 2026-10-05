@@ -13,10 +13,11 @@ have no session id). Purchases: T1 (sent twice, counts once), two without a
 transaction id in u2.300, T9 without a value in u3.400, T4 outside any
 session.
 """
-import json
-import math
-import subprocess
+import pathlib
 import sys
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
+from ask_model import check  # noqa: E402
 
 MODEL = "entities/web_analytics.yaml"
 
@@ -66,26 +67,5 @@ CASES = [
 ]
 
 
-def same(a, b):
-    if isinstance(a, float) or isinstance(b, float):
-        return a is not None and b is not None and math.isclose(a, b, rel_tol=1e-9)
-    return a == b
-
-
-def main():
-    failed = 0
-    for args, expected in CASES:
-        out = subprocess.run(["ossie-clickhouse", "query", MODEL, *args, "--json"],
-                             capture_output=True, text=True)
-        got = json.loads(out.stdout) if out.returncode == 0 else out.stderr.strip()
-        ok = isinstance(got, list) and len(got) == len(expected) and all(
-            g.keys() == e.keys() and all(same(g[k], e[k]) for k in e) for g, e in zip(got, expected))
-        if not ok:
-            failed += 1
-            print(f"FAIL {' '.join(args)}\n  expected {expected}\n  got      {got}")
-    print(f"{len(CASES) - failed} of {len(CASES)} questions match")
-    sys.exit(1 if failed else 0)
-
-
 if __name__ == "__main__":
-    main()
+    check(MODEL, CASES)

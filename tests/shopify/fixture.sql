@@ -8,38 +8,60 @@
 -- The shapes follow orders placed on a development store: a line's
 -- discount_allocated includes its share of order-level discounts, a refund
 -- line's subtotal is net of that share, and with taxes included the line's
--- tax is inside its original_total.
+-- tax is inside its original_total. Shapes not yet seen on the store are
+-- marked so.
 --
 -- Every version of an order adds up. total_price is sum(original_total -
--- discount_allocated) + shipping, + tax unless taxes are included.
--- total_discounts is sum(discount_allocated), total_refunded the sum of its
--- refunds. Lines carry their order's updated_at, refund lines their
--- refund's (input.sql).
+-- discount_allocated) + shipping_price, + total_tax unless taxes are
+-- included; total_tax is the lines' tax + shipping_tax; total_refunded is
+-- the sum of its refunds. Lines carry their order's updated_at, refund
+-- lines their refund's (input.sql).
+--
+-- A load inserts orders, lines, refunds and refund lines one table after
+-- another, so their loaded_at differ by a second or so within one load.
+-- First comes a load between 1005's cancel and its refund, then the load
+-- on October 4 that delivered each order's latest version, then earlier
+-- and repeated loads: no number may depend on the order rows arrive in.
 
+-- 1005 as a load read it a second after 18:00:00, between the cancel and
+-- the refund made in the same second: cancelled, still paid, the cap not
+-- yet refunded, no refund. Its updated_at equals the final version's; only
+-- the later loaded_at tells the final version apart. Were this version
+-- read, the financial status would be paid and one more item would be
+-- left (items_net). The intermediate state is not yet seen on the store.
+INSERT INTO {db:Identifier}.orders VALUES
+(1005, '#1005', '2026-09-08 15:00:00', '2026-09-08 15:00:00', '2026-09-08 18:00:00', '2026-09-08 18:00:00', '2026-09-08 18:00:00', false,
+ 2, 'bob@example.com', 'USD', 'USD', 'PAID', 'UNFULFILLED', 'web', false,
+ 60, 0, 0, 0, 0, 60, [], 'CA', 'ON', 'Toronto', 'M5V 2T6', '2026-09-08 18:00:01');
+
+INSERT INTO {db:Identifier}.order_lines VALUES
+(51,  1005, '2026-09-08 18:00:00', 105, 1051, 'CAP',     'Cap',         NULL,  1,  1,  60,    60,    0,     0,     true,  true,  false, '2026-09-08 18:00:02');
+
+-- The load on October 4: each order's latest version.
 INSERT INTO {db:Identifier}.orders VALUES
 -- (id, name, created_at, processed_at, updated_at, cancelled_at, closed_at, test,
 --  customer_id, email, currency_code, presentment_currency_code,
 --  display_financial_status, display_fulfillment_status, source_name, taxes_included,
---  total_price, total_discounts, total_shipping_price, total_tax, total_refunded, current_total_price,
---  discount_codes, shipping_country_code, shipping_province_code, shipping_city, shipping_zip)
+--  total_price, shipping_price, shipping_tax, total_tax, total_refunded, current_total_price,
+--  discount_codes, shipping_country_code, shipping_province_code, shipping_city, shipping_zip, loaded_at)
 
 -- 1001: customer 1's first order; paid and shipped, which closes it.
 (1001, '#1001', '2026-08-10 15:00:00', '2026-08-10 15:00:00', '2026-08-11 09:00:00', NULL, '2026-08-11 09:00:00', false,
  1, 'alice@example.com', 'USD', 'USD', 'PAID', 'FULFILLED', 'web', false,
- 110, 0, 10, 0, 0, 110, [], 'US', 'NY', 'New York', '10001'),
+ 110, 10, 0, 0, 0, 110, [], 'US', 'NY', 'New York', '10001', '2026-10-04 00:00:00'),
 
 -- 1002: a guest, unpaid (manual payment pending), no shipping address.
 -- processed_at is a second before created_at, as the store shows.
 (1002, '#1002', '2026-08-20 15:00:01', '2026-08-20 15:00:00', '2026-08-20 15:00:01', NULL, NULL, false,
  NULL, NULL, 'USD', 'USD', 'PENDING', 'UNFULFILLED', 'web', false,
- 80, 0, 0, 0, 0, 80, [], NULL, NULL, NULL, NULL),
+ 80, 0, 0, 0, 0, 80, [], NULL, NULL, NULL, NULL, '2026-10-04 00:00:00'),
 
 -- 1003: customer 2's first order, a download: payment authorized but not
 -- captured (unpaid), nothing to ship (fulfilled). Placed at 22:00 on
 -- August 31 in New York, which is September 1 in UTC: an August order.
 (1003, '#1003', '2026-09-01 02:00:00', '2026-09-01 02:00:00', '2026-09-01 02:00:00', NULL, NULL, false,
  2, 'bob@example.com', 'USD', 'USD', 'AUTHORIZED', 'FULFILLMENT_NOT_REQUIRED', 'web', false,
- 30, 0, 0, 0, 0, 30, [], NULL, NULL, NULL, NULL),
+ 30, 0, 0, 0, 0, 30, [], NULL, NULL, NULL, NULL, '2026-10-04 00:00:00'),
 
 -- 1004: a line discount of 10 on the hoodie, then FALL10 takes 10% off the
 -- order (19), allocated 9 and 10 in proportion to the lines after their own
@@ -47,46 +69,53 @@ INSERT INTO {db:Identifier}.orders VALUES
 -- a month after the order: 50 less its half of the 10 allocated = 45.
 (1004, '#1004', '2026-09-05 15:00:00', '2026-09-05 15:00:00', '2026-10-03 15:00:00', NULL, NULL, false,
  1, 'alice@example.com', 'USD', 'USD', 'PARTIALLY_REFUNDED', 'UNFULFILLED', 'web', false,
- 181, 29, 10, 0, 45, 136, ['FALL10'], 'US', 'NY', 'New York', '10001'),
+ 181, 10, 0, 0, 45, 136, ['FALL10'], 'US', 'NY', 'New York', '10001', '2026-10-04 00:00:00'),
 
 -- 1005: customer 2 cancels a paid order three hours later; Shopify refunds
 -- it in the same action ("Order canceled"). Between customer 2's first and
--- second orders, it is not one of their orders in sequence.
+-- second orders, it is not one of their orders in sequence. An earlier load
+-- read it between the cancel and the refund, with the same updated_at
+-- (below).
 (1005, '#1005', '2026-09-08 15:00:00', '2026-09-08 15:00:00', '2026-09-08 18:00:00', '2026-09-08 18:00:00', '2026-09-08 18:00:00', false,
  2, 'bob@example.com', 'USD', 'USD', 'REFUNDED', 'UNFULFILLED', 'web', false,
- 60, 0, 0, 0, 60, 0, [], 'CA', 'ON', 'Toronto', 'M5V 2T6'),
+ 60, 0, 0, 0, 60, 0, [], 'CA', 'ON', 'Toronto', 'M5V 2T6', '2026-10-04 00:00:00'),
 
 -- 1006: fully refunded, shipping included, without cancelling. The refund
 -- (210) is more than its refunded line (200): shipping is refunded outside
--- the lines. Toronto without a province code, as the store returns it.
-(1006, '#1006', '2026-09-10 15:00:00', '2026-09-10 15:00:00', '2026-09-12 15:00:00', NULL, '2026-09-12 15:00:00', false,
+-- the lines. Refunded at 22:00 on September 30 in New York, October 1 in
+-- UTC: a September refund. Toronto without a province code, as the store
+-- returns it.
+(1006, '#1006', '2026-09-10 15:00:00', '2026-09-10 15:00:00', '2026-10-01 02:00:00', NULL, '2026-10-01 02:00:00', false,
  2, 'bob@example.com', 'USD', 'USD', 'REFUNDED', 'UNFULFILLED', 'web', false,
- 210, 0, 10, 0, 210, 0, [], 'CA', NULL, 'Toronto', 'M5V 2T6'),
+ 210, 10, 0, 0, 210, 0, [], 'CA', NULL, 'Toronto', 'M5V 2T6', '2026-10-04 00:00:00'),
 
 -- 1007: 10% tax added on top of prices (100 + 20 -> 12); shipping not
 -- taxed. One of two lines shipped. The gift wrap is a custom item: no
 -- product, variant or SKU.
 (1007, '#1007', '2026-09-15 15:00:00', '2026-09-15 15:00:00', '2026-09-16 15:00:00', NULL, NULL, false,
  1, 'alice@example.com', 'USD', 'USD', 'PAID', 'PARTIALLY_FULFILLED', 'web', false,
- 137, 0, 5, 12, 0, 137, [], 'US', 'NY', 'New York', '10001'),
+ 137, 5, 0, 12, 0, 137, [], 'US', 'NY', 'New York', '10001', '2026-10-04 00:00:00'),
 
 -- 1008: 13% tax included in prices (Ontario HST); the customer paid in CAD,
--- amounts are the shop's USD. Imported with processed_at September 28,
--- created October 2: a September order. SEPT10 takes 10% off: 11.30 and
--- 5.65, tax included. Line tax on what is left: 101.70 * 13/113 = 11.70,
--- 50.85 * 13/113 = 5.85. Without tax the lines are 113 - 11.30 - 11.70 =
--- 90 and 56.50 - 5.65 - 5.85 = 45, which is the order's 167.55 - 15
--- shipping - 17.55 tax = 135.
-(1008, '#1008', '2026-10-02 10:00:00', '2026-09-28 15:00:00', '2026-10-02 10:00:00', NULL, NULL, false,
+-- amounts are the shop's USD. Imported with processed_at September 12,
+-- created October 2: a September order, and customer 1's third order by
+-- processed_at, before 1007 (September 15); by created_at it would be
+-- the fourth. SEPT10 takes 10% off:
+-- 11.30 and 5.65, tax included. Line tax on what is left: 101.70 * 13/113
+-- = 11.70, 50.85 * 13/113 = 5.85. Shipping 16.95 is taxed too, 1.95
+-- inside (not yet seen on the store). Without tax the lines are 113 -
+-- 11.30 - 11.70 = 90 and 56.50 - 5.65 - 5.85 = 45 and shipping 15, which
+-- is the order's 169.50 - 19.50 tax = 150.
+(1008, '#1008', '2026-10-02 10:00:00', '2026-09-12 15:00:00', '2026-10-02 10:00:00', NULL, NULL, false,
  1, 'alice@example.com', 'USD', 'CAD', 'PAID', 'UNFULFILLED', 'dactopus-import', true,
- 167.55, 16.95, 15, 17.55, 0, 167.55, ['SEPT10'], 'CA', 'ON', 'Toronto', 'M5V 2T6'),
+ 169.50, 16.95, 1.95, 19.50, 0, 169.50, ['SEPT10'], 'CA', 'ON', 'Toronto', 'M5V 2T6', '2026-10-04 00:00:00'),
 
 -- 1009: a test order (Bogus Gateway), refunded the next day. Neither the
 -- order, its line nor its refund count anywhere. Its 10 T-shirts would
 -- top the SKU ranking if they did.
 (1009, '#1009', '2026-09-20 15:00:00', '2026-09-20 15:00:00', '2026-09-21 15:00:00', NULL, '2026-09-21 15:00:00', true,
  1, 'alice@example.com', 'USD', 'USD', 'REFUNDED', 'UNFULFILLED', 'web', false,
- 500, 0, 0, 0, 500, 0, [], 'US', 'NY', 'New York', '10001'),
+ 500, 0, 0, 0, 500, 0, [], 'US', 'NY', 'New York', '10001', '2026-10-04 00:00:00'),
 
 -- 1010: a guest's unpaid order, cancelled before payment: the
 -- authorization is voided and nothing is refunded. Placed (revenue) but
@@ -94,75 +123,74 @@ INSERT INTO {db:Identifier}.orders VALUES
 -- after the cancel are not yet seen on the store.
 (1010, '#1010', '2026-09-25 15:00:00', '2026-09-25 15:00:00', '2026-09-25 18:00:00', '2026-09-25 18:00:00', '2026-09-25 18:00:00', false,
  NULL, NULL, 'USD', 'USD', 'VOIDED', 'UNFULFILLED', 'web', false,
- 70, 0, 10, 0, 0, 0, [], 'US', 'CA', 'San Francisco', '94103'),
+ 70, 10, 0, 0, 0, 0, [], 'US', 'CA', 'San Francisco', '94103', '2026-10-04 00:00:00'),
 
 -- 1011: customer 2's third order (1005 was cancelled), the only one in
--- October; fulfillment on hold.
+-- October; fulfillment on hold. FREESHIP takes the 10 shipping off, so
+-- shipping_price is 0 (not yet seen on the store).
 (1011, '#1011', '2026-10-02 15:00:00', '2026-10-02 15:00:00', '2026-10-02 15:00:00', NULL, NULL, false,
  2, 'bob@example.com', 'USD', 'USD', 'PAID', 'ON_HOLD', 'web', false,
- 50, 0, 10, 0, 0, 50, [], 'CA', 'ON', 'Toronto', 'M5V 2T6');
+ 40, 0, 0, 0, 0, 40, ['FREESHIP'], 'CA', 'ON', 'Toronto', 'M5V 2T6', '2026-10-04 00:00:00');
 
 INSERT INTO {db:Identifier}.order_lines VALUES
 -- (id, order_id, order_updated_at, product_id, variant_id, sku, title, variant_title, quantity, current_quantity,
---  original_unit_price, original_total, discount_allocated, total_tax, taxable, requires_shipping, is_gift_card)
-(11,  1001, '2026-08-11 09:00:00', 101, 1011, 'TEE-M',   'T-shirt',     'M',   2,  2,  50,    100,   0,     0,     true,  true,  false),
-(21,  1002, '2026-08-20 15:00:01', 102, 1021, 'MUG',     'Mug',         NULL,  1,  1,  80,    80,    0,     0,     true,  true,  false),
-(31,  1003, '2026-09-01 02:00:00', 103, 1031, 'EBOOK',   'Field guide', 'PDF', 1,  1,  30,    30,    0,     0,     false, false, false),
-(41,  1004, '2026-10-03 15:00:00', 104, 1041, 'HOODIE',  'Hoodie',      'M',   1,  1,  100,   100,   19,    0,     true,  true,  false),
-(42,  1004, '2026-10-03 15:00:00', 101, 1011, 'TEE-M',   'T-shirt',     'M',   2,  1,  50,    100,   10,    0,     true,  true,  false),
-(51,  1005, '2026-09-08 18:00:00', 105, 1051, 'CAP',     'Cap',         NULL,  1,  0,  60,    60,    0,     0,     true,  true,  false),
-(61,  1006, '2026-09-12 15:00:00', 106, 1061, 'JACKET',  'Jacket',      'L',   1,  0,  200,   200,   0,     0,     true,  true,  false),
-(71,  1007, '2026-09-16 15:00:00', 104, 1041, 'HOODIE',  'Hoodie',      'M',   1,  1,  100,   100,   0,     10,    true,  true,  false),
-(72,  1007, '2026-09-16 15:00:00', NULL, NULL, NULL,     'Gift wrap',   NULL,  1,  1,  20,    20,    0,     2,     true,  false, false),
-(81,  1008, '2026-10-02 10:00:00', 107, 1071, 'BLANKET', 'Blanket',     NULL,  1,  1,  113,   113,   11.30, 11.70, true,  true,  false),
-(82,  1008, '2026-10-02 10:00:00', 102, 1021, 'MUG',     'Mug',         NULL,  1,  1,  56.50, 56.50, 5.65,  5.85,  true,  true,  false),
-(91,  1009, '2026-09-21 15:00:00', 101, 1011, 'TEE-M',   'T-shirt',     'M',   10, 0,  50,    500,   0,     0,     true,  true,  false),
-(101, 1010, '2026-09-25 18:00:00', 105, 1051, 'CAP',     'Cap',         NULL,  1,  0,  60,    60,    0,     0,     true,  true,  false),
-(111, 1011, '2026-10-02 15:00:00', 108, 1081, 'SOCKS',   'Socks',       NULL,  2,  2,  20,    40,    0,     0,     true,  true,  false);
+--  original_unit_price, original_total, discount_allocated, total_tax, taxable, requires_shipping, is_gift_card, loaded_at)
+(11,  1001, '2026-08-11 09:00:00', 101, 1011, 'TEE-M',   'T-shirt',     'M',   2,  2,  50,    100,   0,     0,     true,  true,  false, '2026-10-04 00:00:01'),
+(21,  1002, '2026-08-20 15:00:01', 102, 1021, 'MUG',     'Mug',         NULL,  1,  1,  80,    80,    0,     0,     true,  true,  false, '2026-10-04 00:00:01'),
+(31,  1003, '2026-09-01 02:00:00', 103, 1031, 'EBOOK',   'Field guide', 'PDF', 1,  1,  30,    30,    0,     0,     false, false, false, '2026-10-04 00:00:01'),
+(41,  1004, '2026-10-03 15:00:00', 104, 1041, 'HOODIE',  'Hoodie',      'M',   1,  1,  100,   100,   19,    0,     true,  true,  false, '2026-10-04 00:00:01'),
+(42,  1004, '2026-10-03 15:00:00', 101, 1011, 'TEE-M',   'T-shirt',     'M',   2,  1,  50,    100,   10,    0,     true,  true,  false, '2026-10-04 00:00:01'),
+(51,  1005, '2026-09-08 18:00:00', 105, 1051, 'CAP',     'Cap',         NULL,  1,  0,  60,    60,    0,     0,     true,  true,  false, '2026-10-04 00:00:01'),
+(61,  1006, '2026-10-01 02:00:00', 106, 1061, 'JACKET',  'Jacket',      'L',   1,  0,  200,   200,   0,     0,     true,  true,  false, '2026-10-04 00:00:01'),
+(71,  1007, '2026-09-16 15:00:00', 104, 1041, 'HOODIE',  'Hoodie',      'M',   1,  1,  100,   100,   0,     10,    true,  true,  false, '2026-10-04 00:00:01'),
+(72,  1007, '2026-09-16 15:00:00', NULL, NULL, NULL,     'Gift wrap',   NULL,  1,  1,  20,    20,    0,     2,     true,  false, false, '2026-10-04 00:00:01'),
+(81,  1008, '2026-10-02 10:00:00', 107, 1071, 'BLANKET', 'Blanket',     NULL,  1,  1,  113,   113,   11.30, 11.70, true,  true,  false, '2026-10-04 00:00:01'),
+(82,  1008, '2026-10-02 10:00:00', 102, 1021, 'MUG',     'Mug',         NULL,  1,  1,  56.50, 56.50, 5.65,  5.85,  true,  true,  false, '2026-10-04 00:00:01'),
+(91,  1009, '2026-09-21 15:00:00', 101, 1011, 'TEE-M',   'T-shirt',     'M',   10, 0,  50,    500,   0,     0,     true,  true,  false, '2026-10-04 00:00:01'),
+(101, 1010, '2026-09-25 18:00:00', 105, 1051, 'CAP',     'Cap',         NULL,  1,  0,  60,    60,    0,     0,     true,  true,  false, '2026-10-04 00:00:01'),
+(111, 1011, '2026-10-02 15:00:00', 108, 1081, 'SOCKS',   'Socks',       NULL,  2,  2,  20,    40,    0,     0,     true,  true,  false, '2026-10-04 00:00:01');
 
 INSERT INTO {db:Identifier}.refunds VALUES
--- (id, order_id, created_at, updated_at, note, total_refunded)
-(501, 1004, '2026-10-03 15:00:00', '2026-10-03 15:00:00', '',              45),
-(502, 1005, '2026-09-08 18:00:00', '2026-09-08 18:00:00', 'Order canceled', 60),
-(503, 1006, '2026-09-12 15:00:00', '2026-09-12 15:00:00', '',              210),
-(504, 1009, '2026-09-21 15:00:00', '2026-09-21 15:00:00', '',              500);
+-- (id, order_id, created_at, updated_at, note, total_refunded, loaded_at)
+(501, 1004, '2026-10-03 15:00:00', '2026-10-03 15:00:00', '',               45,  '2026-10-04 00:00:02'),
+(502, 1005, '2026-09-08 18:00:00', '2026-09-08 18:00:00', 'Order canceled', 60,  '2026-10-04 00:00:02'),
+(503, 1006, '2026-10-01 02:00:00', '2026-10-01 02:00:00', '',               210, '2026-10-04 00:00:02'),
+(504, 1009, '2026-09-21 15:00:00', '2026-09-21 15:00:00', '',               500, '2026-10-04 00:00:02');
 
 INSERT INTO {db:Identifier}.refund_lines VALUES
--- (refund_id, refund_updated_at, line_item_id, quantity, subtotal, total_tax, restock_type)
+-- (refund_id, refund_updated_at, line_item_id, quantity, subtotal, total_tax, restock_type, loaded_at)
 -- Nothing had shipped: CANCEL, as the store sets it; a cancel's refund is NO_RESTOCK.
-(501, '2026-10-03 15:00:00', 42, 1,  45,  0, 'CANCEL'),
-(502, '2026-09-08 18:00:00', 51, 1,  60,  0, 'NO_RESTOCK'),
-(503, '2026-09-12 15:00:00', 61, 1,  200, 0, 'CANCEL'),
-(504, '2026-09-21 15:00:00', 91, 10, 500, 0, 'CANCEL');
+(501, '2026-10-03 15:00:00', 42, 1,  45,  0, 'CANCEL',     '2026-10-04 00:00:03'),
+(502, '2026-09-08 18:00:00', 51, 1,  60,  0, 'NO_RESTOCK', '2026-10-04 00:00:03'),
+(503, '2026-10-01 02:00:00', 61, 1,  200, 0, 'CANCEL',     '2026-10-04 00:00:03'),
+(504, '2026-09-21 15:00:00', 91, 10, 500, 0, 'CANCEL',     '2026-10-04 00:00:03');
 
--- Earlier and repeated loads. The rows above are each order's latest
--- version; these were delivered too, and none of them may change a number.
--- Separate statements, as separate loads are: a ReplacingMergeTree input
--- would collapse duplicates within one insert.
+-- Earlier and repeated loads, delivered too; none of them may change a
+-- number.
 
 -- 1004 as loaded on September 5, before its refund: paid, both T-shirts
 -- still there. The refund on October 3 delivered the version above.
 INSERT INTO {db:Identifier}.orders VALUES
 (1004, '#1004', '2026-09-05 15:00:00', '2026-09-05 15:00:00', '2026-09-05 15:00:00', NULL, NULL, false,
  1, 'alice@example.com', 'USD', 'USD', 'PAID', 'UNFULFILLED', 'web', false,
- 181, 29, 10, 0, 0, 181, ['FALL10'], 'US', 'NY', 'New York', '10001');
+ 181, 10, 0, 0, 0, 181, ['FALL10'], 'US', 'NY', 'New York', '10001', '2026-09-05 16:00:00');
 
 INSERT INTO {db:Identifier}.order_lines VALUES
-(41,  1004, '2026-09-05 15:00:00', 104, 1041, 'HOODIE',  'Hoodie',      'M',   1,  1,  100,   100,   19,    0,     true,  true,  false),
-(42,  1004, '2026-09-05 15:00:00', 101, 1011, 'TEE-M',   'T-shirt',     'M',   2,  2,  50,    100,   10,    0,     true,  true,  false);
+(41,  1004, '2026-09-05 15:00:00', 104, 1041, 'HOODIE',  'Hoodie',      'M',   1,  1,  100,   100,   19,    0,     true,  true,  false, '2026-09-05 16:00:01'),
+(42,  1004, '2026-09-05 15:00:00', 101, 1011, 'TEE-M',   'T-shirt',     'M',   2,  2,  50,    100,   10,    0,     true,  true,  false, '2026-09-05 16:00:01');
 
 -- 1011 and 1006's refund delivered again unchanged, as a rerun of a load
 -- does.
 INSERT INTO {db:Identifier}.orders VALUES
 (1011, '#1011', '2026-10-02 15:00:00', '2026-10-02 15:00:00', '2026-10-02 15:00:00', NULL, NULL, false,
  2, 'bob@example.com', 'USD', 'USD', 'PAID', 'ON_HOLD', 'web', false,
- 50, 0, 10, 0, 0, 50, [], 'CA', 'ON', 'Toronto', 'M5V 2T6');
+ 40, 0, 0, 0, 0, 40, ['FREESHIP'], 'CA', 'ON', 'Toronto', 'M5V 2T6', '2026-10-04 06:00:00');
 
 INSERT INTO {db:Identifier}.order_lines VALUES
-(111, 1011, '2026-10-02 15:00:00', 108, 1081, 'SOCKS',   'Socks',       NULL,  2,  2,  20,    40,    0,     0,     true,  true,  false);
+(111, 1011, '2026-10-02 15:00:00', 108, 1081, 'SOCKS',   'Socks',       NULL,  2,  2,  20,    40,    0,     0,     true,  true,  false, '2026-10-04 06:00:01');
 
 INSERT INTO {db:Identifier}.refunds VALUES
-(503, 1006, '2026-09-12 15:00:00', '2026-09-12 15:00:00', '',              210);
+(503, 1006, '2026-10-01 02:00:00', '2026-10-01 02:00:00', '',               210, '2026-10-04 06:00:02');
 
 INSERT INTO {db:Identifier}.refund_lines VALUES
-(503, '2026-09-12 15:00:00', 61, 1,  200, 0, 'CANCEL');
+(503, '2026-10-01 02:00:00', 61, 1,  200, 0, 'CANCEL',     '2026-10-04 06:00:03');

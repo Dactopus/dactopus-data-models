@@ -34,6 +34,7 @@ The README describes what works today. Plans go in
                               test cannot express
     tests/<source>/           hand-written input rows and the numbers the
                               model must answer over them
+    tests/ask_model.py        asks the questions, shared by every source
     docs/architecture.svg     the diagram, shown in the README and, with
     docs/index.html           the text for each part, on GitHub Pages;
                               update both in the change that alters

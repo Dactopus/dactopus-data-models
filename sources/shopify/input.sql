@@ -14,8 +14,27 @@
 -- is harmless; the package reads the latest version of each order (by
 -- updated_at) and of each refund. A line has no time of its own, so it
 -- carries its order's updated_at, and the package takes the lines of the
--- latest version of the order. The tables keep every version; a deployment
--- may use ReplacingMergeTree on the same keys to collapse old ones.
+-- latest version of the order.
+--
+-- updated_at has whole seconds, so two loads can deliver different
+-- versions with the same updated_at: one load reads an order between two
+-- changes made in the same second (a cancel and its refund), the next
+-- reads it again. loaded_at breaks the tie: of two versions with the same
+-- updated_at, the later load wins. ClickHouse fills it at insert time, so
+-- a loader that names its columns need not send it; the four tables are
+-- separate inserts, so an order and its lines get different loaded_at.
+-- The package therefore takes the lines with the order's latest
+-- order_updated_at and of each line its latest load, never lines whose
+-- loaded_at equals the order's.
+--
+-- The tables keep every version, and the package does not depend on the
+-- engine. A deployment may collapse old versions to save space with
+-- ReplacingMergeTree(<version>) ORDER BY <key>: orders (updated_at) by id,
+-- order_lines (order_updated_at) by (order_id, id), refunds (updated_at)
+-- by id, refund_lines (refund_updated_at) by (refund_id, line_item_id).
+-- Merges run when ClickHouse chooses, so the package still picks the
+-- latest version itself.
+--
 -- The database is a query parameter, the package's shopify_input_database:
 --   clickhouse client --param_db=shopify_raw --multiquery < input.sql
 CREATE DATABASE IF NOT EXISTS {db:Identifier};
@@ -26,8 +45,13 @@ CREATE TABLE IF NOT EXISTS {db:Identifier}.orders
     id UInt64,                                  -- legacyResourceId
     name String,                                -- '#1001', what the customer sees
     created_at DateTime('UTC'),                 -- createdAt
-    processed_at DateTime('UTC'),               -- processedAt, the date Shopify reports use
-    updated_at DateTime('UTC'),                 -- updatedAt; changes on refund, cancel, fulfillment
+    -- processedAt: "the date that appears on your orders and that's used in
+    -- the analytic reports"; an import may set it in the past
+    -- (https://shopify.dev/docs/api/admin-graphql/latest/input-objects/OrderCreateOrderInput).
+    processed_at DateTime('UTC'),
+    -- updatedAt, "when the order was last modified"; a refund and a
+    -- fulfillment change it (seen on a development store).
+    updated_at DateTime('UTC'),
     cancelled_at Nullable(DateTime('UTC')),     -- cancelledAt
     closed_at Nullable(DateTime('UTC')),        -- closedAt
     test Bool,                                  -- test
@@ -40,16 +64,22 @@ CREATE TABLE IF NOT EXISTS {db:Identifier}.orders
     source_name Nullable(String),               -- sourceName: web, pos, or an app's id
     taxes_included Bool,                        -- taxesIncluded
     total_price Decimal(18, 4),                 -- totalPriceSet, before refunds
-    total_discounts Decimal(18, 4),             -- totalDiscountsSet
-    total_shipping_price Decimal(18, 4),        -- totalShippingPriceSet
-    total_tax Decimal(18, 4),                   -- totalTaxSet
+    -- Sum of shippingLines.discountedPriceSet: after shipping discounts (a
+    -- free-shipping code included, as of API 2024-07), tax inside when
+    -- taxesIncluded. totalShippingPriceSet is not used: its description
+    -- does not say whether discounts are taken off.
+    -- https://shopify.dev/docs/api/admin-graphql/latest/objects/ShippingLine
+    shipping_price Decimal(18, 4),
+    shipping_tax Decimal(18, 4),                -- sum of shippingLines.taxLines.priceSet
+    total_tax Decimal(18, 4),                   -- totalTaxSet, before refunds
     total_refunded Decimal(18, 4),              -- totalRefundedSet
     current_total_price Decimal(18, 4),         -- currentTotalPriceSet, after refunds
     discount_codes Array(String),               -- discountCodes
     shipping_country_code Nullable(String),     -- shippingAddress.countryCodeV2
     shipping_province_code Nullable(String),    -- shippingAddress.provinceCode
     shipping_city Nullable(String),             -- shippingAddress.city
-    shipping_zip Nullable(String)               -- shippingAddress.zip
+    shipping_zip Nullable(String),              -- shippingAddress.zip
+    loaded_at DateTime64(6, 'UTC') DEFAULT now64(6) -- when the load inserted the row (header)
 )
 ENGINE = MergeTree
 ORDER BY (id, updated_at);
@@ -70,13 +100,14 @@ CREATE TABLE IF NOT EXISTS {db:Identifier}.order_lines
     original_unit_price Decimal(18, 4),         -- originalUnitPriceSet
     original_total Decimal(18, 4),              -- originalTotalSet; tax inside when taxesIncluded
     -- Sum of discountAllocations.allocatedAmountSet: the line's own discount
-    -- and its share of order-level discounts. discountedTotalSet leaves the
-    -- order-level share out, so it is not used.
+    -- and its share of order-level discounts. discountedTotalSet "doesn't
+    -- include order-level discounts", so it is not used.
     discount_allocated Decimal(18, 4),
     total_tax Decimal(18, 4),                   -- sum of taxLines.priceSet
     taxable Bool,                               -- taxable
     requires_shipping Bool,                     -- requiresShipping
-    is_gift_card Bool                           -- isGiftCard
+    is_gift_card Bool,                          -- isGiftCard
+    loaded_at DateTime64(6, 'UTC') DEFAULT now64(6) -- when the load inserted the row (header)
 )
 ENGINE = MergeTree
 ORDER BY (order_id, id, order_updated_at);
@@ -89,7 +120,8 @@ CREATE TABLE IF NOT EXISTS {db:Identifier}.refunds
     created_at DateTime('UTC'),                 -- createdAt, the date of the refund
     updated_at DateTime('UTC'),                 -- updatedAt
     note Nullable(String),                      -- note
-    total_refunded Decimal(18, 4)               -- totalRefundedSet: lines, shipping and adjustments
+    total_refunded Decimal(18, 4),              -- totalRefundedSet: lines, shipping and adjustments
+    loaded_at DateTime64(6, 'UTC') DEFAULT now64(6) -- when the load inserted the row (header)
 )
 ENGINE = MergeTree
 ORDER BY (order_id, id, updated_at);
@@ -104,7 +136,8 @@ CREATE TABLE IF NOT EXISTS {db:Identifier}.refund_lines
     quantity UInt32,                            -- quantity
     subtotal Decimal(18, 4),                    -- subtotalSet, net of the line's discounts
     total_tax Decimal(18, 4),                   -- totalTaxSet
-    restock_type String                         -- restockType: CANCEL, NO_RESTOCK, RETURN, LEGACY_RESTOCK
+    restock_type String,                        -- restockType: CANCEL, NO_RESTOCK, RETURN, LEGACY_RESTOCK
+    loaded_at DateTime64(6, 'UTC') DEFAULT now64(6) -- when the load inserted the row (header)
 )
 ENGINE = MergeTree
 ORDER BY (refund_id, line_item_id, refund_updated_at);
