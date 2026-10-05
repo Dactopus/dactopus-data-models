@@ -13,8 +13,8 @@ names the Ossie schema version its models carry.
 - A diagram of how the GA4 package works with GA4, ClickHouse, BI tools
   and AI agents: an image in the README and an interactive page on GitHub
   Pages (`docs/`).
-- README: deploying the package once per GA4 property, the metrics the
-  GA4 model answers, and the known differences from the GA4 interface.
+- README: the metrics the GA4 model answers, and the known differences
+  from the GA4 interface.
 - `ROADMAP.md`: what comes next, without dates. The README links to it
   instead of listing planned sources as if they existed.
 

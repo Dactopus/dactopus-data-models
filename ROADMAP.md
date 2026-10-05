@@ -29,8 +29,8 @@ orders source exists, `orders` is provisional.
 ### Check the GA4 package on a recent export
 
 [#1](https://github.com/Dactopus/dactopus-data-models/issues/1). The
-traffic source from `session_traffic_source_last_click` and properties
-outside UTC are tested only on hand-written rows.
+traffic source from `session_traffic_source_last_click` is tested only on
+hand-written rows, and properties outside UTC are not tested at all.
 
 ## Later
 

@@ -28,7 +28,8 @@ svg { display: block; width: 100%; height: auto; }
 .dim { opacity: .3; }
 .controls { display: flex; align-items: center; gap: 8px; margin: 16px 0 8px; flex-wrap: wrap; }
 button { font: inherit; font-size: 14px; color: var(--text); background: transparent; border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px; cursor: pointer; }
-button:hover { background: var(--surface); }
+button:hover:not(:disabled) { background: var(--surface); }
+button:disabled { opacity: .4; cursor: default; }
 .pill { font-size: 13px; color: var(--muted); background: var(--surface); border-radius: 8px; padding: 2px 10px; }
 #panel { border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; min-height: 120px; }
 #p-title { font-weight: 600; margin: 0 0 4px; }
@@ -45,7 +46,7 @@ footer { margin-top: 24px; font-size: 14px; color: var(--muted); }
 <div id="diagram"></div>
 
 <div class="controls">
-<button id="prev" aria-label="Previous step">&larr;</button>
+<button id="prev" aria-label="Previous step" disabled>&larr;</button>
 <button id="next">Follow a purchase &rarr;</button>
 <span class="pill" id="step">overview</span>
 <button id="reset" style="margin-left:auto">Reset</button>
@@ -69,7 +70,7 @@ const INFO = {
   bi: ["BI tools and dashboards", "Metabase, Grafana and the like read the canonical tables in ClickHouse directly, without Ossie.", ""],
   model: ["Ossie model web_analytics", "3 datasets, 36 fields and 12 metrics, with the descriptions and ai_context that agents answer from. Tables are named without a database, so one model serves any deployment.", "Ossie schema 0.2.0.dev0"],
   oc: ["ossie-clickhouse", "A separate project: an Apache Ossie executor and MCP server for ClickHouse. It turns metrics and dimensions into one ClickHouse query and does not depend on this repository.", "database: from its URL, e.g. http://host:8123/dactopus"],
-  agents: ["AI agents", "Agents ask for metrics by name and never write SQL. In acceptance runs on the GA4 sample, Claude Haiku and Sonnet answered 20 questions of 20 with the right numbers.", ""]
+  agents: ["AI agents", "Agents ask for metrics and dimensions by name and never write SQL: ossie-clickhouse writes it.", ""]
 };
 const STEPS = [
   [["export"], "A shopper pays 100 EUR for order T1. GA4 records a purchase event; the thank-you page reloads and sends it again."],
@@ -87,18 +88,36 @@ let step = -1;
 
 function show([title, text, cfg]) { $("p-title").textContent = title; $("p-text").textContent = text; $("p-cfg").textContent = cfg; }
 function dim(keys) { nodes.forEach(n => n.classList.toggle("dim", keys.length > 0 && !keys.includes(n.dataset.k))); }
-function select(k) { step = -1; dim([k]); $("step").textContent = "overview"; show(INFO[k]); }
+const LAST = STEPS.length - 1;
+// The walkthrough runs overview -> steps 1..N -> back to overview.
+function controls() {
+  $("prev").disabled = step < 0;
+  $("next").textContent = step < 0 ? "Follow a purchase \u2192" : step === LAST ? "Back to overview" : "Next step \u2192";
+  $("step").textContent = step < 0 ? "overview" : `step ${step + 1} of ${STEPS.length}`;
+}
+function select(k) { step = -1; dim([k]); controls(); show(INFO[k]); }
 function go(i) {
-  step = Math.max(0, Math.min(STEPS.length - 1, i));
+  if (i < 0 || i > LAST) return reset();
+  step = i;
   const [keys, text] = STEPS[step];
-  dim(keys); $("step").textContent = `step ${step + 1} of ${STEPS.length}`;
+  dim(keys); controls();
   show([INFO[keys[0]][0], text, ""]);
 }
-function reset() { step = -1; dim([]); $("step").textContent = "overview"; show(OVERVIEW); }
+function reset() { step = -1; dim([]); controls(); show(OVERVIEW); }
 
-async function init() {
+async function loadDiagram() {
   // One SVG for the README image and this page: load it and wire it up.
-  $("diagram").innerHTML = await (await fetch("architecture.svg")).text();
+  try {
+    const res = await fetch("architecture.svg");
+    if (!res.ok) throw new Error(res.status);
+    $("diagram").innerHTML = await res.text();
+  } catch {
+    // Opened as a local file, fetch is blocked; the steps still work without the diagram.
+    $("diagram").innerHTML = '<p class="lead">The diagram did not load. <a href="architecture.svg">Open it on its own</a>, or serve <code>docs/</code> over HTTP to preview this page, for example with <code>python3 -m http.server -d docs</code>.</p>';
+    return;
+  }
+  // The SVG says role="img" for the README; here its boxes are buttons, which an img would hide.
+  $("diagram").querySelector("svg").setAttribute("role", "group");
   nodes = [...document.querySelectorAll(".node")];
   nodes.forEach(n => {
     const label = n.querySelector(".th").textContent;
@@ -106,12 +125,13 @@ async function init() {
     n.addEventListener("click", () => select(n.dataset.k));
     n.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(n.dataset.k); } });
   });
-  $("next").addEventListener("click", () => go(step + 1));
-  $("prev").addEventListener("click", () => go(step < 0 ? 0 : step - 1));
-  $("reset").addEventListener("click", reset);
-  reset();
 }
-init();
+
+$("next").addEventListener("click", () => go(step + 1));
+$("prev").addEventListener("click", () => go(step - 1));
+$("reset").addEventListener("click", reset);
+reset();
+loadDiagram();
 </script>
 </body>
 </html>

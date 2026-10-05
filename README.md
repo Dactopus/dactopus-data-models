@@ -148,13 +148,16 @@ Tested on ClickHouse 26.9.
 metrics:
 
 - sessions: `sessions`, `engaged_sessions`, `engagement_rate`, `users`,
-  `session_conversion_rate`, `user_conversion_rate`;
-- purchases: `purchases`, `revenue`, `revenue_usd`, `average_order_value`;
-- events: `events`, `page_views`.
+  `session_conversion_rate`, `user_conversion_rate`, `page_views`. They
+  break down by the session's date, week and month; traffic source,
+  medium and campaign; landing page, device and country.
+- purchases: `purchases`, `revenue`, `revenue_usd`, `average_order_value`.
+  They break down by the session fields above, and by the purchase's own
+  date, week, month and currency.
+- events: `events`. It breaks down by the session fields above, and by
+  the event's own date, name, page, device and country.
 
-They break down by date, week and month; traffic source, medium and
-campaign; landing page, device and country; purchase currency; event
-name and page. The descriptions in the file say what each one counts.
+The descriptions in the file say what each one counts.
 
 ## Known differences from the GA4 interface
 
@@ -170,7 +173,7 @@ the model states in its descriptions:
   the first source seen in the session.
 - **Purchases** are what the site sent to GA4, not the store's orders:
   purchases made with tracking blocked are missing. A purchase sent twice
-  with the same transaction id counts once, as in GA4.
+  by the same user with the same transaction id counts once, as in GA4.
 - **Revenue** is in the currency of each purchase. A store that sells in
   several currencies has to read it by `purchases.currency`;
   `revenue_usd` is converted by Google at a rate it does not document.

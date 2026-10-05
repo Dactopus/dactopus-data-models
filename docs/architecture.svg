@@ -59,7 +59,7 @@ svg.dm .cta text { fill: var(--d-accent); font-size: 13px; font-weight: 600; }
 <g class="node gray" data-k="input">
 <rect x="60" y="186" width="150" height="76" rx="8" stroke-width="0.5"/>
 <text class="th" x="135" y="206" text-anchor="middle" dominant-baseline="central">Input table</text>
-<text class="ts" x="135" y="227" text-anchor="middle" dominant-baseline="central">ga4_raw.events</text>
+<text class="ts" x="135" y="227" text-anchor="middle" dominant-baseline="central">raw GA4 events</text>
 <text class="ts" x="135" y="245" text-anchor="middle" dominant-baseline="central">schema: input.sql</text>
 </g>
 <g class="node purple" data-k="dbt">
