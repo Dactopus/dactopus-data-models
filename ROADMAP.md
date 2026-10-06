@@ -44,6 +44,16 @@ several platforms at once, so one deployment will need more than one
 package writing the same entity. That changes a layout rule in the
 README, which now has a deployment pick one package per entity.
 
+### Customers
+
+A `customers` entity: one row per customer of the store, with their first
+and latest order, order count and spend. Today customer counts and new or
+repeat orders come from `orders`. The question to settle first is what
+identifies a customer: Shopify creates a customer record for a guest
+checkout, WooCommerce does not, so the same buyers count differently by
+source. Matching customers across systems stays
+[out of scope](README.md#out-of-scope).
+
 ## Exploring
 
 ### GA4 items: products and categories
