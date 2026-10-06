@@ -101,7 +101,10 @@ datasets:
           Shipping state of the order: unfulfilled (nothing sent yet, for any
           reason: waiting, on hold or scheduled), partially_fulfilled, or
           fulfilled (everything sent). An order of downloads only can stay
-          unfulfilled; the source decides.
+          unfulfilled; the source decides. An order cancelled or refunded
+          whole before shipping is unfulfilled too: for orders still waiting
+          to ship, filter is_cancelled = false and leave out
+          financial_status refunded and voided.
         datatype: String
         dimension: {is_time: false}
         ai_context:

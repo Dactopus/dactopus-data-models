@@ -91,9 +91,11 @@ INSERT INTO {db:Identifier}.orders VALUES
 -- (210) is more than its refunded line (200): shipping is refunded outside
 -- the lines. Refunded at 22:00 on September 30 in New York, October 1 in
 -- UTC: a September refund. Toronto without a province code, as the store
--- returns it.
+-- returns it. Loaded through API 2026-10, which shows an order with
+-- nothing left to fulfill as FULFILLMENT_NOT_REQUIRED, not UNFULFILLED
+-- (#1003 on the development store); 1010 shows the older value.
 (1006, '#1006', '2026-09-10 15:00:00', '2026-09-10 15:00:00', '2026-10-01 02:00:00', NULL, '2026-10-01 02:00:00', false,
- 2, 'bob@example.com', 'USD', 'USD', 'REFUNDED', 'UNFULFILLED', 'web', false,
+ 2, 'bob@example.com', 'USD', 'USD', 'REFUNDED', 'FULFILLMENT_NOT_REQUIRED', 'web', false,
  210, 10, 0, 0, 210, 0, 0, 0, 0, [], 'CA', NULL, 'Toronto', 'M5V 2T6', '2026-10-04 00:00:00'),
 
 -- 1007: 10% tax added on top of prices (100 + 20 -> 12); shipping not

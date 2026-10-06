@@ -69,12 +69,16 @@ SELECT
     -- https://shopify.dev/docs/api/admin-graphql/latest/enums/OrderDisplayFulfillmentStatus
     -- OPEN and RESTOCKED are deprecated for UNFULFILLED, PENDING_FULFILLMENT
     -- for IN_PROGRESS. A download needs no shipping, yet the store shows it
-    -- UNFULFILLED.
+    -- UNFULFILLED. FULFILLMENT_NOT_REQUIRED, from API 2026-10 on, is an
+    -- order cancelled or refunded whole before anything was fulfilled; earlier
+    -- versions return UNFULFILLED for it, and so does the package, so its
+    -- numbers do not depend on the loader's API version
+    -- (https://shopify.dev/changelog/posts/orderdisplayfulfillmentstatus-now-returns-fulfillmentnotrequired).
     multiIf(
         o.display_fulfillment_status IN ('UNFULFILLED', 'IN_PROGRESS', 'ON_HOLD', 'SCHEDULED', 'REQUEST_DECLINED',
-                                         'OPEN', 'RESTOCKED', 'PENDING_FULFILLMENT'), 'unfulfilled',
+                                         'FULFILLMENT_NOT_REQUIRED', 'OPEN', 'RESTOCKED', 'PENDING_FULFILLMENT'), 'unfulfilled',
         o.display_fulfillment_status = 'PARTIALLY_FULFILLED', 'partially_fulfilled',
-        o.display_fulfillment_status IN ('FULFILLED', 'FULFILLMENT_NOT_REQUIRED'), 'fulfilled',
+        o.display_fulfillment_status = 'FULFILLED', 'fulfilled',
         NULL) AS fulfillment_status,
     o.display_financial_status AS display_financial_status,
     o.display_fulfillment_status AS display_fulfillment_status,

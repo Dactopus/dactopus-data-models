@@ -4,6 +4,9 @@
 -- GraphQL field it comes from. Any transport may deliver more columns; it
 -- must deliver these.
 --
+-- Checked on API version 2026-10; earlier versions differ only in
+-- display_fulfillment_status (below).
+--
 -- Ids are the numeric legacyResourceId, not the gid:// string. Amounts are
 -- in the shop's currency (the shopMoney half of a MoneyBag), so they add up
 -- across orders whatever currency the customer paid in. Times are UTC.
@@ -64,7 +67,10 @@ CREATE TABLE IF NOT EXISTS {db:Identifier}.orders
     currency_code String,                       -- currencyCode, the shop's currency
     presentment_currency_code Nullable(String), -- presentmentCurrencyCode, the customer's
     display_financial_status String,            -- displayFinancialStatus
-    display_fulfillment_status String,          -- displayFulfillmentStatus
+    -- displayFulfillmentStatus. From API 2026-10, FULFILLMENT_NOT_REQUIRED
+    -- for an order with nothing left to fulfill (cancelled or refunded whole
+    -- before shipping); earlier versions return UNFULFILLED for it.
+    display_fulfillment_status String,
     source_name Nullable(String),               -- sourceName: web, pos, or an app's id
     taxes_included Bool,                        -- taxesIncluded
     total_price Decimal(18, 4),                 -- totalPriceSet, before refunds

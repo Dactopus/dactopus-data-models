@@ -131,8 +131,9 @@ CASES = [
       {"financial_status": "voided", "orders": 2}]),
     # Fulfilled: 1001; partially: 1007; ON_HOLD (1011) and the download
     # 1003, which Shopify leaves unfulfilled, are unfulfilled, as are the
-    # rest. The mapping
-    # of every Shopify status is decided in #4.
+    # rest: 1006, refunded whole before shipping, as FULFILLMENT_NOT_REQUIRED
+    # (API 2026-10), and cancelled 1010 as UNFULFILLED (earlier versions).
+    # The mapping of every Shopify status is decided in #4.
     (["-m", "orders", "-d", "orders.fulfillment_status", "-o", "orders.fulfillment_status"],
      [{"fulfillment_status": "fulfilled", "orders": 1}, {"fulfillment_status": "partially_fulfilled", "orders": 1},
       {"fulfillment_status": "unfulfilled", "orders": 9}]),
