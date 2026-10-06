@@ -51,7 +51,9 @@ CASES = [
     # card); revenue - refunded_amount would be 1045, the gap is 1010,
     # cancelled with nothing refunded. refund_rate = refunded_amount /
     # revenue.
-    # average_order_value = revenue / orders, cancelled included. Discounts are the lines', as
+    # average_order_value = goods after discounts over orders, as Shopify's
+    # reports define it: subtotal 1360 - 76.95 shipping - 62.85 tax - 34.20
+    # duties = 1186 over 11 orders, cancelled included. Discounts are the lines', as
     # Shopify's Discounts are ("product discount + the product's
     # proportional share of a cart-wide discount", https://help.shopify.com/
     # en/manual/reports-and-analytics/shopify-reports/report-types/
@@ -65,7 +67,7 @@ CASES = [
       "-m", "refund_rate", "-m", "average_order_value", "-m", "discount_total",
       "-m", "shipping_total", "-m", "tax_total", "-m", "customers"],
      [{"orders": 11, "revenue": 1360, "refunded_amount": 315, "net_revenue": 975,
-       "refund_rate": 315 / 1360, "average_order_value": 1360 / 11, "discount_total": 44,
+       "refund_rate": 315 / 1360, "average_order_value": 1186 / 11, "discount_total": 44,
        "shipping_total": 76.95, "tax_total": 62.85, "customers": 2}]),
     # By month of processed_at in New York. 1003 is August (September in
     # UTC); 1008 is September (created in October). September net:

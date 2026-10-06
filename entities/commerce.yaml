@@ -472,14 +472,19 @@ metrics:
     ai_context:
       synonyms: [return rate, refund share, refund percentage]
   - name: average_order_value
-    expression: {dialects: [{dialect: ANSI_SQL, expression: CAST(SUM(orders.total) AS DOUBLE) / COUNT(orders.order_id)}]}
+    expression: {dialects: [{dialect: ANSI_SQL, expression: CAST(SUM(orders.subtotal) AS DOUBLE) / COUNT(orders.order_id)}]}
     description: >
-      revenue over orders, cancelled and unpaid orders included, with
-      shipping and tax. Filter by orders.is_cancelled = false to leave
-      cancelled orders out.
+      Goods after discounts per order (orders.subtotal over orders):
+      without shipping, tax, import duties and fees, before refunds;
+      cancelled and unpaid orders included. This is Shopify's definition
+      (gross sales less discounts, over orders), so it matches the store's
+      dashboard; WooCommerce Analytics also leaves shipping and tax out
+      but subtracts refunds first. It is not revenue over orders, which
+      would add shipping and tax. Filter by orders.is_cancelled = false
+      to leave cancelled orders out.
     datatype: Float
     ai_context:
-      synonyms: [AOV, average order, average check, basket size]
+      synonyms: [AOV, average order, average check, basket size, average basket]
   - name: items_per_order
     expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(orders.item_quantity) * 1.0 / COUNT(orders.order_id)}]}
     description: >
