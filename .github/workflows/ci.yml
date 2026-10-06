@@ -60,3 +60,57 @@ jobs:
           python3 tests/ga4/check_numbers.py
       - name: Validate the Ossie model against the built tables
         run: ossie-clickhouse validate entities/web_analytics.yaml --url "$OSSIE_CLICKHOUSE_URL"
+
+  shopify:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        dbt:
+          - {name: v2, from: "dbt-oss", with: ""}
+          - {name: v1, from: "dbt-core~=1.11.0", with: "dbt-clickhouse"}
+    name: Shopify package (dbt ${{ matrix.dbt.name }})
+    services:
+      clickhouse:
+        image: clickhouse/clickhouse-server:26.9
+        ports: ["8123:8123"]
+        env:
+          CLICKHOUSE_SKIP_USER_SETUP: 1  # passwordless default user over the network
+        options: >-
+          --health-cmd "wget -qO- http://localhost:8123/ping || exit 1"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+    env:
+      # Databases other than the defaults (shopify_raw, dactopus): nothing
+      # may assume a database name. The input database is shopify_input.
+      # The fixture's numbers are in the shop's time zone, New York.
+      CLICKHOUSE_DATABASE: analytics
+      DBT_BUILD: >-
+        uvx --from ${{ matrix.dbt.from }} ${{ matrix.dbt.with && format('--with {0}', matrix.dbt.with) || '' }}
+        dbt build --project-dir sources/shopify --profiles-dir sources/shopify
+        --vars {"shopify_input_database":"shopify_input","shopify_timezone":"America/New_York"}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      # Hand-written rows (tests/shopify/fixture.sql); the first build runs
+      # on an empty input. An incremental run over unchanged input must
+      # match a full refresh row for row.
+      - name: Build (models, tests, unit tests), incremental and full refresh
+        run: |
+          load() { python3 -c "
+          import pathlib, sys, urllib.request
+          for s in pathlib.Path(sys.argv[1]).read_text().split(';\n'):
+              if s.strip():
+                  urllib.request.urlopen('http://127.0.0.1:8123/?param_db=shopify_input', s.encode())" "$1"; }
+          tables() { for t in orders order_lines refunds; do
+              curl -sf http://127.0.0.1:8123/ --data-binary \
+                "SELECT '$t', count(), groupBitXor(cityHash64(*)) FROM analytics.$t FORMAT TSV"; done; }
+          load sources/shopify/input.sql
+          $DBT_BUILD
+          load tests/shopify/fixture.sql
+          $DBT_BUILD                 # incremental into empty tables
+          $DBT_BUILD                 # incremental over unchanged input
+          tables > incremental.tsv
+          $DBT_BUILD --full-refresh
+          tables > full.tsv
+          cat full.tsv
+          diff incremental.tsv full.tsv
