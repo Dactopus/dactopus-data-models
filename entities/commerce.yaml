@@ -492,7 +492,7 @@ metrics:
       to leave cancelled orders out.
     datatype: Float
     ai_context:
-      synonyms: [AOV, average order, average check, basket size, average basket]
+      synonyms: [AOV, average order, average check, average basket value, average transaction value]
   - name: items_per_order
     expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(orders.item_quantity) * 1.0 / COUNT(orders.order_id)}]}
     description: >
