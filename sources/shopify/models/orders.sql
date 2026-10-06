@@ -39,18 +39,17 @@ SELECT
     -- is not one of them
     -- (https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/default-reports/finances-report).
     l.discount_total AS discount_total,
-    -- What was paid back, gift cards sold included (totalRefundedSet).
-    o.total_refunded AS refunded_total,
-    -- Gift cards sold and refunded, inside refunded_total. Shopify's sales
-    -- reports take them off gift card sales, not as returns (on the
-    -- development store #1016, its 50 gift card refunded: returns 0, total
-    -- sales still 50). A refunded tip has no refund line, so it stays in
-    -- refunded_total as an amount (#1017).
+    -- What was paid back (totalRefundedSet) less gift cards sold and
+    -- refunded, which Shopify's sales reports take off gift card sales, not
+    -- as returns (on the development store #1016, its 50 gift card
+    -- refunded: returns 0, total sales still 50). A refunded tip has no
+    -- refund line and cannot be told apart, so it stays here (#6).
+    o.total_refunded - gift_card_refunded_total AS refunded_total,
     gr.gift_card_refunded_total AS gift_card_refunded_total,
-    -- What the order earned after refunds of what it sold. A cancelled
-    -- order earned nothing: cancelled unpaid, nothing was paid or
-    -- refunded, yet total less refunded would count it whole.
-    if(o.cancelled_at IS NOT NULL, toDecimal64(0, 4), total - (refunded_total - gift_card_refunded_total)) AS net_total,
+    -- What the order earned after refunds. A cancelled order earned
+    -- nothing: cancelled unpaid, nothing was paid or refunded, yet total
+    -- less refunded would count it whole.
+    if(o.cancelled_at IS NOT NULL, toDecimal64(0, 4), total - refunded_total) AS net_total,
     o.taxes_included AS taxes_included,
     -- https://shopify.dev/docs/api/admin-graphql/latest/enums/OrderDisplayFinancialStatus
     -- A value not listed here is NULL and fails the not_null test.

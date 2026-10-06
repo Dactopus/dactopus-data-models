@@ -1,5 +1,5 @@
 -- An order's amounts add up: nothing negative, no more refunded than paid
--- (tips and gift cards included) nor more gift cards refunded than sold,
+-- (tips included; gift cards apart) nor more gift cards refunded than sold,
 -- and its lines after discounts and without tax make its subtotal (total
 -- less shipping and tax). Amounts are in cents, so a cent of difference
 -- is allowed for rounding; the development store's orders match exactly.
@@ -15,7 +15,7 @@ LEFT JOIN
     GROUP BY order_id, order_updated_at
 ) AS l ON l.order_id = o.order_id AND l.order_updated_at = o.updated_at
 WHERE o.discount_total < 0 OR o.shipping_total < 0 OR o.tax_total < 0
-   OR o.refunded_total > o.total + o.tip_total + o.gift_card_total
+   OR o.refunded_total > o.total + o.tip_total
    OR o.gift_card_refunded_total > o.gift_card_total
    OR (o.order_id, o.updated_at) IN (SELECT order_id, order_updated_at FROM {{ ref('order_lines') }})
       AND abs(o.subtotal - l.line_total) > 0.01

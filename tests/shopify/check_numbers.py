@@ -42,13 +42,13 @@ CASES = [
     # revenue: every order as placed = 110 + 80 + 30 + 181 + 60 + 210 + 137
     # + 169.50 + 70 + 40 = 1087.50 over 10 orders (the test order's 500 is
     # not there; with 1001's gift card and 1007's tip it would be 1124.50).
-    # refunded_amount, what was paid back: 25 (1001's gift card) + 45 + 60
-    # + 210 = 340. net_revenue leaves out cancelled 1005 and 1010 and
-    # subtracts the rest's refunds of what they sold, so not 1001's gift
-    # card, as Shopify's reports do not: 1087.50 - 60 - 70 - 45 - 210 =
-    # 702.50 (677.50 with the gift card). revenue - refunded_amount would
-    # be 747.50: 1010, cancelled with nothing refunded, counted whole (70),
-    # less the gift card (25). refund_rate = refunded_amount / revenue.
+    # refunded_amount: 45 + 60 + 210 = 315, without 1001's refunded gift
+    # card, which Shopify's reports do not count as a return (340 with it).
+    # net_revenue leaves out cancelled 1005 and 1010 and subtracts the
+    # rest's refunds: 1087.50 - 60 - 70 - 45 - 210 = 702.50 (677.50 with
+    # the gift card); revenue - refunded_amount would be 772.50, the gap is
+    # 1010, cancelled with nothing refunded. refund_rate = refunded_amount
+    # / revenue.
     # average_order_value = revenue / orders, cancelled included. Discounts are the lines', as
     # Shopify's Discounts are ("product discount + the product's
     # proportional share of a cart-wide discount", https://help.shopify.com/
@@ -60,29 +60,30 @@ CASES = [
     (["-m", "orders", "-m", "revenue", "-m", "refunded_amount", "-m", "net_revenue",
       "-m", "refund_rate", "-m", "average_order_value", "-m", "discount_total",
       "-m", "shipping_total", "-m", "tax_total", "-m", "customers"],
-     [{"orders": 10, "revenue": 1087.5, "refunded_amount": 340, "net_revenue": 702.5,
-       "refund_rate": 340 / 1087.5, "average_order_value": 108.75, "discount_total": 44,
+     [{"orders": 10, "revenue": 1087.5, "refunded_amount": 315, "net_revenue": 702.5,
+       "refund_rate": 315 / 1087.5, "average_order_value": 108.75, "discount_total": 44,
        "shipping_total": 60, "tax_total": 31.5, "customers": 2}]),
     # By month of processed_at in New York. 1003 is August (September in
     # UTC); 1008 is September (created in October). September net:
-    # (181 - 45) + (210 - 210) + 137 + 169.50 = 442.50. August net: 110 (1001,
-    # its gift card refund aside) + 80 + 30. Refunds by order month: 1001's
-    # 25 in August; 1004, 1005 and 1006 are September's, 1004's refund in
-    # October included.
+    # (181 - 45) + (210 - 210) + 137 + 169.50 = 442.50. August net: 110
+    # (1001, its gift card refund not a return) + 80 + 30. Refunds by order
+    # month: 1004, 1005 and 1006 are September's, 1004's refund in October
+    # included; 1001's gift card is not there.
     (["-m", "orders", "-m", "revenue", "-m", "net_revenue", "-m", "refunded_amount",
       "-d", "orders.order_month", "-o", "orders.order_month"],
-     [{"order_month": "2026-08-01", "orders": 3, "revenue": 220, "net_revenue": 220, "refunded_amount": 25},
+     [{"order_month": "2026-08-01", "orders": 3, "revenue": 220, "net_revenue": 220, "refunded_amount": 0},
       {"order_month": "2026-09-01", "orders": 6, "revenue": 827.5, "net_revenue": 442.5, "refunded_amount": 315},
       {"order_month": "2026-10-01", "orders": 1, "revenue": 40, "net_revenue": 40, "refunded_amount": 0}]),
     # Revenue without cancelled orders: 1087.50 - 60 - 70.
     (["-m", "orders", "-m", "revenue", "-f", "orders.is_cancelled = false"],
      [{"orders": 8, "revenue": 957.5}]),
-    # Refunds by the month they were made, in New York: 1001's 25 (the
-    # gift card) in August, 1005's 60 and 1006's 210 (September 30, October
-    # 1 in UTC) in September, 1004's 45 in October; the test order's 500 is
-    # not there. In UTC September and October would be 60 and 255.
+    # Refunds by the month they were made, in New York: 1001's gift card in
+    # August, a refund of 0 as it is not a return (25 paid back), 1005's 60
+    # and 1006's 210 (September 30, October 1 in UTC) in September, 1004's
+    # 45 in October; the test order's 500 is not there. In UTC September
+    # and October would be 60 and 255.
     (["-m", "refunds", "-m", "refunds_total", "-d", "refunds.refund_month", "-o", "refunds.refund_month"],
-     [{"refund_month": "2026-08-01", "refunds": 1, "refunds_total": 25},
+     [{"refund_month": "2026-08-01", "refunds": 1, "refunds_total": 0},
       {"refund_month": "2026-09-01", "refunds": 2, "refunds_total": 270},
       {"refund_month": "2026-10-01", "refunds": 1, "refunds_total": 45}]),
     # US: 1001 110, 1004 181 (net 136), 1007 137, 1010 70 (cancelled).
