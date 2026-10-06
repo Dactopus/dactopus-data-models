@@ -151,6 +151,19 @@ datasets:
         dimension: {is_time: false}
         ai_context:
           synonyms: [state, province, region]
+      - name: shipping_city
+        expression: {dialects: [{dialect: ANSI_SQL, expression: shipping_city}]}
+        description: >
+          City of the shipping address, as the customer typed it: one city
+          can appear under several spellings (New York, NYC, new york), and
+          the same name in different countries or regions. Group with
+          shipping_country and shipping_region, and name the spellings you
+          see rather than adding them up yourself. Empty when the order has
+          no shipping address.
+        datatype: String
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [city, town, destination city, ship-to city]
       - name: customer_id
         expression: {dialects: [{dialect: ANSI_SQL, expression: customer_id}]}
         description: >
@@ -180,6 +193,16 @@ datasets:
         dimension: {is_time: false}
         ai_context:
           synonyms: [new or returning, first or repeat purchase, customer type]
+      - name: item_quantity
+        expression: {dialects: [{dialect: ANSI_SQL, expression: item_quantity}]}
+        description: >
+          Units of goods in the order as placed, before refunds: the
+          quantities of its lines added up. Gift cards sold and tips are not
+          goods; an order of gift cards alone has 0.
+        datatype: Integer
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [basket size, units in order, items in order, number of items]
       - name: discount_code_count
         expression: {dialects: [{dialect: ANSI_SQL, expression: discount_code_count}]}
         description: Number of discount codes applied to the order; 0 when none.
@@ -451,6 +474,15 @@ metrics:
     datatype: Float
     ai_context:
       synonyms: [AOV, average order, average check, basket size]
+  - name: items_per_order
+    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(orders.item_quantity) * 1.0 / COUNT(orders.order_id)}]}
+    description: >
+      Average units of goods per order, as placed, before refunds;
+      cancelled and unpaid orders included, as in average_order_value.
+      Filter by orders.is_cancelled = false to leave cancelled orders out.
+    datatype: Float
+    ai_context:
+      synonyms: [units per transaction, UPT, units per order, average basket size, items per order]
   - name: discount_total
     expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(orders.discount_total)}]}
     description: Discounts on goods, without tax, by order date (orders.discount_total).

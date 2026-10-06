@@ -92,6 +92,19 @@ CASES = [
     (["-m", "refunds", "-m", "refunds_total", "-d", "orders.order_month", "-o", "orders.order_month"],
      [{"order_month": "2026-08-01", "refunds": 1, "refunds_total": 0},
       {"order_month": "2026-09-01", "refunds": 3, "refunds_total": 315}]),
+    # Units per order over the 10 orders: the lines' 16 items (see
+    # items_sold below) / 10. Gift cards and tips are not goods: 1001's
+    # gift card and 1007's tip would make it 18 / 10.
+    (["-m", "items_per_order"], [{"items_per_order": 1.6}]),
+    # By shipping city, as typed: New York 1001 (2 items, 110), 1004 (3,
+    # 181), 1007 (2, 137); San Francisco 1010 (1, 70, cancelled); Toronto
+    # 1005 (1, 60, cancelled), 1006 (1, 210), 1008 (2, 169.50), 1011 (2,
+    # 40); no address 1002 (1, 80), 1003 (1, 30).
+    (["-m", "orders", "-m", "revenue", "-m", "items_per_order", "-d", "orders.shipping_city", "-o", "orders.shipping_city"],
+     [{"shipping_city": "New York", "orders": 3, "revenue": 428, "items_per_order": 7 / 3},
+      {"shipping_city": "San Francisco", "orders": 1, "revenue": 70, "items_per_order": 1.0},
+      {"shipping_city": "Toronto", "orders": 4, "revenue": 479.5, "items_per_order": 1.5},
+      {"shipping_city": None, "orders": 2, "revenue": 110, "items_per_order": 1.0}]),
     # US: 1001 110, 1004 181 (net 136), 1007 137, 1010 70 (cancelled).
     # CA: 1005 60 (cancelled), 1006 210 (net 0), 1008 169.50, 1011 40.
     # No address: 1002 80, 1003 30.
