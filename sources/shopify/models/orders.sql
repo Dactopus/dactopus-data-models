@@ -130,9 +130,12 @@ WHERE NOT o.test
 -- and discounts come from the lines) or whose refunds or refund lines were
 -- (gift cards refunded), and every order of their customers,
 -- under any version: a cancel or a back-dated order renumbers the others.
+-- An order moved to another customer (orderCustomerSet changes updated_at,
+-- seen on the development store) renumbers both: the previous customer
+-- comes from this table, as an input that collapses old versions
+-- (input.sql) may have lost it.
 -- The sequence is numbered over all orders first, then filtered, so every
--- run reads every version of every order: cheap for orders, and a
--- deployment can collapse old versions (input.sql).
+-- run reads every version of every order: cheap for orders.
 {% set orders_loaded = shopify_loaded_since('orders') %}
 {% set lines_loaded = shopify_loaded_since('order_lines', 'order_id') %}
 WHERE order_id IN {{ orders_loaded }}
@@ -143,4 +146,7 @@ WHERE order_id IN {{ orders_loaded }}
    OR customer_id IN (
        SELECT customer_id FROM {{ source('shopify_raw', 'orders') }}
        WHERE id IN {{ orders_loaded }} OR id IN {{ lines_loaded }})
+   OR customer_id IN (
+       SELECT customer_id FROM {{ this }}
+       WHERE order_id IN {{ orders_loaded }} OR order_id IN {{ lines_loaded }})
 {% endif %}

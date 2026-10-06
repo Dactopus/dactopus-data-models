@@ -197,10 +197,13 @@ INSERT INTO {db:Identifier}.refund_lines VALUES
 -- number.
 
 -- 1004 as loaded on September 5, before its refund: paid, both T-shirts
--- still there. The refund on October 3 delivered the version above.
+-- still there, and placed for customer 2. The store then moved it to
+-- customer 1 (orderCustomerSet, which changes updated_at on the
+-- development store), and the refund on October 3 delivered the version
+-- above. Were this version read, customer 2 would have five orders.
 INSERT INTO {db:Identifier}.orders VALUES
 (1004, '#1004', '2026-09-05 15:00:00', '2026-09-05 15:00:00', '2026-09-05 15:00:00', NULL, NULL, false,
- 1, 'alice@example.com', 'USD', 'USD', 'PAID', 'UNFULFILLED', 'web', false,
+ 2, 'bob@example.com', 'USD', 'USD', 'PAID', 'UNFULFILLED', 'web', false,
  181, 10, 0, 0, 0, 181, 0, 0, 0, ['FALL10'], 'US', 'NY', 'New York', '10001', '2026-09-05 16:00:00');
 
 INSERT INTO {db:Identifier}.order_lines VALUES

@@ -105,9 +105,12 @@ jobs:
       # 505 change orders that nothing else rereads; 1001's lines, its gift
       # card among them, come after 505's and after the refund 501 has moved
       # the refunds' load window past 505, and make 505 a refund of 0; 1008,
-      # back-dated, renumbers its customer's 1007. After the late loads, the
-      # incremental build must match a full refresh of the same input row
-      # for row.
+      # back-dated, renumbers its customer's 1007. 1004 comes first in its
+      # version for customer 2; its latest version, moved to customer 1,
+      # comes last, alone, and the earlier version is then deleted, as an
+      # input that collapses old versions would: customer 2's orders must
+      # still be renumbered. After the late loads, the incremental build
+      # must match a full refresh of the same input row for row.
       - name: Build (models, tests, unit tests), check numbers, incremental and full refresh
         run: |
           q() { curl -sf http://127.0.0.1:8123/ --data-binary "$1"; }
@@ -131,8 +134,8 @@ jobs:
           load sources/shopify/input.sql shopify_fixture
           load tests/shopify/fixture.sql shopify_fixture
           $DBT_BUILD
-          early orders "id = 1008"
-          early order_lines "order_id IN (1001, 1008, 1012)"
+          early orders "id = 1008 OR id = 1004 AND updated_at = '2026-10-03 15:00:00'"
+          early order_lines "order_id IN (1001, 1008, 1012) OR order_id = 1004 AND order_updated_at = '2026-10-03 15:00:00'"
           early refunds "id = 501"
           early refund_lines "refund_id IN (501, 505)"
           $DBT_BUILD                 # incremental into empty tables
@@ -146,6 +149,11 @@ jobs:
           late orders "id = 1008"
           late order_lines "order_id IN (1001, 1008)"
           $DBT_BUILD                 # a back-dated order, a gift card line after its refund
+          late orders "id = 1004 AND updated_at = '2026-10-03 15:00:00'"
+          late order_lines "order_id = 1004 AND order_updated_at = '2026-10-03 15:00:00'"
+          q "DELETE FROM shopify_input.orders WHERE id = 1004 AND updated_at < '2026-10-03 15:00:00'"
+          q "DELETE FROM shopify_input.order_lines WHERE order_id = 1004 AND order_updated_at < '2026-10-03 15:00:00'"
+          $DBT_BUILD                 # an order moved to another customer
           python3 tests/shopify/check_numbers.py
           $DBT_BUILD                 # incremental over unchanged input
           python3 tests/shopify/check_numbers.py

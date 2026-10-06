@@ -27,7 +27,7 @@ Orders in the fixture, test order 1009 left out (sales, refunded):
 1001 also sold a 25 gift card, refunded on August 20, and 1007 took a 12
 tip: both are inside the order's total_price and neither is a sale. Cancelled: 1005 and 1010. Customer 1 by processed_at: 1001, 1004, 1008,
 1007. Customer 2: 1003, 1005 (cancelled), 1006, 1011. The input also holds
-1004's version before its refund, 1005's version between its cancel and
+1004's version before its refund, placed for customer 2, 1005's version between its cancel and
 refund with the same updated_at but an earlier load, and second copies of
 1011 and 1006's refund; the numbers are those of the latest versions only.
 """
