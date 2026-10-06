@@ -57,9 +57,9 @@ are unchanged: a GA4 deployment needs no rebuild.
 
 ### Fixed
 
-- README: the opening no longer lists orders, line items and customers as
-  available; the Quick start names ossie-clickhouse with its MCP server
-  among the requirements. Its example of how sources differ no longer
+- README: the opening of 0.1.0 listed orders, line items and customers
+  as available before any of them were; the Quick start names
+  ossie-clickhouse with its MCP server among the requirements. Its example of how sources differ no longer
   states an unchecked claim about Shopify and WooCommerce refunds.
 
 ## [0.1.0] - 2026-10-05

@@ -347,12 +347,16 @@ ossie-clickhouse, as for GA4.
 
    </details>
 
-3. **Load** the files into the input tables:
+3. **Load** the files into the input tables. A file is empty when
+   nothing of its kind changed, often refunds, and ClickHouse refuses an
+   empty insert, so the loop skips it:
 
    ```bash
    clickhouse client --param_db=shopify_raw --multiquery < sources/shopify/input.sql
    for t in orders order_lines refunds refund_lines; do
-       clickhouse client --query "INSERT INTO shopify_raw.$t FORMAT JSONEachRow" < data/shopify/$t.jsonl
+       if [ -s data/shopify/$t.jsonl ]; then
+           clickhouse client --query "INSERT INTO shopify_raw.$t FORMAT JSONEachRow" < data/shopify/$t.jsonl
+       fi
    done
    ```
 
