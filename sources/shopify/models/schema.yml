@@ -42,3 +42,41 @@ models:
               arguments:
                 to: ref('orders')
                 field: order_id
+unit_tests:
+  # Discounts of lines in a shop whose prices include tax. The fixture's
+  # tax-included order has one tax line, so these rows cover the rounding
+  # of several.
+  - name: order_line_discounts_without_tax
+    model: order_lines
+    overrides:
+      macros:
+        is_incremental: false
+    given:
+      - input: source('shopify_raw', 'orders')
+        format: sql
+        rows: |
+          SELECT toUInt64(1) AS id, toDateTime('2026-09-15 12:00:00', 'UTC') AS updated_at,
+                 toDateTime('2026-09-15 12:00:00', 'UTC') AS processed_at, true AS taxes_included,
+                 toDecimal64(0, 4) AS total_tip, false AS test, toDateTime64('2026-09-15 12:00:01', 6, 'UTC') AS loaded_at
+      - input: source('shopify_raw', 'order_lines')
+        format: sql
+        rows: |
+          SELECT toUInt64(l.1) AS id, toUInt64(1) AS order_id, toDateTime('2026-09-15 12:00:00', 'UTC') AS order_updated_at,
+                 CAST(1, 'Nullable(UInt64)') AS product_id, CAST(1, 'Nullable(UInt64)') AS variant_id,
+                 CAST(l.2, 'Nullable(String)') AS sku, CAST(NULL, 'Nullable(String)') AS title,
+                 CAST(NULL, 'Nullable(String)') AS variant_title, toUInt32(1) AS quantity, toUInt32(1) AS current_quantity,
+                 toDecimal64(l.3, 4) AS original_unit_price, toDecimal64(l.3, 4) AS original_total,
+                 toDecimal64(l.4, 4) AS discount_allocated, toDecimal64(l.5, 4) AS total_tax,
+                 toDecimal32(l.6, 6) AS tax_rate, true AS taxable, true AS requires_shipping, false AS is_gift_card,
+                 toDateTime64('2026-09-15 12:00:02', 6, 'UTC') AS loaded_at
+          FROM (SELECT arrayJoin([
+              -- No discount, tax lines of 5% and 7% rounded apart: 0.04 +
+              -- 0.06. 1.00 / 1.12 is 0.89, a cent below 1.00 - 0.10.
+              (11, 'PIN', '1.00', '0', '0.10', '0.12'),
+              -- 10 off, tax on the price before it (a development store).
+              (12, 'COAT', '1399.90', '10', '161.05', '0.13')
+          ]) AS l)
+    expect:
+      rows:
+        - {line_id: 11, line_total: 0.9, discount_total: 0}
+        - {line_id: 12, line_total: 1228.85, discount_total: 10}
