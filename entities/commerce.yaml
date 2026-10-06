@@ -89,6 +89,8 @@ datasets:
           pending, partly paid, or authorized but not yet captured), paid,
           partially_refunded, refunded, or voided (no money will come: the
           authorization was voided or expired before it was captured).
+          A cancelled unpaid order stays unpaid (Shopify keeps it pending);
+          is_cancelled tells it apart.
         datatype: String
         dimension: {is_time: false}
         ai_context:
@@ -241,7 +243,9 @@ datasets:
           synonyms: [discounts, markdowns]
       - name: shipping_total
         expression: {dialects: [{dialect: ANSI_SQL, expression: shipping_total}]}
-        description: Shipping charged, after its discounts and without tax.
+        description: >
+          Shipping charged, after its discounts and without tax, as on the
+          order, before refunds (a refund of shipping is in refunded_total).
         datatype: Decimal
         ai_context:
           synonyms: [shipping, delivery fee]
@@ -249,7 +253,8 @@ datasets:
         expression: {dialects: [{dialect: ANSI_SQL, expression: tax_total}]}
         description: >
           Tax on the goods and on shipping, and on import duties where the
-          store collects them.
+          store collects them, as on the order, before refunds (refunded tax
+          is in refunded_total; store reports show tax net of it).
         datatype: Decimal
         ai_context:
           synonyms: [tax, VAT, sales tax]
@@ -354,7 +359,8 @@ datasets:
     primary_key: [refund_id]
     description: >
       One row per refund, dated when it was made. An order can have several.
-      A refund of gift cards alone has an amount of 0.
+      A refund of gift cards alone, or the cancellation of an unpaid order,
+      has an amount of 0.
     ai_context:
       synonyms: [returns, refunds issued, money back]
     fields:
@@ -457,9 +463,11 @@ metrics:
   - name: refunded_amount
     expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(orders.refunded_total)}]}
     description: >
-      Money paid back on orders, by the date of the order, whenever the
-      refund was made. For refunds by the date they were made, use
-      refunds_total.
+      Money paid back on orders, with the tax paid back, by the date of the
+      order, whenever the refund was made. For refunds by the date they were
+      made, use refunds_total. Not the "returns" of store reports, which
+      are without tax and count a cancelled unpaid order as value removed;
+      net_revenue already leaves that order out.
     datatype: Decimal
     ai_context:
       synonyms: [refunded on orders, returns of these orders]
@@ -502,13 +510,15 @@ metrics:
       synonyms: [discounts, discount amount, promotions]
   - name: shipping_total
     expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(orders.shipping_total)}]}
-    description: Shipping charged, after its discounts and without tax, by order date.
+    description: Shipping charged, after its discounts and without tax, as on the order, before refunds, by order date.
     datatype: Decimal
     ai_context:
       synonyms: [shipping, delivery charges, shipping revenue]
   - name: tax_total
     expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(orders.tax_total)}]}
-    description: Tax on goods, shipping and any import duties, by order date.
+    description: >
+      Tax on goods, shipping and any import duties, as on the order, before
+      refunds, by order date; store reports show tax net of refunded tax.
     datatype: Decimal
     ai_context:
       synonyms: [tax, taxes, VAT, sales tax]
@@ -551,15 +561,17 @@ metrics:
       synonyms: [product revenue, sales by product, item revenue, SKU revenue]
   - name: refunds
     expression: {dialects: [{dialect: ANSI_SQL, expression: COUNT(refunds.refund_id)}]}
-    description: Number of refunds made, a refund of gift cards alone included.
+    description: >
+      Number of refunds made; a refund of gift cards alone and the refund
+      record of a cancelled unpaid order, both of amount 0, included.
     datatype: Integer
     ai_context:
       synonyms: [number of refunds, returns, refund count]
   - name: refunds_total
     expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(refunds.refunded_amount)}]}
     description: >
-      Money paid back, by the date the refund was made. For refunds by the
-      date of their order, use refunded_amount.
+      Money paid back, with the tax paid back, by the date the refund was
+      made. For refunds by the date of their order, use refunded_amount.
     datatype: Decimal
     ai_context:
       synonyms: [refunded, refunds issued, money returned, returns amount]
