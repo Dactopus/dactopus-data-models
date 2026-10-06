@@ -41,7 +41,9 @@ SELECT
     -- may compute the line's tax on the price before discounts (seen on a
     -- development store: 1399.90 at 13% with 10 off, tax 161.05).
     -- Limit: a line's rates are added up; compound taxes would need
-    -- their order.
+    -- their order. The price without tax is rounded to cents; in a
+    -- currency without them, such as JPY, the discount may carry a
+    -- fraction (#7).
     -- Divided in Decimal128: Decimal64 at scale 6 overflows from a line of
     -- about 9.2 million, common in currencies such as IDR or VND.
     -- A line without discounts has none: the price divided out and the
