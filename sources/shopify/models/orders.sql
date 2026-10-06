@@ -19,7 +19,17 @@ SELECT
     o.customer_id AS customer_id,
     o.email AS customer_email,
     o.currency_code AS currency,
-    o.total_price AS total,
+    -- What the order sold: the total less tips and gift cards sold, which
+    -- Shopify's sales reports leave out. A gift card counts when it is
+    -- spent, as part of the order it pays for
+    -- (https://shopify.dev/docs/api/shopifyql/latest/schemas/sales_revenue/sales:
+    -- gift_card_gross_sales apart from gross_sales; on the development
+    -- store #1016, 40 of goods, a 50 gift card and 10 shipping, has total
+    -- sales 50). Tips have a report of their own
+    -- (https://help.shopify.com/en/manual/checkout-settings/tips).
+    o.total_price - o.total_tip - g.gift_card_total AS total,
+    o.total_tip AS tip_total,
+    g.gift_card_total AS gift_card_total,
     -- Shipping after its discounts, without tax when prices include it.
     o.shipping_price - if(o.taxes_included, o.shipping_tax, toDecimal64(0, 4)) AS shipping_total,
     o.total_tax AS tax_total,
@@ -72,6 +82,13 @@ SELECT
     -- When the version was loaded; the next incremental run starts from it.
     o.loaded_at AS loaded_at
 FROM {{ shopify_latest('orders', 'id') }} AS o
+LEFT JOIN
+(
+    -- Gift cards sold in the order's version; order_lines leaves them out.
+    SELECT order_id, order_updated_at, toDecimal64(sum(original_total - discount_allocated), 4) AS gift_card_total
+    FROM {{ shopify_latest('order_lines', 'order_id, id, order_updated_at', version='order_updated_at', where='is_gift_card') }}
+    GROUP BY order_id, order_updated_at
+) AS g ON g.order_id = o.id AND g.order_updated_at = o.updated_at
 LEFT JOIN
 (
     SELECT order_id, count() AS line_item_count, sum(quantity) AS item_quantity, toDecimal64(sum(discount_total), 4) AS discount_total

@@ -14,7 +14,7 @@ package over it in the shop's time zone, America/New_York:
 $OSSIE_CLICKHOUSE_URL is the ClickHouse URL with the package's target
 database, e.g. http://127.0.0.1:8123/dactopus.
 
-Orders in the fixture, test order 1009 left out (total, refunded):
+Orders in the fixture, test order 1009 left out (sales, refunded):
     August     1001 (110), 1002 (80, guest), 1003 (30, 22:00 on August 31
                in New York, September 1 in UTC)
     September  1004 (181, refunded 45 on October 3), 1005 (60, cancelled and
@@ -23,7 +23,8 @@ Orders in the fixture, test order 1009 left out (total, refunded):
                processed September 12, created October 2), 1010 (70,
                guest, cancelled unpaid)
     October    1011 (40, free shipping)
-Cancelled: 1005 and 1010. Customer 1 by processed_at: 1001, 1004, 1008,
+1001 also sold a 25 gift card and 1007 took a 12 tip: both are inside the
+order's total_price and neither is a sale. Cancelled: 1005 and 1010. Customer 1 by processed_at: 1001, 1004, 1008,
 1007. Customer 2: 1003, 1005 (cancelled), 1006, 1011. The input also holds
 1004's version before its refund, 1005's version between its cancel and
 refund with the same updated_at but an earlier load, and second copies of
@@ -40,7 +41,7 @@ MODEL = "entities/commerce.yaml"
 CASES = [
     # revenue: every order as placed = 110 + 80 + 30 + 181 + 60 + 210 + 137
     # + 169.50 + 70 + 40 = 1087.50 over 10 orders (the test order's 500 is
-    # not there). refunded_amount: 45 + 60 + 210 = 315. net_revenue leaves
+    # not there; with 1001's gift card and 1007's tip it would be 1124.50). refunded_amount: 45 + 60 + 210 = 315. net_revenue leaves
     # out cancelled 1005 and 1010 and subtracts the rest's refunds:
     # 1087.50 - 60 - 70 - 45 - 210 = 702.50; revenue - refunded_amount
     # would be 772.50, the gap is 1010, cancelled with nothing refunded.
@@ -126,6 +127,9 @@ CASES = [
     # version were read). line_revenue is after discounts and without tax:
     # 1008's lines are 90 and 45, not 101.70 and 50.85, and the total is
     # the orders' revenue less shipping and tax, 1087.50 - 60 - 31.50 = 996.
+    # The gift card and the tip are not lines (18 items, 1033 with them);
+    # 1003's download, a custom item without product, tax or shipping like
+    # the tip, is (15 items and 966 if it were dropped too).
     (["-m", "items_sold", "-m", "items_net", "-m", "line_revenue"],
      [{"items_sold": 16, "items_net": 12, "line_revenue": 996}]),
     # Top SKU by items: TEE-M 2 (1001) + 2 (1004); the test order's 10

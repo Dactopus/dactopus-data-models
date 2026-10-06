@@ -79,6 +79,10 @@ CREATE TABLE IF NOT EXISTS {db:Identifier}.orders
     total_tax Decimal(18, 4),                   -- totalTaxSet, before refunds; lines and shipping
     total_refunded Decimal(18, 4),              -- totalRefundedSet
     current_total_price Decimal(18, 4),         -- currentTotalPriceSet, after refunds
+    -- totalTipReceivedSet. A tip is inside total_price and comes as a line
+    -- of its own, "Tip": no product, not taxable, nothing to ship (#1017 on
+    -- the development store).
+    total_tip Decimal(18, 4),
     discount_codes Array(String),               -- discountCodes
     shipping_country_code Nullable(String),     -- shippingAddress.countryCodeV2
     shipping_province_code Nullable(String),    -- shippingAddress.provinceCode
@@ -112,7 +116,7 @@ CREATE TABLE IF NOT EXISTS {db:Identifier}.order_lines
     tax_rate Decimal(9, 6),                     -- sum of taxLines.rate, 0.13 for 13%
     taxable Bool,                               -- taxable
     requires_shipping Bool,                     -- requiresShipping
-    is_gift_card Bool,                          -- isGiftCard
+    is_gift_card Bool,                          -- isGiftCard: a gift card sold, inside total_price
     loaded_at DateTime64(6, 'UTC') DEFAULT now64(6) -- when the load inserted the row (header)
 )
 ENGINE = MergeTree
