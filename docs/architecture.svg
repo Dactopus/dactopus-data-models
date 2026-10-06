@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" class="dm" viewBox="0 0 680 560" width="680" height="560" role="img" aria-labelledby="d-title d-desc">
 <title id="d-title">dactopus-data-models and the outside world</title>
-<desc id="d-desc">The GA4 export is loaded into an input table in your ClickHouse. The dbt package builds the canonical tables events, sessions and purchases. BI tools read them directly; AI agents read them through ossie-clickhouse, which uses the Ossie model.</desc>
+<desc id="d-desc">The GA4 export and Shopify's orders are loaded into input tables in your ClickHouse. The dbt packages build the canonical tables: events, sessions and purchases; orders, order lines and refunds. BI tools read them directly; AI agents read them through ossie-clickhouse, which uses the Ossie models.</desc>
 <style>
 svg.dm {
   --d-bg: #ffffff; --d-muted: #5f5e5a; --d-arrow: #888780; --d-accent: #534ab7;
@@ -45,8 +45,8 @@ svg.dm .cta text { fill: var(--d-accent); font-size: 13px; font-weight: 600; }
 
 <g class="node gray" data-k="export">
 <rect x="60" y="40" width="150" height="56" rx="8" stroke-width="0.5"/>
-<text class="th" x="135" y="58" text-anchor="middle" dominant-baseline="central">GA4 export</text>
-<text class="ts" x="135" y="78" text-anchor="middle" dominant-baseline="central">BigQuery, daily</text>
+<text class="th" x="135" y="58" text-anchor="middle" dominant-baseline="central">GA4, Shopify</text>
+<text class="ts" x="135" y="78" text-anchor="middle" dominant-baseline="central">export, Admin API</text>
 </g>
 <g class="node gray" data-k="transport">
 <rect x="265" y="40" width="150" height="56" rx="8" stroke-width="0.5"/>
@@ -58,21 +58,21 @@ svg.dm .cta text { fill: var(--d-accent); font-size: 13px; font-weight: 600; }
 
 <g class="node gray" data-k="input">
 <rect x="60" y="186" width="150" height="76" rx="8" stroke-width="0.5"/>
-<text class="th" x="135" y="206" text-anchor="middle" dominant-baseline="central">Input table</text>
-<text class="ts" x="135" y="227" text-anchor="middle" dominant-baseline="central">raw GA4 events</text>
+<text class="th" x="135" y="206" text-anchor="middle" dominant-baseline="central">Input tables</text>
+<text class="ts" x="135" y="227" text-anchor="middle" dominant-baseline="central">raw events, orders</text>
 <text class="ts" x="135" y="245" text-anchor="middle" dominant-baseline="central">schema: input.sql</text>
 </g>
 <g class="node purple" data-k="dbt">
 <rect x="265" y="186" width="150" height="76" rx="8" stroke-width="0.5"/>
-<text class="th" x="340" y="206" text-anchor="middle" dominant-baseline="central">dbt package</text>
-<text class="ts" x="340" y="227" text-anchor="middle" dominant-baseline="central">sources/ga4</text>
+<text class="th" x="340" y="206" text-anchor="middle" dominant-baseline="central">dbt packages</text>
+<text class="ts" x="340" y="227" text-anchor="middle" dominant-baseline="central">sources/ga4, shopify</text>
 <text class="ts" x="340" y="245" text-anchor="middle" dominant-baseline="central">incremental, tested</text>
 </g>
 <g class="node gray" data-k="canon">
 <rect x="470" y="186" width="150" height="76" rx="8" stroke-width="0.5"/>
 <text class="th" x="545" y="206" text-anchor="middle" dominant-baseline="central">Canonical tables</text>
-<text class="ts" x="545" y="227" text-anchor="middle" dominant-baseline="central">events, sessions,</text>
-<text class="ts" x="545" y="245" text-anchor="middle" dominant-baseline="central">purchases</text>
+<text class="ts" x="545" y="227" text-anchor="middle" dominant-baseline="central">web analytics,</text>
+<text class="ts" x="545" y="245" text-anchor="middle" dominant-baseline="central">orders and refunds</text>
 </g>
 <line x1="210" y1="224" x2="262" y2="224" class="arr" marker-end="url(#arrow)"/>
 <line x1="415" y1="224" x2="467" y2="224" class="arr" marker-end="url(#arrow)"/>
@@ -86,8 +86,8 @@ svg.dm .cta text { fill: var(--d-accent); font-size: 13px; font-weight: 600; }
 </g>
 <g class="node purple" data-k="model">
 <rect x="265" y="330" width="150" height="56" rx="8" stroke-width="0.5"/>
-<text class="th" x="340" y="348" text-anchor="middle" dominant-baseline="central">Ossie model</text>
-<text class="ts" x="340" y="368" text-anchor="middle" dominant-baseline="central">web_analytics.yaml</text>
+<text class="th" x="340" y="348" text-anchor="middle" dominant-baseline="central">Ossie models</text>
+<text class="ts" x="340" y="368" text-anchor="middle" dominant-baseline="central">one per domain</text>
 </g>
 <g class="node gray" data-k="oc">
 <rect x="470" y="330" width="150" height="56" rx="8" stroke-width="0.5"/>

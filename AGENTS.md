@@ -72,7 +72,9 @@ profile and the sample. CI builds into other databases to keep it so.
 
 - A field goes into a canonical entity only when at least two sources
   provide it. While a domain has a single source (GA4 for events), a
-  field qualifies when its meaning does not depend on that source; a
+  field qualifies when its meaning does not depend on that source; where
+  the second source is known but not yet packaged (WooCommerce for
+  orders), it must exist there too, checked against its documentation. A
   source-only field is not modelled yet. Do not add canonical fields "for
   completeness".
 - Every field and metric gets a description, and `ai_context` with

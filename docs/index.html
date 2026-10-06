@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>dactopus-data-models: how it fits together</title>
-<meta name="description" content="How the GA4 package and the Ossie model of dactopus-data-models work with GA4, ClickHouse, BI tools and AI agents.">
+<meta name="description" content="How the GA4 and Shopify packages and the Ossie models of dactopus-data-models work with their sources, ClickHouse, BI tools and AI agents.">
 <style>
 :root {
   --bg: #ffffff; --text: #2c2c2a; --muted: #5f5e5a; --border: #d3d1c7; --surface: #f1efe8; --accent: #534ab7;
@@ -41,7 +41,7 @@ footer { margin-top: 24px; font-size: 14px; color: var(--muted); }
 <body>
 <main>
 <h1>dactopus-data-models: how it fits together</h1>
-<p class="lead">The GA4 package and the Ossie model, and what they work with. Select a box, or follow one purchase from GA4 to an AI agent's answer.</p>
+<p class="lead">The GA4 and Shopify packages and the Ossie models, and what they work with. Select a box, or follow one purchase from GA4 to an AI agent's answer.</p>
 
 <div id="diagram"></div>
 
@@ -62,13 +62,13 @@ footer { margin-top: 24px; font-size: 14px; color: var(--muted); }
 
 <script>
 const INFO = {
-  export: ["GA4 export to BigQuery", "Google exports each GA4 property to its own BigQuery dataset, analytics_<property_id>: one table per day, updated for up to 72 hours. Only the export has single events; the GA4 Data API returns aggregates.", ""],
-  transport: ["Transport", "Not part of this repository. The README has a recipe: BigQuery Storage Read API, Parquet files, clickhouse client. Any loader works if it fills the input table.", ""],
-  input: ["Input table", "The package's contract: only the columns it reads, typed from the official export schema. The package never writes this table, so the canonical tables can always be rebuilt from it.", "database: query parameter db in input.sql, dbt variable ga4_input_database (default ga4_raw)"],
-  dbt: ["dbt package sources/ga4", "Collapses repeated purchases, builds sessions, takes each session's source (last click when the export has it) and each purchase's currency. Incremental runs re-read the last 3 days. 17 data tests and a unit test; the same results on dbt v2 and v1.", "writes to: the dbt target's database (CLICKHOUSE_DATABASE in the package's profile, default dactopus)"],
-  canon: ["Canonical tables", "events, sessions and purchases have the same shape whatever the source. BI tools read them directly; AI agents read them through the Ossie model.", "in the database the deployment chooses"],
+  export: ["GA4 export and Shopify", "GA4: Google exports each property to its own BigQuery dataset, analytics_<property_id>, one table per day, updated for up to 72 hours; only the export has single events, the GA4 Data API returns aggregates. Shopify: the GraphQL Admin API returns each order with its lines and refunds, amounts in the shop's currency.", ""],
+  transport: ["Transport", "Not part of this repository. The README has recipes: for GA4, the BigQuery Storage Read API, Parquet files and clickhouse client; for Shopify, a Python script that pages through the orders updated since a time and writes JSON for clickhouse client. Any loader works if it fills the input tables.", ""],
+  input: ["Input tables", "Each package's contract: only the columns it reads, typed from the source's schema. GA4: one table of raw events. Shopify: orders, their lines, refunds and refund lines, a log of versions to which a loader appends what changed. A package never writes its input, so the canonical tables can always be rebuilt from it.", "database: query parameter db in input.sql; dbt variables ga4_input_database (default ga4_raw) and shopify_input_database (default shopify_raw)"],
+  dbt: ["dbt packages sources/ga4 and sources/shopify", "GA4: collapses repeated purchases, builds sessions, takes each session's source (last click when the export has it) and each purchase's currency; incremental runs re-read the last 3 days. Shopify: takes the latest version of each order and refund, leaves out test orders, tips and gift cards sold, maps statuses and numbers each customer's orders; incremental runs reread what was loaded since the last one. Both are tested and give the same results on dbt v2 and v1.", "writes to: the dbt target's database (CLICKHOUSE_DATABASE in the package's profile, default dactopus); Shopify dates in shopify_timezone"],
+  canon: ["Canonical tables", "events, sessions and purchases; orders, order_lines and refunds. They have the same shape whatever the source. BI tools read them directly; AI agents read them through the Ossie model.", "in the database the deployment chooses"],
   bi: ["BI tools and dashboards", "Metabase, Grafana and the like read the canonical tables in ClickHouse directly, without Ossie.", ""],
-  model: ["Ossie model web_analytics", "3 datasets, 36 fields and 12 metrics, with the descriptions and ai_context that agents answer from. Tables are named without a database, so one model serves any deployment.", "Ossie schema 0.2.0.dev0"],
+  model: ["Ossie models web_analytics and commerce", "web_analytics: 3 datasets, 36 fields, 12 metrics. commerce: 3 datasets, 42 fields, 17 metrics. Both carry the descriptions and ai_context that agents answer from. Tables are named without a database, so one model serves any deployment.", "Ossie schema 0.2.0.dev0"],
   oc: ["ossie-clickhouse", "A separate project: an Apache Ossie executor and MCP server for ClickHouse. It turns metrics and dimensions into one ClickHouse query and does not depend on this repository.", "database: from its URL, e.g. http://host:8123/dactopus"],
   agents: ["AI agents", "Agents ask for metrics and dimensions by name and never write SQL: ossie-clickhouse writes it.", ""]
 };
