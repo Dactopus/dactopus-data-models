@@ -474,7 +474,15 @@ Known limits of the package: a custom item with no product, no tax and
 nothing to ship that costs exactly the order's tip is taken for the tip;
 a line's tax rates are added up, so compound taxes are not exact; orders
 deleted in Shopify stay; amounts are in the shop's currency, not the
-currency the customer paid in.
+currency the customer paid in. In a shop whose prices include tax, a
+line's discount is computed in cents, so in a currency without them,
+such as the yen, `discount_total` can carry a fraction
+([#7](https://github.com/Dactopus/dactopus-data-models/issues/7)).
+
+The memory a build needs grows with the shop's history, not with what
+changed since the last run. On a ClickHouse server limited to 4 GB, the
+first build of a shop with 2 million orders runs out of memory
+([#8](https://github.com/Dactopus/dactopus-data-models/issues/8)).
 
 ## Use in your dbt project
 

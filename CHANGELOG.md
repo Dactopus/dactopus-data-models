@@ -45,7 +45,8 @@ are unchanged: a GA4 deployment needs no rebuild.
   matches a full refresh row for row.
 - README: a Shopify quick start on those rows, a recipe for loading a
   store through the GraphQL Admin API, what the commerce model answers,
-  and the known differences from Shopify's reports.
+  the known differences from Shopify's reports and the package's known
+  limits, among them the memory a first build needs on a large shop.
 - A diagram of how the packages work with their sources, ClickHouse, BI
   tools and AI agents: an image in the README and an interactive page on
   GitHub Pages (`docs/`).
