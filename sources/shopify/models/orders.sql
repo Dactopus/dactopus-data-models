@@ -39,11 +39,18 @@ SELECT
     -- is not one of them
     -- (https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/default-reports/finances-report).
     l.discount_total AS discount_total,
+    -- What was paid back, gift cards sold included (totalRefundedSet).
     o.total_refunded AS refunded_total,
-    -- What the order earned after refunds. A cancelled order earned
-    -- nothing: cancelled unpaid, nothing was paid or refunded, yet
-    -- total less refunded would count it whole.
-    if(o.cancelled_at IS NOT NULL, toDecimal64(0, 4), total - refunded_total) AS net_total,
+    -- Gift cards sold and refunded, inside refunded_total. Shopify's sales
+    -- reports take them off gift card sales, not as returns (on the
+    -- development store #1016, its 50 gift card refunded: returns 0, total
+    -- sales still 50). A refunded tip has no refund line, so it stays in
+    -- refunded_total as an amount (#1017).
+    gr.gift_card_refunded_total AS gift_card_refunded_total,
+    -- What the order earned after refunds of what it sold. A cancelled
+    -- order earned nothing: cancelled unpaid, nothing was paid or
+    -- refunded, yet total less refunded would count it whole.
+    if(o.cancelled_at IS NOT NULL, toDecimal64(0, 4), total - (refunded_total - gift_card_refunded_total)) AS net_total,
     o.taxes_included AS taxes_included,
     -- https://shopify.dev/docs/api/admin-graphql/latest/enums/OrderDisplayFinancialStatus
     -- A value not listed here is NULL and fails the not_null test.
@@ -91,6 +98,16 @@ LEFT JOIN
 ) AS g ON g.order_id = o.id AND g.order_updated_at = o.updated_at
 LEFT JOIN
 (
+    -- Refund lines of gift cards sold, each refund in its latest version.
+    SELECT r.order_id AS order_id, toDecimal64(sum(rl.subtotal + rl.total_tax), 4) AS gift_card_refunded_total
+    FROM {{ shopify_latest('refunds', 'id') }} AS r
+    INNER JOIN {{ shopify_latest('refund_lines', 'refund_id, line_item_id, refund_updated_at', version='refund_updated_at') }} AS rl
+        ON rl.refund_id = r.id AND rl.refund_updated_at = r.updated_at
+    WHERE rl.line_item_id IN (SELECT id FROM {{ source('shopify_raw', 'order_lines') }} WHERE is_gift_card)
+    GROUP BY r.order_id
+) AS gr ON gr.order_id = o.id
+LEFT JOIN
+(
     SELECT order_id, count() AS line_item_count, sum(quantity) AS item_quantity, toDecimal64(sum(discount_total), 4) AS discount_total
     FROM {{ ref('order_lines') }}
     GROUP BY order_id
@@ -99,13 +116,17 @@ WHERE NOT o.test
 )
 {% if is_incremental() %}
 -- Orders loaded since the last run, orders whose lines were (their counts
--- and discounts come from the lines), and every order of their customers,
+-- and discounts come from the lines) or whose refunds or refund lines were
+-- (gift cards refunded), and every order of their customers,
 -- under any version: a cancel or a back-dated order renumbers the others.
 -- The sequence is numbered over all orders first, then filtered, so every
 -- run reads every version of every order: cheap for orders, and a
 -- deployment can collapse old versions (input.sql).
 WHERE order_id IN {{ shopify_loaded_since('orders') }}
    OR order_id IN {{ shopify_loaded_since('order_lines', 'order_id') }}
+   OR order_id IN (
+       SELECT order_id FROM {{ source('shopify_raw', 'refunds') }}
+       WHERE id IN {{ shopify_loaded_since('refunds') }} OR id IN {{ shopify_loaded_since('refund_lines', 'refund_id') }})
    OR customer_id IN (
        SELECT customer_id FROM {{ source('shopify_raw', 'orders') }}
        WHERE id IN {{ shopify_loaded_since('orders') }} OR id IN {{ shopify_loaded_since('order_lines', 'order_id') }})

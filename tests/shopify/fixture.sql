@@ -47,10 +47,12 @@ INSERT INTO {db:Identifier}.orders VALUES
 
 -- 1001: customer 1's first order; paid and shipped, which closes it. A 25
 -- gift card bought with it is inside the total but is not a sale, as on
--- the development store (#1016): sales 110, not 135.
-(1001, '#1001', '2026-08-10 15:00:00', '2026-08-10 15:00:00', '2026-08-11 09:00:00', NULL, '2026-08-11 09:00:00', false,
- 1, 'alice@example.com', 'USD', 'USD', 'PAID', 'FULFILLED', 'web', false,
- 135, 10, 0, 0, 0, 135, 0, [], 'US', 'NY', 'New York', '10001', '2026-10-04 00:00:00'),
+-- the development store (#1016): sales 110, not 135. The gift card is
+-- refunded on August 20, a refund line on its line, as on the store
+-- (#1016): 25 paid back, yet none of the 110 sold, so net 110, not 85.
+(1001, '#1001', '2026-08-10 15:00:00', '2026-08-10 15:00:00', '2026-08-20 15:00:00', NULL, '2026-08-11 09:00:00', false,
+ 1, 'alice@example.com', 'USD', 'USD', 'PARTIALLY_REFUNDED', 'FULFILLED', 'web', false,
+ 135, 10, 0, 0, 25, 110, 0, [], 'US', 'NY', 'New York', '10001', '2026-10-04 00:00:00'),
 
 -- 1002: a guest, unpaid (manual payment pending), no shipping address.
 -- processed_at is a second before created_at, as the store shows.
@@ -143,8 +145,8 @@ INSERT INTO {db:Identifier}.orders VALUES
 INSERT INTO {db:Identifier}.order_lines VALUES
 -- (id, order_id, order_updated_at, product_id, variant_id, sku, title, variant_title, quantity, current_quantity,
 --  original_unit_price, original_total, discount_allocated, total_tax, tax_rate, taxable, requires_shipping, is_gift_card, loaded_at)
-(11,  1001, '2026-08-11 09:00:00', 101, 1011, 'TEE-M',   'T-shirt',     'M',   2,  2,  50,    100,   0,     0,     0,     true,  true,  false, '2026-10-04 00:00:01'),
-(12,  1001, '2026-08-11 09:00:00', 109, 1091, NULL,      'Gift Card',   '$25', 1,  1,  25,    25,    0,     0,     0,     false, false, true,  '2026-10-04 00:00:01'),
+(11,  1001, '2026-08-20 15:00:00', 101, 1011, 'TEE-M',   'T-shirt',     'M',   2,  2,  50,    100,   0,     0,     0,     true,  true,  false, '2026-10-04 00:00:01'),
+(12,  1001, '2026-08-20 15:00:00', 109, 1091, NULL,      'Gift Card',   '$25', 1,  0,  25,    25,    0,     0,     0,     false, false, true,  '2026-10-04 00:00:01'),
 (21,  1002, '2026-08-20 15:00:01', 102, 1021, 'MUG',     'Mug',         NULL,  1,  1,  80,    80,    0,     0,     0,     true,  true,  false, '2026-10-04 00:00:01'),
 (31,  1003, '2026-09-01 02:00:00', NULL, NULL, 'EBOOK',   'Field guide', 'PDF', 1,  1,  30,    30,    0,     0,     0,     false, false, false, '2026-10-04 00:00:01'),
 (41,  1004, '2026-10-03 15:00:00', 104, 1041, 'HOODIE',  'Hoodie',      'M',   1,  1,  100,   100,   19,    0,     0,     true,  true,  false, '2026-10-04 00:00:01'),
@@ -162,6 +164,7 @@ INSERT INTO {db:Identifier}.order_lines VALUES
 
 INSERT INTO {db:Identifier}.refunds VALUES
 -- (id, order_id, created_at, updated_at, note, total_refunded, loaded_at)
+(505, 1001, '2026-08-20 15:00:00', '2026-08-20 15:00:00', '',               25,  '2026-10-04 00:00:02'),
 (501, 1004, '2026-10-03 15:00:00', '2026-10-03 15:00:00', '',               45,  '2026-10-04 00:00:02'),
 (502, 1005, '2026-09-08 18:00:00', '2026-09-08 18:00:00', 'Order canceled', 60,  '2026-10-04 00:00:02'),
 (503, 1006, '2026-10-01 02:00:00', '2026-10-01 02:00:00', '',               210, '2026-10-04 00:00:02'),
@@ -170,6 +173,8 @@ INSERT INTO {db:Identifier}.refunds VALUES
 INSERT INTO {db:Identifier}.refund_lines VALUES
 -- (refund_id, refund_updated_at, line_item_id, quantity, subtotal, total_tax, restock_type, loaded_at)
 -- Nothing had shipped: CANCEL, as the store sets it; a cancel's refund is NO_RESTOCK.
+-- The gift card was delivered: RETURN, as on the store (#1016).
+(505, '2026-08-20 15:00:00', 12, 1,  25,  0, 'RETURN',     '2026-10-04 00:00:03'),
 (501, '2026-10-03 15:00:00', 42, 1,  45,  0, 'CANCEL',     '2026-10-04 00:00:03'),
 (502, '2026-09-08 18:00:00', 51, 1,  60,  0, 'NO_RESTOCK', '2026-10-04 00:00:03'),
 (503, '2026-10-01 02:00:00', 61, 1,  200, 0, 'CANCEL',     '2026-10-04 00:00:03'),
