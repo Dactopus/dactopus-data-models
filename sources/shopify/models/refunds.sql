@@ -37,10 +37,10 @@ LEFT JOIN
     FROM (
         SELECT *, line_item_id IN (SELECT id FROM {{ source('shopify_raw', 'order_lines') }} WHERE is_gift_card) AS is_gift_card
         {% if is_incremental() %}
-        FROM {{ shopify_latest('refund_lines', 'refund_id, line_item_id, refund_updated_at', version='refund_updated_at',
+        FROM {{ shopify_latest('refund_lines', 'refund_id, id, refund_updated_at', version='refund_updated_at',
                                where="refund_id IN " ~ refunds_loaded ~ " OR refund_id IN " ~ lines_loaded) }}
         {% else %}
-        FROM {{ shopify_latest('refund_lines', 'refund_id, line_item_id, refund_updated_at', version='refund_updated_at') }}
+        FROM {{ shopify_latest('refund_lines', 'refund_id, id, refund_updated_at', version='refund_updated_at') }}
         {% endif %}
     )
     GROUP BY refund_id, refund_updated_at

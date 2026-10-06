@@ -35,7 +35,7 @@
 -- engine. A deployment may collapse old versions to save space with
 -- ReplacingMergeTree(<version>) ORDER BY <key>: orders (updated_at) by id,
 -- order_lines (order_updated_at) by (order_id, id), refunds (updated_at)
--- by id, refund_lines (refund_updated_at) by (refund_id, line_item_id).
+-- by id, refund_lines (refund_updated_at) by (refund_id, id).
 -- Merges run when ClickHouse chooses, so the package still picks the
 -- latest version itself.
 --
@@ -137,9 +137,12 @@ ENGINE = MergeTree
 ORDER BY (order_id, id, updated_at);
 
 -- https://shopify.dev/docs/api/admin-graphql/latest/objects/RefundLineItem
--- One row per refunded line in a refund, keyed by the pair and the version.
+-- One row per refund line, keyed by its own id and the version. A refund can
+-- hold several lines of one line item: Shopify returns two for a line
+-- restocked at two locations (suggestedRefund on a development store).
 CREATE TABLE IF NOT EXISTS {db:Identifier}.refund_lines
 (
+    id UInt64,                                  -- legacy id from the gid
     refund_id UInt64,
     refund_updated_at DateTime('UTC'),          -- the updated_at of the refund this line came with
     line_item_id UInt64,                        -- lineItem, legacy id from the gid
@@ -150,4 +153,4 @@ CREATE TABLE IF NOT EXISTS {db:Identifier}.refund_lines
     loaded_at DateTime64(6, 'UTC') DEFAULT now64(6) -- when the load inserted the row (header)
 )
 ENGINE = MergeTree
-ORDER BY (refund_id, line_item_id, refund_updated_at);
+ORDER BY (refund_id, id, refund_updated_at);

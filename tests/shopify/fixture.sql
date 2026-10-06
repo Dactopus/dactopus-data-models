@@ -171,14 +171,14 @@ INSERT INTO {db:Identifier}.refunds VALUES
 (504, 1009, '2026-09-21 15:00:00', '2026-09-21 15:00:00', '',               500, '2026-10-04 00:00:02');
 
 INSERT INTO {db:Identifier}.refund_lines VALUES
--- (refund_id, refund_updated_at, line_item_id, quantity, subtotal, total_tax, restock_type, loaded_at)
+-- (id, refund_id, refund_updated_at, line_item_id, quantity, subtotal, total_tax, restock_type, loaded_at)
 -- Nothing had shipped: CANCEL, as the store sets it; a cancel's refund is NO_RESTOCK.
 -- The gift card was delivered: RETURN, as on the store (#1016).
-(505, '2026-08-20 15:00:00', 12, 1,  25,  0, 'RETURN',     '2026-10-04 00:00:03'),
-(501, '2026-10-03 15:00:00', 42, 1,  45,  0, 'CANCEL',     '2026-10-04 00:00:03'),
-(502, '2026-09-08 18:00:00', 51, 1,  60,  0, 'NO_RESTOCK', '2026-10-04 00:00:03'),
-(503, '2026-10-01 02:00:00', 61, 1,  200, 0, 'CANCEL',     '2026-10-04 00:00:03'),
-(504, '2026-09-21 15:00:00', 91, 10, 500, 0, 'CANCEL',     '2026-10-04 00:00:03');
+(5051, 505, '2026-08-20 15:00:00', 12, 1,  25,  0, 'RETURN',     '2026-10-04 00:00:03'),
+(5011, 501, '2026-10-03 15:00:00', 42, 1,  45,  0, 'CANCEL',     '2026-10-04 00:00:03'),
+(5021, 502, '2026-09-08 18:00:00', 51, 1,  60,  0, 'NO_RESTOCK', '2026-10-04 00:00:03'),
+(5031, 503, '2026-10-01 02:00:00', 61, 1,  200, 0, 'CANCEL',     '2026-10-04 00:00:03'),
+(5041, 504, '2026-09-21 15:00:00', 91, 10, 500, 0, 'CANCEL',     '2026-10-04 00:00:03');
 
 -- Earlier and repeated loads, delivered too; none of them may change a
 -- number.
@@ -208,4 +208,4 @@ INSERT INTO {db:Identifier}.refunds VALUES
 (503, 1006, '2026-10-01 02:00:00', '2026-10-01 02:00:00', '',               210, '2026-10-04 06:00:02');
 
 INSERT INTO {db:Identifier}.refund_lines VALUES
-(503, '2026-10-01 02:00:00', 61, 1,  200, 0, 'CANCEL',     '2026-10-04 06:00:03');
+(5031, 503, '2026-10-01 02:00:00', 61, 1,  200, 0, 'CANCEL',     '2026-10-04 06:00:03');

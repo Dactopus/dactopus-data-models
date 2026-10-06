@@ -80,3 +80,37 @@ unit_tests:
       rows:
         - {line_id: 11, line_total: 0.9, discount_total: 0}
         - {line_id: 12, line_total: 1228.85, discount_total: 10}
+  # Two refund lines of the same line item in one refund, as Shopify returns
+  # for a line restocked at two locations (suggestedRefund on the
+  # development store): each counts. 2 items, then two halves of a 50 gift
+  # card: 25 + 25 apart from the 150 paid back.
+  - name: refund_lines_of_one_line_item
+    model: refunds
+    overrides:
+      macros:
+        is_incremental: false
+    given:
+      - input: source('shopify_raw', 'refunds')
+        format: sql
+        rows: |
+          SELECT toUInt64(1) AS id, toUInt64(1) AS order_id, toDateTime('2026-09-15 12:00:00', 'UTC') AS created_at,
+                 toDateTime('2026-09-15 12:00:00', 'UTC') AS updated_at, toDecimal64(150, 4) AS total_refunded,
+                 toDateTime64('2026-09-15 12:00:01', 6, 'UTC') AS loaded_at
+      - input: source('shopify_raw', 'refund_lines')
+        format: sql
+        rows: |
+          SELECT toUInt64(l.1) AS id, toUInt64(1) AS refund_id, toDateTime('2026-09-15 12:00:00', 'UTC') AS refund_updated_at,
+                 toUInt64(l.2) AS line_item_id, toUInt32(1) AS quantity, toDecimal64(l.3, 4) AS subtotal,
+                 toDecimal64(0, 4) AS total_tax, 'RETURN' AS restock_type, toDateTime64('2026-09-15 12:00:02', 6, 'UTC') AS loaded_at
+          FROM (SELECT arrayJoin([(11, 7, '50'), (12, 7, '50'), (13, 8, '25'), (14, 8, '25')]) AS l)
+      - input: source('shopify_raw', 'order_lines')
+        format: sql
+        rows: |
+          SELECT toUInt64(l.1) AS id, l.2 AS is_gift_card FROM (SELECT arrayJoin([(7, false), (8, true)]) AS l)
+      - input: ref('orders')
+        format: sql
+        rows: |
+          SELECT toUInt64(1) AS order_id
+    expect:
+      rows:
+        - {refund_id: 1, refunded_quantity: 2, gift_card_amount: 50, refunded_amount: 100}
