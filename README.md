@@ -219,25 +219,29 @@ ossie-clickhouse, as for GA4.
    token; the first time, from a date before the store's first order:
 
    ```bash
-   SHOPIFY_SHOP=<store> SHOPIFY_TOKEN=<token> python3 export_shopify.py 2000-01-01T00:00:00Z data/shopify
+   SHOPIFY_SHOP=<store> SHOPIFY_TOKEN=<token> uv run --with certifi export_shopify.py 2000-01-01T00:00:00Z data/shopify
    ```
 
    It reads the GraphQL Admin API (version 2026-10) 25 orders at a
    time, each with its lines and refunds, and writes one JSON file per
-   input table, with only the columns `input.sql` declares. It needs only
-   Python. A Shopify bulk operation would be faster on a large store, but
+   input table, with only the columns `input.sql` declares. It needs
+   [uv](https://docs.astral.sh/uv/) for the one package it uses,
+   `certifi`: Python from python.org on macOS does not see the system's
+   root certificates. A Shopify bulk operation would be faster on a large store, but
    it cannot read refund lines, which sit inside the list of an order's
    refunds.
 
    <details><summary>export_shopify.py</summary>
 
    ```python
-   import json, os, pathlib, sys, time, urllib.request
+   import json, os, pathlib, ssl, sys, time, urllib.request
    from decimal import Decimal
+   import certifi
 
    shop, token = os.environ["SHOPIFY_SHOP"], os.environ["SHOPIFY_TOKEN"]
    since, out = sys.argv[1], pathlib.Path(sys.argv[2])
    API = f"https://{shop}.myshopify.com/admin/api/2026-10/graphql.json"
+   TLS = ssl.create_default_context(cafile=certifi.where())
    MONEY = "{ shopMoney { amount } }"
    QUERY = f"""query ($cursor: String, $filter: String) {{
      orders(first: 25, after: $cursor, query: $filter, sortKey: UPDATED_AT) {{
@@ -271,7 +275,7 @@ ossie-clickhouse, as for GA4.
        while True:
            req = urllib.request.Request(API, json.dumps({"query": QUERY, "variables": variables}).encode(),
                                         {"X-Shopify-Access-Token": token, "Content-Type": "application/json"})
-           body = json.load(urllib.request.urlopen(req))
+           body = json.load(urllib.request.urlopen(req, context=TLS))
            if any(e.get("extensions", {}).get("code") == "THROTTLED" for e in body.get("errors", [])):
                time.sleep(2)
                continue
@@ -372,7 +376,7 @@ ossie-clickhouse, as for GA4.
 
    ```bash
    since=$(clickhouse client --query "SELECT formatDateTime(max(updated_at) - INTERVAL 1 HOUR, '%Y-%m-%dT%H:%i:%SZ') FROM shopify_raw.orders")
-   SHOPIFY_SHOP=<store> SHOPIFY_TOKEN=<token> python3 export_shopify.py "$since" data/shopify
+   SHOPIFY_SHOP=<store> SHOPIFY_TOKEN=<token> uv run --with certifi export_shopify.py "$since" data/shopify
    ```
 
    Orders deleted in Shopify are not exported again, so they stay in the
