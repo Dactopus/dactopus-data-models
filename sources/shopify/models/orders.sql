@@ -20,7 +20,8 @@ SELECT
     o.email AS customer_email,
     o.currency_code AS currency,
     -- What the order sold: the total less tips and gift cards sold, which
-    -- Shopify's sales reports leave out. A gift card counts when it is
+    -- Shopify's sales reports leave out. Import duties and fees stay in it,
+    -- as in Shopify's total sales (input.sql). A gift card counts when it is
     -- spent, as part of the order it pays for
     -- (https://shopify.dev/docs/api/shopifyql/latest/schemas/sales_revenue/sales:
     -- gift_card_gross_sales apart from gross_sales; on the development
@@ -32,8 +33,11 @@ SELECT
     g.gift_card_total AS gift_card_total,
     -- Shipping after its discounts, without tax when prices include it.
     o.shipping_price - if(o.taxes_included, o.shipping_tax, toDecimal64(0, 4)) AS shipping_total,
+    -- Tax on the lines, shipping and duties.
     o.total_tax AS tax_total,
-    total - shipping_total - tax_total AS subtotal,
+    o.total_duties AS duties_total,
+    o.total_additional_fees AS additional_fees_total,
+    total - shipping_total - tax_total - duties_total - additional_fees_total AS subtotal,
     -- The lines' discounts without tax, their share of order-level
     -- discounts included, as Shopify's Discounts are; a shipping discount
     -- is not one of them

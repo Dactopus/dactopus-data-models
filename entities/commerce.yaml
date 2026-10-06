@@ -11,8 +11,9 @@ ai_context:
     name the currency by the code that field returns and do not guess a
     currency sign. Dates are in the store's time zone. "Sales", "revenue"
     or "turnover" without a qualifier means net_revenue: orders less
-    cancelled ones and less refunds, with shipping and tax. Name the
-    definition in the answer. Use revenue when asked for orders as placed
+    cancelled ones and less refunds, with shipping and tax, and import
+    duties where the store collects them at checkout. Name the definition
+    in the answer. Use revenue when asked for orders as placed
     or gross: every order, cancelled and unpaid ones included, before
     refunds. Tips and gift cards sold are not sales and are in no amount;
     a gift card counts when it is spent, as part of the order it pays for.
@@ -214,16 +215,18 @@ datasets:
         expression: {dialects: [{dialect: ANSI_SQL, expression: total}]}
         description: >
           Order total as placed, before refunds: goods after discounts, plus
-          shipping and tax. Tips and gift cards sold are not in it.
+          shipping and tax, and import duties and fees where the store
+          collects them at checkout, as the customer paid them. Tips and gift
+          cards sold are not in it.
         datatype: Decimal
         ai_context:
           synonyms: [order total, grand total, order amount]
       - name: subtotal
         expression: {dialects: [{dialect: ANSI_SQL, expression: subtotal}]}
         description: >
-          Goods after discounts, without shipping and tax: total less
-          shipping_total and tax_total, whether or not the store's prices
-          include tax.
+          Goods after discounts, without shipping, tax and import duties:
+          total less shipping_total, tax_total and any duties and fees,
+          whether or not the store's prices include tax.
         datatype: Decimal
         ai_context:
           synonyms: [goods total, merchandise total]
@@ -244,7 +247,9 @@ datasets:
           synonyms: [shipping, delivery fee]
       - name: tax_total
         expression: {dialects: [{dialect: ANSI_SQL, expression: tax_total}]}
-        description: Tax on the goods and on shipping.
+        description: >
+          Tax on the goods and on shipping, and on import duties where the
+          store collects them.
         datatype: Decimal
         ai_context:
           synonyms: [tax, VAT, sales tax]
@@ -252,8 +257,8 @@ datasets:
         expression: {dialects: [{dialect: ANSI_SQL, expression: refunded_total}]}
         description: >
           Money paid back on the order over all its refunds, whenever they
-          were made: goods, shipping and tax. Gift cards sold and refunded
-          are not in it.
+          were made: goods, shipping and tax, and import duties paid back.
+          Gift cards sold and refunded are not in it.
         datatype: Decimal
         ai_context:
           synonyms: [refunded, amount refunded, money back]
@@ -396,8 +401,8 @@ datasets:
       - name: refunded_amount
         expression: {dialects: [{dialect: ANSI_SQL, expression: refunded_amount}]}
         description: >
-          Money paid back in this refund: goods, shipping and tax. Gift cards
-          sold and refunded are not in it.
+          Money paid back in this refund: goods, shipping and tax, and import
+          duties paid back. Gift cards sold and refunded are not in it.
         datatype: Decimal
         ai_context:
           synonyms: [refund amount, amount returned]
@@ -429,8 +434,8 @@ metrics:
     expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(orders.total)}]}
     description: >
       Orders as placed (orders.total), by order date: goods after discounts,
-      shipping and tax, before refunds, cancelled and unpaid orders
-      included. For sales after cancellations and refunds use net_revenue.
+      shipping and tax (and import duties where collected), before refunds,
+      cancelled and unpaid orders included. For sales after cancellations and refunds use net_revenue.
       Not the "gross sales" of store reports, which are goods before
       discounts, without shipping and tax.
     datatype: Decimal
@@ -441,7 +446,8 @@ metrics:
     description: >
       What orders earned (orders.net_total), by order date: orders less
       cancelled ones and less everything refunded on them, with shipping
-      and tax. The default meaning of sales and revenue. Not revenue less
+      and tax (and import duties where collected). The default meaning of
+      sales and revenue. Not revenue less
       refunded_amount: a cancelled order with nothing refunded is left out
       whole. Not the "net sales" of store reports, which are goods only,
       without shipping and tax: for goods use line_revenue.
@@ -497,7 +503,7 @@ metrics:
       synonyms: [shipping, delivery charges, shipping revenue]
   - name: tax_total
     expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(orders.tax_total)}]}
-    description: Tax on goods and shipping, by order date.
+    description: Tax on goods, shipping and any import duties, by order date.
     datatype: Decimal
     ai_context:
       synonyms: [tax, taxes, VAT, sales tax]

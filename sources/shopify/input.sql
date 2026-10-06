@@ -76,13 +76,25 @@ CREATE TABLE IF NOT EXISTS {db:Identifier}.orders
     -- https://shopify.dev/docs/api/admin-graphql/latest/objects/ShippingLine
     shipping_price Decimal(18, 4),
     shipping_tax Decimal(18, 4),                -- sum of shippingLines.taxLines.priceSet
-    total_tax Decimal(18, 4),                   -- totalTaxSet, before refunds; lines and shipping
-    total_refunded Decimal(18, 4),              -- totalRefundedSet
+    total_tax Decimal(18, 4),                   -- totalTaxSet, before refunds; lines, shipping and duties
+    total_refunded Decimal(18, 4),              -- totalRefundedSet, duties refunded included
     current_total_price Decimal(18, 4),         -- currentTotalPriceSet, after refunds
     -- totalTipReceivedSet. A tip is inside total_price and comes as a line
     -- of its own, "Tip": no product, not taxable, nothing to ship (#1017 on
     -- the development store).
     total_tip Decimal(18, 4),
+    -- originalTotalDutiesSet: import duties collected at checkout (Shopify
+    -- Markets), inside total_price, with their tax inside total_tax (#1019
+    -- on the development store: 190 of goods + 16.95 shipping + 34.20
+    -- duties + 31.35 tax, 4.45 of it on the duties, = 272.50). 0 when the
+    -- API returns null: no duties.
+    total_duties Decimal(18, 4),
+    -- originalTotalAdditionalFeesSet: other import fees, 0 when null. Not
+    -- yet seen on the store; taken to be inside total_price as duties are,
+    -- as Shopify's reports add both to total sales
+    -- (https://shopify.dev/docs/api/shopifyql/latest/schemas/sales_revenue/sales:
+    -- total_sales = net sales + additional fees + duties + shipping + taxes).
+    total_additional_fees Decimal(18, 4),
     discount_codes Array(String),               -- discountCodes
     shipping_country_code Nullable(String),     -- shippingAddress.countryCodeV2
     shipping_province_code Nullable(String),    -- shippingAddress.provinceCode
@@ -130,7 +142,11 @@ CREATE TABLE IF NOT EXISTS {db:Identifier}.refunds
     created_at DateTime('UTC'),                 -- createdAt, the date of the refund
     updated_at DateTime('UTC'),                 -- updatedAt
     note Nullable(String),                      -- note
-    total_refunded Decimal(18, 4),              -- totalRefundedSet: lines, shipping and adjustments
+    -- totalRefundedSet: lines, shipping, duties and adjustments, with their
+    -- tax (suggestedRefund of one of #1019's two T-shirts with its duty on
+    -- the development store: 95 + 12.35 tax + 17.10 duty + 2.23 its tax =
+    -- 126.68).
+    total_refunded Decimal(18, 4),
     loaded_at DateTime64(6, 'UTC') DEFAULT now64(6) -- when the load inserted the row (header)
 )
 ENGINE = MergeTree
