@@ -88,13 +88,17 @@ jobs:
         uvx --from ${{ matrix.dbt.from }} ${{ matrix.dbt.with && format('--with {0}', matrix.dbt.with) || '' }}
         dbt build --project-dir sources/shopify --profiles-dir sources/shopify
         --vars {"shopify_input_database":"shopify_input","shopify_timezone":"America/New_York"}
+      OSSIE_CLICKHOUSE_URL: http://127.0.0.1:8123/analytics
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
-      # Hand-written rows (tests/shopify/fixture.sql); the first build runs
-      # on an empty input. An incremental run over unchanged input must
+      - name: Install ossie-clickhouse
+        run: uv tool install "ossie-clickhouse @ git+https://github.com/Dactopus/ossie-clickhouse@v0.2.2"
+      # Hand-written rows (tests/shopify/fixture.sql) and the model's answers
+      # over them, checked against numbers derived by hand; the first build
+      # runs on an empty input. An incremental run over unchanged input must
       # match a full refresh row for row.
-      - name: Build (models, tests, unit tests), incremental and full refresh
+      - name: Build (models, tests, unit tests), check numbers, incremental and full refresh
         run: |
           load() { python3 -c "
           import pathlib, sys, urllib.request
@@ -108,9 +112,14 @@ jobs:
           $DBT_BUILD
           load tests/shopify/fixture.sql
           $DBT_BUILD                 # incremental into empty tables
+          python3 tests/shopify/check_numbers.py
           $DBT_BUILD                 # incremental over unchanged input
+          python3 tests/shopify/check_numbers.py
           tables > incremental.tsv
           $DBT_BUILD --full-refresh
+          python3 tests/shopify/check_numbers.py
           tables > full.tsv
           cat full.tsv
           diff incremental.tsv full.tsv
+      - name: Validate the Ossie model against the built tables
+        run: ossie-clickhouse validate entities/commerce.yaml --url "$OSSIE_CLICKHOUSE_URL"

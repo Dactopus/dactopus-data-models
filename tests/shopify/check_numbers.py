@@ -86,6 +86,12 @@ CASES = [
      [{"refund_month": "2026-08-01", "refunds": 1, "refunds_total": 0},
       {"refund_month": "2026-09-01", "refunds": 2, "refunds_total": 270},
       {"refund_month": "2026-10-01", "refunds": 1, "refunds_total": 45}]),
+    # The same refunds by the month of their order, through the order: 1001's
+    # gift card in August; 1004's 45, 1005's 60 and 1006's 210 in September,
+    # as refunded_amount by order month. October's 1011 has none.
+    (["-m", "refunds", "-m", "refunds_total", "-d", "orders.order_month", "-o", "orders.order_month"],
+     [{"order_month": "2026-08-01", "refunds": 1, "refunds_total": 0},
+      {"order_month": "2026-09-01", "refunds": 3, "refunds_total": 315}]),
     # US: 1001 110, 1004 181 (net 136), 1007 137, 1010 70 (cancelled).
     # CA: 1005 60 (cancelled), 1006 210 (net 0), 1008 169.50, 1011 40.
     # No address: 1002 80, 1003 30.
