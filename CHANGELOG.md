@@ -8,21 +8,59 @@ names the Ossie schema version its models carry.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-06
+
+Ossie schema `0.2.0.dev0`. Requires ossie-clickhouse 0.2.2 or later.
+Tested with dbt v2 (`dbt-oss` 2.0.5) and dbt v1 (`dbt-core` 1.11 with
+`dbt-clickhouse` 1.10) on ClickHouse 26.9. The GA4 package and its model
+are unchanged: a GA4 deployment needs no rebuild.
+
 ### Added
 
-- A diagram of how the GA4 package works with GA4, ClickHouse, BI tools
-  and AI agents: an image in the README and an interactive page on GitHub
-  Pages (`docs/`).
+- Shopify package `sources/shopify`: a dbt project that builds `orders`,
+  `order_lines` and `refunds` from four input tables filled from the
+  GraphQL Admin API (`sources/shopify/input.sql`). The input is a log of
+  versions: a loader appends the orders that changed, whole, and the
+  package reads the latest version of each order and refund, so
+  delivering a version twice is harmless. Incremental by load time, with
+  a re-read window (`shopify_lookback_days`, default 3). Order and refund
+  dates are in the shop's time zone (`shopify_timezone`, default UTC).
+  Databases come from the deployment: the dbt target and the variable
+  `shopify_input_database` (default `shopify_raw`). Test orders, tips and
+  gift cards sold are left out and refunds count as Shopify's sales
+  reports count returns; statuses map to canonical values. Structural
+  checks as dbt tests, a singular test that amounts add up, and unit
+  tests. The test-order filter, statuses and customer order sequence are
+  adapted from Fivetran's
+  [dbt_shopify](https://github.com/fivetran/dbt_shopify) (Apache 2.0).
+- Ossie model `entities/commerce.yaml` over those tables: 3 datasets,
+  2 relationships, 42 fields, 17 metrics (orders, revenue, net revenue,
+  refunds, refund rate, average order value, items, discounts, shipping,
+  tax, customers, repeat orders). Its fields are those WooCommerce
+  provides too; it is provisional until a second orders package maps
+  onto it.
+- Hand-written Shopify rows and the numbers the model must answer over
+  them (`tests/shopify`), checked in CI on both dbt versions. CI also
+  loads part of the rows late and checks that the incremental build
+  matches a full refresh row for row.
+- README: a Shopify quick start on those rows, a recipe for loading a
+  store through the GraphQL Admin API, what the commerce model answers,
+  the known differences from Shopify's reports and the package's known
+  limits, among them the memory a first build needs on a large shop.
+- A diagram of how the packages work with their sources, ClickHouse, BI
+  tools and AI agents: an image in the README and an interactive page on
+  GitHub Pages (`docs/`).
 - README: the metrics the GA4 model answers, and the known differences
   from the GA4 interface.
 - `ROADMAP.md`: what comes next, without dates. The README links to it
-  instead of listing planned sources as if they existed.
+  instead of listing planned sources as if they existed. WooCommerce is
+  next.
 
 ### Fixed
 
-- README: the opening no longer lists orders, line items and customers as
-  available; the Quick start names ossie-clickhouse with its MCP server
-  among the requirements. Its example of how sources differ no longer
+- README: the opening of 0.1.0 listed orders, line items and customers
+  as available before any of them were; the Quick start names
+  ossie-clickhouse with its MCP server among the requirements. Its example of how sources differ no longer
   states an unchecked claim about Shopify and WooCommerce refunds.
 
 ## [0.1.0] - 2026-10-05
@@ -51,5 +89,6 @@ ClickHouse 26.9.
 - Hand-written GA4 rows and the numbers the model must answer over them
   (`tests/ga4`), checked in CI on both dbt versions.
 
-[Unreleased]: https://github.com/Dactopus/dactopus-data-models/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/Dactopus/dactopus-data-models/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/Dactopus/dactopus-data-models/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/Dactopus/dactopus-data-models/releases/tag/v0.1.0

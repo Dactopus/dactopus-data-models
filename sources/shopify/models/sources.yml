@@ -1,0 +1,17 @@
+version: 2
+sources:
+  - name: shopify_raw
+    schema: "{{ var('shopify_input_database') }}"
+    tables:
+      - name: orders
+        # `dbt source freshness`: are loads still arriving? A load adds rows
+        # only when some order changed, so a shop without a change in a day
+        # warns too.
+        config:
+          loaded_at_field: loaded_at
+          freshness:
+            warn_after: {count: 1, period: day}
+            error_after: {count: 3, period: day}
+      - name: order_lines
+      - name: refunds
+      - name: refund_lines

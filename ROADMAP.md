@@ -15,14 +15,14 @@ happens there. This file changes through pull requests, like the code.
 
 ## Next
 
-### Shopify package and order entities
+### WooCommerce
 
-`orders`, line items and customers, mapped from Shopify. The mapping
-logic starts from Fivetran's
-[dbt_shopify](https://github.com/fivetran/dbt_shopify) (Apache 2.0); its
-staging layer reads Fivetran's connector schema and is rewritten for other
-loaders. Canonical fields are chosen on real store data. Until a second
-orders source exists, `orders` is provisional.
+The second orders source, which tests that `orders`, `order_lines` and
+`refunds` are not shaped by Shopify; until it maps onto them, they are
+provisional. There is no dbt package to start from. The input is the
+store's own order tables ([HPOS](https://developer.woocommerce.com/docs/features/high-performance-order-storage/),
+WooCommerce 8.2 and later), and the test data comes from a local test
+store, where every expected number is known.
 
 ## Needs contributors
 
@@ -44,13 +44,15 @@ several platforms at once, so one deployment will need more than one
 package writing the same entity. That changes a layout rule in the
 README, which now has a deployment pick one package per entity.
 
-### WooCommerce
+### Customers
 
-The second orders source, which tests that `orders` is not shaped by
-Shopify. There is no dbt package to start from. The input is the store's
-own order tables ([HPOS](https://developer.woocommerce.com/docs/features/high-performance-order-storage/),
-WooCommerce 8.2 and later), and the test data comes from a local test
-store, where every expected number is known.
+A `customers` entity: one row per customer of the store, with their first
+and latest order, order count and spend. Today customer counts and new or
+repeat orders come from `orders`. The question to settle first is what
+identifies a customer: Shopify creates a customer record for a guest
+checkout, WooCommerce does not, so the same buyers count differently by
+source. Matching customers across systems stays
+[out of scope](README.md#out-of-scope).
 
 ## Exploring
 

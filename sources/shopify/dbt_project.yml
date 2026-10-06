@@ -1,0 +1,19 @@
+name: dactopus_shopify
+version: "0.2.0"
+profile: dactopus
+model-paths: ["models"]
+macro-paths: ["macros"]
+vars:
+  # The database holding the input tables (input.sql).
+  shopify_input_database: shopify_raw
+  # The shop's time zone (Settings > General in the Shopify admin), for
+  # order and refund dates; Shopify's reports use it.
+  shopify_timezone: UTC
+  # Each incremental run rereads the orders and refunds loaded (loaded_at)
+  # in this many days before the latest load it has seen: an insert that
+  # began before that load may commit after it.
+  shopify_lookback_days: 3
+models:
+  dactopus_shopify:
+    +materialized: incremental
+    +incremental_strategy: delete+insert

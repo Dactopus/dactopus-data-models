@@ -1,0 +1,580 @@
+version: "0.2.0.dev0"
+
+name: commerce
+description: >
+  Orders of an online store as the store recorded them: orders, their lines
+  of goods and refunds. Built from the store's own data by a source package
+  (sources/shopify).
+ai_context:
+  instructions: >
+    Amounts are in the store's currency, one per store (orders.currency);
+    name the currency by the code that field returns and do not guess a
+    currency sign. Dates are in the store's time zone. "Sales", "revenue"
+    or "turnover" without a qualifier means net_revenue: orders less
+    cancelled ones and less refunds, with shipping and tax, and import
+    duties where the store collects them at checkout. Name the definition
+    in the answer. Use revenue when asked for orders as placed
+    or gross: every order, cancelled and unpaid ones included, before
+    refunds. Tips and gift cards sold are not sales and are in no amount;
+    a gift card counts when it is spent, as part of the order it pays for.
+    Refunds have two dates: orders.refunded_amount counts them by the date
+    of the order they belong to, refunds_total by the date they were made.
+    "Refunds in September" means refunds_total by refunds.refund_month.
+    A refund of gift cards alone is a refund with an amount of 0; this is
+    not an error. Where the source cannot tell a refunded tip from a refund
+    of goods (Shopify), the tip counts as a refund. Customers are the
+    store's customer records: guest checkouts have none and are not
+    counted. channel holds the source's own values, which differ between
+    sources.
+
+datasets:
+  - name: orders
+    source: orders
+    primary_key: [order_id]
+    description: >
+      One row per order the store took, test orders left out. Cancelled and
+      unpaid orders are here too; use is_cancelled and financial_status to
+      tell them apart.
+    ai_context:
+      synonyms: [sales, purchases, transactions, checkouts]
+    fields:
+      - name: order_id
+        expression: {dialects: [{dialect: ANSI_SQL, expression: order_id}]}
+        description: Identifier of the order in the store.
+        datatype: Integer
+        ai_context:
+          synonyms: [order key]
+      - name: order_number
+        expression: {dialects: [{dialect: ANSI_SQL, expression: order_number}]}
+        description: Order number as the customer sees it, such as #1001.
+        datatype: String
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [order name, order reference]
+      - name: order_date
+        expression: {dialects: [{dialect: ANSI_SQL, expression: order_date}]}
+        description: >
+          Date the order was placed, in the store's time zone. For an order
+          imported or entered by staff, the date it was placed, not the date
+          it was recorded; this is the date store reports use.
+        datatype: Date
+        dimension: {is_time: true}
+        ai_context:
+          synonyms: [date, day, purchase date, sale date]
+      - name: order_week
+        expression: {dialects: [{dialect: ANSI_SQL, expression: "DATE_TRUNC('week', order_date)"}]}
+        description: First day (Monday) of the week the order was placed in.
+        datatype: Date
+        dimension: {is_time: true}
+        ai_context:
+          synonyms: [week]
+      - name: order_month
+        expression: {dialects: [{dialect: ANSI_SQL, expression: "DATE_TRUNC('month', order_date)"}]}
+        description: First day of the month the order was placed in.
+        datatype: Date
+        dimension: {is_time: true}
+        ai_context:
+          synonyms: [month]
+      - name: order_time
+        expression: {dialects: [{dialect: ANSI_SQL, expression: order_time}]}
+        description: Time the order was placed, UTC.
+        datatype: DateTimeTz
+        ai_context:
+          synonyms: [order timestamp, placed at]
+        dimension: {is_time: true}
+      - name: financial_status
+        expression: {dialects: [{dialect: ANSI_SQL, expression: financial_status}]}
+        description: >
+          Payment state of the order: unpaid (money is still expected:
+          pending, partly paid, or authorized but not yet captured), paid,
+          partially_refunded, refunded, or voided (no money will come: the
+          authorization was voided or expired before it was captured).
+          A cancelled unpaid order stays unpaid (Shopify keeps it pending);
+          is_cancelled tells it apart.
+        datatype: String
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [payment status, paid or not]
+      - name: fulfillment_status
+        expression: {dialects: [{dialect: ANSI_SQL, expression: fulfillment_status}]}
+        description: >
+          Shipping state of the order: unfulfilled (nothing sent yet, for any
+          reason: waiting, on hold or scheduled), partially_fulfilled, or
+          fulfilled (everything sent). An order of downloads only can stay
+          unfulfilled; the source decides. An order cancelled or refunded
+          whole before shipping is unfulfilled too: for orders still waiting
+          to ship, filter is_cancelled = false and leave out
+          financial_status refunded and voided.
+        datatype: String
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [shipping status, delivery status, shipped or not]
+      - name: is_cancelled
+        expression: {dialects: [{dialect: ANSI_SQL, expression: is_cancelled = 1}]}
+        description: >
+          Whether the order was cancelled. A cancelled order stays in revenue
+          and in the order count; net_revenue leaves it out.
+        datatype: Boolean
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [cancelled, canceled, cancellation]
+      - name: channel
+        expression: {dialects: [{dialect: ANSI_SQL, expression: channel}]}
+        description: >
+          Where the order came from, as the source names it: an online
+          checkout, a point of sale, staff, an app or an import. Values are
+          the source's own, such as web or pos, and can be an app's name or
+          number; they differ between sources.
+        datatype: String
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [sales channel, order source, source]
+      - name: currency
+        expression: {dialects: [{dialect: ANSI_SQL, expression: currency}]}
+        description: >
+          Currency of every amount of the order: the store's currency (ISO
+          4217 code, such as USD), one per store.
+        datatype: String
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [currency code]
+      - name: shipping_country
+        expression: {dialects: [{dialect: ANSI_SQL, expression: shipping_country}]}
+        description: >
+          Country of the shipping address, as a two-letter code (US, CA).
+          Empty when the order has no shipping address, such as an order of
+          downloads only.
+        datatype: String
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [country, destination country, ship-to country]
+      - name: shipping_region
+        expression: {dialects: [{dialect: ANSI_SQL, expression: shipping_region}]}
+        description: >
+          State or province of the shipping address, as the store's code for
+          it (NY, ON). Empty when the address has none.
+        datatype: String
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [state, province, region]
+      - name: shipping_city
+        expression: {dialects: [{dialect: ANSI_SQL, expression: shipping_city}]}
+        description: >
+          City of the shipping address, as the customer typed it: one city
+          can appear under several spellings (New York, NYC, new york), and
+          the same name in different countries or regions. Group with
+          shipping_country and shipping_region, and name the spellings you
+          see rather than adding them up yourself. Empty when the order has
+          no shipping address.
+        datatype: String
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [city, town, destination city, ship-to city]
+      - name: customer_id
+        expression: {dialects: [{dialect: ANSI_SQL, expression: customer_id}]}
+        description: >
+          The store's customer record that placed the order. Empty for a
+          guest checkout. A person who checks out once as a guest and once
+          with an account is not recognised as one customer.
+        datatype: Integer
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [customer, buyer, client]
+      - name: customer_order_number
+        expression: {dialects: [{dialect: ANSI_SQL, expression: customer_order_number}]}
+        description: >
+          Place of the order among its customer's orders by the time they
+          were placed: 1 for the first. Cancelled orders and guest orders
+          have none and do not shift the others.
+        datatype: Integer
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [order sequence, nth order, purchase number]
+      - name: new_vs_repeat
+        expression: {dialects: [{dialect: ANSI_SQL, expression: new_vs_repeat}]}
+        description: >
+          new for a customer's first order, repeat for any later one (see
+          customer_order_number). Empty for guest and cancelled orders.
+        datatype: String
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [new or returning, first or repeat purchase, customer type]
+      - name: item_quantity
+        expression: {dialects: [{dialect: ANSI_SQL, expression: item_quantity}]}
+        description: >
+          Units of goods in the order as placed, before refunds: the
+          quantities of its lines added up. Gift cards sold and tips are not
+          goods; an order of gift cards alone has 0.
+        datatype: Integer
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [basket size, units in order, items in order, number of items]
+      - name: discount_code_count
+        expression: {dialects: [{dialect: ANSI_SQL, expression: discount_code_count}]}
+        description: Number of discount codes applied to the order; 0 when none.
+        datatype: Integer
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [coupons used, promo codes, with discount code]
+      - name: total
+        expression: {dialects: [{dialect: ANSI_SQL, expression: total}]}
+        description: >
+          Order total as placed, before refunds: goods after discounts, plus
+          shipping and tax, and import duties and fees where the store
+          collects them at checkout, as the customer paid them. Tips and gift
+          cards sold are not in it.
+        datatype: Decimal
+        ai_context:
+          synonyms: [order total, grand total, order amount]
+      - name: subtotal
+        expression: {dialects: [{dialect: ANSI_SQL, expression: subtotal}]}
+        description: >
+          Goods after discounts, without shipping, tax and import duties:
+          total less shipping_total, tax_total and any duties and fees,
+          whether or not the store's prices include tax.
+        datatype: Decimal
+        ai_context:
+          synonyms: [goods total, merchandise total]
+      - name: discount_total
+        expression: {dialects: [{dialect: ANSI_SQL, expression: discount_total}]}
+        description: >
+          Discounts on the goods, without tax, a share of discounts on the
+          whole order included. A shipping discount is not in it;
+          shipping_total is already after it.
+        datatype: Decimal
+        ai_context:
+          synonyms: [discounts, markdowns]
+      - name: shipping_total
+        expression: {dialects: [{dialect: ANSI_SQL, expression: shipping_total}]}
+        description: >
+          Shipping charged, after its discounts and without tax, as on the
+          order, before refunds (a refund of shipping is in refunded_total).
+        datatype: Decimal
+        ai_context:
+          synonyms: [shipping, delivery fee]
+      - name: tax_total
+        expression: {dialects: [{dialect: ANSI_SQL, expression: tax_total}]}
+        description: >
+          Tax on the goods and on shipping, and on import duties where the
+          store collects them, as on the order, before refunds (refunded tax
+          is in refunded_total; store reports show tax net of it).
+        datatype: Decimal
+        ai_context:
+          synonyms: [tax, VAT, sales tax]
+      - name: refunded_total
+        expression: {dialects: [{dialect: ANSI_SQL, expression: refunded_total}]}
+        description: >
+          Money paid back on the order over all its refunds, whenever they
+          were made: goods, shipping and tax, and import duties paid back.
+          Gift cards sold and refunded are not in it.
+        datatype: Decimal
+        ai_context:
+          synonyms: [refunded, amount refunded, money back]
+      - name: net_total
+        expression: {dialects: [{dialect: ANSI_SQL, expression: net_total}]}
+        description: >
+          What the order earned: total less refunded_total, and 0 for a
+          cancelled order, paid back or not.
+        datatype: Decimal
+        ai_context:
+          synonyms: [order net, net order value]
+
+  - name: order_lines
+    source: order_lines
+    primary_key: [line_id]
+    description: >
+      One row per line of goods in an order: a product, its quantity and
+      amount. Gift cards sold and tips are not lines. Lines of cancelled
+      orders are here; filter by orders.is_cancelled to leave them out.
+    ai_context:
+      synonyms: [line items, order items, products sold, items]
+    fields:
+      - name: line_id
+        expression: {dialects: [{dialect: ANSI_SQL, expression: line_id}]}
+        description: Identifier of the line in the store.
+        datatype: Integer
+        ai_context:
+          synonyms: [line item id]
+      - name: order_id
+        expression: {dialects: [{dialect: ANSI_SQL, expression: order_id}]}
+        description: Order the line belongs to.
+        datatype: Integer
+        ai_context:
+          synonyms: [order]
+      - name: product_id
+        expression: {dialects: [{dialect: ANSI_SQL, expression: product_id}]}
+        description: >
+          The store's product. Empty for an item added by hand that is not a
+          product in the catalogue.
+        datatype: Integer
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [product]
+      - name: variant_id
+        expression: {dialects: [{dialect: ANSI_SQL, expression: variant_id}]}
+        description: >
+          The product's variant, such as a size or colour. Empty for an item
+          added by hand.
+        datatype: Integer
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [variant, variation]
+      - name: sku
+        expression: {dialects: [{dialect: ANSI_SQL, expression: sku}]}
+        description: >
+          Stock keeping unit of the variant sold, the store's own code. Empty
+          when the store gave the variant none.
+        datatype: String
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [SKU, article, item code, product code]
+      - name: title
+        expression: {dialects: [{dialect: ANSI_SQL, expression: title}]}
+        description: Name of the product as it was on the order.
+        datatype: String
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [product name, item name]
+      - name: quantity
+        expression: {dialects: [{dialect: ANSI_SQL, expression: quantity}]}
+        description: Units ordered.
+        datatype: Integer
+        ai_context:
+          synonyms: [units, qty, units ordered]
+      - name: current_quantity
+        expression: {dialects: [{dialect: ANSI_SQL, expression: current_quantity}]}
+        description: Units left after refunds, removals and cancellation.
+        datatype: Integer
+        ai_context:
+          synonyms: [units kept, net quantity]
+      - name: line_total
+        expression: {dialects: [{dialect: ANSI_SQL, expression: line_total}]}
+        description: >
+          Amount of the line as ordered, before refunds: after all its
+          discounts, a share of order-wide discounts included, and without
+          tax. The lines of an order add up to its subtotal.
+        datatype: Decimal
+        ai_context:
+          synonyms: [line amount, item revenue]
+
+  - name: refunds
+    source: refunds
+    primary_key: [refund_id]
+    description: >
+      One row per refund, dated when it was made. An order can have several.
+      A refund of gift cards alone, or the cancellation of an unpaid order,
+      has an amount of 0.
+    ai_context:
+      synonyms: [returns, refunds issued, money back]
+    fields:
+      - name: refund_id
+        expression: {dialects: [{dialect: ANSI_SQL, expression: refund_id}]}
+        description: Identifier of the refund in the store.
+        datatype: Integer
+        ai_context:
+          synonyms: [refund]
+      - name: order_id
+        expression: {dialects: [{dialect: ANSI_SQL, expression: order_id}]}
+        description: Order the refund belongs to.
+        datatype: Integer
+        ai_context:
+          synonyms: [order]
+      - name: refund_date
+        expression: {dialects: [{dialect: ANSI_SQL, expression: refund_date}]}
+        description: Date the refund was made, in the store's time zone.
+        datatype: Date
+        dimension: {is_time: true}
+        ai_context:
+          synonyms: [date, return date]
+      - name: refund_week
+        expression: {dialects: [{dialect: ANSI_SQL, expression: "DATE_TRUNC('week', refund_date)"}]}
+        description: First day (Monday) of the week the refund was made in.
+        datatype: Date
+        dimension: {is_time: true}
+        ai_context:
+          synonyms: [week]
+      - name: refund_month
+        expression: {dialects: [{dialect: ANSI_SQL, expression: "DATE_TRUNC('month', refund_date)"}]}
+        description: First day of the month the refund was made in.
+        datatype: Date
+        dimension: {is_time: true}
+        ai_context:
+          synonyms: [month]
+      - name: refund_time
+        expression: {dialects: [{dialect: ANSI_SQL, expression: refund_time}]}
+        description: Time the refund was made, UTC.
+        datatype: DateTimeTz
+        ai_context:
+          synonyms: [refund timestamp]
+        dimension: {is_time: true}
+      - name: refunded_amount
+        expression: {dialects: [{dialect: ANSI_SQL, expression: refunded_amount}]}
+        description: >
+          Money paid back in this refund: goods, shipping and tax, and import
+          duties paid back. Gift cards sold and refunded are not in it.
+        datatype: Decimal
+        ai_context:
+          synonyms: [refund amount, amount returned]
+
+relationships:
+  - name: order_lines_to_orders
+    from: order_lines
+    to: orders
+    from_columns: [order_id]
+    to_columns: [order_id]
+    ai_context:
+      synonyms: [products by month, items by customer type]
+  - name: refunds_to_orders
+    from: refunds
+    to: orders
+    from_columns: [order_id]
+    to_columns: [order_id]
+
+metrics:
+  - name: orders
+    expression: {dialects: [{dialect: ANSI_SQL, expression: COUNT(orders.order_id)}]}
+    description: >
+      Number of orders, cancelled and unpaid ones included; filter by
+      orders.is_cancelled or orders.financial_status to narrow it.
+    datatype: Integer
+    ai_context:
+      synonyms: [number of orders, order count, purchases, transactions]
+  - name: revenue
+    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(orders.total)}]}
+    description: >
+      Orders as placed (orders.total), by order date: goods after discounts,
+      shipping and tax (and import duties where collected), before refunds,
+      cancelled and unpaid orders included. For sales after cancellations and refunds use net_revenue.
+      Not the "gross sales" of store reports, which are goods before
+      discounts, without shipping and tax.
+    datatype: Decimal
+    ai_context:
+      synonyms: [gross revenue, orders placed value, booked revenue, order value]
+  - name: net_revenue
+    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(orders.net_total)}]}
+    description: >
+      What orders earned (orders.net_total), by order date: orders less
+      cancelled ones and less everything refunded on them, with shipping
+      and tax (and import duties where collected). The default meaning of
+      sales and revenue. Not revenue less
+      refunded_amount: a cancelled order with nothing refunded is left out
+      whole. Not the "net sales" of store reports, which are goods only,
+      without shipping and tax: for goods use line_revenue.
+    datatype: Decimal
+    ai_context:
+      synonyms: [sales, revenue, turnover, income, sales after refunds]
+  - name: refunded_amount
+    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(orders.refunded_total)}]}
+    description: >
+      Money paid back on orders, with the tax paid back, by the date of the
+      order, whenever the refund was made. For refunds by the date they were
+      made, use refunds_total. Not the "returns" of store reports, which
+      are without tax and count a cancelled unpaid order as value removed;
+      net_revenue already leaves that order out.
+    datatype: Decimal
+    ai_context:
+      synonyms: [refunded on orders, returns of these orders]
+  - name: refund_rate
+    expression: {dialects: [{dialect: ANSI_SQL, expression: CAST(SUM(orders.refunded_total) AS DOUBLE) / CAST(SUM(orders.total) AS DOUBLE)}]}
+    description: >
+      Share of revenue paid back, from 0 to 1: refunded_amount over revenue,
+      cancelled orders in both.
+    datatype: Float
+    ai_context:
+      synonyms: [return rate, refund share, refund percentage]
+  - name: average_order_value
+    expression: {dialects: [{dialect: ANSI_SQL, expression: CAST(SUM(orders.subtotal) AS DOUBLE) / COUNT(orders.order_id)}]}
+    description: >
+      Goods after discounts per order (orders.subtotal over orders):
+      without shipping, tax, import duties and fees, before refunds;
+      cancelled and unpaid orders included. This is Shopify's definition
+      (gross sales less discounts, over orders), so it matches the store's
+      dashboard; WooCommerce Analytics also leaves shipping and tax out
+      but subtracts refunds first. It is not revenue over orders, which
+      would add shipping and tax. Filter by orders.is_cancelled = false
+      to leave cancelled orders out.
+    datatype: Float
+    ai_context:
+      synonyms: [AOV, average order, average check, average basket value, average transaction value]
+  - name: items_per_order
+    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(orders.item_quantity) * 1.0 / COUNT(orders.order_id)}]}
+    description: >
+      Average units of goods per order, as placed, before refunds;
+      cancelled and unpaid orders included, as in average_order_value.
+      Filter by orders.is_cancelled = false to leave cancelled orders out.
+    datatype: Float
+    ai_context:
+      synonyms: [units per transaction, UPT, units per order, average basket size, items per order]
+  - name: discount_total
+    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(orders.discount_total)}]}
+    description: Discounts on goods, without tax, by order date (orders.discount_total).
+    datatype: Decimal
+    ai_context:
+      synonyms: [discounts, discount amount, promotions]
+  - name: shipping_total
+    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(orders.shipping_total)}]}
+    description: Shipping charged, after its discounts and without tax, as on the order, before refunds, by order date.
+    datatype: Decimal
+    ai_context:
+      synonyms: [shipping, delivery charges, shipping revenue]
+  - name: tax_total
+    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(orders.tax_total)}]}
+    description: >
+      Tax on goods, shipping and any import duties, as on the order, before
+      refunds, by order date; store reports show tax net of refunded tax.
+    datatype: Decimal
+    ai_context:
+      synonyms: [tax, taxes, VAT, sales tax]
+  - name: customers
+    expression: {dialects: [{dialect: ANSI_SQL, expression: COUNT(DISTINCT orders.customer_id)}]}
+    description: >
+      Number of distinct customers who placed orders. Guest checkouts are
+      not counted.
+    datatype: Integer
+    ai_context:
+      synonyms: [buyers, number of customers, unique customers, purchasers]
+  - name: repeat_order_share
+    expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(CASE WHEN orders.new_vs_repeat = 'repeat' THEN 1 END) * 1.0 / COUNT(orders.customer_order_number)"}]}
+    description: >
+      Share of orders that were a customer's second or later, from 0 to 1,
+      among orders with a customer that were not cancelled.
+    datatype: Float
+    ai_context:
+      synonyms: [repeat purchase rate, returning customer orders, repeat rate]
+  - name: items_sold
+    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(order_lines.quantity)}]}
+    description: Units of goods ordered, before refunds and cancellations.
+    datatype: Integer
+    ai_context:
+      synonyms: [units sold, quantity sold, items ordered]
+  - name: items_net
+    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(order_lines.current_quantity)}]}
+    description: Units of goods ordered less those refunded, removed or cancelled.
+    datatype: Integer
+    ai_context:
+      synonyms: [net units, units kept, items after returns]
+  - name: line_revenue
+    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(order_lines.line_total)}]}
+    description: >
+      Revenue of goods as ordered (order_lines.line_total): after
+      discounts, without shipping and tax, before refunds, cancelled orders
+      included. Use for revenue by product or SKU.
+    datatype: Decimal
+    ai_context:
+      synonyms: [product revenue, sales by product, item revenue, SKU revenue]
+  - name: refunds
+    expression: {dialects: [{dialect: ANSI_SQL, expression: COUNT(refunds.refund_id)}]}
+    description: >
+      Number of refunds made; a refund of gift cards alone and the refund
+      record of a cancelled unpaid order, both of amount 0, included.
+    datatype: Integer
+    ai_context:
+      synonyms: [number of refunds, returns, refund count]
+  - name: refunds_total
+    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(refunds.refunded_amount)}]}
+    description: >
+      Money paid back, with the tax paid back, by the date the refund was
+      made. For refunds by the date of their order, use refunded_amount.
+    datatype: Decimal
+    ai_context:
+      synonyms: [refunded, refunds issued, money returned, returns amount]

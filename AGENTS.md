@@ -34,6 +34,7 @@ The README describes what works today. Plans go in
                               test cannot express
     tests/<source>/           hand-written input rows and the numbers the
                               model must answer over them
+    tests/ask_model.py        asks the questions, shared by every source
     docs/architecture.svg     the diagram, shown in the README and, with
     docs/index.html           the text for each part, on GitHub Pages;
                               update both in the change that alters
@@ -71,7 +72,9 @@ profile and the sample. CI builds into other databases to keep it so.
 
 - A field goes into a canonical entity only when at least two sources
   provide it. While a domain has a single source (GA4 for events), a
-  field qualifies when its meaning does not depend on that source; a
+  field qualifies when its meaning does not depend on that source; where
+  the second source is known but not yet packaged (WooCommerce for
+  orders), it must exist there too, checked against its documentation. A
   source-only field is not modelled yet. Do not add canonical fields "for
   completeness".
 - Every field and metric gets a description, and `ai_context` with

@@ -1,0 +1,116 @@
+version: 2
+# Structural checks only; descriptions live in entities/commerce.yaml.
+models:
+  - name: orders
+    columns:
+      - name: order_id
+        data_tests: [unique, not_null]
+      - {name: order_date, data_tests: [not_null]}
+      - {name: currency, data_tests: [not_null]}
+      - name: financial_status
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [unpaid, paid, partially_refunded, refunded, voided]
+      - name: fulfillment_status
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [unfulfilled, partially_fulfilled, fulfilled]
+  - name: order_lines
+    columns:
+      - name: line_id
+        data_tests: [unique, not_null]
+      - name: order_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('orders')
+                field: order_id
+  - name: refunds
+    columns:
+      - name: refund_id
+        data_tests: [unique, not_null]
+      - {name: refund_date, data_tests: [not_null]}
+      - name: order_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('orders')
+                field: order_id
+unit_tests:
+  # Discounts of lines in a shop whose prices include tax. The fixture's
+  # tax-included order has one tax line, so these rows cover the rounding
+  # of several.
+  - name: order_line_discounts_without_tax
+    model: order_lines
+    overrides:
+      macros:
+        is_incremental: false
+    given:
+      - input: source('shopify_raw', 'orders')
+        format: sql
+        rows: |
+          SELECT toUInt64(1) AS id, toDateTime('2026-09-15 12:00:00', 'UTC') AS updated_at,
+                 toDateTime('2026-09-15 12:00:00', 'UTC') AS processed_at, true AS taxes_included,
+                 toDecimal64(0, 4) AS total_tip, false AS test, toDateTime64('2026-09-15 12:00:01', 6, 'UTC') AS loaded_at
+      - input: source('shopify_raw', 'order_lines')
+        format: sql
+        rows: |
+          SELECT toUInt64(l.1) AS id, toUInt64(1) AS order_id, toDateTime('2026-09-15 12:00:00', 'UTC') AS order_updated_at,
+                 CAST(1, 'Nullable(UInt64)') AS product_id, CAST(1, 'Nullable(UInt64)') AS variant_id,
+                 CAST(l.2, 'Nullable(String)') AS sku, CAST(NULL, 'Nullable(String)') AS title,
+                 CAST(NULL, 'Nullable(String)') AS variant_title, toUInt32(1) AS quantity, toUInt32(1) AS current_quantity,
+                 toDecimal64(l.3, 4) AS original_unit_price, toDecimal64(l.3, 4) AS original_total,
+                 toDecimal64(l.4, 4) AS discount_allocated, toDecimal64(l.5, 4) AS total_tax,
+                 toDecimal32(l.6, 6) AS tax_rate, true AS taxable, true AS requires_shipping, false AS is_gift_card,
+                 toDateTime64('2026-09-15 12:00:02', 6, 'UTC') AS loaded_at
+          FROM (SELECT arrayJoin([
+              -- No discount, tax lines of 5% and 7% rounded apart: 0.04 +
+              -- 0.06. 1.00 / 1.12 is 0.89, a cent below 1.00 - 0.10.
+              (11, 'PIN', '1.00', '0', '0.10', '0.12'),
+              -- 10 off, tax on the price before it (a development store).
+              (12, 'COAT', '1399.90', '10', '161.05', '0.13')
+          ]) AS l)
+    expect:
+      rows:
+        - {line_id: 11, line_total: 0.9, discount_total: 0}
+        - {line_id: 12, line_total: 1228.85, discount_total: 10}
+  # Two refund lines of the same line item in one refund, as Shopify returns
+  # for a line restocked at two locations (suggestedRefund on the
+  # development store): each counts. 2 items, then two halves of a 50 gift
+  # card: 25 + 25 apart from the 150 paid back.
+  - name: refund_lines_of_one_line_item
+    model: refunds
+    overrides:
+      macros:
+        is_incremental: false
+    given:
+      - input: source('shopify_raw', 'refunds')
+        format: sql
+        rows: |
+          SELECT toUInt64(1) AS id, toUInt64(1) AS order_id, toDateTime('2026-09-15 12:00:00', 'UTC') AS created_at,
+                 toDateTime('2026-09-15 12:00:00', 'UTC') AS updated_at, toDecimal64(150, 4) AS total_refunded,
+                 toDateTime64('2026-09-15 12:00:01', 6, 'UTC') AS loaded_at
+      - input: source('shopify_raw', 'refund_lines')
+        format: sql
+        rows: |
+          SELECT toUInt64(l.1) AS id, toUInt64(1) AS refund_id, toDateTime('2026-09-15 12:00:00', 'UTC') AS refund_updated_at,
+                 toUInt64(l.2) AS line_item_id, toUInt32(1) AS quantity, toDecimal64(l.3, 4) AS subtotal,
+                 toDecimal64(0, 4) AS total_tax, 'RETURN' AS restock_type, toDateTime64('2026-09-15 12:00:02', 6, 'UTC') AS loaded_at
+          FROM (SELECT arrayJoin([(11, 7, '50'), (12, 7, '50'), (13, 8, '25'), (14, 8, '25')]) AS l)
+      - input: source('shopify_raw', 'order_lines')
+        format: sql
+        rows: |
+          SELECT toUInt64(l.1) AS id, l.2 AS is_gift_card FROM (SELECT arrayJoin([(7, false), (8, true)]) AS l)
+      - input: ref('orders')
+        format: sql
+        rows: |
+          SELECT toUInt64(1) AS order_id
+    expect:
+      rows:
+        - {refund_id: 1, refunded_quantity: 2, gift_card_amount: 50, refunded_amount: 100}
