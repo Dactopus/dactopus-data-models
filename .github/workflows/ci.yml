@@ -82,12 +82,14 @@ jobs:
     env:
       # Databases other than the defaults (shopify_raw, dactopus): nothing
       # may assume a database name. The input database is shopify_input.
-      # The fixture's numbers are in the shop's time zone, New York.
+      # The fixture's numbers are in the shop's time zone, New York. No
+      # lookback: a run rereads only what was loaded since the last one, so
+      # the late loads below come in through the keys that pick them up.
       CLICKHOUSE_DATABASE: analytics
       DBT_BUILD: >-
         uvx --from ${{ matrix.dbt.from }} ${{ matrix.dbt.with && format('--with {0}', matrix.dbt.with) || '' }}
         dbt build --project-dir sources/shopify --profiles-dir sources/shopify
-        --vars {"shopify_input_database":"shopify_input","shopify_timezone":"America/New_York"}
+        --vars {"shopify_input_database":"shopify_input","shopify_timezone":"America/New_York","shopify_lookback_days":0}
       OSSIE_CLICKHOUSE_URL: http://127.0.0.1:8123/analytics
     steps:
       - uses: actions/checkout@v4
@@ -96,30 +98,52 @@ jobs:
         run: uv tool install "ossie-clickhouse @ git+https://github.com/Dactopus/ossie-clickhouse@v0.2.2"
       # Hand-written rows (tests/shopify/fixture.sql) and the model's answers
       # over them, checked against numbers derived by hand; the first build
-      # runs on an empty input. An incremental run over unchanged input must
-      # match a full refresh row for row.
+      # runs on an empty input. The fixture goes into a database of its own
+      # and reaches the input in loads, each followed by an incremental
+      # run: all but a few rows, then rows that only a trigger brings back
+      # in. The lines of 1012, a guest's order, and of the gift card refund
+      # 505 change orders that nothing else rereads; 1008, back-dated,
+      # renumbers its customer's 1007. After the late loads, the incremental
+      # build must match a full refresh of the same input row for row.
       - name: Build (models, tests, unit tests), check numbers, incremental and full refresh
         run: |
+          q() { curl -sf http://127.0.0.1:8123/ --data-binary "$1"; }
           load() { python3 -c "
           import pathlib, sys, urllib.request
           for s in pathlib.Path(sys.argv[1]).read_text().split(';\n'):
               if s.strip():
-                  urllib.request.urlopen('http://127.0.0.1:8123/?param_db=shopify_input', s.encode())" "$1"; }
+                  urllib.request.urlopen('http://127.0.0.1:8123/?param_db=' + sys.argv[2], s.encode())" "$1" "$2"; }
+          # early <table> <rows held back>; late <table> <rows>, loaded now
+          early() { q "INSERT INTO shopify_input.$1 SELECT * FROM shopify_fixture.$1 WHERE NOT ($2)"; }
+          late() { q "INSERT INTO shopify_input.$1 SELECT * REPLACE (now64(6) AS loaded_at) FROM shopify_fixture.$1 WHERE $2"; }
           tables() { for t in orders order_lines refunds; do
-              curl -sf http://127.0.0.1:8123/ --data-binary \
-                "SELECT '$t', count(), groupBitXor(cityHash64(toString(tuple(*)))) FROM analytics.$t FORMAT TSV"; done; }
-          load sources/shopify/input.sql
+              q "SELECT '$t', count(), groupBitXor(cityHash64(toString(tuple(*)))) FROM $1.$t FORMAT TSV"; done; }
+          same() {
+              CLICKHOUSE_DATABASE=analytics_full $DBT_BUILD --full-refresh
+              tables analytics > incremental.tsv
+              tables analytics_full > full.tsv
+              cat full.tsv
+              diff incremental.tsv full.tsv; }
+          load sources/shopify/input.sql shopify_input
+          load sources/shopify/input.sql shopify_fixture
+          load tests/shopify/fixture.sql shopify_fixture
           $DBT_BUILD
-          load tests/shopify/fixture.sql
+          early orders "id = 1008"
+          early order_lines "order_id IN (1008, 1012)"
+          early refunds "false"
+          early refund_lines "refund_id = 505"
           $DBT_BUILD                 # incremental into empty tables
+          late order_lines "order_id = 1012"
+          late refund_lines "refund_id = 505"
+          $DBT_BUILD                 # lines of orders loaded before
+          same
+          late orders "id = 1008"
+          late order_lines "order_id = 1008"
+          $DBT_BUILD                 # a back-dated order
           python3 tests/shopify/check_numbers.py
           $DBT_BUILD                 # incremental over unchanged input
           python3 tests/shopify/check_numbers.py
-          tables > incremental.tsv
-          $DBT_BUILD --full-refresh
-          python3 tests/shopify/check_numbers.py
-          tables > full.tsv
-          cat full.tsv
-          diff incremental.tsv full.tsv
+          same
+          OSSIE_CLICKHOUSE_URL=http://127.0.0.1:8123/analytics_full python3 tests/shopify/check_numbers.py
       - name: Validate the Ossie model against the built tables
         run: ossie-clickhouse validate entities/commerce.yaml --url "$OSSIE_CLICKHOUSE_URL"
