@@ -25,4 +25,3 @@ def check(model, cases):
             print(f"FAIL {' '.join(args)}\n  expected {expected}\n  got      {got}")
     print(f"{len(cases) - failed} of {len(cases)} questions match")
     sys.exit(1 if failed else 0)
-

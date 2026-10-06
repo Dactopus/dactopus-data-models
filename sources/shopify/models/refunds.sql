@@ -23,10 +23,14 @@ SELECT
     -- When the version was loaded; the next incremental run starts from it.
     r.loaded_at AS loaded_at
 {% if is_incremental() %}
-{# Refunds loaded since the last run, and refunds whose lines were. #}
-{% set refunds_loaded = shopify_loaded_since('refunds') %}
-{% set lines_loaded = shopify_loaded_since('refund_lines', 'refund_id') %}
-FROM {{ shopify_latest('refunds', 'id', where="id IN " ~ refunds_loaded ~ " OR id IN " ~ lines_loaded) }} AS r
+{# Refunds loaded since the last run, refunds whose lines were, and
+   refunds of orders whose lines were: a gift card line may be loaded
+   after the refund line that pays it back. #}
+{% set refunds_changed = "(SELECT id FROM " ~ source('shopify_raw', 'refunds')
+    ~ " WHERE id IN " ~ shopify_loaded_since('refunds')
+    ~ " OR id IN " ~ shopify_loaded_since('refund_lines', 'refund_id')
+    ~ " OR order_id IN " ~ shopify_loaded_since('order_lines', 'order_id') ~ ")" %}
+FROM {{ shopify_latest('refunds', 'id', where="id IN " ~ refunds_changed) }} AS r
 {% else %}
 FROM {{ shopify_latest('refunds', 'id') }} AS r
 {% endif %}
@@ -38,7 +42,7 @@ LEFT JOIN
         SELECT *, line_item_id IN (SELECT id FROM {{ source('shopify_raw', 'order_lines') }} WHERE is_gift_card) AS is_gift_card
         {% if is_incremental() %}
         FROM {{ shopify_latest('refund_lines', 'refund_id, id, refund_updated_at', version='refund_updated_at',
-                               where="refund_id IN " ~ refunds_loaded ~ " OR refund_id IN " ~ lines_loaded) }}
+                               where="refund_id IN " ~ refunds_changed) }}
         {% else %}
         FROM {{ shopify_latest('refund_lines', 'refund_id, id, refund_updated_at', version='refund_updated_at') }}
         {% endif %}

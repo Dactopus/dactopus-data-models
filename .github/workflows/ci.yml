@@ -102,9 +102,12 @@ jobs:
       # and reaches the input in loads, each followed by an incremental
       # run: all but a few rows, then rows that only a trigger brings back
       # in. The lines of 1012, a guest's order, and of the gift card refund
-      # 505 change orders that nothing else rereads; 1008, back-dated,
-      # renumbers its customer's 1007. After the late loads, the incremental
-      # build must match a full refresh of the same input row for row.
+      # 505 change orders that nothing else rereads; 1001's lines, its gift
+      # card among them, come after 505's and after the refund 501 has moved
+      # the refunds' load window past 505, and make 505 a refund of 0; 1008,
+      # back-dated, renumbers its customer's 1007. After the late loads, the
+      # incremental build must match a full refresh of the same input row
+      # for row.
       - name: Build (models, tests, unit tests), check numbers, incremental and full refresh
         run: |
           q() { curl -sf http://127.0.0.1:8123/ --data-binary "$1"; }
@@ -129,17 +132,20 @@ jobs:
           load tests/shopify/fixture.sql shopify_fixture
           $DBT_BUILD
           early orders "id = 1008"
-          early order_lines "order_id IN (1008, 1012)"
-          early refunds "false"
-          early refund_lines "refund_id = 505"
+          early order_lines "order_id IN (1001, 1008, 1012)"
+          early refunds "id = 501"
+          early refund_lines "refund_id IN (501, 505)"
           $DBT_BUILD                 # incremental into empty tables
           late order_lines "order_id = 1012"
           late refund_lines "refund_id = 505"
           $DBT_BUILD                 # lines of orders loaded before
           same
+          late refunds "id = 501"
+          late refund_lines "refund_id = 501"
+          $DBT_BUILD                 # a later refund
           late orders "id = 1008"
-          late order_lines "order_id = 1008"
-          $DBT_BUILD                 # a back-dated order
+          late order_lines "order_id IN (1001, 1008)"
+          $DBT_BUILD                 # a back-dated order, a gift card line after its refund
           python3 tests/shopify/check_numbers.py
           $DBT_BUILD                 # incremental over unchanged input
           python3 tests/shopify/check_numbers.py
