@@ -61,12 +61,12 @@ INSERT INTO {db:Identifier}.orders VALUES
  80, 0, 0, 0, 0, 80, 0, [], NULL, NULL, NULL, NULL, '2026-10-04 00:00:00'),
 
 -- 1003: customer 2's first order, a download: payment authorized but not
--- captured (unpaid). Nothing to ship, yet the store shows it unfulfilled
+-- captured before the provider's deadline (EXPIRED, voided). Nothing to ship, yet the store shows it unfulfilled
 -- (#1013 on the development store). A custom item, as on the store: no
 -- product, no tax and nothing to ship, like a tip, yet a sale. Placed at 22:00 on August 31 in New
 -- York, which is September 1 in UTC: an August order.
 (1003, '#1003', '2026-09-01 02:00:00', '2026-09-01 02:00:00', '2026-09-01 02:00:00', NULL, NULL, false,
- 2, 'bob@example.com', 'USD', 'USD', 'AUTHORIZED', 'UNFULFILLED', 'web', false,
+ 2, 'bob@example.com', 'USD', 'USD', 'EXPIRED', 'UNFULFILLED', 'web', false,
  30, 0, 0, 0, 0, 30, 0, [], NULL, NULL, NULL, NULL, '2026-10-04 00:00:00'),
 
 -- 1004: a line discount of 10 on the hoodie, then FALL10 takes 10% off the

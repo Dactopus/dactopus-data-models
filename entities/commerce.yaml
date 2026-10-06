@@ -84,10 +84,10 @@ datasets:
       - name: financial_status
         expression: {dialects: [{dialect: ANSI_SQL, expression: financial_status}]}
         description: >
-          Payment state of the order: unpaid (not paid: pending, partly
-          paid, authorized but not captured, or an authorization that
-          expired), paid, partially_refunded, refunded, or voided (the
-          payment was voided).
+          Payment state of the order: unpaid (money is still expected:
+          pending, partly paid, or authorized but not yet captured), paid,
+          partially_refunded, refunded, or voided (no money will come: the
+          authorization was voided or expired before it was captured).
         datatype: String
         dimension: {is_time: false}
         ai_context:

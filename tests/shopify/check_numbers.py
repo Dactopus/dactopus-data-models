@@ -99,14 +99,15 @@ CASES = [
      [{"shipping_country": "CA", "revenue": 479.5, "net_revenue": 209.5},
       {"shipping_country": "US", "revenue": 498, "net_revenue": 383},
       {"shipping_country": None, "revenue": 110, "net_revenue": 110}]),
-    # AUTHORIZED (1003) and PENDING (1002) are unpaid; 1010 is voided. 1001
+    # PENDING (1002) is unpaid; 1010's voided authorization and 1003's
+    # expired one are voided (unpaid 2, voided 1 if EXPIRED were unpaid). 1001
     # (its gift card) and 1004 are partially refunded. 1005 is refunded: its
     # earlier version, paid, has the same updated_at but an earlier load.
     # The mapping of every Shopify status is decided in #4.
     (["-m", "orders", "-d", "orders.financial_status", "-o", "orders.financial_status"],
      [{"financial_status": "paid", "orders": 3}, {"financial_status": "partially_refunded", "orders": 2},
-      {"financial_status": "refunded", "orders": 2}, {"financial_status": "unpaid", "orders": 2},
-      {"financial_status": "voided", "orders": 1}]),
+      {"financial_status": "refunded", "orders": 2}, {"financial_status": "unpaid", "orders": 1},
+      {"financial_status": "voided", "orders": 2}]),
     # Fulfilled: 1001; partially: 1007; ON_HOLD (1011) and the download
     # 1003, which Shopify leaves unfulfilled, are unfulfilled. The mapping
     # of every Shopify status is decided in #4.

@@ -52,11 +52,15 @@ SELECT
     if(o.cancelled_at IS NOT NULL, toDecimal64(0, 4), total - refunded_total) AS net_total,
     o.taxes_included AS taxes_included,
     -- https://shopify.dev/docs/api/admin-graphql/latest/enums/OrderDisplayFinancialStatus
+    -- unpaid: money is still expected. voided: none will come, the
+    -- authorization was voided or EXPIRED ("Payment wasn't captured before
+    -- the payment provider's deadline on an authorized order").
     -- A value not listed here is NULL and fails the not_null test.
     multiIf(
-        o.display_financial_status IN ('AUTHORIZED', 'PENDING', 'PARTIALLY_PAID', 'EXPIRED'), 'unpaid',
+        o.display_financial_status IN ('AUTHORIZED', 'PENDING', 'PARTIALLY_PAID'), 'unpaid',
         o.display_financial_status = 'PAID', 'paid',
-        o.display_financial_status IN ('PARTIALLY_REFUNDED', 'REFUNDED', 'VOIDED'), lower(o.display_financial_status),
+        o.display_financial_status IN ('PARTIALLY_REFUNDED', 'REFUNDED'), lower(o.display_financial_status),
+        o.display_financial_status IN ('VOIDED', 'EXPIRED'), 'voided',
         NULL) AS financial_status,
     -- https://shopify.dev/docs/api/admin-graphql/latest/enums/OrderDisplayFulfillmentStatus
     -- OPEN and RESTOCKED are deprecated for UNFULFILLED, PENDING_FULFILLMENT
