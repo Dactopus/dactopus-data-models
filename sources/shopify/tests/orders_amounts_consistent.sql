@@ -14,7 +14,8 @@ LEFT JOIN
     FROM {{ ref('order_lines') }}
     GROUP BY order_id, order_updated_at
 ) AS l ON l.order_id = o.order_id AND l.order_updated_at = o.updated_at
-WHERE o.discount_total < 0 OR o.shipping_total < 0 OR o.tax_total < 0
+WHERE o.total < 0 OR o.refunded_total < 0
+   OR o.discount_total < 0 OR o.shipping_total < 0 OR o.tax_total < 0
    OR o.refunded_total > o.total + o.tip_total
    OR o.gift_card_refunded_total > o.gift_card_total
    OR (o.order_id, o.updated_at) IN (SELECT order_id, order_updated_at FROM {{ ref('order_lines') }})

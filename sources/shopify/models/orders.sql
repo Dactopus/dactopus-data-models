@@ -125,12 +125,14 @@ WHERE NOT o.test
 -- The sequence is numbered over all orders first, then filtered, so every
 -- run reads every version of every order: cheap for orders, and a
 -- deployment can collapse old versions (input.sql).
-WHERE order_id IN {{ shopify_loaded_since('orders') }}
-   OR order_id IN {{ shopify_loaded_since('order_lines', 'order_id') }}
+{% set orders_loaded = shopify_loaded_since('orders') %}
+{% set lines_loaded = shopify_loaded_since('order_lines', 'order_id') %}
+WHERE order_id IN {{ orders_loaded }}
+   OR order_id IN {{ lines_loaded }}
    OR order_id IN (
        SELECT order_id FROM {{ source('shopify_raw', 'refunds') }}
        WHERE id IN {{ shopify_loaded_since('refunds') }} OR id IN {{ shopify_loaded_since('refund_lines', 'refund_id') }})
    OR customer_id IN (
        SELECT customer_id FROM {{ source('shopify_raw', 'orders') }}
-       WHERE id IN {{ shopify_loaded_since('orders') }} OR id IN {{ shopify_loaded_since('order_lines', 'order_id') }})
+       WHERE id IN {{ orders_loaded }} OR id IN {{ lines_loaded }})
 {% endif %}
