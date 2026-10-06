@@ -107,7 +107,7 @@ jobs:
                   urllib.request.urlopen('http://127.0.0.1:8123/?param_db=shopify_input', s.encode())" "$1"; }
           tables() { for t in orders order_lines refunds; do
               curl -sf http://127.0.0.1:8123/ --data-binary \
-                "SELECT '$t', count(), groupBitXor(cityHash64(*)) FROM analytics.$t FORMAT TSV"; done; }
+                "SELECT '$t', count(), groupBitXor(cityHash64(toString(tuple(*)))) FROM analytics.$t FORMAT TSV"; done; }
           load sources/shopify/input.sql
           $DBT_BUILD
           load tests/shopify/fixture.sql
