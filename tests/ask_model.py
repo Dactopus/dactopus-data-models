@@ -1,4 +1,4 @@
-"""Ask a model questions with ossie-clickhouse and compare the answers with
+"""Ask a model questions with dactopus-ossie-clickhouse and compare the answers with
 expected rows; tests/<source>/check_numbers.py hold the questions."""
 import json
 import math
@@ -15,7 +15,7 @@ def same(a, b):
 def check(model, cases):
     failed = 0
     for args, expected in cases:
-        out = subprocess.run(["ossie-clickhouse", "query", model, *args, "--json"],
+        out = subprocess.run(["dactopus-ossie-clickhouse", "query", model, *args, "--json"],
                              capture_output=True, text=True)
         got = json.loads(out.stdout) if out.returncode == 0 else out.stderr.strip()
         ok = isinstance(got, list) and len(got) == len(expected) and all(

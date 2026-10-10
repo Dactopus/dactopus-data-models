@@ -23,7 +23,7 @@ descriptions in `entities/` say where.
 ## Setup
 
 You need a [ClickHouse](https://clickhouse.com/docs) server,
-dbt and [ossie-clickhouse](https://github.com/Dactopus/ossie-clickhouse).
+dbt and [dactopus-ossie-clickhouse](https://github.com/Dactopus/dactopus-ossie-clickhouse).
 Without a server at hand, the
 [official Docker image](https://clickhouse.com/docs/install/docker) gives
 one (the variable lets the passwordless `default` user connect over the
@@ -32,7 +32,7 @@ network):
 ```bash
 docker run -d --name ch -p 8123:8123 -p 9000:9000 -e CLICKHOUSE_SKIP_USER_SETUP=1 clickhouse/clickhouse-server:26.9
 pip install dbt-oss                     # dbt v2; or dbt-core~=1.11 with dbt-clickhouse (v1)
-pip install "ossie-clickhouse @ git+https://github.com/Dactopus/ossie-clickhouse@v0.3.1"
+pip install "dactopus-ossie-clickhouse @ git+https://github.com/Dactopus/dactopus-ossie-clickhouse@v0.4.0"
 ```
 
 Load the GA4 sample as the README's [Quick start](README.md#quick-start)
@@ -45,7 +45,7 @@ package or a model:
 
 ```bash
 dbt build --project-dir sources/ga4 --profiles-dir sources/ga4      # models and tests
-ossie-clickhouse validate entities/web_analytics.yaml --url http://127.0.0.1:8123/dactopus
+dactopus-ossie-clickhouse validate entities/web_analytics.yaml --url http://127.0.0.1:8123/dactopus
 ```
 
 An incremental run over unchanged input must change nothing and match a
