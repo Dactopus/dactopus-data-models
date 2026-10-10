@@ -137,6 +137,9 @@ dbt build --project-dir sources/ga4 --profiles-dir sources/ga4                 #
 dbt build --project-dir sources/ga4 --profiles-dir sources/ga4 --full-refresh  # rebuild all
 ```
 
+Issues and pull requests in this repository are opened by the
+maintainer, not by an agent on its own.
+
 The package profile sets `network_compression_method: LZ4`: the dbt v2
 ClickHouse adapter (beta) cannot read the ZSTD responses ClickHouse 26.x
 sends by default. `dbt source freshness` fails on that adapter for any
