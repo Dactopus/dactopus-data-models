@@ -32,7 +32,7 @@ network):
 ```bash
 docker run -d --name ch -p 8123:8123 -p 9000:9000 -e CLICKHOUSE_SKIP_USER_SETUP=1 clickhouse/clickhouse-server:26.9
 pip install dbt-oss                     # dbt v2; or dbt-core~=1.11 with dbt-clickhouse (v1)
-pip install "ossie-clickhouse @ git+https://github.com/Dactopus/ossie-clickhouse@v0.2.2"
+pip install "ossie-clickhouse @ git+https://github.com/Dactopus/ossie-clickhouse@v0.3.1"
 ```
 
 Load the GA4 sample as the README's [Quick start](README.md#quick-start)
