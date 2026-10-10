@@ -36,8 +36,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
-      - name: Install ossie-clickhouse
-        run: uv tool install "ossie-clickhouse @ git+https://github.com/Dactopus/ossie-clickhouse@v0.3.1"
+      - name: Install dactopus-ossie-clickhouse
+        run: uv tool install "dactopus-ossie-clickhouse @ git+https://github.com/Dactopus/dactopus-ossie-clickhouse@v0.4.0"
       # The GA4 sample needs a Google login, so CI runs on hand-written rows
       # (tests/ga4/fixture.sql) and checks the model's answers against numbers
       # derived from them by hand. The first build runs on an empty input, as
@@ -59,7 +59,7 @@ jobs:
           $DBT_BUILD --full-refresh
           python3 tests/ga4/check_numbers.py
       - name: Validate the Ossie model against the built tables
-        run: ossie-clickhouse validate entities/web_analytics.yaml --url "$OSSIE_CLICKHOUSE_URL"
+        run: dactopus-ossie-clickhouse validate entities/web_analytics.yaml --url "$OSSIE_CLICKHOUSE_URL"
 
   shopify:
     runs-on: ubuntu-latest
@@ -94,8 +94,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
-      - name: Install ossie-clickhouse
-        run: uv tool install "ossie-clickhouse @ git+https://github.com/Dactopus/ossie-clickhouse@v0.3.1"
+      - name: Install dactopus-ossie-clickhouse
+        run: uv tool install "dactopus-ossie-clickhouse @ git+https://github.com/Dactopus/dactopus-ossie-clickhouse@v0.4.0"
       # Hand-written rows (tests/shopify/fixture.sql) and the model's answers
       # over them, checked against numbers derived by hand; the first build
       # runs on an empty input. The fixture goes into a database of its own
@@ -160,4 +160,4 @@ jobs:
           same
           OSSIE_CLICKHOUSE_URL=http://127.0.0.1:8123/analytics_full python3 tests/shopify/check_numbers.py
       - name: Validate the Ossie model against the built tables
-        run: ossie-clickhouse validate entities/commerce.yaml --url "$OSSIE_CLICKHOUSE_URL"
+        run: dactopus-ossie-clickhouse validate entities/commerce.yaml --url "$OSSIE_CLICKHOUSE_URL"

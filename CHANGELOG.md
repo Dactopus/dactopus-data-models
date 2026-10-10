@@ -15,6 +15,10 @@ names the Ossie schema version its models carry.
   expression under another operator, such as a metric in a filter
   (`1000 / metric > 1`), and return wrong values without an error. The
   models are unchanged and answer the same numbers on 0.2.2 and 0.3.1.
+- ossie-clickhouse is now dactopus-ossie-clickhouse: the README,
+  CONTRIBUTING.md, CI and `tests/ask_model.py` install and run it under
+  that name, at 0.4.0. Its old command still works in 0.4.x; the models
+  are unchanged.
 
 ## [0.2.0] - 2026-10-06
 

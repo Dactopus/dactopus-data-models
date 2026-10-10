@@ -19,9 +19,9 @@ What comes next is in [ROADMAP.md](ROADMAP.md).
 The aim: a store on Shopify and a store on its own Postgres look the same
 once both are mapped, and one query works on both. The same model serves
 BI tools through ClickHouse tables and AI agents through
-[ossie-clickhouse](https://github.com/Dactopus/ossie-clickhouse).
+[dactopus-ossie-clickhouse](https://github.com/Dactopus/dactopus-ossie-clickhouse).
 
-<a href="https://dactopus.github.io/dactopus-data-models/"><img src="docs/architecture.svg" width="680" alt="How the packages work: the GA4 export and Shopify's orders are loaded into input tables in your ClickHouse; the dbt packages build the canonical tables; BI tools read them directly and AI agents through ossie-clickhouse and the Ossie models."></a>
+<a href="https://dactopus.github.io/dactopus-data-models/"><img src="docs/architecture.svg" width="680" alt="How the packages work: the GA4 export and Shopify's orders are loaded into input tables in your ClickHouse; the dbt packages build the canonical tables; BI tools read them directly and AI agents through dactopus-ossie-clickhouse and the Ossie models."></a>
 
 Click the diagram for the [interactive version](https://dactopus.github.io/dactopus-data-models/):
 what each part does and where it takes its settings from, and one
@@ -50,9 +50,9 @@ Try the GA4 package on Google's public sample
 [ClickHouse](https://clickhouse.com/docs/install), the
 [gcloud CLI](https://cloud.google.com/sdk/docs/install),
 [uv](https://docs.astral.sh/uv/), dbt v2 (`pip install dbt-oss`) and
-[ossie-clickhouse](https://github.com/Dactopus/ossie-clickhouse) 0.3.1 or
+[dactopus-ossie-clickhouse](https://github.com/Dactopus/dactopus-ossie-clickhouse) 0.4.0 or
 later with its MCP server
-(`pip install "ossie-clickhouse[mcp] @ git+https://github.com/Dactopus/ossie-clickhouse@v0.3.1"`).
+(`pip install "dactopus-ossie-clickhouse[mcp] @ git+https://github.com/Dactopus/dactopus-ossie-clickhouse@v0.4.0"`).
 Tested on ClickHouse 26.9.
 
 1. **Export.** A Google Cloud project in the
@@ -138,16 +138,16 @@ Tested on ClickHouse 26.9.
    ```
 
 4. **Validate** the model against the built tables. The model names its
-   tables without a database: ossie-clickhouse reads them in the database
+   tables without a database: dactopus-ossie-clickhouse reads them in the database
    of its URL.
 
    ```bash
-   ossie-clickhouse validate entities/web_analytics.yaml --url http://user:password@host:8123/dactopus
+   dactopus-ossie-clickhouse validate entities/web_analytics.yaml --url http://user:password@host:8123/dactopus
    ```
 
 5. **Ask.** Serve the model to an AI agent over MCP with
-   `ossie-clickhouse serve entities/web_analytics.yaml --url ...`, the
-   same URL; its [README](https://github.com/Dactopus/ossie-clickhouse#readme)
+   `dactopus-ossie-clickhouse serve entities/web_analytics.yaml --url ...`, the
+   same URL; its [README](https://github.com/Dactopus/dactopus-ossie-clickhouse#readme)
    shows how to connect an agent. Try sessions, conversion rate and
    revenue, by traffic source, device, country and date.
 
@@ -159,7 +159,7 @@ repository tests it with,
 of a shop in New York, each a case the package must get right (refunds,
 cancellations, discounts, tax included in prices, a gift card, a tip,
 import duties, repeated deliveries). You need ClickHouse, dbt and
-ossie-clickhouse, as for GA4.
+dactopus-ossie-clickhouse, as for GA4.
 
 1. **Load** the package's input tables
    [`sources/shopify/input.sql`](sources/shopify/input.sql) and the rows.
@@ -182,15 +182,15 @@ ossie-clickhouse, as for GA4.
    ```
 
 3. **Validate** the model and **check** its answers: `check_numbers.py`
-   asks 16 questions through ossie-clickhouse and compares the answers
+   asks 16 questions through dactopus-ossie-clickhouse and compares the answers
    with numbers worked out by hand from the rows.
 
    ```bash
-   ossie-clickhouse validate entities/commerce.yaml --url http://user:password@host:8123/shopify_sample
+   dactopus-ossie-clickhouse validate entities/commerce.yaml --url http://user:password@host:8123/shopify_sample
    OSSIE_CLICKHOUSE_URL=http://user:password@host:8123/shopify_sample python3 tests/shopify/check_numbers.py
    ```
 
-4. **Ask.** Serve `entities/commerce.yaml` with `ossie-clickhouse serve`.
+4. **Ask.** Serve `entities/commerce.yaml` with `dactopus-ossie-clickhouse serve`.
    Try net revenue, refunds by month, average order value and repeat
    orders, by shipping country and new or returning customer.
 
@@ -518,7 +518,7 @@ vars:
 `shopify_lookback_days` (default 3) is how far before its last load an
 incremental run rereads the input, for inserts that commit late.
 
-Point ossie-clickhouse at your target's database
+Point dactopus-ossie-clickhouse at your target's database
 (`--url http://host:8123/<database>`) and take the Ossie models from the
 same tag. On dbt v2 with ClickHouse 26.x, set
 `custom_settings: {network_compression_method: LZ4}` in your profile, as
@@ -547,8 +547,8 @@ A package's model writes the entity's table, named after it, in the
 database the deployment chooses. The entity's dataset in the domain's
 Ossie model names that table without a database (an Ossie model is one
 file, since relationships and metrics span entities), so one model serves
-any database ossie-clickhouse connects to, and
-`ossie-clickhouse validate --url` checks that the package delivers every
+any database dactopus-ossie-clickhouse connects to, and
+`dactopus-ossie-clickhouse validate --url` checks that the package delivers every
 column the entity declares. A deployment picks one package per entity.
 
 This is one repository, not one per source. Packages map onto shared
@@ -578,7 +578,7 @@ that look plausible.
 ## Out of scope
 
 - Loading data. This README gives recipes; the tools are someone else's.
-- Running queries. That is ossie-clickhouse.
+- Running queries. That is dactopus-ossie-clickhouse.
 - Reconciling with the source's own reports through its API.
 - Anything that needs two sources at once: attributing sessions to
   orders, matching customers across systems, cross-source marts.
@@ -590,10 +590,10 @@ does not belong here.
 ## Authoring rules
 
 **Format.** Ossie schema `0.2.0.dev0`, the only version the upstream
-schema accepts today. Write expressions in `ANSI_SQL`; ossie-clickhouse
+schema accepts today. Write expressions in `ANSI_SQL`; dactopus-ossie-clickhouse
 also accepts `OSSIE_SQL_2026`. Mapping, refresh and checks live in the
 package's dbt project, not in the Ossie files, so entities stay plain Ossie
-that any Ossie tool reads. The only extension used is ossie-clickhouse's
+that any Ossie tool reads. The only extension used is dactopus-ossie-clickhouse's
 `CLICKHOUSE` namespace and its `dedup` key.
 
 **The canon is selected, not designed.** A field that at least two sources
@@ -614,7 +614,7 @@ synonyms and `ai_context`. Without them even strong models guess. A dbt
 
 A package states which one it uses and why.
 
-**ossie-clickhouse limits are rules here.**
+**dactopus-ossie-clickhouse limits are rules here.**
 - One root dataset per question.
 - Joins are many-to-one only, on a declared primary or unique key, so a
   mart that combines facts is materialized as one fact table.
@@ -624,7 +624,7 @@ A package states which one it uses and why.
 - `source` is a table name without a database, not a query: the
   deployment picks the database.
 
-See its [model authoring guide](https://github.com/Dactopus/ossie-clickhouse/blob/main/docs/model-authoring.md).
+See its [model authoring guide](https://github.com/Dactopus/dactopus-ossie-clickhouse/blob/main/docs/model-authoring.md).
 
 **Access control is not modelled.** It comes from ClickHouse grants.
 

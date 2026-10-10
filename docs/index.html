@@ -69,8 +69,8 @@ const INFO = {
   canon: ["Canonical tables", "events, sessions and purchases; orders, order_lines and refunds. They have the same shape whatever the source. BI tools read them directly; AI agents read them through the Ossie model.", "in the database the deployment chooses"],
   bi: ["BI tools and dashboards", "Metabase, Grafana and the like read the canonical tables in ClickHouse directly, without Ossie.", ""],
   model: ["Ossie models web_analytics and commerce", "web_analytics: 3 datasets, 36 fields, 12 metrics. commerce: 3 datasets, 42 fields, 17 metrics. Both carry the descriptions and ai_context that agents answer from. Tables are named without a database, so one model serves any deployment.", "Ossie schema 0.2.0.dev0"],
-  oc: ["ossie-clickhouse", "A separate project: an Apache Ossie executor and MCP server for ClickHouse. It turns metrics and dimensions into one ClickHouse query and does not depend on this repository.", "database: from its URL, e.g. http://host:8123/dactopus"],
-  agents: ["AI agents", "Agents ask for metrics and dimensions by name and never write SQL: ossie-clickhouse writes it.", ""]
+  oc: ["dactopus-ossie-clickhouse", "A separate project: an Apache Ossie executor and MCP server for ClickHouse. It turns metrics and dimensions into one ClickHouse query and does not depend on this repository.", "database: from its URL, e.g. http://host:8123/dactopus"],
+  agents: ["AI agents", "Agents ask for metrics and dimensions by name and never write SQL: dactopus-ossie-clickhouse writes it.", ""]
 };
 const STEPS = [
   [["export"], "A shopper pays 100 EUR for order T1. GA4 records a purchase event; the thank-you page reloads and sends it again."],
@@ -78,7 +78,7 @@ const STEPS = [
   [["input"], "Both copies of the event land in the input table as they are."],
   [["dbt"], "The package collapses them on user and transaction_id: one purchase of 100 EUR, in session u1.100, from newsletter / email."],
   [["canon"], "One row in purchases. The next incremental run re-reads the window and does not count it twice."],
-  [["model", "oc"], "An agent asks for revenue. The model tells it to break revenue down by currency; ossie-clickhouse runs SUM(revenue) ... GROUP BY currency."],
+  [["model", "oc"], "An agent asks for revenue. The model tells it to break revenue down by currency; dactopus-ossie-clickhouse runs SUM(revenue) ... GROUP BY currency."],
   [["agents"], "On the repository's test rows (tests/ga4) the answer is EUR 180 and GBP 20, not 200; in US dollars the total is 220."]
 ];
 const OVERVIEW = ["Select a box, or follow a purchase", "Purple is what this repository holds. Everything else is what it works with.", ""];

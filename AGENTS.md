@@ -16,7 +16,7 @@ Everything must be releasable under Apache 2.0. Do not add:
 - Anything that needs two sources at once: attribution, matching customers
   across systems, cross-source marts. A package covers one source.
 - Data loading code or API connectors. Loading is a recipe in the README.
-- Query execution. That is ossie-clickhouse.
+- Query execution. That is dactopus-ossie-clickhouse.
 - Placeholders or stubs for any of the above.
 
 The README describes what works today. Plans go in
@@ -49,7 +49,7 @@ names. Descriptions live in the Ossie entity only; do not repeat them in
 
 No database name is written into a model, an entity or a package: the
 deployment chooses them. A `source` is a bare table name, read in the
-database ossie-clickhouse connects to; a package writes to its dbt
+database dactopus-ossie-clickhouse connects to; a package writes to its dbt
 target's database and reads its input from a variable
 (`ga4_input_database`); `input.sql` takes the database as a query
 parameter. `dactopus` and `ga4_raw` are only defaults for the standalone
@@ -61,12 +61,12 @@ profile and the sample. CI builds into other databases to keep it so.
 - Write expressions in `ANSI_SQL`.
 - Entities are plain Ossie. Mapping, refresh and checks belong in the
   package's dbt project, never in `custom_extensions`. The only extension
-  used is ossie-clickhouse's `CLICKHOUSE` namespace, for its `dedup` key.
-- Models must work within ossie-clickhouse limits: one root dataset per
+  used is dactopus-ossie-clickhouse's `CLICKHOUSE` namespace, for its `dedup` key.
+- Models must work within dactopus-ossie-clickhouse limits: one root dataset per
   question; many-to-one joins on a declared primary or unique key; no
   metric referencing another metric by name (repeat the expression); one
   field per time grain; `source` is a bare table name, never a query.
-  Details: its [model authoring guide](https://github.com/Dactopus/ossie-clickhouse/blob/main/docs/model-authoring.md).
+  Details: its [model authoring guide](https://github.com/Dactopus/dactopus-ossie-clickhouse/blob/main/docs/model-authoring.md).
 
 ## Authoring rules
 
@@ -103,7 +103,7 @@ profile and the sample. CI builds into other databases to keep it so.
 A model that validates can still return wrong numbers. For a change to a
 model:
 
-1. `ossie-clickhouse validate <model> --url <clickhouse>/<database>`
+1. `dactopus-ossie-clickhouse validate <model> --url <clickhouse>/<database>`
    passes against loaded data.
 2. `dbt build` of the package passes: models and their tests.
 3. An incremental run over unchanged input changes nothing, and matches a
@@ -116,7 +116,7 @@ model:
    new case fails against the old code.
 6. A change to descriptions, `ai_context` or model instructions changes
    what agents answer. Ask the questions it affects through
-   `ossie-clickhouse serve` (MCP), in fresh sessions, with more than one
+   `dactopus-ossie-clickhouse serve` (MCP), in fresh sessions, with more than one
    AI model, and compare every number in the answers with the
    hand-written queries.
 
