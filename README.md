@@ -50,9 +50,9 @@ Try the GA4 package on Google's public sample
 [ClickHouse](https://clickhouse.com/docs/install), the
 [gcloud CLI](https://cloud.google.com/sdk/docs/install),
 [uv](https://docs.astral.sh/uv/), dbt v2 (`pip install dbt-oss`) and
-[ossie-clickhouse](https://github.com/Dactopus/ossie-clickhouse) 0.2.2 or
+[ossie-clickhouse](https://github.com/Dactopus/ossie-clickhouse) 0.3.1 or
 later with its MCP server
-(`pip install "ossie-clickhouse[mcp] @ git+https://github.com/Dactopus/ossie-clickhouse@v0.2.2"`).
+(`pip install "ossie-clickhouse[mcp] @ git+https://github.com/Dactopus/ossie-clickhouse@v0.3.1"`).
 Tested on ClickHouse 26.9.
 
 1. **Export.** A Google Cloud project in the

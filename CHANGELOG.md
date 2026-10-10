@@ -8,6 +8,14 @@ names the Ossie schema version its models carry.
 
 ## [Unreleased]
 
+### Changed
+
+- The README, CONTRIBUTING.md and CI install ossie-clickhouse 0.3.1
+  instead of 0.2.2, which could regroup the operators of a compound
+  expression under another operator, such as a metric in a filter
+  (`1000 / metric > 1`), and return wrong values without an error. The
+  models are unchanged and answer the same numbers on 0.2.2 and 0.3.1.
+
 ## [0.2.0] - 2026-10-06
 
 Ossie schema `0.2.0.dev0`. Requires ossie-clickhouse 0.2.2 or later.
