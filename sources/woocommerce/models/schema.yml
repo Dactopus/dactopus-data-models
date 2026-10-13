@@ -46,6 +46,25 @@ models:
               arguments:
                 to: ref('orders')
                 field: order_id
+  - name: sales_events
+    columns:
+      - name: event_id
+        data_tests: [unique, not_null]
+      - {name: event_date, data_tests: [not_null]}
+      - {name: amount, data_tests: [not_null]}
+      - name: event_type
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [order, refund]
+      - name: order_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('orders')
+                field: order_id
 unit_tests:
   # Refunds of 3 EUR (1 of goods, 1 of shipping, 1 of tax) in a USD store,
   # converted as each multi-currency plugin converts amounts for Analytics

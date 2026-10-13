@@ -32,7 +32,8 @@
 --        tee, 29.70, on October 5.
 --   106  guest: pending payment, 22.
 --   107  customer 2: paid September 8, cancelled September 9 with
---        nothing refunded; 44.
+--        nothing refunded; 44. Refund 904 of one mug, 22, on September
+--        10: the reports leave it out with its order.
 --   108  guest: payment failed, 33.
 --   109  customer 1: a mug, fees of +5 and -7, shipping 10; 30.80, paid
 --        September 12, completed. A sticker line was removed before
@@ -91,7 +92,9 @@ INSERT INTO {db:Identifier}.wp_wc_orders
 (116, 'wc-processing', 'USD', 'shop_order', 2, 22, 0, 'guest6@example.com', '2026-10-08 10:00:00', 0, '2026-10-08 10:00:05', 0, 318),
 (116, 'wc-completed', 'USD', 'shop_order', 2, 22, 0, 'guest6@example.com', '2026-10-08 10:00:00', 0, '2026-10-08 12:00:05', 0, 329),
 (116, 'wc-completed', 'USD', 'shop_order', 2, 22, 0, 'guest6@example.com', '2026-10-08 10:00:00', 0, '2026-10-08 13:00:05', 1, 330),
-(117, 'wc-processing', 'EUR', 'shop_order', 4.5, 59.4, 1, 'alice@example.com', '2026-10-09 10:00:00', 0, '2026-10-09 10:00:05', 0, 341);
+(117, 'wc-processing', 'EUR', 'shop_order', 4.5, 59.4, 1, 'alice@example.com', '2026-10-09 10:00:00', 0, '2026-10-09 10:00:05', 0, 341),
+(904, 'wc-completed', 'USD', 'shop_order_refund', -2, -22, 0, '', '2026-09-10 10:00:00', 107, '2026-09-10 10:00:05', 0, 360),
+(107, 'wc-cancelled', 'USD', 'shop_order', 4, 44, 2, 'bob@example.com', '2026-09-08 13:00:00', 0, '2026-09-10 10:00:05', 0, 372);
 
 INSERT INTO {db:Identifier}.wp_wc_order_operational_data
     (id, order_id, created_via, prices_include_tax, date_paid_gmt, date_completed_gmt, shipping_total_amount, shipping_tax_amount, discount_total_amount, discount_tax_amount, _peerdb_synced_at, _peerdb_is_deleted, _peerdb_version) SETTINGS session_timezone = 'UTC' VALUES
@@ -122,7 +125,8 @@ INSERT INTO {db:Identifier}.wp_wc_order_operational_data
 (17, 115, 'store-api', false, '1970-01-01 00:00:00', '1970-01-01 00:00:00', 0, 0, 0, 0, '2026-10-07 10:00:05', 0, 308),
 (18, 116, 'checkout', false, '2026-10-08 10:00:00', '1970-01-01 00:00:00', 0, 0, 0, 0, '2026-10-08 10:00:05', 0, 319),
 (18, 116, 'checkout', false, '2026-10-08 10:00:00', '1970-01-01 00:00:00', 0, 0, 0, 0, '2026-10-08 13:00:05', 1, 331),
-(19, 117, 'checkout', false, '2026-10-09 10:00:00', '1970-01-01 00:00:00', 9, 0.9, 0, 0, '2026-10-09 10:00:05', 0, 342);
+(19, 117, 'checkout', false, '2026-10-09 10:00:00', '1970-01-01 00:00:00', 9, 0.9, 0, 0, '2026-10-09 10:00:05', 0, 342),
+(20, 904, '', false, '1970-01-01 00:00:00', '1970-01-01 00:00:00', 0, 0, 0, 0, '2026-09-10 10:00:05', 0, 361);
 
 INSERT INTO {db:Identifier}.wp_wc_order_addresses
     (id, order_id, address_type, city, state, postcode, country, _peerdb_synced_at, _peerdb_is_deleted, _peerdb_version) SETTINGS session_timezone = 'UTC' VALUES
@@ -183,7 +187,8 @@ INSERT INTO {db:Identifier}.wp_woocommerce_order_items
 (33, 'Mug', 'line_item', 116, '2026-10-08 10:00:05', 0, 320),
 (33, 'Mug', 'line_item', 116, '2026-10-08 13:00:05', 1, 332),
 (34, 'Mug', 'line_item', 117, '2026-10-09 10:00:05', 0, 346),
-(35, 'Flat rate', 'shipping', 117, '2026-10-09 10:00:05', 0, 355);
+(35, 'Flat rate', 'shipping', 117, '2026-10-09 10:00:05', 0, 355),
+(36, 'Mug', 'line_item', 904, '2026-09-10 10:00:05', 0, 362);
 
 INSERT INTO {db:Identifier}.wp_woocommerce_order_itemmeta
     (meta_id, order_item_id, meta_key, meta_value, _peerdb_synced_at, _peerdb_is_deleted, _peerdb_version) SETTINGS session_timezone = 'UTC' VALUES
@@ -423,7 +428,16 @@ INSERT INTO {db:Identifier}.wp_woocommerce_order_itemmeta
 (209, 34, '_line_tax', '4.5', '2026-10-09 10:00:05', 0, 354),
 (210, 35, 'method_id', 'flat_rate', '2026-10-09 10:00:05', 0, 356),
 (211, 35, 'cost', '9', '2026-10-09 10:00:05', 0, 357),
-(212, 35, 'total_tax', '0.9', '2026-10-09 10:00:05', 0, 358);
+(212, 35, 'total_tax', '0.9', '2026-10-09 10:00:05', 0, 358),
+(213, 36, '_product_id', '11', '2026-09-10 10:00:05', 0, 363),
+(214, 36, '_variation_id', '0', '2026-09-10 10:00:05', 0, 364),
+(215, 36, '_qty', '-1', '2026-09-10 10:00:05', 0, 365),
+(216, 36, '_tax_class', '', '2026-09-10 10:00:05', 0, 366),
+(217, 36, '_line_subtotal', '-20', '2026-09-10 10:00:05', 0, 367),
+(218, 36, '_line_subtotal_tax', '-2', '2026-09-10 10:00:05', 0, 368),
+(219, 36, '_line_total', '-20', '2026-09-10 10:00:05', 0, 369),
+(220, 36, '_line_tax', '-2', '2026-09-10 10:00:05', 0, 370),
+(221, 36, '_refunded_item_id', '15', '2026-09-10 10:00:05', 0, 371);
 
 INSERT INTO {db:Identifier}.wp_wc_product_meta_lookup
     (product_id, sku, _peerdb_synced_at, _peerdb_is_deleted, _peerdb_version) SETTINGS session_timezone = 'UTC' VALUES

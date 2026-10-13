@@ -83,6 +83,10 @@ SELECT
     o.display_financial_status AS display_financial_status,
     o.display_fulfillment_status AS display_fulfillment_status,
     o.cancelled_at IS NOT NULL AS is_cancelled,
+    o.cancelled_at AS cancelled_time,
+    -- Shopify's sales reports count every order, cancelled and unpaid ones
+    -- too (a cancellation is a sales reversal of its own, sales_events.sql).
+    true AS in_sales_reports,
     o.source_name AS channel,
     o.discount_codes AS discount_codes,
     length(o.discount_codes) AS discount_code_count,

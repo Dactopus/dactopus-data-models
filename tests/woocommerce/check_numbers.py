@@ -21,12 +21,15 @@ of the fixture (fixture.sql lists them):
     counted      101 (88), 103 (33), 104 (70.40, refunded 29.70), 109 (30.80),
                  110 (46), 111 (33, refunded 33), 112 (66, refunded 5),
                  113 (16.50), 117 (66 USD, 59.40 EUR): 9 orders, 449.70
-    not counted  102 on hold (no payment date), 106 pending, 107 cancelled,
-                 108 failed: rows of orders all the same
+    not counted  102 on hold (no payment date), 106 pending, 107 cancelled
+                 (refund 904 of 22 on September 10 left out with it), 108
+                 failed: rows of orders all the same
     not orders   114 in the trash, 115 a checkout draft, 116 deleted
 By month of payment in New York: August 101, 103 (paid at 22:10 on August
 31, September 1 in UTC); September 104 (placed August 30), 109, 110, 111;
 October 112, 113 (paid on delivery October 6, placed October 3), 117.
+Refunds of counted orders: 902 (111, 33) September 22, 903 (112, 5) October
+2, 901 (104, 29.70) October 5.
 Customer 1 by date placed: 101, 104, 109, 111, 117. Customer 2: 103, 107
 (cancelled, not numbered), 110, 113.
 """
@@ -82,19 +85,37 @@ CASES = [
      [{"order_month": "2026-08-01", "orders": 2, "revenue": 121, "net_revenue": 121, "refunded_amount": 0},
       {"order_month": "2026-09-01", "orders": 4, "revenue": 180.2, "net_revenue": 117.5, "refunded_amount": 62.7},
       {"order_month": "2026-10-01", "orders": 3, "revenue": 148.5, "net_revenue": 143.5, "refunded_amount": 5}]),
+    # Sales by the month they happened, as the store's reports count them:
+    # each order in the month of its payment, each refund in its own month.
+    # August 101 88 + 103 33 = 121. September 104 70.40 + 109 30.80 + 110
+    # 46 + 111 33 - refund 902 33 = 147.20. October 112 66 + 113 16.50 +
+    # 117 66 - 903 5 - 901 29.70 = 113.80. 382 in all, as net_revenue by
+    # the month of the order above (121, 117.50, 143.50), where 901 is
+    # September's. Refund 904 of cancelled 107 would take 22 off September.
+    (["-m", "net_revenue", "-d", "sales_events.event_month", "-o", "sales_events.event_month"],
+     [{"event_month": "2026-08-01", "net_revenue": 121},
+      {"event_month": "2026-09-01", "net_revenue": 147.2},
+      {"event_month": "2026-10-01", "net_revenue": 113.8}]),
+    # The same sales by kind of event: the 9 counted orders, 449.70, less
+    # their refunds, 67.70. WooCommerce has no cancellation events: a
+    # cancelled order is left out by its status.
+    (["-m", "net_revenue", "-d", "sales_events.event_type", "-o", "sales_events.event_type"],
+     [{"event_type": "order", "net_revenue": 449.7}, {"event_type": "refund", "net_revenue": -67.7}]),
     # Refunds by the month they were made: 902 (111, 33) on September 22;
     # 903 (112, 5, an amount without lines) on October 2 and 901 (104,
-    # 29.70) on October 5.
+    # 29.70) on October 5. 904 (107, 22, September 10) is a refund of an
+    # order the reports leave out, and they leave it out too: with it
+    # September would be 2 refunds, 55.
     (["-m", "refunds", "-m", "refunds_total", "-d", "refunds.refund_month", "-o", "refunds.refund_month"],
      [{"refund_month": "2026-09-01", "refunds": 1, "refunds_total": 33},
       {"refund_month": "2026-10-01", "refunds": 2, "refunds_total": 34.7}]),
     # Payment state of every row. Paid: 101, 103, 109, 110, 113 (its
     # earlier version, processing without a payment date, would be unpaid),
-    # 117, and 107, paid before it was cancelled. Partially refunded: 104,
-    # 112. Refunded: 111. Unpaid: 102 on hold, 106 pending. Voided: 108,
+    # 117. Partially refunded: 104, 112, and 107, paid before it was
+    # cancelled and refunded in part after. Refunded: 111. Unpaid: 102 on hold, 106 pending. Voided: 108,
     # its payment failed.
     (["-m", "all_orders", "-d", "orders.financial_status", "-o", "orders.financial_status"],
-     [{"financial_status": "paid", "all_orders": 7}, {"financial_status": "partially_refunded", "all_orders": 2},
+     [{"financial_status": "paid", "all_orders": 6}, {"financial_status": "partially_refunded", "all_orders": 3},
       {"financial_status": "refunded", "all_orders": 1}, {"financial_status": "unpaid", "all_orders": 2},
       {"financial_status": "voided", "all_orders": 1}]),
     # Completed orders are fulfilled: 101, 104, 109, 112, 113. The rest are

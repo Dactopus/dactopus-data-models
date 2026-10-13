@@ -21,7 +21,7 @@ Orders in the fixture, test order 1009 left out (sales, refunded):
                refunded 60), 1006 (210, refunded 210 at 22:00 on September
                30 in New York, October 1 in UTC), 1007 (137), 1008 (169.50,
                processed September 12, created October 2), 1010 (70,
-               guest, cancelled unpaid)
+               guest, cancelled unpaid on October 2)
     October    1011 (40, free shipping), 1012 (272.50, guest, import duties
                34.20 and their tax 4.45 inside)
 1001 also sold a 25 gift card, refunded on August 20, and 1007 took a 12
@@ -87,18 +87,40 @@ CASES = [
     # Refunds by the month they were made, in New York: 1001's gift card in
     # August, a refund of 0 as it is not a return (25 paid back), 1005's 60
     # and 1006's 210 (September 30, October 1 in UTC) in September, 1004's
-    # 45 in October; the test order's 500 is not there. In UTC September
-    # and October would be 60 and 255.
+    # 45 and 1010's cancel, a refund of no money, in October; the test
+    # order's 500 is not there. In UTC September and October would be 60
+    # and 255.
     (["-m", "refunds", "-m", "refunds_total", "-d", "refunds.refund_month", "-o", "refunds.refund_month"],
      [{"refund_month": "2026-08-01", "refunds": 1, "refunds_total": 0},
       {"refund_month": "2026-09-01", "refunds": 2, "refunds_total": 270},
-      {"refund_month": "2026-10-01", "refunds": 1, "refunds_total": 45}]),
+      {"refund_month": "2026-10-01", "refunds": 2, "refunds_total": 45}]),
     # The same refunds by the month of their order, through the order: 1001's
-    # gift card in August; 1004's 45, 1005's 60 and 1006's 210 in September,
-    # as refunded_amount by order month. October's 1011 and 1012 have none.
+    # gift card in August; 1004's 45, 1005's 60, 1006's 210 and 1010's 0 in
+    # September, as refunded_amount by order month. October's 1011 and 1012
+    # have none.
     (["-m", "refunds", "-m", "refunds_total", "-d", "orders.order_month", "-o", "orders.order_month"],
      [{"order_month": "2026-08-01", "refunds": 1, "refunds_total": 0},
-      {"order_month": "2026-09-01", "refunds": 3, "refunds_total": 315}]),
+      {"order_month": "2026-09-01", "refunds": 4, "refunds_total": 315}]),
+    # Sales by the month they happened, as Shopify's reports count them:
+    # each order in its month, each refund and cancel in its own. August
+    # 1001 110 + 1002 80 + 1003 30 (1001's gift card refund is 0) = 220.
+    # September 1004 181 + 1005 60 + 1006 210 + 1007 137 + 1008 169.50 +
+    # 1010 70, less 1005's refund 60 and 1006's 210 (September 30 in New
+    # York) = 557.50. October 1011 40 + 1012 272.50, less 1004's refund 45
+    # and 1010's cancel 70 = 197.50. 975 in all, as net_revenue by the
+    # month of the order above (220, 442.50, 312.50). 1005, cancelled and
+    # refunded whole at once, has no cancel to take back: counting its
+    # cancel as well would take 60 more off September.
+    (["-m", "net_revenue", "-d", "sales_events.event_month", "-o", "sales_events.event_month"],
+     [{"event_month": "2026-08-01", "net_revenue": 220},
+      {"event_month": "2026-09-01", "net_revenue": 557.5},
+      {"event_month": "2026-10-01", "net_revenue": 197.5}]),
+    # The same sales by kind of event: the 11 orders, 1360; refunds 45 +
+    # 60 + 210 = 315 (the gift card's and 1010's cancel are 0); 1010's
+    # cancel takes back its 70.
+    (["-m", "net_revenue", "-d", "sales_events.event_type", "-o", "sales_events.event_type"],
+     [{"event_type": "cancellation", "net_revenue": -70}, {"event_type": "order", "net_revenue": 1360},
+      {"event_type": "refund", "net_revenue": -315}]),
     # Units per order over the 11 orders: the lines' 18 items (see
     # items_sold below) / 11. Gift cards and tips are not goods: 1001's
     # gift card and 1007's tip would make it 20 / 11.

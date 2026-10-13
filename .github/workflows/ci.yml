@@ -123,7 +123,7 @@ jobs:
           early() { q "INSERT INTO shopify_input.$1 SELECT * FROM shopify_fixture.$1 WHERE NOT ($2)"; }
           late() { q "INSERT INTO shopify_input.$1 SELECT * REPLACE (now64(6) AS loaded_at) FROM shopify_fixture.$1 WHERE $2"; }
           # tables <database> [columns]: a checksum of each table
-          tables() { for t in orders order_lines refunds; do
+          tables() { for t in orders order_lines refunds sales_events; do
               q "SELECT '$t', count(), groupBitXor(cityHash64(toString(tuple(${2:-*})))) FROM $1.$t FORMAT TSV"; done; }
           same() {
               CLICKHOUSE_DATABASE=analytics_full $DBT_BUILD --full-refresh
@@ -210,7 +210,8 @@ jobs:
       # version deleted, as an input that collapses old versions would:
       # customer 2's 110 and 113, which nothing else rereads, must still be
       # renumbered; then
-      # 107 cancelled (renumbering its customer's 110 and 113), 113 paid on
+      # 107 cancelled (renumbering its customer's 110 and 113) and refunded
+      # in part (refund 904, which leaves the reports with it), 113 paid on
       # delivery (its date moves) and refund 901 of 104, already built;
       # then 109's line removed, 114 moved to the trash and 116 deleted,
       # which delete+insert alone would leave in place; then product 14
@@ -218,7 +219,7 @@ jobs:
       # no row of the order. Last, the same rows in the input's other form,
       # Nullable columns with NULL for empty values (PEERDB_NULLABLE), must
       # build the same tables.
-      - name: Build (models, tests, unit tests), incremental and full refresh
+      - name: Build (models, tests, unit tests), check numbers, incremental and full refresh
         run: |
           q() { curl -sf http://127.0.0.1:8123/ --data-binary "$1"; }
           load() { sed 's/wp_/wp_2_/g' "$1" | python3 -c "
@@ -230,8 +231,10 @@ jobs:
           early() { q "INSERT INTO woocommerce_input.wp_2_$1 SELECT * FROM woocommerce_fixture.wp_2_$1 WHERE NOT ($2)"; }
           late() { q "INSERT INTO woocommerce_input.wp_2_$1 SELECT * REPLACE (now64(9) AS _peerdb_synced_at) FROM woocommerce_fixture.wp_2_$1 WHERE $2"; }
           # tables <database> [columns]: a checksum of each table
-          tables() { for t in orders order_lines refunds; do
-              q "SELECT '$t', count(), groupBitXor(cityHash64(toString(tuple(${2:-*})))) FROM $1.$t FORMAT TSV"; done; }
+          # sales_events has no sync time of its own: all its columns count.
+          tables() { for t in orders order_lines refunds sales_events; do
+              c=${2:-*}; [ $t = sales_events ] && c='*'
+              q "SELECT '$t', count(), groupBitXor(cityHash64(toString(tuple($c)))) FROM $1.$t FORMAT TSV"; done; }
           same() {
               CLICKHOUSE_DATABASE=analytics_full $DBT_BUILD --full-refresh
               tables analytics > incremental.tsv
@@ -243,15 +246,15 @@ jobs:
           load tests/woocommerce/fixture.sql woocommerce_fixture
           $DBT_BUILD
           v() { echo "_peerdb_version $1"; }
-          early wc_orders "$(v 'IN (163, 116, 128, 151, 293, 207, 209, 306, 330)')"
+          early wc_orders "$(v 'IN (163, 116, 128, 151, 293, 207, 209, 306, 330, 360, 372)')"
           # 109 first for customer 2, on hold (numbered, unlike pending), in a
           # version before any of the fixture's (filtered inside: a replaced
           # column would shadow it in WHERE)
           q "INSERT INTO woocommerce_input.wp_2_wc_orders SELECT * REPLACE ('wc-on-hold' AS status, 2 AS customer_id, 0 AS _peerdb_version)
              FROM (SELECT * FROM woocommerce_fixture.wp_2_wc_orders WHERE $(v '= 163'))"
-          early wc_order_operational_data "$(v 'IN (117, 294, 208, 210, 331)')"
-          early woocommerce_order_items "$(v 'IN (118, 198, 332)')"
-          early woocommerce_order_itemmeta "$(v 'BETWEEN 119 AND 127') OR $(v 'BETWEEN 199 AND 206') OR $(v 'BETWEEN 333 AND 340')"
+          early wc_order_operational_data "$(v 'IN (117, 294, 208, 210, 331, 361)')"
+          early woocommerce_order_items "$(v 'IN (118, 198, 332, 362)')"
+          early woocommerce_order_itemmeta "$(v 'BETWEEN 119 AND 127') OR $(v 'BETWEEN 199 AND 206') OR $(v 'BETWEEN 333 AND 340') OR $(v 'BETWEEN 363 AND 371')"
           early wc_order_addresses false
           early wc_orders_meta false
           early wc_product_meta_lookup "$(v '= 359')"
@@ -261,10 +264,10 @@ jobs:
           q "DELETE FROM woocommerce_input.wp_2_wc_orders WHERE id = 109 AND $(v '= 0')"
           $DBT_BUILD                 # an order moved to another customer
           same
-          late wc_orders "$(v 'IN (116, 128, 151, 293)')"
-          late wc_order_operational_data "$(v 'IN (117, 294)')"
-          late woocommerce_order_items "$(v '= 118')"
-          late woocommerce_order_itemmeta "$(v 'BETWEEN 119 AND 127')"
+          late wc_orders "$(v 'IN (116, 128, 151, 293, 360, 372)')"
+          late wc_order_operational_data "$(v 'IN (117, 294, 361)')"
+          late woocommerce_order_items "$(v 'IN (118, 362)')"
+          late woocommerce_order_itemmeta "$(v 'BETWEEN 119 AND 127') OR $(v 'BETWEEN 363 AND 371')"
           $DBT_BUILD                 # a cancel, a payment on delivery, a refund
           same
           late wc_orders "$(v 'IN (207, 209, 306, 330)')"
@@ -279,6 +282,8 @@ jobs:
           test "$(q "SELECT count() FROM analytics.order_lines WHERE order_id = 103 AND sku IS NULL")" = 1
           $DBT_BUILD                 # incremental over unchanged input
           same
+          python3 tests/woocommerce/check_numbers.py
+          OSSIE_CLICKHOUSE_URL=http://127.0.0.1:8123/analytics_full python3 tests/woocommerce/check_numbers.py
           # Nullable columns but the keys and CDC's own; empty times, the
           # refunds' customer and the channel of refunds as NULL.
           sed -E '/^ +(id|order_id|order_item_id|meta_id|product_id|_peerdb_[a-z_]+) /!s/^( +[a-z_]+) (String|Decimal\(26, 8\)|DateTime64\(6\)|UInt64|Bool|Int64)/\1 Nullable(\2)/' \
