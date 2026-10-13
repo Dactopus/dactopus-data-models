@@ -20,7 +20,11 @@ ai_context:
     all_orders_total. "Sales", "revenue" or "turnover" without a qualifier
     means net_revenue: orders less refunds and cancellations, with
     shipping and tax, and import duties where the store collects them at
-    checkout. Name the definition in the answer. For sales in a period (a
+    checkout. Name the definition in the answer. orders.order_date (and
+    order_week, order_month) is the date the store's reports date an
+    order by: the date placed at Shopify, the date of payment by default
+    at WooCommerce. Call it the order date, not the date placed. For
+    sales in a period (a
     day, a week, a month), group net_revenue by sales_events.event_date,
     event_week or event_month: a refund or a cancellation counts when it
     was made, as in the store's reports. Group it by orders.order_month
@@ -89,7 +93,10 @@ datasets:
           synonyms: [week]
       - name: order_month
         expression: {dialects: [{dialect: ANSI_SQL, expression: "DATE_TRUNC('month', order_date)"}]}
-        description: First day of the month of order_date.
+        description: >
+          First day of the month of order_date, the date the store's
+          reports date the order by: the month placed at Shopify, the month
+          paid by default at WooCommerce.
         datatype: Date
         dimension: {is_time: true}
         ai_context:
@@ -186,8 +193,9 @@ datasets:
         expression: {dialects: [{dialect: ANSI_SQL, expression: shipping_country}]}
         description: >
           Country of the shipping address, as a two-letter code (US, CA).
-          Empty when the order has no shipping address, such as an order of
-          downloads only.
+          Empty when the order has no shipping address: downloads only,
+          pickup, or a store that asks only for a billing address. The
+          model does not say which.
         datatype: String
         dimension: {is_time: false}
         ai_context:
@@ -377,11 +385,12 @@ datasets:
       - name: sku
         expression: {dialects: [{dialect: ANSI_SQL, expression: sku}]}
         description: >
-          Stock keeping unit of the variant sold, the store's own code. Empty
-          when the store gave the variant none. Shopify keeps it on the
-          order as it was. WooCommerce keeps none on the order: this is the
-          product's current SKU (the variation's own, else its product's),
-          and empty once the product is deleted.
+          Stock keeping unit of the variant sold, the store's own code.
+          Empty when the store gave the variant none or, at WooCommerce,
+          when the product has since been deleted; the model does not say
+          which. Shopify keeps the SKU on the order as it was. WooCommerce
+          keeps none on the order: this is the product's current SKU (the
+          variation's own, else its product's).
         datatype: String
         dimension: {is_time: false}
         ai_context:
@@ -665,8 +674,8 @@ metrics:
     description: >
       Goods after discounts per order (orders.subtotal over orders):
       without shipping, tax and import duties, before refunds, over the
-      orders the store's reports count (at Shopify cancelled and unpaid
-      ones included). This is how both Shopify and WooCommerce Analytics
+      orders the store's reports count: at Shopify cancelled and unpaid
+      ones included, at WooCommerce by default neither. This is how both Shopify and WooCommerce Analytics
       define it, so it matches the store's dashboard. It is not revenue
       over orders, which would add shipping and tax. Filter by
       orders.is_cancelled = false to leave cancelled orders out.
