@@ -18,12 +18,12 @@ The numbers are those of the store's reports with WooCommerce's default
 settings: an order is dated by its payment and counted unless it is
 pending, cancelled or failed; an order not yet paid is not counted. Orders
 of the fixture (fixture.sql lists them):
-    counted    101 (88), 103 (33), 104 (70.40, refunded 29.70), 109 (30.80),
-               110 (46), 111 (33, refunded 33), 112 (66, refunded 5),
-               113 (16.50), 117 (66 USD, 59.40 EUR): 9 orders, 449.70
-    not        102 on hold (no payment date), 106 pending, 107 cancelled,
-    counted    108 failed: rows of orders all the same; 114 in the trash,
-               115 a checkout draft and 116 deleted are not orders at all
+    counted      101 (88), 103 (33), 104 (70.40, refunded 29.70), 109 (30.80),
+                 110 (46), 111 (33, refunded 33), 112 (66, refunded 5),
+                 113 (16.50), 117 (66 USD, 59.40 EUR): 9 orders, 449.70
+    not counted  102 on hold (no payment date), 106 pending, 107 cancelled,
+                 108 failed: rows of orders all the same
+    not orders   114 in the trash, 115 a checkout draft, 116 deleted
 By month of payment in New York: August 101, 103 (paid at 22:10 on August
 31, September 1 in UTC); September 104 (placed August 30), 109, 110, 111;
 October 112, 113 (paid on delivery October 6, placed October 3), 117.
@@ -51,7 +51,7 @@ CASES = [
     # + 31.82 (110) + 20 + 60 + 10 + 50 = 338.82 over 9. Discounts: 104's
     # coupon, 6 without tax. Shipping without tax: 10 + 5 + 10 + 10 + 10 +
     # 10 + 0 + 5 + 10 (117's 9 EUR) = 70. Tax on goods and shipping: 8 + 3
-    # + 6.40 + 2.80 + 4.18 + 3 + 6 + 1.50 + 6 = 40.88 (32.88 if tax_amount,
+    # + 6.40 + 2.80 + 4.18 + 3 + 6 + 1.50 + 6 = 40.88 (33.88 if tax_amount,
     # which leaves shipping tax out, were taken alone). Customers 1 and 2.
     (["-m", "orders", "-m", "revenue", "-m", "refunded_amount", "-m", "net_revenue",
       "-m", "refund_rate", "-m", "average_order_value", "-m", "discount_total",
