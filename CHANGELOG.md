@@ -19,6 +19,15 @@ names the Ossie schema version its models carry.
   CONTRIBUTING.md, CI and `tests/ask_model.py` install and run it under
   that name, at 0.4.0. Its old command still works in 0.4.x; the models
   are unchanged.
+- The README, CONTRIBUTING.md and CI install dactopus-ossie-clickhouse
+  0.7.0. Since 0.5.0 it answers metrics of two fact tables in one
+  question, such as net revenue and refunds by shipping country, merged
+  on the dimensions; the README and AGENTS.md list its limits as they
+  are now. The models are unchanged and pass the same checks on 0.7.0.
+- The README and the description of `refunded_amount` name the report
+  metric they compare with as "sales reversals (formerly returns)":
+  Shopify renamed it in March 2026, with the same definition
+  ([#9](https://github.com/Dactopus/dactopus-data-models/issues/9)).
 
 ## [0.2.0] - 2026-10-06
 

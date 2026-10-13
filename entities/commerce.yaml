@@ -468,9 +468,10 @@ metrics:
     description: >
       Money paid back on orders, with the tax paid back, by the date of the
       order, whenever the refund was made. For refunds by the date they were
-      made, use refunds_total. Not the "returns" of store reports, which
-      are without tax and count a cancelled unpaid order as value removed;
-      net_revenue already leaves that order out.
+      made, use refunds_total. Not the "sales reversals" (formerly
+      "returns") of store reports, which are without tax and count a
+      cancelled unpaid order as value removed; net_revenue already leaves
+      that order out.
     datatype: Decimal
     ai_context:
       synonyms: [refunded on orders, returns of these orders]

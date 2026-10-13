@@ -50,9 +50,9 @@ Try the GA4 package on Google's public sample
 [ClickHouse](https://clickhouse.com/docs/install), the
 [gcloud CLI](https://cloud.google.com/sdk/docs/install),
 [uv](https://docs.astral.sh/uv/), dbt v2 (`pip install dbt-oss`) and
-[dactopus-ossie-clickhouse](https://github.com/Dactopus/dactopus-ossie-clickhouse) 0.4.0 or
+[dactopus-ossie-clickhouse](https://github.com/Dactopus/dactopus-ossie-clickhouse) 0.7.0 or
 later with its MCP server
-(`pip install "dactopus-ossie-clickhouse[mcp] @ git+https://github.com/Dactopus/dactopus-ossie-clickhouse@v0.4.0"`).
+(`pip install "dactopus-ossie-clickhouse[mcp] @ git+https://github.com/Dactopus/dactopus-ossie-clickhouse@v0.7.0"`).
 Tested on ClickHouse 26.9.
 
 1. **Export.** A Google Cloud project in the
@@ -451,10 +451,10 @@ numbers differ by definition, and the model's descriptions say how:
 - **Gross and net sales** in Shopify's reports are goods only.
   `revenue` and `net_revenue` add shipping, tax and import duties;
   `line_revenue` is goods after discounts.
-- **Returns** in the reports are without tax and count a cancelled unpaid
-  order as returned. `refunded_amount` is the money paid back, with its
-  tax; a cancelled unpaid order has nothing refunded, and `net_revenue`
-  leaves it out.
+- **Sales reversals** (formerly returns) in the reports are without tax
+  and count a cancelled unpaid order as reversed. `refunded_amount` is
+  the money paid back, with its tax; a cancelled unpaid order has nothing
+  refunded, and `net_revenue` leaves it out.
 - **Taxes** in the reports are net of refunded tax; `tax_total` is the
   tax on the order as placed.
 - **New or returning**: the reports keep a cancelled order in its
@@ -615,9 +615,12 @@ synonyms and `ai_context`. Without them even strong models guess. A dbt
 A package states which one it uses and why.
 
 **dactopus-ossie-clickhouse limits are rules here.**
-- One root dataset per question.
-- Joins are many-to-one only, on a declared primary or unique key, so a
-  mart that combines facts is materialized as one fact table.
+- Joins are many-to-one only, on a declared primary or unique key, and
+  each dataset has one path from the question's root.
+- Two fact tables meet only on shared dimensions: their metrics in one
+  question are computed apart and merged. A metric that combines both
+  facts needs them in one table, so such a mart is materialized as one
+  fact table.
 - A metric cannot reference another metric by name; repeat the
   expression.
 - No time grain or derived dimensions: declare one field per grain.
