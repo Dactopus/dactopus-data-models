@@ -25,7 +25,10 @@ ai_context:
     event_week or event_month: a refund or a cancellation counts when it
     was made, as in the store's reports. Group it by orders.order_month
     only for what the orders of a month earned, refunds made later
-    included. Use revenue when asked for orders as placed or gross: the
+    included. Metrics of orders cannot be grouped by event_month: for
+    orders and sales of each month, ask two questions, orders by
+    orders.order_month and net_revenue by sales_events.event_month, and do
+    not put both under orders.order_month. Use revenue when asked for orders as placed or gross: the
     orders' totals before refunds and cancellations. Tips and gift cards
     sold are not sales and are in no amount; a gift card counts when it is
     spent, as part of the order it pays for. Refunds have two dates:
@@ -624,10 +627,11 @@ metrics:
       was made, and the numbers match the store's sales reports: use these
       for sales in a period. By orders.order_month, everything refunded on
       the orders of a month counts in that month (orders.net_total), when
-      it was made does not matter. Not revenue less refunded_amount: a
-      cancelled order with nothing refunded is left out whole. Not the
-      "net sales" of store reports, which are goods only, without shipping
-      and tax: for goods use line_revenue.
+      it was made does not matter. With metrics of orders, such as orders,
+      ask net_revenue by event_month in a question of its own. Not revenue
+      less refunded_amount: a cancelled order with nothing refunded is left
+      out whole. Not the "net sales" of store reports, which are goods
+      only, without shipping and tax: for goods use line_revenue.
     datatype: Decimal
     ai_context:
       synonyms: [sales, revenue, turnover, income, sales after refunds, total sales]
