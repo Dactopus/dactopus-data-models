@@ -122,9 +122,9 @@ jobs:
           # early <table> <rows held back>; late <table> <rows>, loaded now
           early() { q "INSERT INTO shopify_input.$1 SELECT * FROM shopify_fixture.$1 WHERE NOT ($2)"; }
           late() { q "INSERT INTO shopify_input.$1 SELECT * REPLACE (now64(6) AS loaded_at) FROM shopify_fixture.$1 WHERE $2"; }
-          # tables <database> [columns]: a checksum of each table
+          # tables <database>: a checksum of each table
           tables() { for t in orders order_lines refunds sales_events; do
-              q "SELECT '$t', count(), groupBitXor(cityHash64(toString(tuple(${2:-*})))) FROM $1.$t FORMAT TSV"; done; }
+              q "SELECT '$t', count(), groupBitXor(cityHash64(toString(tuple(*)))) FROM $1.$t FORMAT TSV"; done; }
           same() {
               CLICKHOUSE_DATABASE=analytics_full $DBT_BUILD --full-refresh
               tables analytics > incremental.tsv
