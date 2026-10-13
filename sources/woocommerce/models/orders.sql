@@ -149,9 +149,12 @@ SELECT
     {{ woocommerce_convert('op.discount_total_amount') }} AS discount_total,
     {{ woocommerce_convert('e.fee_amount') }} AS fee_total,
     ifNull(rf.refunded_total, toDecimal128(0, 8)) AS refunded_total,
-    -- What the order earned after refunds. A cancelled order earned
-    -- nothing: WooCommerce cancels without refunding, even a paid order.
-    if(is_cancelled, toDecimal128(0, 8), total - refunded_total) AS net_total,
+    -- What the order earned after refunds, as the store's reports count
+    -- it: the sum of its sales events. A cancelled order the reports leave
+    -- out earned nothing (WooCommerce cancels without refunding, even a
+    -- paid order); one they count, where the store does not exclude
+    -- cancelled orders, is a sale like any other.
+    if(is_cancelled AND NOT in_sales_reports, toDecimal128(0, 8), total - refunded_total) AS net_total,
     op.taxes_included AS taxes_included,
     -- Paid only with a payment date: an order in processing or completed
     -- has been paid by card or bank, but cash on delivery is processing

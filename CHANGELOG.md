@@ -35,16 +35,20 @@ package and its model are unchanged.
   currency (required), time zone, price decimals and table prefix,
   plugins' statuses and a sequential order number plugin's meta key.
   Orders WooPayments or FOX placed in another currency are converted to
-  the store's as the plugin converts them for Analytics. Structural
-  checks as dbt tests, two singular tests (amounts add up; lines make the
-  subtotal, a warning outside CI) and a unit test of the conversion.
+  the store's as the plugin converts them for Analytics. A cancelled
+  order has a `net_total` of 0 unless the store's reports count cancelled
+  orders, in which case it is a sale like any other. Structural checks as
+  dbt tests, three singular tests (amounts add up; lines make the
+  subtotal, a warning outside CI; an order's sales events make its
+  `net_total`) and a unit test of the conversion.
   Checked against Analytics on a local test store.
 - Hand-written WooCommerce rows in CDC form and the numbers the model must
   answer over them (`tests/woocommerce`, 18 questions), checked in CI on
   both dbt versions, with databases and a table prefix other than the
   defaults. CI syncs part of the rows late, step by step, and checks that
-  the incremental build matches a full refresh after each, and that the
-  input with Nullable columns builds the same tables.
+  the incremental build matches a full refresh after each, that the input
+  with Nullable columns builds the same tables, and that a store whose
+  reports count cancelled orders gets them as sales.
 - Dataset `sales_events` in `entities/commerce.yaml`, built by both order
   packages: one row for each order on `order_date`, each refund on the
   day it was made and, at Shopify, each cancellation on the day of the
@@ -56,7 +60,8 @@ package and its model are unchanged.
 - Metrics `all_orders` and `all_orders_total`, over every order, the ones
   the reports leave out included, such as orders awaiting payment.
 - Shopify `orders` gets the columns `in_sales_reports` and
-  `cancelled_time`.
+  `cancelled_time`, and a singular test that an order's sales events make
+  its `net_total` (a warning outside CI).
 - README: a WooCommerce quick start on those rows, a recipe for a store
   through PeerDB, the known differences from WooCommerce Analytics and
   the package's known limits.

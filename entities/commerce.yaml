@@ -323,8 +323,12 @@ datasets:
       - name: net_total
         expression: {dialects: [{dialect: ANSI_SQL, expression: net_total}]}
         description: >
-          What the order earned: total less refunded_total, and 0 for a
-          cancelled order, paid back or not.
+          What the order earned: total less refunded_total. A cancelled
+          order has 0, paid back or not, unless the store's reports count
+          it as a sale: a WooCommerce store can keep cancelled orders in
+          its reports (in_sales_reports), and then they earn like any
+          other. For an order the reports count, the sum of its
+          sales_events.
         datatype: Decimal
         ai_context:
           synonyms: [order net, net order value]
@@ -495,7 +499,8 @@ datasets:
         description: >
           What happened: order (the order counted as a sale), refund, or
           cancellation (Shopify only; WooCommerce's reports leave a
-          cancelled order out instead).
+          cancelled order out by default, or count it as a sale where the
+          store keeps cancelled orders in them).
         datatype: String
         dimension: {is_time: false}
         ai_context:
@@ -629,8 +634,8 @@ metrics:
       the orders of a month counts in that month (orders.net_total), when
       it was made does not matter. With metrics of orders, such as orders,
       ask net_revenue by event_month in a question of its own. Not revenue
-      less refunded_amount: a cancelled order with nothing refunded is left
-      out whole. Not the "net sales" of store reports, which are goods
+      less refunded_amount: at Shopify a cancelled order with nothing
+      refunded is left out whole. Not the "net sales" of store reports, which are goods
       only, without shipping and tax: for goods use line_revenue.
     datatype: Decimal
     ai_context:

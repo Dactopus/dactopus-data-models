@@ -299,5 +299,10 @@ jobs:
           tables analytics_nullable "* EXCEPT synced_at" > nullable.tsv
           tables analytics_full "* EXCEPT synced_at" > full.tsv
           diff nullable.tsv full.tsv
+          # A store whose reports count cancelled orders: 107, paid, cancelled
+          # and refunded 22 of 44, is a sale, and its net_total is what its
+          # events add up to (sales_events_make_net_total): 22, not 0.
+          CLICKHOUSE_DATABASE=analytics_cancelled ${DBT_BUILD/'"woocommerce_lookback_days":0'/'"woocommerce_lookback_days":0,"woocommerce_excluded_statuses":["pending","failed"]'}
+          test "$(q "SELECT in_sales_reports AND net_total = 22 FROM analytics_cancelled.orders WHERE order_id = 107")" = 1
       - name: Validate the Ossie model against the built tables
         run: dactopus-ossie-clickhouse validate entities/commerce.yaml --url "$OSSIE_CLICKHOUSE_URL"
