@@ -429,9 +429,12 @@ dactopus-ossie-clickhouse, as for GA4.
 
 The package reads the store's own order tables in ClickHouse, copied from
 its MySQL database by CDC: every change of a row arrives as a new version
-of it. This recipe was checked with PeerDB 0.37 (open source) over MySQL
-8.4. ClickPipes, ClickHouse Cloud's CDC, runs PeerDB but is not checked
-yet.
+of it. This recipe was checked with open-source PeerDB 0.37 run from its
+repository's Docker Compose setup
+([PeerDB-io/peerdb](https://github.com/PeerDB-io/peerdb), tag `v0.37.11`),
+over MySQL 8.4, on a local network without TLS. PeerDB stages the rows
+for ClickHouse in S3; that setup runs MinIO for it. ClickPipes, ClickHouse
+Cloud's CDC, runs PeerDB but is not checked yet.
 
 1. **HPOS.** The tables are those of High-Performance Order Storage
    ([HPOS](https://developer.woocommerce.com/docs/features/high-performance-order-storage/)),
@@ -474,11 +477,12 @@ yet.
    ```sql
    CREATE PEER woo_mysql FROM MYSQL WITH (
      host = '<mysql host>', port = 3306, user = 'peerdb', password = '<password>',
-     database = '<wordpress>', flavor = 'mysql', replication_mechanism = 'gtid'
+     database = '<wordpress>', flavor = 'mysql', replication_mechanism = 'gtid',
+     disable_tls = true
    );
    CREATE PEER woo_ch FROM CLICKHOUSE WITH (
      host = '<clickhouse host>', port = 9000, user = '<user>', password = '<password>',
-     database = 'woocommerce_raw'
+     database = 'woocommerce_raw', disable_tls = true
    );
    CREATE MIRROR woo_orders FROM woo_mysql TO woo_ch WITH TABLE MAPPING (
      <wordpress>.wp_wc_orders:wp_wc_orders,
@@ -491,7 +495,9 @@ yet.
    ) WITH (do_initial_copy = true);
    ```
 
-   The tables keep the store's prefix, `wp_` unless it chose another.
+   Outside a local network, leave out `disable_tls` and give ClickHouse's
+   secure port (9440 by default); that is not checked. The tables keep the
+   store's prefix, `wp_` unless it chose another.
    PeerDB writes an empty MySQL value as the column type's default unless
    `PEERDB_NULLABLE` is on; the package reads both forms.
 

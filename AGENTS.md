@@ -28,6 +28,7 @@ The README describes what works today. Plans go in
                               relationships and metrics
     sources/<source>/         one package per source, a dbt project:
       input.sql               the input table the package accepts
+      macros/                 SQL the package's models share
       models/<entity>.sql     one model per entity, named after it
       models/schema.yml       structural checks (dbt tests only)
       tests/                  singular dbt tests, for checks a generic
