@@ -4,7 +4,9 @@
 -- _peerdb_is_deleted = 1, and empty values are the types' defaults
 -- (1970-01-01 00:00:00, 0, ''), as PeerDB writes them by default. The
 -- shapes follow orders placed on a local test store (WooCommerce 11.2.1).
--- The input database is the query parameter db, as in input.sql.
+-- The input database is the query parameter db, as in input.sql. Times are
+-- written in UTC; the input's times have no time zone of their own, so each
+-- insert reads them in UTC (session_timezone), whatever the server's zone.
 -- check_numbers.py derives the expected numbers from these rows.
 --
 -- The store is in America/New_York (UTC-4 from August to October), sells in
@@ -54,7 +56,7 @@
 --        order's rate is 0.9 EUR per USD: 66 USD.
 
 INSERT INTO {db:Identifier}.wp_wc_orders
-    (id, status, currency, type, tax_amount, total_amount, customer_id, billing_email, date_created_gmt, parent_order_id, _peerdb_synced_at, _peerdb_is_deleted, _peerdb_version) VALUES
+    (id, status, currency, type, tax_amount, total_amount, customer_id, billing_email, date_created_gmt, parent_order_id, _peerdb_synced_at, _peerdb_is_deleted, _peerdb_version) SETTINGS session_timezone = 'UTC' VALUES
 (101, 'wc-pending', 'USD', 'shop_order', 5, 66, 1, 'alice@example.com', '2026-08-10 14:00:00', 0, '2026-08-10 14:00:05', 0, 7),
 (101, 'wc-processing', 'USD', 'shop_order', 7, 88, 1, 'alice@example.com', '2026-08-10 14:00:00', 0, '2026-08-10 14:05:05', 0, 54),
 (101, 'wc-completed', 'USD', 'shop_order', 7, 88, 1, 'alice@example.com', '2026-08-10 14:00:00', 0, '2026-08-12 09:00:05', 0, 56),
@@ -92,7 +94,7 @@ INSERT INTO {db:Identifier}.wp_wc_orders
 (117, 'wc-processing', 'EUR', 'shop_order', 4.5, 59.4, 1, 'alice@example.com', '2026-10-09 10:00:00', 0, '2026-10-09 10:00:05', 0, 341);
 
 INSERT INTO {db:Identifier}.wp_wc_order_operational_data
-    (id, order_id, created_via, prices_include_tax, date_paid_gmt, date_completed_gmt, shipping_total_amount, shipping_tax_amount, discount_total_amount, discount_tax_amount, _peerdb_synced_at, _peerdb_is_deleted, _peerdb_version) VALUES
+    (id, order_id, created_via, prices_include_tax, date_paid_gmt, date_completed_gmt, shipping_total_amount, shipping_tax_amount, discount_total_amount, discount_tax_amount, _peerdb_synced_at, _peerdb_is_deleted, _peerdb_version) SETTINGS session_timezone = 'UTC' VALUES
 (1, 101, 'checkout', false, '1970-01-01 00:00:00', '1970-01-01 00:00:00', 0, 0, 0, 0, '2026-08-10 14:00:05', 0, 8),
 (1, 101, 'checkout', false, '2026-08-10 14:05:00', '1970-01-01 00:00:00', 10, 1, 0, 0, '2026-08-10 14:05:05', 0, 55),
 (1, 101, 'checkout', false, '2026-08-10 14:05:00', '2026-08-12 09:00:00', 10, 1, 0, 0, '2026-08-12 09:00:05', 0, 57),
@@ -123,7 +125,7 @@ INSERT INTO {db:Identifier}.wp_wc_order_operational_data
 (19, 117, 'checkout', false, '2026-10-09 10:00:00', '1970-01-01 00:00:00', 9, 0.9, 0, 0, '2026-10-09 10:00:05', 0, 342);
 
 INSERT INTO {db:Identifier}.wp_wc_order_addresses
-    (id, order_id, address_type, city, state, postcode, country, _peerdb_synced_at, _peerdb_is_deleted, _peerdb_version) VALUES
+    (id, order_id, address_type, city, state, postcode, country, _peerdb_synced_at, _peerdb_is_deleted, _peerdb_version) SETTINGS session_timezone = 'UTC' VALUES
 (1, 101, 'billing', 'New York', 'NY', '10001', 'US', '2026-08-10 14:00:05', 0, 9),
 (2, 101, 'shipping', 'New York', 'NY', '10001', 'US', '2026-08-10 14:00:05', 0, 10),
 (3, 102, 'shipping', 'Albany', 'NY', '10001', 'US', '2026-08-20 15:00:05', 0, 60),
@@ -137,13 +139,13 @@ INSERT INTO {db:Identifier}.wp_wc_order_addresses
 (11, 117, 'shipping', 'Berlin', 'BE', '10115', 'DE', '2026-10-09 10:00:05', 0, 343);
 
 INSERT INTO {db:Identifier}.wp_wc_orders_meta
-    (id, order_id, meta_key, meta_value, _peerdb_synced_at, _peerdb_is_deleted, _peerdb_version) VALUES
+    (id, order_id, meta_key, meta_value, _peerdb_synced_at, _peerdb_is_deleted, _peerdb_version) SETTINGS session_timezone = 'UTC' VALUES
 (1, 101, '_order_number', '1', '2026-08-10 14:00:05', 0, 11),
 (2, 117, '_wcpay_multi_currency_order_exchange_rate', '0.9', '2026-10-09 10:00:05', 0, 344),
 (3, 117, '_wcpay_multi_currency_order_default_currency', 'USD', '2026-10-09 10:00:05', 0, 345);
 
 INSERT INTO {db:Identifier}.wp_woocommerce_order_items
-    (order_item_id, order_item_name, order_item_type, order_id, _peerdb_synced_at, _peerdb_is_deleted, _peerdb_version) VALUES
+    (order_item_id, order_item_name, order_item_type, order_id, _peerdb_synced_at, _peerdb_is_deleted, _peerdb_version) SETTINGS session_timezone = 'UTC' VALUES
 (1, 'Mug', 'line_item', 101, '2026-08-10 14:00:05', 0, 12),
 (2, 'Tee', 'line_item', 101, '2026-08-10 14:00:05', 0, 21),
 (3, 'Flat rate', 'shipping', 101, '2026-08-10 14:00:05', 0, 30),
@@ -184,7 +186,7 @@ INSERT INTO {db:Identifier}.wp_woocommerce_order_items
 (35, 'Flat rate', 'shipping', 117, '2026-10-09 10:00:05', 0, 355);
 
 INSERT INTO {db:Identifier}.wp_woocommerce_order_itemmeta
-    (meta_id, order_item_id, meta_key, meta_value, _peerdb_synced_at, _peerdb_is_deleted, _peerdb_version) VALUES
+    (meta_id, order_item_id, meta_key, meta_value, _peerdb_synced_at, _peerdb_is_deleted, _peerdb_version) SETTINGS session_timezone = 'UTC' VALUES
 (1, 1, '_product_id', '11', '2026-08-10 14:00:05', 0, 13),
 (2, 1, '_variation_id', '0', '2026-08-10 14:00:05', 0, 14),
 (3, 1, '_qty', '1', '2026-08-10 14:00:05', 0, 15),
@@ -424,7 +426,7 @@ INSERT INTO {db:Identifier}.wp_woocommerce_order_itemmeta
 (212, 35, 'total_tax', '0.9', '2026-10-09 10:00:05', 0, 358);
 
 INSERT INTO {db:Identifier}.wp_wc_product_meta_lookup
-    (product_id, sku, _peerdb_synced_at, _peerdb_is_deleted, _peerdb_version) VALUES
+    (product_id, sku, _peerdb_synced_at, _peerdb_is_deleted, _peerdb_version) SETTINGS session_timezone = 'UTC' VALUES
 (11, 'MUG', '2026-08-01 00:00:05', 0, 1),
 (12, 'TEE', '2026-08-01 00:00:05', 0, 2),
 (121, 'TEE-M', '2026-08-01 00:00:05', 0, 3),

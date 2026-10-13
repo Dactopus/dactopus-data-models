@@ -1,0 +1,27 @@
+version: 2
+sources:
+  - name: woocommerce_raw
+    schema: "{{ var('woocommerce_input_database') }}"
+    tables:
+      - name: wc_orders
+        identifier: "{{ var('woocommerce_table_prefix') }}wc_orders"
+        # `dbt source freshness`: is CDC still syncing? A sync adds rows
+        # only when some order changed, so a store without an order in a
+        # day warns too.
+        config:
+          loaded_at_field: _peerdb_synced_at
+          freshness:
+            warn_after: {count: 1, period: day}
+            error_after: {count: 3, period: day}
+      - name: wc_order_operational_data
+        identifier: "{{ var('woocommerce_table_prefix') }}wc_order_operational_data"
+      - name: wc_order_addresses
+        identifier: "{{ var('woocommerce_table_prefix') }}wc_order_addresses"
+      - name: wc_orders_meta
+        identifier: "{{ var('woocommerce_table_prefix') }}wc_orders_meta"
+      - name: woocommerce_order_items
+        identifier: "{{ var('woocommerce_table_prefix') }}woocommerce_order_items"
+      - name: woocommerce_order_itemmeta
+        identifier: "{{ var('woocommerce_table_prefix') }}woocommerce_order_itemmeta"
+      - name: wc_product_meta_lookup
+        identifier: "{{ var('woocommerce_table_prefix') }}wc_product_meta_lookup"

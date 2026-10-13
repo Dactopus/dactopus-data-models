@@ -1,0 +1,115 @@
+version: 2
+# Structural checks only; descriptions live in entities/commerce.yaml.
+models:
+  - name: orders
+    columns:
+      - name: order_id
+        data_tests: [unique, not_null]
+      - {name: order_date, data_tests: [not_null]}
+      - {name: currency, data_tests: [not_null]}
+      # NULL when the order is in another currency with no known rate.
+      - {name: total, data_tests: [not_null]}
+      - name: financial_status
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [unpaid, paid, partially_refunded, refunded, voided]
+      - name: fulfillment_status
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [unfulfilled, partially_fulfilled, fulfilled]
+  - name: order_lines
+    columns:
+      - name: line_id
+        data_tests: [unique, not_null]
+      - {name: line_total, data_tests: [not_null]}
+      - name: order_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('orders')
+                field: order_id
+  - name: refunds
+    columns:
+      - name: refund_id
+        data_tests: [unique, not_null]
+      - {name: refund_date, data_tests: [not_null]}
+      - {name: refunded_amount, data_tests: [not_null]}
+      - name: order_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('orders')
+                field: order_id
+unit_tests:
+  # Refunds of 3 EUR (1 of goods, 1 of shipping, 1 of tax) in a USD store,
+  # converted as each multi-currency plugin converts amounts for Analytics
+  # (woocommerce_rates; orders.sql converts orders the same way). FOX
+  # divides by its rate and rounds the total alone: 3 / 0.3 = 10.00, while
+  # its parts round to 3.33 each. WooPayments multiplies by the payment's
+  # rate and rounds the parts: 3.33 * 3 = 9.99. A refund without rates of
+  # its own takes its order's. An order whose WooPayments meta names
+  # another store currency, with no other rate, has no amount and fails
+  # not_null. The test is on refunds: dbt v2 cannot compare the rows of
+  # orders, whose discount_codes is an array.
+  - name: refunds_converted_by_plugin
+    model: refunds
+    overrides:
+      macros:
+        is_incremental: false
+      # A store in USD with WooCommerce's defaults. dbt v2 drops the
+      # project's vars that a unit test does not name, so all are named.
+      vars:
+        woocommerce_currency: USD
+        woocommerce_price_decimals: 2
+        woocommerce_timezone: UTC
+        woocommerce_date_type: date_paid
+        woocommerce_excluded_statuses: [pending, cancelled, failed]
+        woocommerce_order_statuses: {}
+        woocommerce_order_number_meta_key: ""
+        woocommerce_lookback_days: 3
+        woocommerce_table_prefix: wp_
+        woocommerce_input_database: woocommerce_raw
+    given:
+      - input: source('woocommerce_raw', 'wc_orders')
+        rows:
+          - {id: 1, status: wc-processing, currency: EUR, type: shop_order, tax_amount: 1, total_amount: 3, date_created_gmt: '2026-09-15 12:00:00', _peerdb_is_deleted: 0, _peerdb_version: 1}
+          - {id: 2, status: wc-processing, currency: EUR, type: shop_order, tax_amount: 1, total_amount: 3, date_created_gmt: '2026-09-15 12:00:00', _peerdb_is_deleted: 0, _peerdb_version: 2}
+          - {id: 3, status: wc-processing, currency: EUR, type: shop_order, tax_amount: 1, total_amount: 3, date_created_gmt: '2026-09-15 12:00:00', _peerdb_is_deleted: 0, _peerdb_version: 3}
+          - {id: 11, status: wc-completed, currency: EUR, type: shop_order_refund, tax_amount: -1, total_amount: -3, date_created_gmt: '2026-09-16 12:00:00', parent_order_id: 1, _peerdb_is_deleted: 0, _peerdb_version: 4}
+          - {id: 12, status: wc-completed, currency: EUR, type: shop_order_refund, tax_amount: -1, total_amount: -3, date_created_gmt: '2026-09-16 12:00:00', parent_order_id: 2, _peerdb_is_deleted: 0, _peerdb_version: 5}
+          - {id: 13, status: wc-completed, currency: EUR, type: shop_order_refund, tax_amount: -1, total_amount: -3, date_created_gmt: '2026-09-16 12:00:00', parent_order_id: 2, _peerdb_is_deleted: 0, _peerdb_version: 6}
+          - {id: 14, status: wc-completed, currency: EUR, type: shop_order_refund, tax_amount: -1, total_amount: -3, date_created_gmt: '2026-09-16 12:00:00', parent_order_id: 3, _peerdb_is_deleted: 0, _peerdb_version: 7}
+      - input: source('woocommerce_raw', 'wc_order_operational_data')
+        rows:
+          - {id: 11, order_id: 11, shipping_total_amount: -1, shipping_tax_amount: 0, _peerdb_is_deleted: 0, _peerdb_version: 8}
+          - {id: 12, order_id: 12, shipping_total_amount: -1, shipping_tax_amount: 0, _peerdb_is_deleted: 0, _peerdb_version: 9}
+          - {id: 13, order_id: 13, shipping_total_amount: -1, shipping_tax_amount: 0, _peerdb_is_deleted: 0, _peerdb_version: 10}
+          - {id: 14, order_id: 14, shipping_total_amount: -1, shipping_tax_amount: 0, _peerdb_is_deleted: 0, _peerdb_version: 11}
+      - input: source('woocommerce_raw', 'wc_orders_meta')
+        rows:
+          - {id: 1, order_id: 1, meta_key: _woocs_order_rate, meta_value: '0.3', _peerdb_is_deleted: 0, _peerdb_version: 12}
+          # Order 2 and its refund 12: WooPayments, paid at 3.3333 USD per EUR.
+          - {id: 2, order_id: 2, meta_key: _wcpay_multi_currency_order_exchange_rate, meta_value: '0.3', _peerdb_is_deleted: 0, _peerdb_version: 13}
+          - {id: 3, order_id: 2, meta_key: _wcpay_multi_currency_stripe_exchange_rate, meta_value: '3.3333', _peerdb_is_deleted: 0, _peerdb_version: 14}
+          - {id: 4, order_id: 2, meta_key: _wcpay_multi_currency_order_default_currency, meta_value: USD, _peerdb_is_deleted: 0, _peerdb_version: 15}
+          - {id: 5, order_id: 12, meta_key: _wcpay_multi_currency_order_exchange_rate, meta_value: '0.3', _peerdb_is_deleted: 0, _peerdb_version: 16}
+          - {id: 6, order_id: 12, meta_key: _wcpay_multi_currency_stripe_exchange_rate, meta_value: '3.3333', _peerdb_is_deleted: 0, _peerdb_version: 17}
+          - {id: 7, order_id: 12, meta_key: _wcpay_multi_currency_order_default_currency, meta_value: USD, _peerdb_is_deleted: 0, _peerdb_version: 18}
+          - {id: 8, order_id: 3, meta_key: _wcpay_multi_currency_order_exchange_rate, meta_value: '0.3', _peerdb_is_deleted: 0, _peerdb_version: 19}
+          - {id: 9, order_id: 3, meta_key: _wcpay_multi_currency_order_default_currency, meta_value: GBP, _peerdb_is_deleted: 0, _peerdb_version: 20}
+      - input: source('woocommerce_raw', 'woocommerce_order_items')
+        rows: []
+      - input: source('woocommerce_raw', 'woocommerce_order_itemmeta')
+        rows: []
+    expect:
+      rows:
+        - {refund_id: 11, order_id: 1, refunded_amount: 10}
+        - {refund_id: 12, order_id: 2, refunded_amount: 9.99}
+        - {refund_id: 13, order_id: 2, refunded_amount: 9.99}
+        - {refund_id: 14, order_id: 3, refunded_amount: null}

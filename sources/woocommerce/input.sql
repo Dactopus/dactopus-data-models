@@ -18,8 +18,8 @@
 --
 -- Each table is a log of versions. CDC appends a row for every insert,
 -- update and delete in MySQL, with
---   _peerdb_version     larger for a later change of the same row;
---   _peerdb_is_deleted  1 when the row was deleted, with its last values;
+--   _peerdb_version     larger for a later change of the same row,
+--   _peerdb_is_deleted  1 when the row was deleted, with its last values,
 --   _peerdb_synced_at   when the row reached ClickHouse.
 -- The package takes the latest version of each row and drops it when that
 -- version is a delete. PeerDB writes ReplacingMergeTree(_peerdb_version)
