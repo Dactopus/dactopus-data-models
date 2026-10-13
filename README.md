@@ -492,10 +492,10 @@ release tag:
 ```yaml
 packages:
   - git: https://github.com/Dactopus/dactopus-data-models.git
-    revision: v0.2.0
+    revision: v0.2.1
     subdirectory: sources/ga4
   - git: https://github.com/Dactopus/dactopus-data-models.git
-    revision: v0.2.0
+    revision: v0.2.1
     subdirectory: sources/shopify
 ```
 
