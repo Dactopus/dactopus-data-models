@@ -2,8 +2,9 @@
 
 Where the project is heading. The [README](README.md) describes what works
 today; plans live here. There are no dates: an item moves when it is
-ready. Each item gets an issue when work on it starts, and the discussion
-happens there. This file changes through pull requests, like the code.
+ready. An item's decisions are recorded in its pull request and the
+changelog; questions it leaves open become issues. This file changes
+through pull requests, like the code.
 
 - **Next**: the next piece of work.
 - **Needs contributors**: useful, waiting for someone with the data or
@@ -15,14 +16,7 @@ happens there. This file changes through pull requests, like the code.
 
 ## Next
 
-### WooCommerce
-
-The second orders source, which tests that `orders`, `order_lines` and
-`refunds` are not shaped by Shopify; until it maps onto them, they are
-provisional. There is no dbt package to start from. The input is the
-store's own order tables ([HPOS](https://developer.woocommerce.com/docs/features/high-performance-order-storage/),
-WooCommerce 8.2 and later), and the test data comes from a local test
-store, where every expected number is known.
+Nothing yet: the next item is chosen after the 0.3.0 release.
 
 ## Needs contributors
 

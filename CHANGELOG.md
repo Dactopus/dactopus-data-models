@@ -8,6 +8,90 @@ names the Ossie schema version its models carry.
 
 ## [Unreleased]
 
+Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.7.0,
+dbt v2 (`dbt-oss` 2.0.5) and dbt v1 (`dbt-core` 1.11 with
+`dbt-clickhouse` 1.10) on ClickHouse 26.9. A Shopify deployment needs one
+`dbt build --full-refresh` after the upgrade: its `orders` has new
+columns, and an incremental run now stops on them with an error instead
+of leaving the old table. Shopify's numbers are unchanged. The GA4
+package and its model are unchanged.
+
+### Added
+
+- WooCommerce package `sources/woocommerce`: a dbt project that builds
+  `orders`, `order_lines`, `refunds` and `sales_events` from seven of the
+  store's order tables (HPOS, WooCommerce 8.2 and later), copied from
+  MySQL into ClickHouse by change data capture as PeerDB writes them
+  (`sources/woocommerce/input.sql`). The package takes the latest version
+  of each row and drops deleted ones, and reads empty values in either
+  form PeerDB writes them. Incremental by sync time, with a re-read
+  window (`woocommerce_lookback_days`, default 3); an incremental run
+  also removes orders deleted or moved to the trash, and lines removed
+  from an order. The numbers
+  follow WooCommerce Analytics under the settings the package's variables
+  repeat: the date type (`woocommerce_date_type`, default `date_paid`)
+  and the excluded statuses (`woocommerce_excluded_statuses`, default
+  pending, cancelled and failed). Other variables name the store's
+  currency (required), time zone, price decimals and table prefix,
+  plugins' statuses and a sequential order number plugin's meta key.
+  Orders WooPayments or FOX placed in another currency are converted to
+  the store's as the plugin converts them for Analytics. Structural
+  checks as dbt tests, two singular tests (amounts add up; lines make the
+  subtotal, a warning outside CI) and a unit test of the conversion.
+  Checked against Analytics on a local test store.
+- Hand-written WooCommerce rows in CDC form and the numbers the model must
+  answer over them (`tests/woocommerce`, 18 questions), checked in CI on
+  both dbt versions, with databases and a table prefix other than the
+  defaults. CI syncs part of the rows late, step by step, and checks that
+  the incremental build matches a full refresh after each, and that the
+  input with Nullable columns builds the same tables.
+- Dataset `sales_events` in `entities/commerce.yaml`, built by both order
+  packages: one row for each order on `order_date`, each refund on the
+  day it was made and, at Shopify, each cancellation on the day of the
+  cancel for what the refunds did not take back
+  ([#14](https://github.com/Dactopus/dactopus-data-models/issues/14)).
+- Field `orders.in_sales_reports`: whether the store's own sales reports
+  count the order. Always true at Shopify; at WooCommerce, the order's
+  status is not excluded and it has the date the reports go by.
+- Metrics `all_orders` and `all_orders_total`, over every order, the ones
+  the reports leave out included, such as orders awaiting payment.
+- Shopify `orders` gets the columns `in_sales_reports` and
+  `cancelled_time`.
+- README: a WooCommerce quick start on those rows, a recipe for a store
+  through PeerDB, the known differences from WooCommerce Analytics and
+  the package's known limits.
+
+### Changed
+
+- `net_revenue` reads `sales_events` (`SUM(sales_events.amount)`). By
+  `sales_events.event_date`, `event_week` or `event_month` it gives the
+  sales of a period as the store's reports do, a refund or a cancellation
+  in the period it was made. By `orders.order_month` it gives the same
+  numbers as before: what each month's orders earned, later refunds
+  included
+  ([#14](https://github.com/Dactopus/dactopus-data-models/issues/14)).
+- Every metric but `all_orders` and `all_orders_total` counts only orders
+  with `in_sales_reports`. At Shopify every order has it, so the numbers
+  do not change.
+- `order_date` and `order_time` are the date and time the store's reports
+  date the order by: unchanged at Shopify (placed), the date of payment
+  by default at WooCommerce.
+- The commerce model's instructions and descriptions name both sources
+  where they differ. The order entities are no longer provisional.
+- Both order packages set `on_schema_change: fail`, so a release that
+  changes a model's columns stops an incremental run with dbt's error
+  instead of leaving the old table.
+- Shopify fixture: order 1010 is cancelled on October 2, a week after it
+  was placed, with a refund of no money, as Shopify records the cancel of
+  an unpaid order. The Shopify checks ask 18 questions.
+- `ROADMAP.md`: WooCommerce is done; nothing is next yet.
+
+### Fixed
+
+- The description of `average_order_value` said WooCommerce Analytics
+  subtracts refunds before dividing; it does not (checked on a test store
+  and in its code), and both platforms define it alike.
+
 ## [0.2.1] - 2026-10-13
 
 Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.7.0,
