@@ -15,6 +15,7 @@
 {% set report_time = report_times[var('woocommerce_date_type')] %}
 {% set excluded = woocommerce_strings(var('woocommerce_excluded_statuses')) %}
 {% set number_key = var('woocommerce_order_number_meta_key') %}
+{% set core_statuses = "('pending', 'on-hold', 'processing', 'completed', 'cancelled', 'refunded', 'failed')" %}
 WITH
 -- Every order, for the customer's order sequence. Analytics numbers a
 -- customer's orders by date placed, ties by id, and skips the statuses it
@@ -159,7 +160,7 @@ SELECT
     -- order keeps its payment state. A status neither core nor mapped is
     -- NULL and fails the not_null test.
     multiIf(
-        o.core_status NOT IN ('pending', 'on-hold', 'processing', 'completed', 'cancelled', 'refunded', 'failed'), NULL,
+        o.core_status NOT IN {{ core_statuses }}, NULL,
         o.core_status = 'failed', 'voided',
         o.core_status = 'refunded', 'refunded',
         refunded_total > 0, 'partially_refunded',
@@ -168,7 +169,7 @@ SELECT
     -- WooCommerce core has no shipments of its own: completed means the
     -- order was shipped or handed over.
     multiIf(
-        o.core_status NOT IN ('pending', 'on-hold', 'processing', 'completed', 'cancelled', 'refunded', 'failed'), NULL,
+        o.core_status NOT IN {{ core_statuses }}, NULL,
         o.core_status = 'completed', 'fulfilled',
         'unfulfilled') AS fulfillment_status,
     o.core_status = 'cancelled' AS is_cancelled,
