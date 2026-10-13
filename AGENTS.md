@@ -62,10 +62,12 @@ profile and the sample. CI builds into other databases to keep it so.
 - Entities are plain Ossie. Mapping, refresh and checks belong in the
   package's dbt project, never in `custom_extensions`. The only extension
   used is dactopus-ossie-clickhouse's `CLICKHOUSE` namespace, for its `dedup` key.
-- Models must work within dactopus-ossie-clickhouse limits: one root dataset per
-  question; many-to-one joins on a declared primary or unique key; no
-  metric referencing another metric by name (repeat the expression); one
-  field per time grain; `source` is a bare table name, never a query.
+- Models must work within dactopus-ossie-clickhouse limits: many-to-one
+  joins on a declared primary or unique key, one path from a question's
+  root to each dataset; a metric reads one fact table (two facts meet
+  only on shared dimensions); no metric referencing another metric by
+  name (repeat the expression); one field per time grain; `source` is a
+  bare table name, never a query.
   Details: its [model authoring guide](https://github.com/Dactopus/dactopus-ossie-clickhouse/blob/main/docs/model-authoring.md).
 
 ## Authoring rules
