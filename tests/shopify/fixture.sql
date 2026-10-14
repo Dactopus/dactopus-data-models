@@ -130,11 +130,13 @@ INSERT INTO {db:Identifier}.orders VALUES
  1, 'alice@example.com', 'USD', 'USD', 'REFUNDED', 'UNFULFILLED', 'web', false,
  500, 0, 0, 0, 500, 0, 0, 0, 0, [], 'US', 'NY', 'New York', '10001', '2026-10-04 00:00:00'),
 
--- 1010: a guest's unpaid order, cancelled before payment: the
--- authorization is voided and nothing is refunded. Placed (revenue) but
--- not sold (net revenue). current_quantity and current_total_price 0
--- after the cancel are not yet seen on the store.
-(1010, '#1010', '2026-09-25 15:00:00', '2026-09-25 15:00:00', '2026-09-25 18:00:00', '2026-09-25 18:00:00', '2026-09-25 18:00:00', false,
+-- 1010: a guest's unpaid order, cancelled before payment on October 2,
+-- a week after it was placed: the authorization is voided and nothing is
+-- refunded. Placed (revenue) but not sold (net revenue); the store's
+-- reports count it in September and take it back in October.
+-- current_quantity and current_total_price 0 after the cancel are not yet
+-- seen on the store.
+(1010, '#1010', '2026-09-25 15:00:00', '2026-09-25 15:00:00', '2026-10-02 14:00:00', '2026-10-02 14:00:00', '2026-10-02 14:00:00', false,
  NULL, NULL, 'USD', 'USD', 'VOIDED', 'UNFULFILLED', 'web', false,
  70, 10, 0, 0, 0, 0, 0, 0, 0, [], 'US', 'CA', 'San Francisco', '94103', '2026-10-04 00:00:00'),
 
@@ -171,7 +173,7 @@ INSERT INTO {db:Identifier}.order_lines VALUES
 (81,  1008, '2026-10-02 10:00:00', 107, 1071, 'BLANKET', 'Blanket',     NULL,  1,  1,  113,   113,   11.30, 11.70, 0.13,  true,  true,  false, '2026-10-04 00:00:01'),
 (82,  1008, '2026-10-02 10:00:00', 102, 1021, 'MUG',     'Mug',         NULL,  1,  1,  56.50, 56.50, 5.65,  5.85,  0.13,  true,  true,  false, '2026-10-04 00:00:01'),
 (91,  1009, '2026-09-21 15:00:00', 101, 1011, 'TEE-M',   'T-shirt',     'M',   10, 0,  50,    500,   0,     0,     0,     true,  true,  false, '2026-10-04 00:00:01'),
-(101, 1010, '2026-09-25 18:00:00', 105, 1051, 'CAP',     'Cap',         NULL,  1,  0,  60,    60,    0,     0,     0,     true,  true,  false, '2026-10-04 00:00:01'),
+(101, 1010, '2026-10-02 14:00:00', 105, 1051, 'CAP',     'Cap',         NULL,  1,  0,  60,    60,    0,     0,     0,     true,  true,  false, '2026-10-04 00:00:01'),
 (111, 1011, '2026-10-02 15:00:00', 108, 1081, 'SOCKS',   'Socks',       NULL,  2,  2,  20,    40,    0,     0,     0,     true,  true,  false, '2026-10-04 00:00:01'),
 (121, 1012, '2026-10-03 16:00:00', 110, 1101, 'TEE-COTTON', 'Cotton T-shirt', NULL, 2, 2, 95,  190,   0,     24.70, 0.13,  true,  true,  false, '2026-10-04 00:00:01');
 
@@ -181,7 +183,10 @@ INSERT INTO {db:Identifier}.refunds VALUES
 (501, 1004, '2026-10-03 15:00:00', '2026-10-03 15:00:00', '',               45,  '2026-10-04 00:00:02'),
 (502, 1005, '2026-09-08 18:00:00', '2026-09-08 18:00:00', 'Order canceled', 60,  '2026-10-04 00:00:02'),
 (503, 1006, '2026-10-01 02:00:00', '2026-10-01 02:00:00', '',               210, '2026-10-04 00:00:02'),
-(504, 1009, '2026-09-21 15:00:00', '2026-09-21 15:00:00', '',               500, '2026-10-04 00:00:02');
+(504, 1009, '2026-09-21 15:00:00', '2026-09-21 15:00:00', '',               500, '2026-10-04 00:00:02'),
+-- The cancel of unpaid 1010 is a refund of no money, its line at the price
+-- sold, as on the development store (#1012).
+(506, 1010, '2026-10-02 14:00:00', '2026-10-02 14:00:00', 'Order canceled', 0,   '2026-10-04 00:00:02');
 
 INSERT INTO {db:Identifier}.refund_lines VALUES
 -- (id, refund_id, refund_updated_at, line_item_id, quantity, subtotal, total_tax, restock_type, loaded_at)
@@ -191,7 +196,8 @@ INSERT INTO {db:Identifier}.refund_lines VALUES
 (5011, 501, '2026-10-03 15:00:00', 42, 1,  45,  0, 'CANCEL',     '2026-10-04 00:00:03'),
 (5021, 502, '2026-09-08 18:00:00', 51, 1,  60,  0, 'NO_RESTOCK', '2026-10-04 00:00:03'),
 (5031, 503, '2026-10-01 02:00:00', 61, 1,  200, 0, 'CANCEL',     '2026-10-04 00:00:03'),
-(5041, 504, '2026-09-21 15:00:00', 91, 10, 500, 0, 'CANCEL',     '2026-10-04 00:00:03');
+(5041, 504, '2026-09-21 15:00:00', 91, 10, 500, 0, 'CANCEL',     '2026-10-04 00:00:03'),
+(5061, 506, '2026-10-02 14:00:00', 101, 1, 60,  0, 'NO_RESTOCK', '2026-10-04 00:00:03');
 
 -- Earlier and repeated loads, delivered too; none of them may change a
 -- number.

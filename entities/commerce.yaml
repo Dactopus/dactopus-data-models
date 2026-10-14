@@ -3,29 +3,48 @@ version: "0.2.0.dev0"
 name: commerce
 description: >
   Orders of an online store as the store recorded them: orders, their lines
-  of goods and refunds. Built from the store's own data by a source package
-  (sources/shopify).
+  of goods, refunds, and sales events, the store's sales over time. Built
+  from the store's own data by a source package (sources/shopify,
+  sources/woocommerce).
 ai_context:
   instructions: >
     Amounts are in the store's currency, one per store (orders.currency);
     name the currency by the code that field returns and do not guess a
-    currency sign. Dates are in the store's time zone. "Sales", "revenue"
-    or "turnover" without a qualifier means net_revenue: orders less
-    cancelled ones and less refunds, with shipping and tax, and import
-    duties where the store collects them at checkout. Name the definition
-    in the answer. Use revenue when asked for orders as placed
-    or gross: every order, cancelled and unpaid ones included, before
-    refunds. Tips and gift cards sold are not sales and are in no amount;
-    a gift card counts when it is spent, as part of the order it pays for.
-    Refunds have two dates: orders.refunded_amount counts them by the date
-    of the order they belong to, refunds_total by the date they were made.
-    "Refunds in September" means refunds_total by refunds.refund_month.
-    A refund of gift cards alone is a refund with an amount of 0; this is
-    not an error. Where the source cannot tell a refunded tip from a refund
-    of goods (Shopify), the tip counts as a refund. Customers are the
-    store's customer records: guest checkouts have none and are not
-    counted. channel holds the source's own values, which differ between
-    sources.
+    currency sign. Dates are in the store's time zone. The numbers follow
+    the store's own sales reports: every metric but all_orders and
+    all_orders_total counts only the orders those reports count
+    (orders.in_sales_reports). Shopify's reports count every order,
+    cancelled and unpaid ones included; WooCommerce's, by default, only
+    paid orders that are not cancelled or failed. For orders the reports
+    leave out, such as orders awaiting payment, use all_orders and
+    all_orders_total. "Sales", "revenue" or "turnover" without a qualifier
+    means net_revenue: orders less refunds and cancellations, with
+    shipping and tax, and import duties where the store collects them at
+    checkout. Name the definition in the answer. orders.order_date (and
+    order_week, order_month) is the date the store's reports date an
+    order by: the date placed at Shopify, the date of payment by default
+    at WooCommerce. Call it the order date, not the date placed. For
+    sales in a period (a
+    day, a week, a month), group net_revenue by sales_events.event_date,
+    event_week or event_month: a refund or a cancellation counts when it
+    was made, as in the store's reports. Group it by orders.order_month
+    only for what the orders of a month earned, refunds made later
+    included. Metrics of orders cannot be grouped by event_month: for
+    orders and sales of each month, ask two questions, orders by
+    orders.order_month and net_revenue by sales_events.event_month, and do
+    not put both under orders.order_month. Use revenue when asked for orders as placed or gross: the
+    orders' totals before refunds and cancellations. Tips and gift cards
+    sold are not sales and are in no amount; a gift card counts when it is
+    spent, as part of the order it pays for. Refunds have two dates:
+    refunded_amount counts them by the date of the order they belong to,
+    refunds_total by the date they were made. "Refunds in September" means
+    refunds_total by refunds.refund_month. A refund of gift cards alone,
+    and the refund Shopify records when it cancels an unpaid order, has an
+    amount of 0; this is not an error. Where the source cannot tell a
+    refunded tip from a refund of goods (Shopify), the tip counts as a
+    refund. Customers are the store's customer records: guest checkouts
+    have none and are not counted. channel holds the source's own values,
+    which differ between sources.
 
 datasets:
   - name: orders
@@ -33,8 +52,9 @@ datasets:
     primary_key: [order_id]
     description: >
       One row per order the store took, test orders left out. Cancelled and
-      unpaid orders are here too; use is_cancelled and financial_status to
-      tell them apart.
+      unpaid orders are here too, and so are orders the store's sales
+      reports leave out (in_sales_reports); use is_cancelled and
+      financial_status to tell them apart.
     ai_context:
       synonyms: [sales, purchases, transactions, checkouts]
     fields:
@@ -54,33 +74,42 @@ datasets:
       - name: order_date
         expression: {dialects: [{dialect: ANSI_SQL, expression: order_date}]}
         description: >
-          Date the order was placed, in the store's time zone. For an order
-          imported or entered by staff, the date it was placed, not the date
-          it was recorded; this is the date store reports use.
+          Date the store's reports date the order by, in the store's time
+          zone. Shopify: the date it was placed; for an order imported or
+          entered by staff, the date it was placed, not the date it was
+          recorded. WooCommerce: the date its report settings name, the
+          date of payment by default; an order without that date yet has
+          the date it was placed, and moves when it gets one.
         datatype: Date
         dimension: {is_time: true}
         ai_context:
           synonyms: [date, day, purchase date, sale date]
       - name: order_week
         expression: {dialects: [{dialect: ANSI_SQL, expression: "DATE_TRUNC('week', order_date)"}]}
-        description: First day (Monday) of the week the order was placed in.
+        description: First day (Monday) of the week of order_date.
         datatype: Date
         dimension: {is_time: true}
         ai_context:
           synonyms: [week]
       - name: order_month
         expression: {dialects: [{dialect: ANSI_SQL, expression: "DATE_TRUNC('month', order_date)"}]}
-        description: First day of the month the order was placed in.
+        description: >
+          First day of the month of order_date, the date the store's
+          reports date the order by: the month placed at Shopify, the month
+          paid by default at WooCommerce.
         datatype: Date
         dimension: {is_time: true}
         ai_context:
           synonyms: [month]
       - name: order_time
         expression: {dialects: [{dialect: ANSI_SQL, expression: order_time}]}
-        description: Time the order was placed, UTC.
+        description: >
+          Time of order_date, UTC: when the order was placed (Shopify), or
+          when it was paid, completed or placed, whichever the store's
+          reports date it by (WooCommerce).
         datatype: DateTimeTz
         ai_context:
-          synonyms: [order timestamp, placed at]
+          synonyms: [order timestamp]
         dimension: {is_time: true}
       - name: financial_status
         expression: {dialects: [{dialect: ANSI_SQL, expression: financial_status}]}
@@ -89,8 +118,9 @@ datasets:
           pending, partly paid, or authorized but not yet captured), paid,
           partially_refunded, refunded, or voided (no money will come: the
           authorization was voided or expired before it was captured).
-          A cancelled unpaid order stays unpaid (Shopify keeps it pending);
-          is_cancelled tells it apart.
+          A cancelled unpaid order stays unpaid (Shopify keeps it pending),
+          and a cancelled paid order stays paid; is_cancelled tells them
+          apart. An order paid on delivery is unpaid until delivered.
         datatype: String
         dimension: {is_time: false}
         ai_context:
@@ -98,11 +128,13 @@ datasets:
       - name: fulfillment_status
         expression: {dialects: [{dialect: ANSI_SQL, expression: fulfillment_status}]}
         description: >
-          Shipping state of the order: unfulfilled (nothing sent yet, for any
-          reason: waiting, on hold or scheduled), partially_fulfilled, or
-          fulfilled (everything sent). An order of downloads only can stay
-          unfulfilled; the source decides. An order cancelled or refunded
-          whole before shipping is unfulfilled too: for orders still waiting
+          Shipping state of the order: unfulfilled (nothing sent yet,
+          for any reason: waiting, on hold or scheduled),
+          partially_fulfilled, or fulfilled (everything sent). An
+          order of downloads only can stay unfulfilled; the source
+          decides. WooCommerce has no partial shipping: a completed
+          order is fulfilled. An order cancelled or refunded whole
+          before shipping is unfulfilled too: for orders still waiting
           to ship, filter is_cancelled = false and leave out
           financial_status refunded and voided.
         datatype: String
@@ -112,19 +144,38 @@ datasets:
       - name: is_cancelled
         expression: {dialects: [{dialect: ANSI_SQL, expression: is_cancelled = 1}]}
         description: >
-          Whether the order was cancelled. A cancelled order stays in revenue
-          and in the order count; net_revenue leaves it out.
+          Whether the order was cancelled. Shopify's reports count a
+          cancelled order when it was placed and take it back when it was
+          cancelled: it stays in revenue and in the order count, and
+          net_revenue leaves it out. WooCommerce's reports leave cancelled
+          orders out by default (in_sales_reports).
         datatype: Boolean
         dimension: {is_time: false}
         ai_context:
           synonyms: [cancelled, canceled, cancellation]
+      - name: in_sales_reports
+        expression: {dialects: [{dialect: ANSI_SQL, expression: in_sales_reports = 1}]}
+        description: >
+          Whether the store's own sales reports count the order. Every
+          metric but all_orders and all_orders_total counts only these
+          orders. Shopify's reports count every order, cancelled and unpaid
+          ones included. WooCommerce's reports leave out orders in the
+          statuses their settings exclude (pending, cancelled and failed by
+          default) and orders without the date they go by (the date of
+          payment by default, so unpaid orders too); the package repeats
+          the store's settings.
+        datatype: Boolean
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [counted in reports, counted as a sale, in store reports]
       - name: channel
         expression: {dialects: [{dialect: ANSI_SQL, expression: channel}]}
         description: >
           Where the order came from, as the source names it: an online
           checkout, a point of sale, staff, an app or an import. Values are
           the source's own, such as web or pos, and can be an app's name or
-          number; they differ between sources.
+          number (Shopify), or checkout, store-api (the block checkout),
+          admin or rest-api (WooCommerce).
         datatype: String
         dimension: {is_time: false}
         ai_context:
@@ -142,8 +193,9 @@ datasets:
         expression: {dialects: [{dialect: ANSI_SQL, expression: shipping_country}]}
         description: >
           Country of the shipping address, as a two-letter code (US, CA).
-          Empty when the order has no shipping address, such as an order of
-          downloads only.
+          Empty when the order has no shipping address: downloads only,
+          pickup, or a store that asks only for a billing address. The
+          model does not say which.
         datatype: String
         dimension: {is_time: false}
         ai_context:
@@ -184,8 +236,12 @@ datasets:
         expression: {dialects: [{dialect: ANSI_SQL, expression: customer_order_number}]}
         description: >
           Place of the order among its customer's orders by the time they
-          were placed: 1 for the first. Cancelled orders and guest orders
-          have none and do not shift the others.
+          were placed: 1 for the first. Guest orders have none, and neither
+          do orders the store's reports leave out by status: cancelled
+          orders (Shopify), or orders in the statuses the report settings
+          exclude, cancelled, pending and failed by default (WooCommerce).
+          Those do not shift the others. A WooCommerce order on hold,
+          awaiting payment, has its number.
         datatype: Integer
         dimension: {is_time: false}
         ai_context:
@@ -194,7 +250,7 @@ datasets:
         expression: {dialects: [{dialect: ANSI_SQL, expression: new_vs_repeat}]}
         description: >
           new for a customer's first order, repeat for any later one (see
-          customer_order_number). Empty for guest and cancelled orders.
+          customer_order_number). Empty where customer_order_number is.
         datatype: String
         dimension: {is_time: false}
         ai_context:
@@ -230,8 +286,10 @@ datasets:
         expression: {dialects: [{dialect: ANSI_SQL, expression: subtotal}]}
         description: >
           Goods after discounts, without shipping, tax and import duties:
-          total less shipping_total, tax_total and any duties and fees,
-          whether or not the store's prices include tax.
+          total less shipping_total, tax_total and duties, whether or not the
+          store's prices include tax. Shopify's additional fees are not in
+          it. WooCommerce's order fees, a charge or a discount on the whole
+          order, are, as in its reports' net sales.
         datatype: Decimal
         ai_context:
           synonyms: [goods total, merchandise total]
@@ -273,8 +331,12 @@ datasets:
       - name: net_total
         expression: {dialects: [{dialect: ANSI_SQL, expression: net_total}]}
         description: >
-          What the order earned: total less refunded_total, and 0 for a
-          cancelled order, paid back or not.
+          What the order earned: total less refunded_total. A cancelled
+          order has 0, paid back or not, unless the store's reports count
+          it as a sale: a WooCommerce store can keep cancelled orders in
+          its reports (in_sales_reports), and then they earn like any
+          other. For an order the reports count, the sum of its
+          sales_events.
         datatype: Decimal
         ai_context:
           synonyms: [order net, net order value]
@@ -305,7 +367,8 @@ datasets:
         expression: {dialects: [{dialect: ANSI_SQL, expression: product_id}]}
         description: >
           The store's product. Empty for an item added by hand that is not a
-          product in the catalogue.
+          product in the catalogue. At WooCommerce a product deleted later
+          keeps its id here.
         datatype: Integer
         dimension: {is_time: false}
         ai_context:
@@ -322,8 +385,12 @@ datasets:
       - name: sku
         expression: {dialects: [{dialect: ANSI_SQL, expression: sku}]}
         description: >
-          Stock keeping unit of the variant sold, the store's own code. Empty
-          when the store gave the variant none.
+          Stock keeping unit of the variant sold, the store's own code.
+          Empty when the store gave the variant none or, at WooCommerce,
+          when the product has since been deleted; the model does not say
+          which. Shopify keeps the SKU on the order as it was. WooCommerce
+          keeps none on the order: this is the product's current SKU (the
+          variation's own, else its product's).
         datatype: String
         dimension: {is_time: false}
         ai_context:
@@ -352,7 +419,9 @@ datasets:
         description: >
           Amount of the line as ordered, before refunds: after all its
           discounts, a share of order-wide discounts included, and without
-          tax. The lines of an order add up to its subtotal.
+          tax. The lines of an order add up to its subtotal, but for
+          WooCommerce's order fees and, where prices include tax, a cent of
+          rounding.
         datatype: Decimal
         ai_context:
           synonyms: [line amount, item revenue]
@@ -362,8 +431,8 @@ datasets:
     primary_key: [refund_id]
     description: >
       One row per refund, dated when it was made. An order can have several.
-      A refund of gift cards alone, or the cancellation of an unpaid order,
-      has an amount of 0.
+      A refund of gift cards alone, or the refund Shopify records when it
+      cancels an unpaid order, has an amount of 0.
     ai_context:
       synonyms: [returns, refunds issued, money back]
     fields:
@@ -416,6 +485,83 @@ datasets:
         ai_context:
           synonyms: [refund amount, amount returned]
 
+  - name: sales_events
+    source: sales_events
+    primary_key: [event_id]
+    description: >
+      The store's sales over time, as its own sales reports count them: one
+      row for each order on order_date, one for each refund on the day it
+      was made, and at Shopify one for each cancellation on the day of the
+      cancel, taking back what the refunds did not. Only orders the reports
+      count (orders.in_sales_reports) have events. The events of an order
+      add up to its total less refunded_total, and to 0 for an order
+      cancelled at Shopify. Use it for sales in a period.
+    ai_context:
+      synonyms: [sales over time, sales by date, sales ledger, sales reversals]
+    fields:
+      - name: event_id
+        expression: {dialects: [{dialect: ANSI_SQL, expression: event_id}]}
+        description: Identifier of the event, its kind and the order's or refund's id, such as order-1001.
+        datatype: String
+      - name: event_type
+        expression: {dialects: [{dialect: ANSI_SQL, expression: event_type}]}
+        description: >
+          What happened: order (the order counted as a sale), refund, or
+          cancellation (Shopify only; WooCommerce's reports leave a
+          cancelled order out by default, or count it as a sale where the
+          store keeps cancelled orders in them).
+        datatype: String
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [event kind, sale or reversal]
+      - name: order_id
+        expression: {dialects: [{dialect: ANSI_SQL, expression: order_id}]}
+        description: Order the event belongs to.
+        datatype: Integer
+        ai_context:
+          synonyms: [order]
+      - name: event_date
+        expression: {dialects: [{dialect: ANSI_SQL, expression: event_date}]}
+        description: >
+          Date of the event in the store's time zone: orders.order_date for
+          an order, the day it was made for a refund or a cancellation. The
+          date store reports count the sale or its reversal on.
+        datatype: Date
+        dimension: {is_time: true}
+        ai_context:
+          synonyms: [date, day, sales date, report date]
+      - name: event_week
+        expression: {dialects: [{dialect: ANSI_SQL, expression: "DATE_TRUNC('week', event_date)"}]}
+        description: First day (Monday) of the week of event_date.
+        datatype: Date
+        dimension: {is_time: true}
+        ai_context:
+          synonyms: [week]
+      - name: event_month
+        expression: {dialects: [{dialect: ANSI_SQL, expression: "DATE_TRUNC('month', event_date)"}]}
+        description: First day of the month of event_date.
+        datatype: Date
+        dimension: {is_time: true}
+        ai_context:
+          synonyms: [month]
+      - name: event_time
+        expression: {dialects: [{dialect: ANSI_SQL, expression: event_time}]}
+        description: Time of the event, UTC.
+        datatype: DateTimeTz
+        dimension: {is_time: true}
+        ai_context:
+          synonyms: [event timestamp]
+      - name: amount
+        expression: {dialects: [{dialect: ANSI_SQL, expression: amount}]}
+        description: >
+          Change in sales: the order's total for an order; minus the money
+          paid back for a refund; minus the rest of the order's total for a
+          cancellation. Goods, shipping and tax together, and import duties
+          where the store collects them.
+        datatype: Decimal
+        ai_context:
+          synonyms: [sales amount, change in sales]
+
 relationships:
   - name: order_lines_to_orders
     from: order_lines
@@ -429,42 +575,82 @@ relationships:
     to: orders
     from_columns: [order_id]
     to_columns: [order_id]
+  - name: sales_events_to_orders
+    from: sales_events
+    to: orders
+    from_columns: [order_id]
+    to_columns: [order_id]
 
 metrics:
   - name: orders
-    expression: {dialects: [{dialect: ANSI_SQL, expression: COUNT(orders.order_id)}]}
+    expression: {dialects: [{dialect: ANSI_SQL, expression: COUNT(CASE WHEN orders.in_sales_reports THEN orders.order_id END)}]}
     description: >
-      Number of orders, cancelled and unpaid ones included; filter by
-      orders.is_cancelled or orders.financial_status to narrow it.
+      Number of orders the store's reports count (orders.in_sales_reports):
+      at Shopify every order, cancelled and unpaid ones included; at
+      WooCommerce, by default, paid orders not cancelled or failed. Filter
+      by orders.is_cancelled or orders.financial_status to narrow it. For
+      orders the reports leave out, such as orders awaiting payment, use
+      all_orders.
     datatype: Integer
     ai_context:
       synonyms: [number of orders, order count, purchases, transactions]
-  - name: revenue
+  - name: all_orders
+    expression: {dialects: [{dialect: ANSI_SQL, expression: COUNT(orders.order_id)}]}
+    description: >
+      Number of orders of every kind, the ones the store's reports leave
+      out included: orders awaiting payment, failed, and at WooCommerce
+      cancelled. Use it for questions about those orders, such as how many
+      wait for payment (filter by orders.financial_status = 'unpaid'); for
+      the number of orders as the store reports it, use orders. The two are
+      the same at Shopify.
+    datatype: Integer
+    ai_context:
+      synonyms: [orders awaiting payment, unpaid orders, failed orders, pending orders, all orders including unpaid]
+  - name: all_orders_total
     expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(orders.total)}]}
     description: >
+      Totals of orders of every kind (orders.total), the ones the store's
+      reports leave out included, by order date. Use it for the value of
+      orders the reports do not count, such as orders awaiting payment; for
+      sales use net_revenue, for orders as placed revenue. The same as
+      revenue at Shopify.
+    datatype: Decimal
+    ai_context:
+      synonyms: [value of unpaid orders, value of pending orders, amount awaiting payment]
+  - name: revenue
+    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN orders.in_sales_reports THEN orders.total ELSE 0 END)}]}
+    description: >
       Orders as placed (orders.total), by order date: goods after discounts,
-      shipping and tax (and import duties where collected), before refunds,
-      cancelled and unpaid orders included. For sales after cancellations and refunds use net_revenue.
-      Not the "gross sales" of store reports, which are goods before
-      discounts, without shipping and tax.
+      shipping and tax (and import duties where collected), before refunds
+      and cancellations, for the orders the store's reports count; at
+      Shopify that includes cancelled and unpaid orders. For sales after
+      cancellations and refunds use net_revenue. Not the "gross sales" of
+      store reports, which are goods before discounts, without shipping and
+      tax.
     datatype: Decimal
     ai_context:
       synonyms: [gross revenue, orders placed value, booked revenue, order value]
   - name: net_revenue
-    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(orders.net_total)}]}
+    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(sales_events.amount)}]}
     description: >
-      What orders earned (orders.net_total), by order date: orders less
-      cancelled ones and less everything refunded on them, with shipping
-      and tax (and import duties where collected). The default meaning of
-      sales and revenue. Not revenue less
-      refunded_amount: a cancelled order with nothing refunded is left out
-      whole. Not the "net sales" of store reports, which are goods only,
-      without shipping and tax: for goods use line_revenue.
+      Sales as the store's reports count them (sales_events.amount): orders
+      less everything refunded on them and, at Shopify, less cancelled
+      orders, with shipping and tax (and import duties where collected).
+      The default meaning of sales and revenue. By sales_events.event_date,
+      event_week or event_month, a refund or a cancellation counts when it
+      was made, and the numbers match the store's sales reports: use these
+      for sales in a period. By orders.order_month, everything refunded on
+      the orders of a month counts in that month (orders.net_total), when
+      it was made does not matter. With metrics of orders, such as orders,
+      ask net_revenue by event_month in a question of its own. Not revenue
+      less refunded_amount: at Shopify a cancelled order with nothing
+      refunded is left out whole. Not the "net sales" of store reports, which are goods
+      only, without shipping and tax: for goods use line_revenue.
     datatype: Decimal
     ai_context:
-      synonyms: [sales, revenue, turnover, income, sales after refunds]
+      synonyms: [sales, revenue, turnover, income, sales after refunds, total sales]
   - name: refunded_amount
-    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(orders.refunded_total)}]}
+    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN orders.in_sales_reports THEN orders.refunded_total ELSE 0 END)}]}
     description: >
       Money paid back on orders, with the tax paid back, by the date of the
       order, whenever the refund was made. For refunds by the date they were
@@ -476,50 +662,49 @@ metrics:
     ai_context:
       synonyms: [refunded on orders, returns of these orders]
   - name: refund_rate
-    expression: {dialects: [{dialect: ANSI_SQL, expression: CAST(SUM(orders.refunded_total) AS DOUBLE) / CAST(SUM(orders.total) AS DOUBLE)}]}
+    expression: {dialects: [{dialect: ANSI_SQL, expression: CAST(SUM(CASE WHEN orders.in_sales_reports THEN orders.refunded_total ELSE 0 END) AS DOUBLE) / CAST(SUM(CASE WHEN orders.in_sales_reports THEN orders.total ELSE 0 END) AS DOUBLE)}]}
     description: >
       Share of revenue paid back, from 0 to 1: refunded_amount over revenue,
-      cancelled orders in both.
+      cancelled orders in both where the store's reports count them.
     datatype: Float
     ai_context:
       synonyms: [return rate, refund share, refund percentage]
   - name: average_order_value
-    expression: {dialects: [{dialect: ANSI_SQL, expression: CAST(SUM(orders.subtotal) AS DOUBLE) / COUNT(orders.order_id)}]}
+    expression: {dialects: [{dialect: ANSI_SQL, expression: CAST(SUM(CASE WHEN orders.in_sales_reports THEN orders.subtotal ELSE 0 END) AS DOUBLE) / COUNT(CASE WHEN orders.in_sales_reports THEN orders.order_id END)}]}
     description: >
       Goods after discounts per order (orders.subtotal over orders):
-      without shipping, tax, import duties and fees, before refunds;
-      cancelled and unpaid orders included. This is Shopify's definition
-      (gross sales less discounts, over orders), so it matches the store's
-      dashboard; WooCommerce Analytics also leaves shipping and tax out
-      but subtracts refunds first. It is not revenue over orders, which
-      would add shipping and tax. Filter by orders.is_cancelled = false
-      to leave cancelled orders out.
+      without shipping, tax and import duties, before refunds, over the
+      orders the store's reports count: at Shopify cancelled and unpaid
+      ones included, at WooCommerce by default neither. This is how both Shopify and WooCommerce Analytics
+      define it, so it matches the store's dashboard. It is not revenue
+      over orders, which would add shipping and tax. Filter by
+      orders.is_cancelled = false to leave cancelled orders out.
     datatype: Float
     ai_context:
       synonyms: [AOV, average order, average check, average basket value, average transaction value]
   - name: items_per_order
-    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(orders.item_quantity) * 1.0 / COUNT(orders.order_id)}]}
+    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN orders.in_sales_reports THEN orders.item_quantity ELSE 0 END) * 1.0 / COUNT(CASE WHEN orders.in_sales_reports THEN orders.order_id END)}]}
     description: >
-      Average units of goods per order, as placed, before refunds;
-      cancelled and unpaid orders included, as in average_order_value.
-      Filter by orders.is_cancelled = false to leave cancelled orders out.
+      Average units of goods per order, as placed, before refunds, over the
+      same orders as average_order_value. Filter by orders.is_cancelled =
+      false to leave cancelled orders out.
     datatype: Float
     ai_context:
       synonyms: [units per transaction, UPT, units per order, average basket size, items per order]
   - name: discount_total
-    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(orders.discount_total)}]}
+    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN orders.in_sales_reports THEN orders.discount_total ELSE 0 END)}]}
     description: Discounts on goods, without tax, by order date (orders.discount_total).
     datatype: Decimal
     ai_context:
       synonyms: [discounts, discount amount, promotions]
   - name: shipping_total
-    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(orders.shipping_total)}]}
+    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN orders.in_sales_reports THEN orders.shipping_total ELSE 0 END)}]}
     description: Shipping charged, after its discounts and without tax, as on the order, before refunds, by order date.
     datatype: Decimal
     ai_context:
       synonyms: [shipping, delivery charges, shipping revenue]
   - name: tax_total
-    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(orders.tax_total)}]}
+    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN orders.in_sales_reports THEN orders.tax_total ELSE 0 END)}]}
     description: >
       Tax on goods, shipping and any import duties, as on the order, before
       refunds, by order date; store reports show tax net of refunded tax.
@@ -527,7 +712,7 @@ metrics:
     ai_context:
       synonyms: [tax, taxes, VAT, sales tax]
   - name: customers
-    expression: {dialects: [{dialect: ANSI_SQL, expression: COUNT(DISTINCT orders.customer_id)}]}
+    expression: {dialects: [{dialect: ANSI_SQL, expression: COUNT(DISTINCT CASE WHEN orders.in_sales_reports THEN orders.customer_id END)}]}
     description: >
       Number of distinct customers who placed orders. Guest checkouts are
       not counted.
@@ -535,44 +720,47 @@ metrics:
     ai_context:
       synonyms: [buyers, number of customers, unique customers, purchasers]
   - name: repeat_order_share
-    expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(CASE WHEN orders.new_vs_repeat = 'repeat' THEN 1 END) * 1.0 / COUNT(orders.customer_order_number)"}]}
+    expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(CASE WHEN orders.in_sales_reports AND orders.new_vs_repeat = 'repeat' THEN 1 END) * 1.0 / COUNT(CASE WHEN orders.in_sales_reports THEN orders.customer_order_number END)"}]}
     description: >
       Share of orders that were a customer's second or later, from 0 to 1,
-      among orders with a customer that were not cancelled.
+      among orders with a customer and a place in its sequence
+      (orders.customer_order_number).
     datatype: Float
     ai_context:
       synonyms: [repeat purchase rate, returning customer orders, repeat rate]
   - name: items_sold
-    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(order_lines.quantity)}]}
+    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN orders.in_sales_reports THEN order_lines.quantity ELSE 0 END)}]}
     description: Units of goods ordered, before refunds and cancellations.
     datatype: Integer
     ai_context:
       synonyms: [units sold, quantity sold, items ordered]
   - name: items_net
-    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(order_lines.current_quantity)}]}
+    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN orders.in_sales_reports THEN order_lines.current_quantity ELSE 0 END)}]}
     description: Units of goods ordered less those refunded, removed or cancelled.
     datatype: Integer
     ai_context:
       synonyms: [net units, units kept, items after returns]
   - name: line_revenue
-    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(order_lines.line_total)}]}
+    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN orders.in_sales_reports THEN order_lines.line_total ELSE 0 END)}]}
     description: >
       Revenue of goods as ordered (order_lines.line_total): after
       discounts, without shipping and tax, before refunds, cancelled orders
-      included. Use for revenue by product or SKU.
+      included where the store's reports count them. Use for revenue by
+      product or SKU.
     datatype: Decimal
     ai_context:
       synonyms: [product revenue, sales by product, item revenue, SKU revenue]
   - name: refunds
-    expression: {dialects: [{dialect: ANSI_SQL, expression: COUNT(refunds.refund_id)}]}
+    expression: {dialects: [{dialect: ANSI_SQL, expression: COUNT(CASE WHEN orders.in_sales_reports THEN refunds.refund_id END)}]}
     description: >
       Number of refunds made; a refund of gift cards alone and the refund
-      record of a cancelled unpaid order, both of amount 0, included.
+      Shopify records when it cancels an unpaid order, both of amount 0,
+      included.
     datatype: Integer
     ai_context:
       synonyms: [number of refunds, returns, refund count]
   - name: refunds_total
-    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(refunds.refunded_amount)}]}
+    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN orders.in_sales_reports THEN refunds.refunded_amount ELSE 0 END)}]}
     description: >
       Money paid back, with the tax paid back, by the date the refund was
       made. For refunds by the date of their order, use refunded_amount.

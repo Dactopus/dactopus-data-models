@@ -1,5 +1,5 @@
 name: dactopus_shopify
-version: "0.2.1"
+version: "0.3.0"
 profile: dactopus
 model-paths: ["models"]
 macro-paths: ["macros"]
@@ -17,3 +17,7 @@ models:
   dactopus_shopify:
     +materialized: incremental
     +incremental_strategy: delete+insert
+    # A release that changes a model's columns stops an incremental run
+    # with an error rather than leave the old table: run it once with
+    # --full-refresh, as the CHANGELOG says.
+    +on_schema_change: fail

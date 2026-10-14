@@ -28,6 +28,7 @@ The README describes what works today. Plans go in
                               relationships and metrics
     sources/<source>/         one package per source, a dbt project:
       input.sql               the input table the package accepts
+      macros/                 SQL the package's models share
       models/<entity>.sql     one model per entity, named after it
       models/schema.yml       structural checks (dbt tests only)
       tests/                  singular dbt tests, for checks a generic
@@ -75,10 +76,9 @@ profile and the sample. CI builds into other databases to keep it so.
 - A field goes into a canonical entity only when at least two sources
   provide it. While a domain has a single source (GA4 for events), a
   field qualifies when its meaning does not depend on that source; where
-  the second source is known but not yet packaged (WooCommerce for
-  orders), it must exist there too, checked against its documentation. A
-  source-only field is not modelled yet. Do not add canonical fields "for
-  completeness".
+  the second source is known but not yet packaged, it must exist there
+  too, checked against its documentation. A source-only field is not
+  modelled yet. Do not add canonical fields "for completeness".
 - Every field and metric gets a description, and `ai_context` with
   synonyms where an analyst could phrase it differently. Agents answer
   from these; a missing description is a defect, not a style issue.

@@ -9,10 +9,10 @@ written in the [Apache Ossie](https://github.com/apache/ossie) semantic model
 format. Two kinds of content:
 
 - **Canonical entities**: sessions, events and purchases from web
-  analytics; orders, their lines and refunds from the store. They have
-  the same shape whatever the data came from.
-- **Source packages**: each maps one source onto those entities. GA4 and
-  Shopify are available.
+  analytics; orders, their lines, refunds and sales events from the
+  store. They have the same shape whatever the data came from.
+- **Source packages**: each maps one source onto those entities. GA4,
+  Shopify and WooCommerce are available.
 
 What comes next is in [ROADMAP.md](ROADMAP.md).
 
@@ -21,7 +21,7 @@ once both are mapped, and one query works on both. The same model serves
 BI tools through ClickHouse tables and AI agents through
 [dactopus-ossie-clickhouse](https://github.com/Dactopus/dactopus-ossie-clickhouse).
 
-<a href="https://dactopus.github.io/dactopus-data-models/"><img src="docs/architecture.svg" width="680" alt="How the packages work: the GA4 export and Shopify's orders are loaded into input tables in your ClickHouse; the dbt packages build the canonical tables; BI tools read them directly and AI agents through dactopus-ossie-clickhouse and the Ossie models."></a>
+<a href="https://dactopus.github.io/dactopus-data-models/"><img src="docs/architecture.svg" width="680" alt="How the packages work: the GA4 export, Shopify's orders and a WooCommerce store's order tables are loaded into input tables in your ClickHouse; the dbt packages build the canonical tables; BI tools read them directly and AI agents through dactopus-ossie-clickhouse and the Ossie models."></a>
 
 Click the diagram for the [interactive version](https://dactopus.github.io/dactopus-data-models/):
 what each part does and where it takes its settings from, and one
@@ -32,13 +32,12 @@ purchase followed from GA4 to an AI agent's answer.
 | Source | Entities | Status |
 | --- | --- | --- |
 | GA4 (BigQuery export) | `events`, `sessions`, `purchases` | available |
-| Shopify (GraphQL Admin API) | `orders`, `order_lines`, `refunds` | available |
-| WooCommerce | `orders`, `order_lines`, `refunds` | [next](ROADMAP.md#next) |
+| Shopify (GraphQL Admin API) | `orders`, `order_lines`, `refunds`, `sales_events` | available |
+| WooCommerce (the store's MySQL tables through CDC) | `orders`, `order_lines`, `refunds`, `sales_events` | available |
 
-The order entities are provisional until a second orders source maps onto
-them. One source alone cannot show which fields are canonical: until
-then, a field goes into them only when WooCommerce provides it too,
-checked against its documentation.
+Both order sources map onto the same entities. Where they differ, such as
+which orders the store's reports count, the entities' descriptions say
+how.
 
 ## Quick start
 
@@ -182,7 +181,7 @@ dactopus-ossie-clickhouse, as for GA4.
    ```
 
 3. **Validate** the model and **check** its answers: `check_numbers.py`
-   asks 16 questions through dactopus-ossie-clickhouse and compares the answers
+   asks 18 questions through dactopus-ossie-clickhouse and compares the answers
    with numbers worked out by hand from the rows.
 
    ```bash
@@ -382,6 +381,154 @@ dactopus-ossie-clickhouse, as for GA4.
    Orders deleted in Shopify are not exported again, so they stay in the
    input tables.
 
+### WooCommerce
+
+Try the package on the rows the repository tests it with,
+[`tests/woocommerce/fixture.sql`](tests/woocommerce/fixture.sql): sixteen
+orders and four refunds of a store in New York, as change data capture
+(CDC) writes them, each a case the package must get right (refunds with
+and without lines, a cancelled order, cash on delivery, fees, tax included
+in prices, rows updated and then deleted, a deleted product, an order in
+the trash, an order paid in EUR). You need ClickHouse, dbt and
+dactopus-ossie-clickhouse, as for GA4.
+
+1. **Load** the package's input tables
+   [`sources/woocommerce/input.sql`](sources/woocommerce/input.sql) and the
+   rows. Their database is a parameter; the package reads it from the dbt
+   variable `woocommerce_input_database` (default `woocommerce_raw`, kept
+   here for your own store).
+
+   ```bash
+   clickhouse client --param_db=woocommerce_sample_raw --multiquery < sources/woocommerce/input.sql
+   clickhouse client --param_db=woocommerce_sample_raw --multiquery < tests/woocommerce/fixture.sql
+   ```
+
+2. **Build** into a database of its own, in the store's time zone and
+   with its currency. The tables hold neither: the time zone defaults to
+   UTC, and without a currency the build stops.
+
+   ```bash
+   CLICKHOUSE_DATABASE=woocommerce_sample dbt build --project-dir sources/woocommerce --profiles-dir sources/woocommerce \
+       --vars '{woocommerce_input_database: woocommerce_sample_raw, woocommerce_timezone: America/New_York, woocommerce_currency: USD}'
+   ```
+
+3. **Validate** the model and **check** its answers: `check_numbers.py`
+   asks 18 questions and compares the answers with numbers worked out by
+   hand from the rows.
+
+   ```bash
+   dactopus-ossie-clickhouse validate entities/commerce.yaml --url http://user:password@host:8123/woocommerce_sample
+   OSSIE_CLICKHOUSE_URL=http://user:password@host:8123/woocommerce_sample python3 tests/woocommerce/check_numbers.py
+   ```
+
+4. **Ask.** Serve `entities/commerce.yaml` with `dactopus-ossie-clickhouse serve`.
+   Try sales by month, orders awaiting payment, refunds by month and
+   average order value, by shipping country and new or returning customer.
+
+#### Your store
+
+The package reads the store's own order tables in ClickHouse, copied from
+its MySQL database by CDC: every change of a row arrives as a new version
+of it. This recipe was checked with open-source PeerDB 0.37 run from its
+repository's Docker Compose setup
+([PeerDB-io/peerdb](https://github.com/PeerDB-io/peerdb), tag `v0.37.11`),
+over MySQL 8.4, on a local network without TLS. PeerDB stages the rows
+for ClickHouse in S3; that setup runs MinIO for it. ClickPipes, ClickHouse
+Cloud's CDC, runs PeerDB but is not checked yet.
+
+1. **HPOS.** The tables are those of High-Performance Order Storage
+   ([HPOS](https://developer.woocommerce.com/docs/features/high-performance-order-storage/)),
+   WooCommerce 8.2 and later. WooCommerce turns it on for a new store
+   unless a plugin is incompatible with it. A store on the legacy posts
+   storage turns on compatibility mode on the Features page of the
+   WooCommerce settings, which works with incompatible plugins too:
+   WooCommerce then copies the store's history into the HPOS tables and
+   keeps them in sync. A plugin that writes order data to `wp_postmeta`
+   directly bypasses that sync, and WooCommerce does not notice. Run
+   `wp wc hpos verify_data --re-migrate` regularly, daily for one, to find
+   and fix those orders.
+
+2. **MySQL.** CDC reads the binary log, which needs these server settings
+   (`my.cnf`):
+
+   ```ini
+   [mysqld]
+   binlog_format = ROW
+   binlog_row_image = FULL
+   binlog_row_metadata = FULL
+   gtid_mode = ON
+   enforce_gtid_consistency = ON
+   ```
+
+   and a user it reads with:
+
+   ```sql
+   CREATE USER 'peerdb'@'%' IDENTIFIED BY '<password>';
+   GRANT SELECT, REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO 'peerdb'@'%';
+   ```
+
+3. **Mirror** seven tables into ClickHouse. Create the database
+   (`CREATE DATABASE woocommerce_raw`); PeerDB creates the tables in it,
+   with every column of the MySQL tables, of which
+   [`input.sql`](sources/woocommerce/input.sql) lists those the package
+   reads. In PeerDB's SQL interface (`psql` to its server, port 9900), with
+   the WordPress database as `<wordpress>`:
+
+   ```sql
+   CREATE PEER woo_mysql FROM MYSQL WITH (
+     host = '<mysql host>', port = 3306, user = 'peerdb', password = '<password>',
+     database = '<wordpress>', flavor = 'mysql', replication_mechanism = 'gtid',
+     disable_tls = true
+   );
+   CREATE PEER woo_ch FROM CLICKHOUSE WITH (
+     host = '<clickhouse host>', port = 9000, user = '<user>', password = '<password>',
+     database = 'woocommerce_raw', disable_tls = true
+   );
+   CREATE MIRROR woo_orders FROM woo_mysql TO woo_ch WITH TABLE MAPPING (
+     <wordpress>.wp_wc_orders:wp_wc_orders,
+     <wordpress>.wp_wc_order_addresses:wp_wc_order_addresses,
+     <wordpress>.wp_wc_order_operational_data:wp_wc_order_operational_data,
+     <wordpress>.wp_wc_orders_meta:wp_wc_orders_meta,
+     <wordpress>.wp_woocommerce_order_items:wp_woocommerce_order_items,
+     <wordpress>.wp_woocommerce_order_itemmeta:wp_woocommerce_order_itemmeta,
+     <wordpress>.wp_wc_product_meta_lookup:wp_wc_product_meta_lookup
+   ) WITH (do_initial_copy = true);
+   ```
+
+   Outside a local network, leave out `disable_tls` and give ClickHouse's
+   secure port (9440 by default); that is not checked. The tables keep the
+   store's prefix, `wp_` unless it chose another.
+   PeerDB writes an empty MySQL value as the column type's default unless
+   `PEERDB_NULLABLE` is on; the package reads both forms.
+
+4. **Build** with the store's settings as variables, then validate and
+   ask as above, at the database the tables went to
+   (`CLICKHOUSE_DATABASE`, default `dactopus`). The numbers match
+   WooCommerce Analytics only while the date type and the excluded
+   statuses repeat its settings.
+
+   | Variable | Default | What it is |
+   | --- | --- | --- |
+   | `woocommerce_currency` | none, required | the store's currency (WooCommerce > Settings > General) |
+   | `woocommerce_timezone` | `UTC` | the store's time zone (WordPress Settings > General) |
+   | `woocommerce_date_type` | `date_paid` | Analytics' Date type: `date_paid`, `date_created` or `date_completed` (WooCommerce > Settings > Analytics) |
+   | `woocommerce_excluded_statuses` | `[pending, cancelled, failed]` | Analytics' Excluded statuses, without the `wc-` prefix |
+   | `woocommerce_order_statuses` | `{}` | statuses plugins add, each mapped to the core status it behaves as, such as `{shipped: completed}` |
+   | `woocommerce_order_number_meta_key` | empty | the order meta key of a sequential order number plugin: `_order_number` for WebToffee's and SkyVerge's; empty, the number is the order id |
+   | `woocommerce_price_decimals` | `2` | the store's price decimals, for amounts converted from another currency |
+   | `woocommerce_table_prefix` | `wp_` | the tables' prefix; in a multisite, the site's, such as `wp_2_` |
+   | `woocommerce_input_database` | `woocommerce_raw` | the database the mirror writes to |
+
+   An order in a status that is neither core nor mapped fails the build,
+   and so does an order in another currency without a rate the package
+   knows (Known limits below).
+
+5. **Next runs.** CDC keeps the input current; run `dbt build` again,
+   and it is incremental. It rereads the orders with a row synced in the
+   `woocommerce_lookback_days` (default 3) before the latest sync it has
+   seen. `dbt source freshness`, on dbt v1, warns when CDC has not synced
+   an order for a day; a store without an order in a day warns too.
+
 ## What the GA4 model answers
 
 [`entities/web_analytics.yaml`](entities/web_analytics.yaml) has 12
@@ -423,30 +570,44 @@ the model states in its descriptions:
 
 ## What the commerce model answers
 
-[`entities/commerce.yaml`](entities/commerce.yaml) has 17 metrics:
+[`entities/commerce.yaml`](entities/commerce.yaml) has 19 metrics:
 
-- orders: `orders`, `revenue`, `net_revenue`, `refunded_amount`,
-  `refund_rate`, `average_order_value`, `items_per_order`,
-  `discount_total`, `shipping_total`, `tax_total`, `customers`,
-  `repeat_order_share`. They break down by the order's date, week and
-  month; payment and fulfillment status, cancelled or not, channel and
-  currency; shipping country, region and city; new or repeat customer.
+- orders: `orders`, `all_orders`, `all_orders_total`, `revenue`,
+  `refunded_amount`, `refund_rate`, `average_order_value`,
+  `items_per_order`, `discount_total`, `shipping_total`, `tax_total`,
+  `customers`, `repeat_order_share`. They break down by the order's date,
+  week and month; payment and fulfillment status, cancelled or not,
+  counted in the store's reports or not, channel and currency; shipping
+  country, region and city; new or repeat customer.
 - order lines: `items_sold`, `items_net`, `line_revenue`. They break down
   by product, variant, SKU and title, and by the order fields above.
 - refunds: `refunds`, `refunds_total`. They break down by the refund's
   own date, week and month, and by the order fields above.
+- sales events: `net_revenue`. It breaks down by the event's date, week,
+  month and kind (an order, a refund, a cancellation), and by the order
+  fields above.
+
+The numbers follow the store's own sales reports: every metric but
+`all_orders` and `all_orders_total` counts only the orders those reports
+count (`orders.in_sales_reports`). Shopify's reports count every order;
+WooCommerce's, by default, paid orders that are not cancelled or failed.
 
 "Sales" or "revenue" without a qualifier is `net_revenue`: orders less
-cancelled ones and less refunds, with shipping and tax. `revenue` is
-orders as placed. Amounts are in the store's currency.
+refunds and cancellations, with shipping and tax. By
+`sales_events.event_month` it gives each month's sales as the store's
+reports show them, a refund or a cancellation in the month it was made;
+by `orders.order_month`, what each month's orders earned, later refunds
+included. `revenue` is orders as placed. Amounts are in the store's
+currency.
 
 ## Known differences from Shopify's reports
 
 On the development store the package was checked against, `net_revenue`
-equals Shopify's total sales, overall, by month, by shipping country, by
-new or returning customer and for each order, and `average_order_value`
-equals the store's. Test orders are left out, as in the reports. Other
-numbers differ by definition, and the model's descriptions say how:
+equals Shopify's total sales overall, by shipping country and by new or
+returning customer, and, by `sales_events.event_date`, for each order on
+each day; `average_order_value` equals the store's. Test orders are left
+out, as in the reports. Other numbers differ by definition, and the
+model's descriptions say how:
 
 - **Gross and net sales** in Shopify's reports are goods only.
   `revenue` and `net_revenue` add shipping, tax and import duties;
@@ -454,7 +615,8 @@ numbers differ by definition, and the model's descriptions say how:
 - **Sales reversals** (formerly returns) in the reports are without tax
   and count a cancelled unpaid order as reversed. `refunded_amount` is
   the money paid back, with its tax; a cancelled unpaid order has nothing
-  refunded, and `net_revenue` leaves it out.
+  refunded. `net_revenue` takes a cancelled order back on the day it was
+  cancelled, as the reports do, through a cancellation event.
 - **Taxes** in the reports are net of refunded tax; `tax_total` is the
   tax on the order as placed.
 - **New or returning**: the reports keep a cancelled order in its
@@ -477,12 +639,63 @@ deleted in Shopify stay; amounts are in the shop's currency, not the
 currency the customer paid in. In a shop whose prices include tax, a
 line's discount is computed in cents, so in a currency without them,
 such as the yen, `discount_total` can carry a fraction
-([#7](https://github.com/Dactopus/dactopus-data-models/issues/7)).
+([#7](https://github.com/Dactopus/dactopus-data-models/issues/7)). The
+reports date an order edit on the day of the edit, `sales_events` on the
+day of the order; a cancellation and a refund of one order on different
+days are not checked against the reports yet
+([#16](https://github.com/Dactopus/dactopus-data-models/issues/16)).
 
 The memory a build needs grows with the shop's history, not with what
 changed since the last run. On a ClickHouse server limited to 4 GB, the
 first build of a shop with 2 million orders runs out of memory
 ([#8](https://github.com/Dactopus/dactopus-data-models/issues/8)).
+
+## Known differences from WooCommerce Analytics
+
+On a local test store (WooCommerce 11.2.1) the package was checked against
+Analytics under each of its three date types, other settings as
+WooCommerce ships them. Every order's total, subtotal, tax, shipping,
+items, refunds, report date and whether the reports count it matched.
+`net_revenue` by `sales_events.event_month` equals the reports' total
+sales for every month, and `orders`, `average_order_value`,
+`items_per_order`, `discount_total`, `items_net`, refunds by month and
+new or returning registered customers equal the reports' numbers. After
+a refund, a deleted order and a new one, an incremental run matched a
+full rebuild and the reports again. Other numbers differ by definition,
+and the model's descriptions say how:
+
+- **Net sales** in the reports are goods after refunds, without shipping
+  and tax. `net_revenue` is the reports' total sales; `line_revenue` is
+  goods after discounts, before refunds.
+- **Shipping and tax** in the reports are net of what was refunded, in
+  the month of the refund; `shipping_total` and `tax_total` are as on the
+  order.
+- **New or returning**: the reports count a guest as a customer by email.
+  The model gives guest orders no place in a customer's sequence, as at
+  Shopify; registered customers match.
+- **SKU**: WooCommerce keeps none on the order, so `order_lines.sku` is
+  the product's current SKU, and empty once the product is deleted.
+- **Test orders** are not marked in WooCommerce and count as orders.
+- **Fulfillment**: WooCommerce (11.2) keeps no shipments of its own by
+  default; a completed order is fulfilled and any other unfulfilled.
+
+Known limits of the package: an order a multi-currency plugin placed in
+another currency is converted to the store's as WooPayments and FOX
+convert it for Analytics, from the rates they keep with the order. Other
+plugins' orders, and FOX orders without that rate, have no rate the
+package knows and fail the build; a FOX refund without its own rate is
+converted at its order's, where FOX takes the rate of its settings at
+the time. In a store whose prices include tax, line
+totals are not rounded, so the lines add up to the subtotal within a
+cent. CDC syncs each table apart, so a run can see an order before its
+lines: the check that lines add up to the subtotal only warns, and the
+next run completes the order. A store in compatibility mode can drift
+from its legacy storage between runs of `wp wc hpos verify_data
+--re-migrate` (Your store, step 1). An order moved to another customer
+and then removed within one sync window can leave the first customer's
+later orders with old numbers in `customer_order_number` until a full
+refresh
+([#17](https://github.com/Dactopus/dactopus-data-models/issues/17)).
 
 ## Use in your dbt project
 
@@ -492,19 +705,25 @@ release tag:
 ```yaml
 packages:
   - git: https://github.com/Dactopus/dactopus-data-models.git
-    revision: v0.2.1
+    revision: v0.3.0
     subdirectory: sources/ga4
   - git: https://github.com/Dactopus/dactopus-data-models.git
-    revision: v0.2.1
+    revision: v0.3.0
     subdirectory: sources/shopify
+  - git: https://github.com/Dactopus/dactopus-data-models.git
+    revision: v0.3.0
+    subdirectory: sources/woocommerce
 ```
 
 The GA4 package writes `events`, `sessions` and `purchases` to your
 target's database and reads its input from `ga4_raw.events`. The Shopify
-package writes `orders`, `order_lines` and `refunds` and reads its input
-from the four tables in `shopify_raw`. Name other databases, and set the
-shop's time zone: without it, every Shopify date is in UTC and orders
-near midnight fall on the wrong day.
+package writes `orders`, `order_lines`, `refunds` and `sales_events` and
+reads its input from the four tables in `shopify_raw`; the WooCommerce
+package writes the same tables from the seven in `woocommerce_raw`. Name
+other databases, and set the store's time zone: without it, every date
+is in UTC and orders near midnight fall on the wrong day. WooCommerce
+also needs the store's currency, and its report settings where they
+differ from WooCommerce's (Your store, step 4).
 
 ```yaml
 vars:
@@ -513,10 +732,15 @@ vars:
   dactopus_shopify:
     shopify_input_database: my_shopify_export
     shopify_timezone: Europe/Berlin
+  dactopus_woocommerce:
+    woocommerce_input_database: my_woocommerce_cdc
+    woocommerce_timezone: Europe/Berlin
+    woocommerce_currency: EUR
 ```
 
-`shopify_lookback_days` (default 3) is how far before its last load an
-incremental run rereads the input, for inserts that commit late.
+`shopify_lookback_days` and `woocommerce_lookback_days` (default 3) are
+how far before its last load or sync an incremental run rereads the
+input, for inserts that commit late.
 
 Point dactopus-ossie-clickhouse at your target's database
 (`--url http://host:8123/<database>`) and take the Ossie models from the
@@ -529,13 +753,16 @@ responses.
 Several GA4 properties: each exports to its own BigQuery dataset. Build
 the package once per property, each with its own input and target
 database, and serve the model once per target. A total across properties
-is not modelled. The same holds for several Shopify stores.
+is not modelled. The same holds for several Shopify or WooCommerce
+stores, and for the sites of a WordPress multisite, each with its own
+table prefix.
 
 ## Layout
 
     entities/<domain>.yaml    one Ossie model per domain (web_analytics, commerce)
     sources/<source>/         one package per source, a dbt project:
       input.sql               the input table the package accepts
+      macros/                 SQL the package's models share
       models/                 one model per entity, named after it
       models/schema.yml       structural checks (dbt tests)
       tests/                  checks that need their own SQL
@@ -596,12 +823,12 @@ package's dbt project, not in the Ossie files, so entities stay plain Ossie
 that any Ossie tool reads. The only extension used is dactopus-ossie-clickhouse's
 `CLICKHOUSE` namespace and its `dedup` key.
 
-**The canon is selected, not designed.** A field that at least two sources
-provide goes into the canonical entity. While a domain has a single source
-(GA4 for events), a field qualifies when its meaning does not depend on
-that source. Where the second source is known but not yet packaged
-(WooCommerce for orders), the field must exist there too, checked against
-its documentation. A field only one source has is not modelled until a
+**The canon is selected, not designed.** A field that at least two
+sources provide goes into the canonical entity. While a domain has a
+single source (GA4 for events), a field qualifies when its meaning does
+not depend on that source. Where the second source is known but not yet
+packaged, the field must exist there too, checked against its
+documentation. A field only one source has is not modelled until a
 second source needs it.
 
 **Descriptions are part of the model.** Agents answer from descriptions,
@@ -645,11 +872,11 @@ release, after 1.0 in a major one. New fields and metrics are minor, fixes
 are patches.
 
 A deployment pins a tag: the dbt package from the git tag with its
-subdirectory (`sources/ga4`, `sources/shopify`), the Ossie model from the
-same tag. Upgrading is changing the tag and running
-`dbt build --full-refresh`: a package never writes its input tables, so
-every canonical table rebuilds from them. The changelog marks releases
-that need the rebuild.
+subdirectory (`sources/ga4`, `sources/shopify`, `sources/woocommerce`),
+the Ossie model from the same tag. Upgrading is changing the tag and
+running `dbt build --full-refresh`: a package never writes its input
+tables, so every canonical table rebuilds from them. The changelog marks
+releases that need the rebuild.
 
 ## License
 

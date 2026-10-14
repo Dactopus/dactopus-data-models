@@ -1,0 +1,52 @@
+name: dactopus_woocommerce
+version: "0.3.0"
+profile: dactopus
+model-paths: ["models"]
+macro-paths: ["macros"]
+vars:
+  # The database holding the input tables (input.sql).
+  woocommerce_input_database: woocommerce_raw
+  # The prefix of the store's tables, wp_ unless the store chose another
+  # (in multisite, the site's number is part of it, as in wp_2_).
+  woocommerce_table_prefix: wp_
+  # The store's time zone (WordPress Settings > General, Timezone), for
+  # order and refund dates; WooCommerce Analytics uses it.
+  woocommerce_timezone: UTC
+  # The store's currency (WooCommerce > Settings > General, Currency); it
+  # is not in the input tables. Required. Orders a multi-currency plugin
+  # placed in another currency are converted to it (orders.sql).
+  woocommerce_currency: ""
+  # Decimals of the store's prices (WooCommerce > Settings > General,
+  # Number of decimals): converted amounts are rounded to them, as the
+  # plugins round them for Analytics.
+  woocommerce_price_decimals: 2
+  # The date an order is reported by, as Analytics' Date type
+  # (WooCommerce > Settings > Analytics): date_paid, date_created or
+  # date_completed. An order without that date is not in the reports yet.
+  woocommerce_date_type: date_paid
+  # Statuses the reports leave out, as Analytics' Excluded statuses, without
+  # the wc- prefix. Checkout drafts and the trash are never orders.
+  woocommerce_excluded_statuses: [pending, cancelled, failed]
+  # Statuses that plugins add, each mapped to the core status it behaves as:
+  # pending, on-hold, processing, completed, cancelled, refunded or failed;
+  # for example {shipped: completed}. An order in a status that is neither
+  # core nor mapped fails the build.
+  woocommerce_order_statuses: {}
+  # The order meta key a sequential order number plugin keeps the number
+  # under, as the store shows it: _order_number for WebToffee's and
+  # SkyVerge's Sequential Order Numbers. Empty: the number is the order id,
+  # as WooCommerce shows it without such a plugin.
+  woocommerce_order_number_meta_key: ""
+  # Each incremental run rereads the orders whose rows were synced
+  # (_peerdb_synced_at) in this many days before the latest sync it has
+  # seen: CDC stamps a row when its insert begins, so an insert that began
+  # before that sync may commit after it.
+  woocommerce_lookback_days: 3
+models:
+  dactopus_woocommerce:
+    +materialized: incremental
+    +incremental_strategy: delete+insert
+    # A release that changes a model's columns stops an incremental run
+    # with an error rather than leave the old table: run it once with
+    # --full-refresh, as the CHANGELOG says.
+    +on_schema_change: fail

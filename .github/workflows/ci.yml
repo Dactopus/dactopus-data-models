@@ -122,7 +122,8 @@ jobs:
           # early <table> <rows held back>; late <table> <rows>, loaded now
           early() { q "INSERT INTO shopify_input.$1 SELECT * FROM shopify_fixture.$1 WHERE NOT ($2)"; }
           late() { q "INSERT INTO shopify_input.$1 SELECT * REPLACE (now64(6) AS loaded_at) FROM shopify_fixture.$1 WHERE $2"; }
-          tables() { for t in orders order_lines refunds; do
+          # tables <database>: a checksum of each table
+          tables() { for t in orders order_lines refunds sales_events; do
               q "SELECT '$t', count(), groupBitXor(cityHash64(toString(tuple(*)))) FROM $1.$t FORMAT TSV"; done; }
           same() {
               CLICKHOUSE_DATABASE=analytics_full $DBT_BUILD --full-refresh
@@ -159,5 +160,149 @@ jobs:
           python3 tests/shopify/check_numbers.py
           same
           OSSIE_CLICKHOUSE_URL=http://127.0.0.1:8123/analytics_full python3 tests/shopify/check_numbers.py
+      - name: Validate the Ossie model against the built tables
+        run: dactopus-ossie-clickhouse validate entities/commerce.yaml --url "$OSSIE_CLICKHOUSE_URL"
+
+  woocommerce:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        dbt:
+          - {name: v2, from: "dbt-oss", with: ""}
+          - {name: v1, from: "dbt-core~=1.11.0", with: "dbt-clickhouse"}
+    name: WooCommerce package (dbt ${{ matrix.dbt.name }})
+    services:
+      clickhouse:
+        image: clickhouse/clickhouse-server:26.9
+        ports: ["8123:8123"]
+        env:
+          CLICKHOUSE_SKIP_USER_SETUP: 1  # passwordless default user over the network
+        options: >-
+          --health-cmd "wget -qO- http://localhost:8123/ping || exit 1"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+    env:
+      # Databases other than the defaults (woocommerce_raw, dactopus) and a
+      # table prefix other than wp_: nothing may assume either. The input
+      # database is woocommerce_input. The fixture's numbers are in the
+      # store's time zone, New York. No lookback: a run rereads only what
+      # was synced since the last one, so the late rows below come in
+      # through the keys that pick them up.
+      CLICKHOUSE_DATABASE: analytics
+      DBT_BUILD: >-
+        uvx --from ${{ matrix.dbt.from }} ${{ matrix.dbt.with && format('--with {0}', matrix.dbt.with) || '' }}
+        dbt build --project-dir sources/woocommerce --profiles-dir sources/woocommerce
+        --vars {"woocommerce_input_database":"woocommerce_input","woocommerce_table_prefix":"wp_2_","woocommerce_timezone":"America/New_York","woocommerce_currency":"USD","woocommerce_lookback_days":0}
+      OSSIE_CLICKHOUSE_URL: http://127.0.0.1:8123/analytics
+      # Checks that warn in a deployment fail here.
+      DACTOPUS_STRICT_TESTS: error
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Install dactopus-ossie-clickhouse
+        run: uv tool install "dactopus-ossie-clickhouse @ git+https://github.com/Dactopus/dactopus-ossie-clickhouse@v0.7.0"
+      # Hand-written CDC rows (tests/woocommerce/fixture.sql); the first
+      # build runs on an empty input. The fixture goes into a database of
+      # its own and reaches the input in syncs, each followed by an
+      # incremental run that must match a full refresh of the same input
+      # row for row: first all but the later changes of a few orders, with
+      # 109 placed for customer 2; then 109 moved to customer 1, its earlier
+      # version deleted, as an input that collapses old versions would:
+      # customer 2's 110 and 113, which nothing else rereads, must still be
+      # renumbered; then
+      # 107 cancelled (renumbering its customer's 110 and 113) and refunded
+      # in part (refund 904, which leaves the reports with it), 113 paid on
+      # delivery (its date moves) and refund 901 of 104, already built;
+      # then 109's line removed, 114 moved to the trash and 116 deleted,
+      # which delete+insert alone would leave in place; then product 14
+      # deleted from the catalogue, which changes the SKU of 103's line and
+      # no row of the order. Last, the same rows in the input's other form,
+      # Nullable columns with NULL for empty values (PEERDB_NULLABLE), must
+      # build the same tables.
+      - name: Build (models, tests, unit tests), check numbers, incremental and full refresh
+        run: |
+          q() { curl -sf http://127.0.0.1:8123/ --data-binary "$1"; }
+          load() { sed 's/wp_/wp_2_/g' "$1" | python3 -c "
+          import sys, urllib.request
+          for s in sys.stdin.read().split(';\n'):
+              if s.strip():
+                  urllib.request.urlopen('http://127.0.0.1:8123/?param_db=' + sys.argv[1], s.encode())" "$2"; }
+          # early <table> <rows held back>; late <table> <rows>, synced now
+          early() { q "INSERT INTO woocommerce_input.wp_2_$1 SELECT * FROM woocommerce_fixture.wp_2_$1 WHERE NOT ($2)"; }
+          late() { q "INSERT INTO woocommerce_input.wp_2_$1 SELECT * REPLACE (now64(9) AS _peerdb_synced_at) FROM woocommerce_fixture.wp_2_$1 WHERE $2"; }
+          # tables <database> [columns]: a checksum of each table
+          # sales_events has no sync time of its own: all its columns count.
+          tables() { for t in orders order_lines refunds sales_events; do
+              c=${2:-*}; [ $t = sales_events ] && c='*'
+              q "SELECT '$t', count(), groupBitXor(cityHash64(toString(tuple($c)))) FROM $1.$t FORMAT TSV"; done; }
+          same() {
+              CLICKHOUSE_DATABASE=analytics_full $DBT_BUILD --full-refresh
+              tables analytics > incremental.tsv
+              tables analytics_full > full.tsv
+              cat full.tsv
+              diff incremental.tsv full.tsv; }
+          load sources/woocommerce/input.sql woocommerce_input
+          load sources/woocommerce/input.sql woocommerce_fixture
+          load tests/woocommerce/fixture.sql woocommerce_fixture
+          $DBT_BUILD
+          v() { echo "_peerdb_version $1"; }
+          early wc_orders "$(v 'IN (163, 116, 128, 151, 293, 207, 209, 306, 330, 360, 372)')"
+          # 109 first for customer 2, on hold (numbered, unlike pending), in a
+          # version before any of the fixture's (filtered inside: a replaced
+          # column would shadow it in WHERE)
+          q "INSERT INTO woocommerce_input.wp_2_wc_orders SELECT * REPLACE ('wc-on-hold' AS status, 2 AS customer_id, 0 AS _peerdb_version)
+             FROM (SELECT * FROM woocommerce_fixture.wp_2_wc_orders WHERE $(v '= 163'))"
+          early wc_order_operational_data "$(v 'IN (117, 294, 208, 210, 331, 361)')"
+          early woocommerce_order_items "$(v 'IN (118, 198, 332, 362)')"
+          early woocommerce_order_itemmeta "$(v 'BETWEEN 119 AND 127') OR $(v 'BETWEEN 199 AND 206') OR $(v 'BETWEEN 333 AND 340') OR $(v 'BETWEEN 363 AND 371')"
+          early wc_order_addresses false
+          early wc_orders_meta false
+          early wc_product_meta_lookup "$(v '= 359')"
+          $DBT_BUILD                 # incremental into empty tables
+          same
+          late wc_orders "$(v '= 163')"
+          q "DELETE FROM woocommerce_input.wp_2_wc_orders WHERE id = 109 AND $(v '= 0')"
+          $DBT_BUILD                 # an order moved to another customer
+          same
+          late wc_orders "$(v 'IN (116, 128, 151, 293, 360, 372)')"
+          late wc_order_operational_data "$(v 'IN (117, 294, 361)')"
+          late woocommerce_order_items "$(v 'IN (118, 362)')"
+          late woocommerce_order_itemmeta "$(v 'BETWEEN 119 AND 127') OR $(v 'BETWEEN 363 AND 371')"
+          $DBT_BUILD                 # a cancel, a payment on delivery, a refund
+          same
+          late wc_orders "$(v 'IN (207, 209, 306, 330)')"
+          late wc_order_operational_data "$(v 'IN (208, 210, 331)')"
+          late woocommerce_order_items "$(v 'IN (198, 332)')"
+          late woocommerce_order_itemmeta "$(v 'BETWEEN 199 AND 206') OR $(v 'BETWEEN 333 AND 340')"
+          $DBT_BUILD                 # a line removed, an order trashed, one deleted
+          same
+          late wc_product_meta_lookup "$(v '= 359')"
+          $DBT_BUILD                 # a product deleted
+          same
+          test "$(q "SELECT count() FROM analytics.order_lines WHERE order_id = 103 AND sku IS NULL")" = 1
+          $DBT_BUILD                 # incremental over unchanged input
+          same
+          python3 tests/woocommerce/check_numbers.py
+          OSSIE_CLICKHOUSE_URL=http://127.0.0.1:8123/analytics_full python3 tests/woocommerce/check_numbers.py
+          # Nullable columns but the keys and CDC's own; empty times, the
+          # refunds' customer and the channel of refunds as NULL.
+          sed -E '/^ +(id|order_id|order_item_id|meta_id|product_id|_peerdb_[a-z_]+) /!s/^( +[a-z_]+) (String|Decimal\(26, 8\)|DateTime64\(6\)|UInt64|Bool|Int64)/\1 Nullable(\2)/' \
+              sources/woocommerce/input.sql > input_nullable.sql
+          load input_nullable.sql woocommerce_nullable
+          e="toDateTime64(0, 6)"
+          q "INSERT INTO woocommerce_nullable.wp_2_wc_orders SELECT * REPLACE (if(type = 'shop_order_refund', NULL, customer_id) AS customer_id) FROM woocommerce_fixture.wp_2_wc_orders"
+          q "INSERT INTO woocommerce_nullable.wp_2_wc_order_operational_data SELECT * REPLACE (nullIf(date_paid_gmt, $e) AS date_paid_gmt, nullIf(date_completed_gmt, $e) AS date_completed_gmt, nullIf(created_via, '') AS created_via) FROM woocommerce_fixture.wp_2_wc_order_operational_data"
+          for t in wc_order_addresses wc_orders_meta woocommerce_order_items woocommerce_order_itemmeta wc_product_meta_lookup; do
+              q "INSERT INTO woocommerce_nullable.wp_2_$t SELECT * FROM woocommerce_fixture.wp_2_$t"; done
+          CLICKHOUSE_DATABASE=analytics_nullable ${DBT_BUILD/'"woocommerce_input"'/'"woocommerce_nullable"'}
+          # synced_at apart: the late rows above were synced later.
+          tables analytics_nullable "* EXCEPT synced_at" > nullable.tsv
+          tables analytics_full "* EXCEPT synced_at" > full.tsv
+          diff nullable.tsv full.tsv
+          # A store whose reports count cancelled orders: 107, paid, cancelled
+          # and refunded 22 of 44, is a sale, and its net_total is what its
+          # events add up to (sales_events_make_net_total): 22, not 0.
+          CLICKHOUSE_DATABASE=analytics_cancelled ${DBT_BUILD/'"woocommerce_lookback_days":0'/'"woocommerce_lookback_days":0,"woocommerce_excluded_statuses":["pending","failed"]'}
+          test "$(q "SELECT in_sales_reports AND net_total = 22 FROM analytics_cancelled.orders WHERE order_id = 107")" = 1
       - name: Validate the Ossie model against the built tables
         run: dactopus-ossie-clickhouse validate entities/commerce.yaml --url "$OSSIE_CLICKHOUSE_URL"

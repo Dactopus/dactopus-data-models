@@ -42,6 +42,25 @@ models:
               arguments:
                 to: ref('orders')
                 field: order_id
+  - name: sales_events
+    columns:
+      - name: event_id
+        data_tests: [unique, not_null]
+      - {name: event_date, data_tests: [not_null]}
+      - {name: amount, data_tests: [not_null]}
+      - name: event_type
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [order, refund, cancellation]
+      - name: order_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('orders')
+                field: order_id
 unit_tests:
   # Discounts of lines in a shop whose prices include tax. The fixture's
   # tax-included order has one tax line, so these rows cover the rounding
