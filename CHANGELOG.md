@@ -8,6 +8,8 @@ names the Ossie schema version its models carry.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-14
+
 Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.7.0,
 dbt v2 (`dbt-oss` 2.0.5) and dbt v1 (`dbt-core` 1.11 with
 `dbt-clickhouse` 1.10) on ClickHouse 26.9. A Shopify deployment needs one
@@ -206,7 +208,8 @@ ClickHouse 26.9.
 - Hand-written GA4 rows and the numbers the model must answer over them
   (`tests/ga4`), checked in CI on both dbt versions.
 
-[Unreleased]: https://github.com/Dactopus/dactopus-data-models/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/Dactopus/dactopus-data-models/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/Dactopus/dactopus-data-models/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/Dactopus/dactopus-data-models/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/Dactopus/dactopus-data-models/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/Dactopus/dactopus-data-models/releases/tag/v0.1.0
