@@ -236,3 +236,14 @@ DELETE FROM {{ this }} WHERE order_id IN {{ changed }}
 SELECT 1
 {%- endif -%}
 {%- endmacro %}
+
+{# Ends each model's query. A CTE marked MATERIALIZED runs once, and its
+   references read the result; ClickHouse otherwise runs a CTE again at
+   every reference. The changed orders' subquery, referenced through
+   several CTEs, made order_lines read 123 million rows for a window of
+   two orders out of 320,000 (#18). Needs ClickHouse 26.7 or later:
+   26.3, where MATERIALIZED came in, to 26.6 fail on these models with
+   errors of their own. #}
+{% macro woocommerce_query_settings() -%}
+SETTINGS enable_materialized_cte = 1
+{%- endmacro %}

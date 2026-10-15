@@ -6,15 +6,15 @@
 -- lines are replaced together, so a line removed from the order goes too.
 {% set ids = woocommerce_changed_orders(products=true) if is_incremental() else none %}
 WITH
-orders AS (
+orders AS MATERIALIZED (
     SELECT id, synced_at FROM {{ woocommerce_orders('id IN ' ~ ids if ids else 'true') }}
 ),
 -- The orders' refunds, for what each refunded of a line.
-refunds AS (
+refunds AS MATERIALIZED (
     SELECT id FROM {{ woocommerce_current('wc_orders', 'id', 'parent_order_id IN (SELECT id FROM orders)') }}
     WHERE type = 'shop_order_refund'
 ),
-items AS (
+items AS MATERIALIZED (
     SELECT order_item_id, ifNull(order_item_name, '') AS order_item_name, order_id
     FROM {{ woocommerce_current('woocommerce_order_items', 'order_item_id',
                                 'order_id IN (SELECT id FROM orders) OR order_id IN (SELECT id FROM refunds)') }}
@@ -22,7 +22,7 @@ items AS (
 ),
 -- An item's meta as columns. A refund's item has negative quantity and
 -- amounts and points at the order's item it refunds (_refunded_item_id).
-item_meta AS (
+item_meta AS MATERIALIZED (
     SELECT
         order_item_id,
         toUInt64OrZero(ifNull(argMaxIf(meta_value, meta_id, meta_key = '_product_id'), '')) AS product_id,
@@ -39,14 +39,14 @@ item_meta AS (
     )
     GROUP BY order_item_id
 ),
-refunded AS (
+refunded AS MATERIALIZED (
     SELECT m.refunded_item_id AS order_item_id, sum(m.qty) AS qty
     FROM items AS i
     INNER JOIN item_meta AS m ON m.order_item_id = i.order_item_id
     WHERE i.order_id IN (SELECT id FROM refunds)
     GROUP BY m.refunded_item_id
 ),
-products AS (
+products AS MATERIALIZED (
     SELECT toUInt64(product_id) AS product_id, ifNull(sku, '') AS sku
     FROM {{ woocommerce_current('wc_product_meta_lookup', 'product_id',
                                 'toUInt64(product_id) IN (SELECT product_id FROM item_meta UNION ALL SELECT variation_id FROM item_meta)') }}
@@ -85,3 +85,4 @@ LEFT JOIN refunded AS rf ON rf.order_item_id = i.order_item_id
 LEFT JOIN products AS p ON p.product_id = m.product_id
 LEFT JOIN products AS v ON v.product_id = m.variation_id
 LEFT JOIN {{ woocommerce_rates('(SELECT id FROM orders)') }} AS r ON r.order_id = i.order_id
+{{ woocommerce_query_settings() }}

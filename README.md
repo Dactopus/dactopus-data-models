@@ -390,7 +390,10 @@ orders and four refunds of a store in New York, as change data capture
 and without lines, a cancelled order, cash on delivery, fees, tax included
 in prices, rows updated and then deleted, a deleted product, an order in
 the trash, an order paid in EUR). You need ClickHouse, dbt and
-dactopus-ossie-clickhouse, as for GA4.
+dactopus-ossie-clickhouse, as for GA4. The package needs ClickHouse 26.7
+or later: its models compute each shared subquery once
+(`WITH ... AS MATERIALIZED`), which fails on earlier versions. CI runs it
+on 26.7 and 26.9.
 
 1. **Load** the package's input tables
    [`sources/woocommerce/input.sql`](sources/woocommerce/input.sql) and the

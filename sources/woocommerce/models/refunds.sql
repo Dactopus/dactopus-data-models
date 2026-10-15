@@ -11,10 +11,10 @@
 -- (woocommerce_reading).
 {% set ids = woocommerce_changed_orders(in_comment=true) if is_incremental() else none %}
 WITH
-orders AS (
+orders AS MATERIALIZED (
     SELECT id FROM {{ woocommerce_orders('id IN ' ~ ids if ids else 'true') }}
 ),
-refunds AS (
+refunds AS MATERIALIZED (
     SELECT
         id, parent_order_id, ifNull(tax_amount, 0) AS tax_amount, ifNull(total_amount, 0) AS total_amount,
         toTimeZone(assumeNotNull(date_created_gmt), 'UTC') AS refund_time, _peerdb_synced_at AS synced_at
@@ -22,13 +22,13 @@ refunds AS (
     WHERE type = 'shop_order_refund'
 ),
 -- A refund of shipping keeps it here, negative.
-operational AS (
+operational AS MATERIALIZED (
     SELECT order_id, ifNull(shipping_total_amount, 0) AS shipping_total_amount, ifNull(shipping_tax_amount, 0) AS shipping_tax_amount
     FROM {{ woocommerce_current('wc_order_operational_data', 'id', 'order_id IN (SELECT id FROM refunds)') }}
 ),
 -- Items refunded: the refund's line items, quantities negative. A refund
 -- of an amount alone has none.
-quantities AS (
+quantities AS MATERIALIZED (
     SELECT i.order_id AS refund_id, -sum(toInt64OrZero(ifNull(m.meta_value, ''))) AS quantity
     FROM {{ woocommerce_current('woocommerce_order_items', 'order_item_id', 'order_id IN (SELECT id FROM refunds)') }} AS i
     INNER JOIN {{ woocommerce_current('woocommerce_order_itemmeta', 'meta_id',
@@ -40,7 +40,7 @@ quantities AS (
 ),
 -- A refund's amounts are converted by its own rate, which multi-currency
 -- plugins copy from the order, else by its order's (orders.sql).
-rates AS (
+rates AS MATERIALIZED (
     SELECT
         f.id AS refund_id,
         if(rf.rate_mul IS NULL, ro.rate_mul, rf.rate_mul) AS rate_mul,
@@ -68,3 +68,4 @@ FROM refunds AS f
 LEFT JOIN operational AS op ON op.order_id = f.id
 LEFT JOIN quantities AS q ON q.refund_id = f.id
 LEFT JOIN rates AS r ON r.refund_id = f.id
+{{ woocommerce_query_settings() }}

@@ -191,10 +191,14 @@ jobs:
         dbt:
           - {name: v2, from: "dbt-oss", with: ""}
           - {name: v1, from: "dbt-core~=1.11.0", with: "dbt-clickhouse"}
-    name: WooCommerce package (dbt ${{ matrix.dbt.name }})
+        # The oldest ClickHouse the package supports and the one it is
+        # tested on. Its materialized CTEs (woocommerce_query_settings)
+        # fail on 26.3 to 26.6 with errors of ClickHouse's own.
+        clickhouse: ["26.7", "26.9"]
+    name: WooCommerce package (dbt ${{ matrix.dbt.name }}, ClickHouse ${{ matrix.clickhouse }})
     services:
       clickhouse:
-        image: clickhouse/clickhouse-server:26.9
+        image: clickhouse/clickhouse-server:${{ matrix.clickhouse }}
         ports: ["8123:8123"]
         env:
           CLICKHOUSE_SKIP_USER_SETUP: 1  # passwordless default user over the network
