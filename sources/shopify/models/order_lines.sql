@@ -63,3 +63,4 @@ INNER JOIN orders AS o ON l.order_id = o.id AND l.order_updated_at = o.updated_a
 WHERE NOT l.is_gift_card
   AND NOT (l.product_id IS NULL AND NOT l.taxable AND NOT l.requires_shipping
            AND o.total_tip > 0 AND l.original_total = o.total_tip)
+{{ shopify_query_settings() }}

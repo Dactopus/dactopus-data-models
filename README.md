@@ -654,10 +654,17 @@ day of the order; a cancellation and a refund of one order on different
 days are not checked against the reports yet
 ([#16](https://github.com/Dactopus/dactopus-data-models/issues/16)).
 
-The memory a build needs grows with the shop's history, not with what
-changed since the last run. On a ClickHouse server limited to 4 GB, the
-first build of a shop with 2 million orders runs out of memory
-([#8](https://github.com/Dactopus/dactopus-data-models/issues/8)).
+The memory a build needs grows with the shop's history, slowly. On
+synthetic shops of 2, 4 and 8 million orders (2.5 lines per order, 30%
+of orders changed once; ClickHouse 26.9), the largest query of the first
+build, `orders`, peaked at 1.1, 1.5 and 2.0 GB, and of an incremental
+run at 0.35 and 0.6 GB for 2 and 4 million; the structural test
+`orders_amounts_consistent` peaked at 0.7, 1.7 and 2.7 GB, so on a
+server that allows a query 3 GB it is the first to fail, past 8 million
+orders ([#8](https://github.com/Dactopus/dactopus-data-models/issues/8)).
+The input tables' sorting keys (`input.sql`) are part of this: with
+other keys the package builds the same tables, sorting each whole in
+memory.
 
 ## Known differences from WooCommerce Analytics
 

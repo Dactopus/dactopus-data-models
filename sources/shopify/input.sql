@@ -38,9 +38,11 @@
 -- engine. A deployment may collapse old versions to save space with
 -- ReplacingMergeTree(<version>) ORDER BY <key>: orders (updated_at) by id,
 -- order_lines (order_updated_at) by (order_id, id), refunds (updated_at)
--- by id, refund_lines (refund_updated_at) by (refund_id, id).
+-- by (order_id, id), refund_lines (refund_updated_at) by (refund_id, id).
 -- Merges run when ClickHouse chooses, so the package still picks the
--- latest version itself.
+-- latest version itself, reading each table in the order of its sorting
+-- key below, as a stream; a table with another sorting key gives the
+-- same rows, sorted whole in memory (macros/shopify.sql).
 --
 -- The database is a query parameter, the package's shopify_input_database:
 --   clickhouse client --param_db=shopify_raw --multiquery < input.sql
