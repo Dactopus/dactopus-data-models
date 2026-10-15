@@ -2,11 +2,14 @@
    latest version, and nothing when that version is a delete. Dropping
    deletes after the sort, not before, keeps a deleted row from coming
    back in its version before the delete. Two copies of one version are
-   the same row. `where` must keep or drop whole keys, so it may only test
+   the same row, but CDC that delivers a batch again stamps the copies
+   with their own sync times: the latest is taken, or a model's synced_at,
+   and the window of its next run, would depend on which copy a read met
+   first. `where` must keep or drop whole keys, so it may only test
    columns that never change for a key, such as an item's order_id. #}
 {% macro woocommerce_current(table, key, where='true') -%}
 (SELECT * FROM (SELECT * FROM {{ source('woocommerce_raw', table) }} WHERE {{ where }}
-                ORDER BY _peerdb_version DESC LIMIT 1 BY {{ key }})
+                ORDER BY _peerdb_version DESC, _peerdb_synced_at DESC LIMIT 1 BY {{ key }})
  WHERE _peerdb_is_deleted = 0)
 {%- endmacro %}
 

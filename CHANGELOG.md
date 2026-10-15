@@ -69,6 +69,11 @@ names the Ossie schema version its models carry.
   to 1.9 s instead of 2 to 2.5 s of query time. No rebuild is needed. A
   customer whose numbers went stale before the upgrade gets them right
   when one of their orders next changes, or with a full refresh.
+- WooCommerce: when CDC delivered a version of a row twice, the copies
+  stamped with different sync times, a model took either copy, so an
+  order's `synced_at`, and where the next incremental window started,
+  could differ between runs over the same input. The latest sync is now
+  taken. Numbers were not affected.
 
 ## [0.3.0] - 2026-10-14
 
