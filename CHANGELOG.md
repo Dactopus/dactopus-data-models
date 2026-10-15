@@ -55,6 +55,20 @@ names the Ossie schema version its models carry.
   0.3 s; `orders` 670 MB down to 375 MB and 1.7 s down to 0.65 s. A full
   rebuild of `order_lines` takes 0.8 s instead of 4.2 s and 0.75 GB of
   memory instead of 1.2 GB. The rows are the same.
+- WooCommerce: an order moved to another customer and then trashed or
+  deleted in one sync window, after the input had merged away the
+  version that named the first customer, left that customer's later
+  orders with their old `customer_order_number` until a full refresh
+  ([#17](https://github.com/Dactopus/dactopus-data-models/issues/17)).
+  The `orders` pre-hook now keeps the window's orders and the customer
+  each one had in `orders__changed` before it deletes anything, the
+  model reads them there, and a post-hook drops the table. The pre-hook
+  also computes the window's orders once instead of twice: on 320,000
+  synthetic orders an incremental run of `orders` read 9 to 10 million
+  rows (410 to 450 MB) instead of 36 to 38 million (850 to 870 MB), 1.2
+  to 1.9 s instead of 2 to 2.5 s of query time. No rebuild is needed. A
+  customer whose numbers went stale before the upgrade gets them right
+  when one of their orders next changes, or with a full refresh.
 
 ## [0.3.0] - 2026-10-14
 
