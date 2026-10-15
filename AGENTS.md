@@ -36,6 +36,8 @@ The README describes what works today. Plans go in
     tests/<source>/           hand-written input rows and the numbers the
                               model must answer over them
     tests/ask_model.py        asks the questions, shared by every source
+    tests/check_freshness.py  checks the ages `dbt source freshness`
+                              reports, shared by every source
     docs/architecture.svg     the diagram, shown in the README and, with
     docs/index.html           the text for each part, on GitHub Pages;
                               update both in the change that alters
@@ -144,6 +146,9 @@ maintainer, not by an agent on its own.
 
 The package profile sets `network_compression_method: LZ4`: the dbt v2
 ClickHouse adapter (beta) cannot read the ZSTD responses ClickHouse 26.x
-sends by default. `dbt source freshness` fails on that adapter for any
-project (it selects `now()`, which arrives as an integer); run freshness
-on dbt v1.
+sends by default. dbt v2's own `dbt source freshness` fails on ClickHouse
+for any project (it selects `now()`, which arrives as an integer); each
+package's `macros/freshness.sql` replaces it with a query that casts both
+times to `DateTime64`. A project that installs the packages reaches these
+macros through the `dispatch` setting in the README. Remove both once a
+`dbt-oss` release fixes dbt-labs/dbt#16714.

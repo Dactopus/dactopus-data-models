@@ -526,7 +526,7 @@ Cloud's CDC, runs PeerDB but is not checked yet.
 5. **Next runs.** CDC keeps the input current; run `dbt build` again,
    and it is incremental. It rereads the orders with a row synced in the
    `woocommerce_lookback_days` (default 3) before the latest sync it has
-   seen. `dbt source freshness`, on dbt v1, warns when CDC has not synced
+   seen. `dbt source freshness` warns when CDC has not synced
    an order for a day; a store without an order in a day warns too.
 
 ## What the GA4 model answers
@@ -700,7 +700,8 @@ refresh
 ## Use in your dbt project
 
 Add the packages you need to your project's `packages.yml`, pinned to a
-release tag:
+release tag: GA4 and your store's package, here Shopify (for
+WooCommerce, `subdirectory: sources/woocommerce`):
 
 ```yaml
 packages:
@@ -710,10 +711,12 @@ packages:
   - git: https://github.com/Dactopus/dactopus-data-models.git
     revision: v0.3.0
     subdirectory: sources/shopify
-  - git: https://github.com/Dactopus/dactopus-data-models.git
-    revision: v0.3.0
-    subdirectory: sources/woocommerce
 ```
+
+The Shopify and WooCommerce packages write the same tables, so a project
+installs one of them: with both, dbt stops before building anything. A
+business with a store on each builds them into separate target
+databases, as for several stores below.
 
 The GA4 package writes `events`, `sessions` and `purchases` to your
 target's database and reads its input from `ga4_raw.events`. The Shopify
@@ -749,6 +752,20 @@ same tag. On dbt v2 with ClickHouse 26.x, set
 [`sources/ga4/profiles.yml`](sources/ga4/profiles.yml) does: the v2
 ClickHouse adapter (beta) cannot read ClickHouse's default ZSTD
 responses.
+
+On dbt v2, `dbt source freshness` fails on ClickHouse for every source
+([dbt-labs/dbt#16714](https://github.com/dbt-labs/dbt/issues/16714)).
+Each package carries macros that fix it; dbt uses a package's macro in
+place of its own only when your `dbt_project.yml` lists the package
+after your project's name (`my_project` here):
+
+```yaml
+dispatch:
+  - macro_namespace: dbt
+    search_order: [my_project, dactopus_ga4, dactopus_shopify, dactopus_woocommerce, dbt]
+```
+
+Freshness then reports the same ages as on dbt v1.
 
 Several GA4 properties: each exports to its own BigQuery dataset. Build
 the package once per property, each with its own input and target
