@@ -17,25 +17,12 @@ needed.
   ClickHouse server limited to 4 GB, the first build of a shop with 2
   million orders ran out of memory
   ([#8](https://github.com/Dactopus/dactopus-data-models/issues/8)).
-  Three causes. The models picked the latest version of an order, a line
-  or a refund by sorting the whole table by version, with all its
-  columns, in memory; they now sort by the table's sorting key, which
-  ClickHouse reads in order and streams (`macros/shopify.sql`). `orders`
-  numbered a customer's orders over every order with all its columns; it
-  now numbers them from five columns, an incremental run only the orders
-  of the customers it rebuilds, and reads the other columns of the orders
-  a run keeps only. An `INSERT ... SELECT` buffered up to 256 MB
-  per core before writing; each model's query now ends with
-  `shopify_query_settings()`, one insert thread and 64 MB blocks, and a
-  full build takes about twice as long. On a synthetic shop of 2 million
-  orders (5 million lines, ClickHouse 26.9, dbt v2 and v1 alike) the
-  full build of `order_lines` peaks at 0.6 GB instead of 2.4 GB and
-  `orders` at 1.1 GB instead of 1.7 GB; an incremental run of `orders`
-  peaks at 0.2 GB instead of 1.7 GB, in half the time. The memory still
-  grows with the shop, slowly: at 8 million orders the full build of
-  `orders` peaks at 2.0 GB and the test `orders_amounts_consistent`, now
-  the largest query of a build, at 2.7 GB. A deployment whose input tables have another sorting key than
-  `input.sql` gets the same rows at the old memory; the suggested
+  Such a shop now builds in at most 1.1 GB per query, and a shop of 8
+  million orders in 2.7 GB; an incremental run of `orders` needs 0.2 GB
+  instead of 1.7 GB. A full build takes about twice as long. Measurements:
+  [README](README.md#known-differences-from-shopifys-reports). The saving
+  needs the input tables' sorting keys of `input.sql`; with other keys
+  the package builds the same rows at the old memory. The suggested
   `ReplacingMergeTree` key of `refunds` is now `(order_id, id)`.
 
 ## [0.4.0] - 2026-10-15

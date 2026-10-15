@@ -4,16 +4,21 @@
 -- are left out, and so are gift cards sold and the tip (see orders.sql).
 -- Keyed by order_id for refreshing: an order's lines are replaced together,
 -- so a line missing from its order's latest version goes too.
+{% if is_incremental() %}
+-- Orders loaded since the last run, and orders whose lines were: the
+-- lines of a version may come in a later insert than the order.
+{% set kept_ids = "(SELECT id FROM " ~ source('shopify_raw', 'orders') ~ " WHERE id IN " ~ shopify_loaded_since('orders')
+    ~ " OR id IN " ~ shopify_loaded_since('order_lines', 'order_id') ~ ")" %}
+{% set kept = "id IN " ~ kept_ids %}
+{% set kept_by_order = "order_id IN " ~ kept_ids %}
+{% else %}
+{% set kept = 'true' %}
+{% set kept_by_order = 'true' %}
+{% endif %}
 WITH
 orders AS (
     SELECT id, updated_at, processed_at, taxes_included, total_tip
-    {% if is_incremental() %}
-    -- Orders loaded since the last run, and orders whose lines were: the
-    -- lines of a version may come in a later insert than the order.
-    FROM {{ shopify_latest('orders', 'id', where="id IN " ~ shopify_loaded_since('orders') ~ " OR id IN " ~ shopify_loaded_since('order_lines', 'order_id')) }}
-    {% else %}
-    FROM {{ shopify_latest('orders', 'id') }}
-    {% endif %}
+    FROM {{ shopify_latest('orders', 'id', where=kept) }}
     WHERE NOT test
 )
 SELECT
@@ -54,7 +59,10 @@ SELECT
             l.discount_allocated) AS discount_total,
     -- When the line was loaded; the next incremental run starts from it.
     l.loaded_at AS loaded_at
-FROM {{ shopify_latest('order_lines', 'order_id, id, order_updated_at', version='order_updated_at', where='order_id IN (SELECT id FROM orders)') }} AS l
+-- The lines of the kept orders, by id from the input: a CTE runs again at
+-- every reference, and `orders` would pick every order's latest version
+-- a second time. Lines of test orders drop out in the join.
+FROM {{ shopify_latest('order_lines', 'order_id, id, order_updated_at', version='order_updated_at', where=kept_by_order) }} AS l
 INNER JOIN orders AS o ON l.order_id = o.id AND l.order_updated_at = o.updated_at
 -- The tip line has no flag of its own. No product, no tax and nothing to
 -- ship alone would take a custom item too, such as a download (#1013 on
