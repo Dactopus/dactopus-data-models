@@ -8,6 +8,16 @@ names the Ossie schema version its models carry.
 
 ## [Unreleased]
 
+### Fixed
+
+- `dbt source freshness` works on dbt v2: each package carries
+  ClickHouse versions of dbt's freshness macros
+  (`macros/freshness.sql`), since dbt v2's own fail for every source
+  ([dbt-labs/dbt#16714](https://github.com/dbt-labs/dbt/issues/16714)).
+  A project that installs the packages turns them on with a `dispatch`
+  setting (README). Ages match dbt v1's. CI runs freshness on both
+  versions.
+
 ## [0.3.0] - 2026-10-14
 
 Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.7.0,
