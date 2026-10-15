@@ -528,7 +528,7 @@ Cloud's CDC, runs PeerDB but is not checked yet.
    `woocommerce_lookback_days` (default 3) before the latest sync it has
    seen. `refunds` has no row for an order without refunds, so it keeps
    that sync in its table's comment, rewritten on each run; the dbt user
-   needs `ALTER MODIFY COMMENT` on it (part of `ALTER`).
+   needs `ALTER MODIFY COMMENT` on it (part of `ALTER TABLE`).
    `dbt source freshness` warns when CDC has not synced
    an order for a day; a store without an order in a day warns too.
 

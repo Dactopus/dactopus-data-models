@@ -29,13 +29,14 @@ names the Ossie schema version its models carry.
   ([#18](https://github.com/Dactopus/dactopus-data-models/issues/18)).
   It now keeps the latest sync it has read in its table's comment
   (`read through <time> UTC`) and starts the next window there. On
-  320,000 synthetic orders whose only refunds were two years old, one
-  run's read fell from 80 million rows (2.1 s) to 4.8 million (0.3 s).
+  320,000 synthetic orders whose only refunds were two years old, the
+  `refunds` model's read in one run fell from 80 million rows (2.1 s)
+  to 4.8 million (0.3 s).
   The rows are the same. The first run after the upgrade starts from the
   latest refund, as before, and writes the comment; no rebuild is
   needed. Each run rewrites the comment, so a comment set on that table
   is lost, and the dbt user needs `ALTER MODIFY COMMENT` on it (part of
-  `ALTER`).
+  `ALTER TABLE`, separate from `ALTER DELETE`).
 
 ## [0.3.0] - 2026-10-14
 
