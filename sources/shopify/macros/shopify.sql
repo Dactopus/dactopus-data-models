@@ -12,7 +12,7 @@
    read, for a pass that needs a few of them. #}
 {% macro shopify_latest(table, key, version='updated_at', where='true', select='*') -%}
 (SELECT {{ select }} FROM {{ source('shopify_raw', table) }} WHERE {{ where }}
- ORDER BY {{ key }}{% if version not in key.split(', ') %}, {{ version }} DESC{% endif %}, loaded_at DESC LIMIT 1 BY {{ key }})
+ ORDER BY {{ key }}{% if version not in key.replace(' ', '').split(',') %}, {{ version }} DESC{% endif %}, loaded_at DESC LIMIT 1 BY {{ key }})
 {%- endmacro %}
 
 {# Settings every model's query ends with. An INSERT ... SELECT buffers the
