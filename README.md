@@ -699,11 +699,7 @@ cent. CDC syncs each table apart, so a run can see an order before its
 lines: the check that lines add up to the subtotal only warns, and the
 next run completes the order. A store in compatibility mode can drift
 from its legacy storage between runs of `wp wc hpos verify_data
---re-migrate` (Your store, step 1). An order moved to another customer
-and then removed within one sync window can leave the first customer's
-later orders with old numbers in `customer_order_number` until a full
-refresh
-([#17](https://github.com/Dactopus/dactopus-data-models/issues/17)).
+--re-migrate` (Your store, step 1).
 
 ## Use in your dbt project
 
