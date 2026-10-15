@@ -700,7 +700,8 @@ refresh
 ## Use in your dbt project
 
 Add the packages you need to your project's `packages.yml`, pinned to a
-release tag:
+release tag: GA4 and your store's package, here Shopify (for
+WooCommerce, `subdirectory: sources/woocommerce`):
 
 ```yaml
 packages:
@@ -710,10 +711,12 @@ packages:
   - git: https://github.com/Dactopus/dactopus-data-models.git
     revision: v0.3.0
     subdirectory: sources/shopify
-  - git: https://github.com/Dactopus/dactopus-data-models.git
-    revision: v0.3.0
-    subdirectory: sources/woocommerce
 ```
+
+The Shopify and WooCommerce packages write the same tables, so a project
+installs one of them: with both, dbt stops before building anything. A
+business with a store on each builds them into separate target
+databases, as for several stores below.
 
 The GA4 package writes `events`, `sessions` and `purchases` to your
 target's database and reads its input from `ga4_raw.events`. The Shopify

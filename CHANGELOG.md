@@ -17,6 +17,10 @@ names the Ossie schema version its models carry.
   A project that installs the packages turns them on with a `dispatch`
   setting (README). Ages match dbt v1's. CI runs freshness on both
   versions.
+- The README's `packages.yml` example installed all three packages, and
+  dbt stops on it: Shopify and WooCommerce write the same tables. It now
+  installs GA4 and one store's package, and says that stores on both
+  platforms build into separate target databases.
 
 ## [0.3.0] - 2026-10-14
 
