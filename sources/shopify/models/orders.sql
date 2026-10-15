@@ -20,11 +20,13 @@
 -- (input.sql) may have lost it. The customer is matched in any version of
 -- the order, so an order once moved away from the customer is rebuilt
 -- too, to the same row.
--- Only these orders are read with all their columns; the customer's
--- sequence is numbered over every order first, from a few columns.
+-- Only these orders are read with all their columns. The customer's
+-- sequence is numbered from a few columns over these orders and every
+-- order of their customers: an order kept for its refund alone brings
+-- its customer's other orders into the numbering, not into the rebuild.
 {% set orders_loaded = shopify_loaded_since('orders') %}
 {% set lines_loaded = shopify_loaded_since('order_lines', 'order_id') %}
-{% set kept = "id IN (SELECT id FROM " ~ source('shopify_raw', 'orders') ~ "
+{% set kept_ids = "(SELECT id FROM " ~ source('shopify_raw', 'orders') ~ "
     WHERE id IN " ~ orders_loaded ~ "
        OR id IN " ~ lines_loaded ~ "
        OR id IN (SELECT order_id FROM " ~ source('shopify_raw', 'refunds') ~ "
@@ -33,8 +35,14 @@
                           WHERE id IN " ~ orders_loaded ~ " OR id IN " ~ lines_loaded ~ ")
        OR customer_id IN (SELECT customer_id FROM " ~ this ~ "
                           WHERE order_id IN " ~ orders_loaded ~ " OR order_id IN " ~ lines_loaded ~ "))" %}
+{% set kept = "id IN " ~ kept_ids %}
+{% set kept_by_order = "order_id IN " ~ kept_ids %}
+{% set numbered = "id IN " ~ kept_ids ~ " OR customer_id IN (SELECT customer_id FROM "
+    ~ source('shopify_raw', 'orders') ~ " WHERE id IN " ~ kept_ids ~ ")" %}
 {% else %}
 {% set kept = 'true' %}
+{% set kept_by_order = 'true' %}
+{% set numbered = 'true' %}
 {% endif %}
 SELECT
     o.id AS order_id,
@@ -130,44 +138,45 @@ SELECT
 FROM {{ shopify_latest('orders', 'id', where=kept) }} AS o
 INNER JOIN
 (
-    -- The customer's orders numbered by processed_at, over every order in
-    -- its latest version; cancelled orders and guests have no number.
-    -- Five columns of every order: the whole table sorts in memory, and
-    -- that is a few hundred MB for two million orders where all the columns
-    -- were over a GB (#8).
+    -- The customer's orders numbered by processed_at, over every order of
+    -- the customer in its latest version; cancelled orders and guests have
+    -- no number. Five columns of every order a full build numbers: they sort
+    -- in memory, and that is a few hundred MB for two million orders where
+    -- all the columns were over a GB (#8). The filter comes after the
+    -- latest version is picked and keeps a customer's orders whole.
     SELECT
         id,
         if(customer_id IS NULL OR cancelled_at IS NOT NULL, NULL,
            row_number() OVER (PARTITION BY customer_id, cancelled_at IS NOT NULL ORDER BY processed_at, id)) AS customer_order_number
     FROM {{ shopify_latest('orders', 'id', select='id, customer_id, processed_at, cancelled_at, test') }}
-    WHERE NOT test
+    WHERE NOT test AND ({{ numbered }})
 ) AS n ON n.id = o.id
 LEFT JOIN
 (
     -- Gift cards sold in the order's version; order_lines leaves them out.
     SELECT order_id, order_updated_at, toDecimal64(sum(original_total - discount_allocated), 4) AS gift_card_total
-    FROM {{ shopify_latest('order_lines', 'order_id, id, order_updated_at', version='order_updated_at', where='is_gift_card') }}
+    FROM {{ shopify_latest('order_lines', 'order_id, id, order_updated_at', version='order_updated_at', where='is_gift_card AND ' ~ kept_by_order) }}
     GROUP BY order_id, order_updated_at
 ) AS g ON g.order_id = o.id AND g.order_updated_at = o.updated_at
 LEFT JOIN
 (
     -- Refund lines of gift cards sold, each refund in its latest version.
+    -- A refund line refunds one line item in every version, so the filter
+    -- keeps whole keys and the join holds gift card lines only.
     SELECT r.order_id AS order_id, toDecimal64(sum(rl.subtotal + rl.total_tax), 4) AS gift_card_refunded_total
-    FROM {{ shopify_latest('refunds', 'order_id, id') }} AS r
-    INNER JOIN {{ shopify_latest('refund_lines', 'refund_id, id, refund_updated_at', version='refund_updated_at') }} AS rl
+    FROM {{ shopify_latest('refunds', 'order_id, id', where=kept_by_order) }} AS r
+    INNER JOIN {{ shopify_latest('refund_lines', 'refund_id, id, refund_updated_at', version='refund_updated_at',
+                                 where='line_item_id IN (SELECT id FROM ' ~ source('shopify_raw', 'order_lines') ~ ' WHERE is_gift_card)') }} AS rl
         ON rl.refund_id = r.id AND rl.refund_updated_at = r.updated_at
-    WHERE rl.line_item_id IN (SELECT id FROM {{ source('shopify_raw', 'order_lines') }} WHERE is_gift_card)
     GROUP BY r.order_id
 ) AS gr ON gr.order_id = o.id
 LEFT JOIN
 (
     SELECT order_id, count() AS line_item_count, sum(quantity) AS item_quantity, toDecimal64(sum(discount_total), 4) AS discount_total
     FROM {{ ref('order_lines') }}
-    {% if is_incremental() %}
     -- Of the kept orders only: every order's lines would make a table of
     -- all orders again.
-    WHERE order_id IN (SELECT id FROM {{ source('shopify_raw', 'orders') }} WHERE {{ kept }})
-    {% endif %}
+    WHERE {{ kept_by_order }}
     GROUP BY order_id
 ) AS l ON l.order_id = o.id
 WHERE NOT o.test

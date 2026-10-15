@@ -19,9 +19,9 @@
    rows to insert per insert thread, up to min_insert_block_size_bytes
    each, before it sorts and writes them as a part: with the defaults, 256
    MB times the server's cores (max_insert_threads), 2 GB on 8 cores, while
-   the output of a full build is smaller than that it is all held in
+   the output of a full build is smaller than that, it is all held in
    memory, and the models' own work comes on top (#8: the full build of
-   orders for 4 million orders peaked at 2.7 GB, 1.4 GB with these settings;
+   orders for 4 million orders peaked at 2.9 GB, 1.5 GB with these settings;
    with one insert thread the build is about twice as slow). An incremental
    run inserts few rows and is not affected. #}
 {% macro shopify_query_settings() -%}
