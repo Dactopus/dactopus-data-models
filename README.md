@@ -531,7 +531,10 @@ Cloud's CDC, runs PeerDB but is not checked yet.
    `woocommerce_lookback_days` (default 3) before the latest sync it has
    seen. `refunds` has no row for an order without refunds, so it keeps
    that sync in its table's comment, rewritten on each run; the dbt user
-   needs `ALTER MODIFY COMMENT` on it (part of `ALTER TABLE`).
+   needs `ALTER MODIFY COMMENT` on it (part of `ALTER TABLE`). `orders`
+   keeps the orders a run rereads in `orders__changed` and drops it at
+   the end; a run that fails leaves it, and the next run rereads its
+   orders too.
    `dbt source freshness` warns when CDC has not synced
    an order for a day; a store without an order in a day warns too.
 
@@ -697,11 +700,7 @@ cent. CDC syncs each table apart, so a run can see an order before its
 lines: the check that lines add up to the subtotal only warns, and the
 next run completes the order. A store in compatibility mode can drift
 from its legacy storage between runs of `wp wc hpos verify_data
---re-migrate` (Your store, step 1). An order moved to another customer
-and then removed within one sync window can leave the first customer's
-later orders with old numbers in `customer_order_number` until a full
-refresh
-([#17](https://github.com/Dactopus/dactopus-data-models/issues/17)).
+--re-migrate` (Your store, step 1).
 
 ## Use in your dbt project
 

@@ -2,11 +2,14 @@
    latest version, and nothing when that version is a delete. Dropping
    deletes after the sort, not before, keeps a deleted row from coming
    back in its version before the delete. Two copies of one version are
-   the same row. `where` must keep or drop whole keys, so it may only test
+   the same row, but CDC that delivers a batch again stamps the copies
+   with their own sync times: the latest is taken, or a model's synced_at,
+   and the window of its next run, would depend on which copy a read met
+   first. `where` must keep or drop whole keys, so it may only test
    columns that never change for a key, such as an item's order_id. #}
 {% macro woocommerce_current(table, key, where='true') -%}
 (SELECT * FROM (SELECT * FROM {{ source('woocommerce_raw', table) }} WHERE {{ where }}
-                ORDER BY _peerdb_version DESC LIMIT 1 BY {{ key }})
+                ORDER BY _peerdb_version DESC, _peerdb_synced_at DESC LIMIT 1 BY {{ key }})
  WHERE _peerdb_is_deleted = 0)
 {%- endmacro %}
 
@@ -205,7 +208,7 @@ SELECT 1
    line's SKU is the product's current one. #}
 {% macro woocommerce_changed_orders(products=false, in_comment=false) -%}
 {%- set since = "_peerdb_synced_at >= " ~ woocommerce_window_start(in_comment) -%}
-(SELECT if(type = 'shop_order_refund', parent_order_id, id) FROM {{ source('woocommerce_raw', 'wc_orders') }}
+(SELECT if(type = 'shop_order_refund', parent_order_id, id) AS order_id FROM {{ source('woocommerce_raw', 'wc_orders') }}
  WHERE id IN (
      SELECT id FROM {{ source('woocommerce_raw', 'wc_orders') }} WHERE {{ since }}
      UNION ALL SELECT order_id FROM {{ source('woocommerce_raw', 'wc_order_operational_data') }} WHERE {{ since }}
@@ -224,17 +227,66 @@ SELECT 1
 {# Pre-hook of an incremental run: remove the rows of the orders it will
    reread. An order deleted, moved to the trash or left without lines or
    refunds is not in the new rows, and delete+insert replaces only the
-   orders that are. With `removed_only`, only the orders that are no
-   longer orders go: orders.sql reads the previous customer of the others
-   from this table. #}
-{% macro woocommerce_delete_changed(products=false, removed_only=false, in_comment=false) -%}
+   orders that are. #}
+{% macro woocommerce_delete_changed(products=false, in_comment=false) -%}
 {%- if is_incremental() -%}
-{%- set changed = woocommerce_changed_orders(products, in_comment) -%}
-DELETE FROM {{ this }} WHERE order_id IN {{ changed }}
-{%- if removed_only %} AND order_id NOT IN (SELECT id FROM {{ woocommerce_orders('id IN ' ~ changed) }}){% endif %}
+DELETE FROM {{ this }} WHERE order_id IN {{ woocommerce_changed_orders(products, in_comment) }}
 {%- else -%}
 SELECT 1
 {%- endif -%}
+{%- endmacro %}
+
+{# The orders an incremental run of orders.sql rereads, kept apart for the
+   run: woocommerce_keep_changed fills it before anything is deleted,
+   woocommerce_delete_removed and the model read it, and
+   woocommerce_drop_changed drops it after the run. Each row is an order
+   changed in the window (woocommerce_changed_orders) and the customer the
+   model's row of that order names, NULL without one. An order moved to
+   another customer renumbers that customer's orders, and an input that
+   collapses old versions may have lost the version that named them; the
+   model's row is then the only place left that names them, and an order
+   that is no longer an order loses that row before the model runs (#17).
+   Reading the changed orders once here also spares the hook and the model
+   reading them again. A run that fails may have deleted rows the table
+   names, so the next run keeps its rows along with its own. #}
+{% macro woocommerce_changed_table() -%}
+{{ this.incorporate(path={"identifier": this.identifier ~ "__changed"}) }}
+{%- endmacro %}
+
+{% macro woocommerce_keep_changed() -%}
+{%- if is_incremental() -%}
+{%- set left = execute and run_query("EXISTS TABLE " ~ woocommerce_changed_table()).columns[0].values()[0] -%}
+CREATE OR REPLACE TABLE {{ woocommerce_changed_table() }} ENGINE = MergeTree ORDER BY tuple() AS
+WITH changed AS MATERIALIZED {{ woocommerce_changed_orders() }}
+SELECT DISTINCT order_id, previous_customer_id FROM (
+    SELECT c.order_id AS order_id, p.customer_id AS previous_customer_id
+    FROM changed AS c
+    LEFT JOIN (SELECT order_id, customer_id FROM {{ this }} WHERE order_id IN changed) AS p ON p.order_id = c.order_id
+    {%- if left %}
+    UNION ALL
+    SELECT order_id, previous_customer_id FROM {{ woocommerce_changed_table() }}
+    {%- endif %})
+{{ woocommerce_query_settings() }}
+{%- else -%}
+SELECT 1
+{%- endif -%}
+{%- endmacro %}
+
+{# Pre-hook after woocommerce_keep_changed: remove the rows of the changed
+   orders that are no longer orders (woocommerce_delete_changed). The
+   others stay: delete+insert replaces them. #}
+{% macro woocommerce_delete_removed() -%}
+{%- if is_incremental() -%}
+{%- set changed = "(SELECT order_id FROM " ~ woocommerce_changed_table() ~ ")" -%}
+DELETE FROM {{ this }} WHERE order_id IN {{ changed }}
+AND order_id NOT IN (SELECT id FROM {{ woocommerce_orders('id IN ' ~ changed) }})
+{%- else -%}
+SELECT 1
+{%- endif -%}
+{%- endmacro %}
+
+{% macro woocommerce_drop_changed() -%}
+DROP TABLE IF EXISTS {{ woocommerce_changed_table() }}
 {%- endmacro %}
 
 {# Ends each model's query. A CTE marked MATERIALIZED runs once, and its

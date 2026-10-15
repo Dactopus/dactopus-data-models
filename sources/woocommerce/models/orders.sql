@@ -1,5 +1,6 @@
 {{ config(unique_key='order_id', order_by='(order_date, order_id)',
-          pre_hook="{{ woocommerce_delete_changed(removed_only=true) }}") }}
+          pre_hook=["{{ woocommerce_keep_changed() }}", "{{ woocommerce_delete_removed() }}"],
+          post_hook="{{ woocommerce_drop_changed() }}") }}
 -- One row per order, in its current state (input.sql). The numbers follow
 -- the store's own reports, WooCommerce Analytics, under the settings the
 -- package's variables repeat (dbt_project.yml): which date an order is
@@ -29,15 +30,17 @@ headers AS MATERIALIZED (
     FROM {{ woocommerce_orders() }}
 ),
 {% if is_incremental() %}
--- Orders changed since the last run, and every order of their customers,
--- under any version: a new or cancelled order renumbers the others. The
--- previous customer of an order moved to another comes from this table,
--- as an input that collapses old versions may have lost it.
-changed AS MATERIALIZED {{ woocommerce_changed_orders() }},
+-- Orders changed since the last run (woocommerce_keep_changed), and every
+-- order of their customers, under any version: a new or cancelled order
+-- renumbers the others. The previous customer of an order moved to
+-- another is the one this table's row of it names, kept before the
+-- pre-hook deletes the rows of orders that are gone, as an input that
+-- collapses old versions may have lost it.
+changed AS MATERIALIZED (SELECT order_id FROM {{ woocommerce_changed_table() }}),
 customers AS MATERIALIZED (
     SELECT customer_id FROM {{ source('woocommerce_raw', 'wc_orders') }} WHERE id IN changed
     UNION ALL
-    SELECT customer_id FROM {{ this }} WHERE order_id IN changed
+    SELECT previous_customer_id FROM {{ woocommerce_changed_table() }}
 ),
 ids AS MATERIALIZED (
     SELECT id FROM headers WHERE id IN changed OR customer_id IN customers
