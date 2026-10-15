@@ -16,7 +16,7 @@ through pull requests, like the code.
 
 ## Next
 
-Nothing yet: the next item is chosen after the 0.3.0 release.
+Nothing yet.
 
 ## Needs contributors
 
