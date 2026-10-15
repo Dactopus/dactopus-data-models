@@ -118,12 +118,14 @@ jobs:
       # 505 change orders that nothing else rereads; 1001's lines, its gift
       # card among them, come after 505's and after the refund 501 has moved
       # the refunds' load window past 505, and make 505 a refund of 0; 1008,
-      # back-dated, renumbers its customer's 1007. 1004 comes first in its
-      # version for customer 2; its latest version, moved to customer 1,
-      # comes last, alone, and the earlier version is then deleted, as an
-      # input that collapses old versions would: customer 2's orders must
-      # still be renumbered. After the late loads, the incremental build
-      # must match a full refresh of the same input row for row.
+      # back-dated, renumbers its customer's 1007. The refund 503, delivered
+      # again alone, brings back 1006 and no other order of customer 2; its
+      # number must still count them. 1004 comes first in its version for
+      # customer 2; its latest version, moved to customer 1, comes last,
+      # alone, and the earlier version is then deleted, as an input that
+      # collapses old versions would: customer 2's orders must still be
+      # renumbered. After the late loads, and after 503's, the incremental
+      # build must match a full refresh of the same input row for row.
       - name: Build (models, tests, unit tests), check numbers, incremental and full refresh
         run: |
           q() { curl -sf http://127.0.0.1:8123/ --data-binary "$1"; }
@@ -163,6 +165,10 @@ jobs:
           late orders "id = 1008"
           late order_lines "order_id IN (1001, 1008)"
           $DBT_BUILD                 # a back-dated order, a gift card line after its refund
+          late refunds "id = 503"
+          late refund_lines "refund_id = 503"
+          $DBT_BUILD                 # a refund delivered again, alone
+          same
           late orders "id = 1004 AND updated_at = '2026-10-03 15:00:00'"
           late order_lines "order_id = 1004 AND order_updated_at = '2026-10-03 15:00:00'"
           q "DELETE FROM shopify_input.orders WHERE id = 1004 AND updated_at < '2026-10-03 15:00:00'"

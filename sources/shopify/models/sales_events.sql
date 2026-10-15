@@ -40,3 +40,4 @@ SELECT
     -(total - refunded_total) AS amount
 FROM {{ ref('orders') }}
 WHERE is_cancelled AND total != refunded_total
+{{ shopify_query_settings() }}

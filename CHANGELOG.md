@@ -8,6 +8,28 @@ names the Ossie schema version its models carry.
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-10-15
+
+Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.8.0,
+dbt v2 (`dbt-oss` 2.0.8) and dbt v1 (`dbt-core` 1.11 with
+`dbt-clickhouse` 1.10) on ClickHouse 26.9, the WooCommerce package also
+on 26.7. Every package builds the same tables as in 0.4.0, row for row;
+no rebuild is needed.
+
+### Fixed
+
+- The Shopify package's memory grew with the shop's history: on a
+  ClickHouse server limited to 4 GB, the first build of a shop with 2
+  million orders ran out of memory
+  ([#8](https://github.com/Dactopus/dactopus-data-models/issues/8)).
+  Such a shop now builds in at most 1.1 GB per query, and a shop of 8
+  million orders in 2.7 GB; an incremental run of `orders` needs 0.2 GB
+  instead of 1.7 GB. A full build takes about twice as long. Measurements:
+  [README](README.md#known-differences-from-shopifys-reports). The saving
+  needs the input tables' sorting keys of `input.sql`; with other keys
+  the package builds the same rows at the old memory. The suggested
+  `ReplacingMergeTree` key of `refunds` is now `(order_id, id)`.
+
 ## [0.4.0] - 2026-10-15
 
 Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.8.0,
@@ -295,7 +317,8 @@ ClickHouse 26.9.
 - Hand-written GA4 rows and the numbers the model must answer over them
   (`tests/ga4`), checked in CI on both dbt versions.
 
-[Unreleased]: https://github.com/Dactopus/dactopus-data-models/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/Dactopus/dactopus-data-models/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/Dactopus/dactopus-data-models/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/Dactopus/dactopus-data-models/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/Dactopus/dactopus-data-models/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/Dactopus/dactopus-data-models/compare/v0.2.0...v0.2.1

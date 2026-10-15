@@ -30,16 +30,16 @@ SELECT
     ~ " WHERE id IN " ~ shopify_loaded_since('refunds')
     ~ " OR id IN " ~ shopify_loaded_since('refund_lines', 'refund_id')
     ~ " OR order_id IN " ~ shopify_loaded_since('order_lines', 'order_id') ~ ")" %}
-FROM {{ shopify_latest('refunds', 'id', where="id IN " ~ refunds_changed) }} AS r
+FROM {{ shopify_latest('refunds', 'order_id, id', where="id IN " ~ refunds_changed) }} AS r
 {% else %}
-FROM {{ shopify_latest('refunds', 'id') }} AS r
+FROM {{ shopify_latest('refunds', 'order_id, id') }} AS r
 {% endif %}
 LEFT JOIN
 (
     SELECT refund_id, refund_updated_at, sumIf(quantity, NOT is_gift_card) AS quantity,
            toDecimal64(sumIf(subtotal + total_tax, is_gift_card), 4) AS gift_card_amount
     FROM (
-        SELECT *, line_item_id IN (SELECT id FROM {{ source('shopify_raw', 'order_lines') }} WHERE is_gift_card) AS is_gift_card
+        SELECT *, {{ shopify_refunds_gift_card() }} AS is_gift_card
         {% if is_incremental() %}
         FROM {{ shopify_latest('refund_lines', 'refund_id, id, refund_updated_at', version='refund_updated_at',
                                where="refund_id IN " ~ refunds_changed) }}
@@ -50,3 +50,4 @@ LEFT JOIN
     GROUP BY refund_id, refund_updated_at
 ) AS rl ON rl.refund_id = r.id AND rl.refund_updated_at = r.updated_at
 WHERE r.order_id IN (SELECT order_id FROM {{ ref('orders') }})
+{{ shopify_query_settings() }}

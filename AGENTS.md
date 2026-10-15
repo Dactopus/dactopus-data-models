@@ -104,6 +104,17 @@ profile and the sample. CI builds into other databases to keep it so.
 - A CTE runs again at every reference, nested ones too. The WooCommerce
   models mark theirs `MATERIALIZED` and end with
   `woocommerce_query_settings()`; a new CTE there does the same.
+- A sort over a prefix of the table's sorting key streams: ClickHouse
+  reads the parts in that order and merges them, and a `LIMIT 1 BY` on
+  the prefix takes each key's first row as it passes. A sort on other
+  columns holds the whole table in memory. `shopify_latest` picks the
+  latest version this way; a new input table's sorting key starts with
+  the key the models dedupe by.
+- An `INSERT ... SELECT` buffers rows per insert thread, up to
+  `min_insert_block_size_bytes` each, before it writes a part: 2 GB on 8
+  cores with the defaults. The Shopify models end with
+  `shopify_query_settings()`, which bounds it; a new model there does
+  the same.
 
 ## Verifying work
 
