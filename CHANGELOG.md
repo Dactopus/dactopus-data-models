@@ -8,6 +8,18 @@ names the Ossie schema version its models carry.
 
 ## [Unreleased]
 
+### Changed
+
+- The WooCommerce package needs ClickHouse 26.7 or later: its models
+  compute each shared subquery once (`WITH ... AS MATERIALIZED`, Fixed
+  below), which ClickHouse 26.3 to 26.6 fail on. CI runs the package on
+  26.7 and 26.9.
+- The dbt user of a WooCommerce deployment needs `ALTER MODIFY COMMENT`
+  on `refunds` (part of `ALTER TABLE`, separate from `ALTER DELETE`):
+  each run keeps the next window's start in that table's comment (Fixed
+  below). A role granted `ALTER DELETE` without it fails after the
+  upgrade.
+
 ### Fixed
 
 - `dbt source freshness` works on dbt v2: each package carries
@@ -22,6 +34,27 @@ names the Ossie schema version its models carry.
   dbt stops on it: Shopify and WooCommerce write the same tables. It now
   installs GA4 and one store's package, and says that stores on both
   platforms build into separate target databases.
+- WooCommerce's `refunds` started each incremental run's window at the
+  store's latest refund: a store whose last refund was a month old
+  reread a month of changes on every run, and a store without refunds
+  reread every order
+  ([#18](https://github.com/Dactopus/dactopus-data-models/issues/18)).
+  It now keeps the latest sync it has read in its table's comment
+  (`read through <time> UTC`) and starts the next window there. On
+  320,000 synthetic orders whose only refunds were two years old, the
+  `refunds` model's read in one run fell from 80 million rows (2.1 s)
+  to 4.8 million (0.3 s).
+  The rows are the same. The first run after the upgrade starts from the
+  latest refund, as before, and writes the comment; no rebuild is
+  needed. Each run rewrites the comment, so a comment set on that table
+  is lost.
+- WooCommerce's models ran their changed-orders subquery again at every
+  reference: with two orders changed out of 320,000, `order_lines` read
+  123 million rows (2.5 GB). Each shared subquery now runs once
+  (`WITH ... AS MATERIALIZED`): 10 million rows (160 MB), 1.1 s down to
+  0.3 s; `orders` 670 MB down to 375 MB and 1.7 s down to 0.65 s. A full
+  rebuild of `order_lines` takes 0.8 s instead of 4.2 s and 0.75 GB of
+  memory instead of 1.2 GB. The rows are the same.
 
 ## [0.3.0] - 2026-10-14
 

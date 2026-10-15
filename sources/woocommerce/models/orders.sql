@@ -21,7 +21,7 @@ WITH
 -- customer's orders by date placed, ties by id, and skips the statuses it
 -- excludes (is_returning_customer), whether or not the order has its
 -- report date yet; guests have no number here.
-headers AS (
+headers AS MATERIALIZED (
     SELECT
         *,
         if(customer_id IS NULL OR has({{ excluded }}, status), NULL,
@@ -33,21 +33,21 @@ headers AS (
 -- under any version: a new or cancelled order renumbers the others. The
 -- previous customer of an order moved to another comes from this table,
 -- as an input that collapses old versions may have lost it.
-changed AS {{ woocommerce_changed_orders() }},
-customers AS (
+changed AS MATERIALIZED {{ woocommerce_changed_orders() }},
+customers AS MATERIALIZED (
     SELECT customer_id FROM {{ source('woocommerce_raw', 'wc_orders') }} WHERE id IN changed
     UNION ALL
     SELECT customer_id FROM {{ this }} WHERE order_id IN changed
 ),
-ids AS (
+ids AS MATERIALIZED (
     SELECT id FROM headers WHERE id IN changed OR customer_id IN customers
 ),
 {% else %}
-ids AS (
+ids AS MATERIALIZED (
     SELECT id FROM headers
 ),
 {% endif %}
-operational AS (
+operational AS MATERIALIZED (
     SELECT
         order_id,
         nullIf(ifNull(created_via, ''), '') AS channel,
@@ -62,7 +62,7 @@ operational AS (
         ifNull(discount_total_amount, 0) AS discount_total_amount
     FROM {{ woocommerce_current('wc_order_operational_data', 'id', 'order_id IN ids') }}
 ),
-shipping_addresses AS (
+shipping_addresses AS MATERIALIZED (
     SELECT
         order_id,
         argMax(nullIf(ifNull(country, ''), ''), id) AS country,
@@ -74,7 +74,7 @@ shipping_addresses AS (
     GROUP BY order_id
 ),
 {% if number_key %}
-numbers AS (
+numbers AS MATERIALIZED (
     SELECT order_id, argMax(ifNull(meta_value, ''), id) AS order_number
     FROM {{ woocommerce_current('wc_orders_meta', 'id', "meta_key = '" ~ number_key ~ "' AND order_id IN ids") }}
     GROUP BY order_id
@@ -83,12 +83,12 @@ numbers AS (
 -- Coupons and fees are items of their own. A fee (positive or negative)
 -- is part of the order's total and, as in Analytics' net sales, of its
 -- subtotal; coupons are not, their discount is in the lines.
-extras_items AS (
+extras_items AS MATERIALIZED (
     SELECT order_item_id, order_id, order_item_type, ifNull(order_item_name, '') AS order_item_name
     FROM {{ woocommerce_current('woocommerce_order_items', 'order_item_id', 'order_id IN ids') }}
     WHERE order_item_type IN ('coupon', 'fee')
 ),
-extras AS (
+extras AS MATERIALIZED (
     SELECT
         i.order_id AS order_id,
         arrayMap(c -> c.2, arraySort(groupArrayIf((i.order_item_id, i.order_item_name), i.order_item_type = 'coupon'))) AS discount_codes,
@@ -99,13 +99,13 @@ extras AS (
         ON m.order_item_id = i.order_item_id
     GROUP BY i.order_id
 ),
-lines AS (
+lines AS MATERIALIZED (
     SELECT order_id, count() AS line_item_count, sum(quantity) AS item_quantity
     FROM {{ ref('order_lines') }}
     WHERE order_id IN ids
     GROUP BY order_id
 ),
-refunds AS (
+refunds AS MATERIALIZED (
     SELECT order_id, sum(refunded_amount) AS refunded_total
     FROM {{ ref('refunds') }}
     WHERE order_id IN ids
@@ -202,3 +202,4 @@ LEFT JOIN lines AS l ON l.order_id = o.id
 LEFT JOIN refunds AS rf ON rf.order_id = o.id
 LEFT JOIN {{ woocommerce_rates('ids') }} AS r ON r.order_id = o.id
 WHERE o.id IN ids
+{{ woocommerce_query_settings() }}

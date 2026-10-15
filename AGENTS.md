@@ -101,6 +101,9 @@ profile and the sample. CI builds into other databases to keep it so.
   the raw String). Filter raw columns in an inner subquery.
 - Columns in `ORDER BY` of a `MergeTree` cannot be Nullable. Keys built
   from Nullable export fields need an explicit non-null guarantee.
+- A CTE runs again at every reference, nested ones too. The WooCommerce
+  models mark theirs `MATERIALIZED` and end with
+  `woocommerce_query_settings()`; a new CTE there does the same.
 
 ## Verifying work
 

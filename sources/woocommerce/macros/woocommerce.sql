@@ -140,17 +140,71 @@ if({{ rate }}.rate_fox, {{ woocommerce_convert(total, rate) }},
    + {{ woocommerce_convert(shipping, rate) }} + {{ woocommerce_convert('(' ~ shipping_tax ~ ') + (' ~ tax ~ ')', rate) }})
 {%- endmacro %}
 
+{# Where an incremental run's window starts: the latest sync the model has
+   read minus the lookback. A model takes it from the synced_at of its
+   rows. With `in_comment`, it takes it from its table's comment, written
+   by woocommerce_reading and woocommerce_read, and from its rows while the
+   comment has none. An empty model rereads everything: its max() is
+   1970-01-01, and DateTime64 goes below it without wrapping. #}
+{% macro woocommerce_window_start(in_comment=false) -%}
+{%- if in_comment -%}
+(coalesce((SELECT toDateTime64OrNull(extract(comment, '^read through ([^;]+) UTC'), 9, 'UTC') FROM system.tables
+           WHERE database = '{{ this.schema }}' AND name = '{{ this.identifier }}'),
+          (SELECT toTimeZone(max(synced_at), 'UTC') FROM {{ this }}))
+ - INTERVAL {{ var('woocommerce_lookback_days') }} DAY)
+{%- else -%}
+(SELECT max(synced_at) - INTERVAL {{ var('woocommerce_lookback_days') }} DAY FROM {{ this }})
+{%- endif -%}
+{%- endmacro %}
+
+{# The sync position a model keeps in its table's comment, when its rows
+   cannot keep it: refunds has no row for an order without refunds, so
+   its latest synced_at is that of the store's last refund, not of its
+   last run, and the window would reach back to that refund (#18).
+   Pre-hook woocommerce_reading, before the run reads: the comment gets
+   the latest sync of wc_orders as the position the run is reading
+   through. Post-hook woocommerce_read, after it succeeds: that becomes
+   the position read through, where the next window starts; a run that
+   fails leaves the previous one. A row synced before that position but
+   committed after the run read is caught by the lookback, as in a model
+   that keeps the position in its rows. A full refresh creates the table
+   anew, without a comment. The comment is only ever
+   "read through <time> UTC", "reading through <time> UTC" or both,
+   separated by "; ". #}
+{% macro woocommerce_comment_position(field) -%}
+{%- set r = run_query("SELECT extract(comment, '(?:^|; )" ~ field ~ " through ([^;]+) UTC') FROM system.tables WHERE database = '"
+                      ~ this.schema ~ "' AND name = '" ~ this.identifier ~ "'") -%}
+{{- return(r.columns[0].values()[0] if r.columns[0].values() else '') -}}
+{%- endmacro %}
+
+{% macro woocommerce_reading() -%}
+{%- if execute and is_incremental() -%}
+{%- set through = woocommerce_comment_position('read') -%}
+{%- set latest = run_query("SELECT toString(toTimeZone(max(_peerdb_synced_at), 'UTC')) FROM "
+                           ~ source('woocommerce_raw', 'wc_orders')).columns[0].values()[0] -%}
+ALTER TABLE {{ this }} MODIFY COMMENT '{% if through %}read through {{ through }} UTC; {% endif %}reading through {{ latest }} UTC'
+{%- else -%}
+SELECT 1
+{%- endif -%}
+{%- endmacro %}
+
+{% macro woocommerce_read() -%}
+{%- set reading = woocommerce_comment_position('reading') if execute and is_incremental() else '' -%}
+{%- if reading -%}
+ALTER TABLE {{ this }} MODIFY COMMENT 'read through {{ reading }} UTC'
+{%- else -%}
+SELECT 1
+{%- endif -%}
+{%- endmacro %}
+
 {# Orders with a row of theirs synced since an incremental run's window
-   start: the latest sync this model has seen minus the lookback. Any of
-   the order's rows counts: the order, its operational data, addresses,
-   meta, items and item meta, and those of its refunds, which map to their
-   order. With `products`, also orders with a line of a product whose
-   lookup row was synced: the line's SKU is the product's current one. An
-   empty model rereads everything: its max() is 1970-01-01, and
-   DateTime64 goes below it without wrapping. #}
-{% macro woocommerce_changed_orders(products=false) -%}
-{%- set since = "_peerdb_synced_at >= (SELECT max(synced_at) - INTERVAL " ~ var('woocommerce_lookback_days')
-               ~ " DAY FROM " ~ this ~ ")" -%}
+   start (woocommerce_window_start). Any of the order's rows counts: the
+   order, its operational data, addresses, meta, items and item meta, and
+   those of its refunds, which map to their order. With `products`, also
+   orders with a line of a product whose lookup row was synced: the
+   line's SKU is the product's current one. #}
+{% macro woocommerce_changed_orders(products=false, in_comment=false) -%}
+{%- set since = "_peerdb_synced_at >= " ~ woocommerce_window_start(in_comment) -%}
 (SELECT if(type = 'shop_order_refund', parent_order_id, id) FROM {{ source('woocommerce_raw', 'wc_orders') }}
  WHERE id IN (
      SELECT id FROM {{ source('woocommerce_raw', 'wc_orders') }} WHERE {{ since }}
@@ -173,12 +227,23 @@ if({{ rate }}.rate_fox, {{ woocommerce_convert(total, rate) }},
    orders that are. With `removed_only`, only the orders that are no
    longer orders go: orders.sql reads the previous customer of the others
    from this table. #}
-{% macro woocommerce_delete_changed(products=false, removed_only=false) -%}
+{% macro woocommerce_delete_changed(products=false, removed_only=false, in_comment=false) -%}
 {%- if is_incremental() -%}
-{%- set changed = woocommerce_changed_orders(products) -%}
+{%- set changed = woocommerce_changed_orders(products, in_comment) -%}
 DELETE FROM {{ this }} WHERE order_id IN {{ changed }}
 {%- if removed_only %} AND order_id NOT IN (SELECT id FROM {{ woocommerce_orders('id IN ' ~ changed) }}){% endif %}
 {%- else -%}
 SELECT 1
 {%- endif -%}
+{%- endmacro %}
+
+{# Ends each model's query. A CTE marked MATERIALIZED runs once, and its
+   references read the result; ClickHouse otherwise runs a CTE again at
+   every reference. The changed orders' subquery, referenced through
+   several CTEs, made order_lines read 123 million rows for a window of
+   two orders out of 320,000 (#18). Needs ClickHouse 26.7 or later:
+   26.3, where MATERIALIZED came in, to 26.6 fail on these models with
+   errors of their own. #}
+{% macro woocommerce_query_settings() -%}
+SETTINGS enable_materialized_cte = 1
 {%- endmacro %}

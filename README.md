@@ -390,7 +390,10 @@ orders and four refunds of a store in New York, as change data capture
 and without lines, a cancelled order, cash on delivery, fees, tax included
 in prices, rows updated and then deleted, a deleted product, an order in
 the trash, an order paid in EUR). You need ClickHouse, dbt and
-dactopus-ossie-clickhouse, as for GA4.
+dactopus-ossie-clickhouse, as for GA4. The package needs ClickHouse 26.7
+or later: its models compute each shared subquery once
+(`WITH ... AS MATERIALIZED`), which fails on earlier versions. CI runs it
+on 26.7 and 26.9.
 
 1. **Load** the package's input tables
    [`sources/woocommerce/input.sql`](sources/woocommerce/input.sql) and the
@@ -526,7 +529,10 @@ Cloud's CDC, runs PeerDB but is not checked yet.
 5. **Next runs.** CDC keeps the input current; run `dbt build` again,
    and it is incremental. It rereads the orders with a row synced in the
    `woocommerce_lookback_days` (default 3) before the latest sync it has
-   seen. `dbt source freshness` warns when CDC has not synced
+   seen. `refunds` has no row for an order without refunds, so it keeps
+   that sync in its table's comment, rewritten on each run; the dbt user
+   needs `ALTER MODIFY COMMENT` on it (part of `ALTER TABLE`).
+   `dbt source freshness` warns when CDC has not synced
    an order for a day; a store without an order in a day warns too.
 
 ## What the GA4 model answers
@@ -726,7 +732,9 @@ package writes the same tables from the seven in `woocommerce_raw`. Name
 other databases, and set the store's time zone: without it, every date
 is in UTC and orders near midnight fall on the wrong day. WooCommerce
 also needs the store's currency, and its report settings where they
-differ from WooCommerce's (Your store, step 4).
+differ from WooCommerce's (Your store, step 4). The WooCommerce package
+needs ClickHouse 26.7 or later, and its dbt user needs
+`ALTER MODIFY COMMENT` on `refunds` (Your store, step 5).
 
 ```yaml
 vars:
