@@ -247,19 +247,25 @@ SELECT 1
    model's row is then the only place left that names them, and an order
    that is no longer an order loses that row before the model runs (#17).
    Reading the changed orders once here also spares the hook and the model
-   reading them again. A run that fails leaves the table to the next,
-   which replaces it. #}
+   reading them again. A run that fails may have deleted rows the table
+   names, so the next run keeps its rows along with its own. #}
 {% macro woocommerce_changed_table() -%}
 {{ this.incorporate(path={"identifier": this.identifier ~ "__changed"}) }}
 {%- endmacro %}
 
 {% macro woocommerce_keep_changed() -%}
 {%- if is_incremental() -%}
+{%- set left = execute and run_query("EXISTS TABLE " ~ woocommerce_changed_table()).columns[0].values()[0] -%}
 CREATE OR REPLACE TABLE {{ woocommerce_changed_table() }} ENGINE = MergeTree ORDER BY tuple() AS
 WITH changed AS MATERIALIZED {{ woocommerce_changed_orders() }}
-SELECT DISTINCT c.order_id AS order_id, p.customer_id AS previous_customer_id
-FROM changed AS c
-LEFT JOIN (SELECT order_id, customer_id FROM {{ this }} WHERE order_id IN changed) AS p ON p.order_id = c.order_id
+SELECT DISTINCT order_id, previous_customer_id FROM (
+    SELECT c.order_id AS order_id, p.customer_id AS previous_customer_id
+    FROM changed AS c
+    LEFT JOIN (SELECT order_id, customer_id FROM {{ this }} WHERE order_id IN changed) AS p ON p.order_id = c.order_id
+    {%- if left %}
+    UNION ALL
+    SELECT order_id, previous_customer_id FROM {{ woocommerce_changed_table() }}
+    {%- endif %})
 {{ woocommerce_query_settings() }}
 {%- else -%}
 SELECT 1

@@ -62,7 +62,8 @@ names the Ossie schema version its models carry.
   ([#17](https://github.com/Dactopus/dactopus-data-models/issues/17)).
   The `orders` pre-hook now keeps the window's orders and the customer
   each one had in `orders__changed` before it deletes anything, the
-  model reads them there, and a post-hook drops the table. The pre-hook
+  model reads them there, and a post-hook drops the table; after a run
+  that fails, the next one keeps the table's rows too. The pre-hook
   also computes the window's orders once instead of twice: on 320,000
   synthetic orders an incremental run of `orders` read 9 to 10 million
   rows (410 to 450 MB) instead of 36 to 38 million (850 to 870 MB), 1.2

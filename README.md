@@ -533,7 +533,8 @@ Cloud's CDC, runs PeerDB but is not checked yet.
    that sync in its table's comment, rewritten on each run; the dbt user
    needs `ALTER MODIFY COMMENT` on it (part of `ALTER TABLE`). `orders`
    keeps the orders a run rereads in `orders__changed` and drops it at
-   the end; a run that fails leaves it for the next to replace.
+   the end; a run that fails leaves it, and the next run rereads its
+   orders too.
    `dbt source freshness` warns when CDC has not synced
    an order for a day; a store without an order in a day warns too.
 

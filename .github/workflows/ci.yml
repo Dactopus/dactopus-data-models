@@ -246,8 +246,9 @@ jobs:
       # no order of customer 1; then 114 moved to a guest and to the trash
       # in one window, its version for customer 1 deleted: neither the
       # input nor the order's row, which goes, names customer 1, whose 117
-      # must still be renumbered (#17). Last, the same rows in the input's
-      # other form, Nullable columns with NULL for empty values
+      # must still be renumbered (#17), also when the first run of that
+      # window fails after deleting the row. Last, the same rows in the
+      # input's other form, Nullable columns with NULL for empty values
       # (PEERDB_NULLABLE), must build the same tables.
       - name: Build (models, tests, unit tests), check numbers, incremental and full refresh
         run: |
@@ -316,7 +317,13 @@ jobs:
           test "$(q "SELECT count() FROM analytics.order_lines WHERE order_id = 103 AND sku IS NULL")" = 1
           late wc_orders "$(v 'IN (295, 306)')"
           q "DELETE FROM woocommerce_input.wp_2_wc_orders WHERE id = 114 AND $(v '= 0')"
+          # A run of orders that fails after its pre-hooks (a time zone
+          # ClickHouse rejects), leaving 114's row deleted: the next run
+          # must still find customer 1 in orders__changed.
+          if ${DBT_BUILD/New_York/Nowhere} --select orders; then exit 1; fi
+          test "$(q "EXISTS TABLE analytics.orders__changed")" = 1
           $DBT_BUILD                 # an order moved to a guest and trashed
+          test "$(q "EXISTS TABLE analytics.orders__changed")" = 0
           same
           $DBT_BUILD                 # incremental over unchanged input
           same
