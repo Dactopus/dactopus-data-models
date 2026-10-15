@@ -21,6 +21,8 @@ jobs:
         ports: ["8123:8123"]
         env:
           CLICKHOUSE_SKIP_USER_SETUP: 1  # passwordless default user over the network
+          # A server time zone other than UTC: nothing may assume UTC.
+          TZ: Asia/Makassar
         options: >-
           --health-cmd "wget -qO- http://localhost:8123/ping || exit 1"
           --health-interval 5s --health-timeout 3s --health-retries 20
@@ -62,11 +64,13 @@ jobs:
         run: dactopus-ossie-clickhouse validate entities/web_analytics.yaml --url "$OSSIE_CLICKHOUSE_URL"
       # The fixture's events are from 2025: one event now, in the input
       # only, makes the source fresh. dbt v2 needs the package's own
-      # freshness macros (macros/freshness.sql) to get this far.
+      # freshness macros (macros/freshness.sql) to get this far. The age
+      # dbt reports must match ClickHouse's own (tests/check_freshness.py).
       - name: Source freshness
         run: |
           curl -sf http://127.0.0.1:8123/ --data-binary "INSERT INTO ga4_input.events SELECT * REPLACE (toUnixTimestamp64Micro(now64(6)) AS event_timestamp) FROM ga4_input.events LIMIT 1"
           ${DBT_BUILD/dbt build/dbt source freshness}
+          python3 tests/check_freshness.py sources/ga4 "SELECT max(fromUnixTimestamp64Micro(event_timestamp)) FROM ga4_input.events"
 
   shopify:
     runs-on: ubuntu-latest
@@ -83,6 +87,8 @@ jobs:
         ports: ["8123:8123"]
         env:
           CLICKHOUSE_SKIP_USER_SETUP: 1  # passwordless default user over the network
+          # A server time zone other than UTC: nothing may assume UTC.
+          TZ: Asia/Makassar
         options: >-
           --health-cmd "wget -qO- http://localhost:8123/ping || exit 1"
           --health-interval 5s --health-timeout 3s --health-retries 20
@@ -170,9 +176,12 @@ jobs:
       - name: Validate the Ossie model against the built tables
         run: dactopus-ossie-clickhouse validate entities/commerce.yaml --url "$OSSIE_CLICKHOUSE_URL"
       # The late rows above were loaded now. dbt v2 needs the package's own
-      # freshness macros (macros/freshness.sql) to get this far.
+      # freshness macros (macros/freshness.sql) to get this far. The age dbt
+      # reports must match ClickHouse's own (tests/check_freshness.py).
       - name: Source freshness
-        run: ${DBT_BUILD/dbt build/dbt source freshness}
+        run: |
+          ${DBT_BUILD/dbt build/dbt source freshness}
+          python3 tests/check_freshness.py sources/shopify "SELECT max(loaded_at) FROM shopify_input.orders"
 
   woocommerce:
     runs-on: ubuntu-latest
@@ -189,6 +198,8 @@ jobs:
         ports: ["8123:8123"]
         env:
           CLICKHOUSE_SKIP_USER_SETUP: 1  # passwordless default user over the network
+          # A server time zone other than UTC: nothing may assume UTC.
+          TZ: Asia/Makassar
         options: >-
           --health-cmd "wget -qO- http://localhost:8123/ping || exit 1"
           --health-interval 5s --health-timeout 3s --health-retries 20
@@ -318,6 +329,9 @@ jobs:
       - name: Validate the Ossie model against the built tables
         run: dactopus-ossie-clickhouse validate entities/commerce.yaml --url "$OSSIE_CLICKHOUSE_URL"
       # The late rows above were synced now. dbt v2 needs the package's own
-      # freshness macros (macros/freshness.sql) to get this far.
+      # freshness macros (macros/freshness.sql) to get this far. The age dbt
+      # reports must match ClickHouse's own (tests/check_freshness.py).
       - name: Source freshness
-        run: ${DBT_BUILD/dbt build/dbt source freshness}
+        run: |
+          ${DBT_BUILD/dbt build/dbt source freshness}
+          python3 tests/check_freshness.py sources/woocommerce "SELECT max(_peerdb_synced_at) FROM woocommerce_input.wp_2_wc_orders"

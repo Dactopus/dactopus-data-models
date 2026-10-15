@@ -36,6 +36,8 @@ The README describes what works today. Plans go in
     tests/<source>/           hand-written input rows and the numbers the
                               model must answer over them
     tests/ask_model.py        asks the questions, shared by every source
+    tests/check_freshness.py  checks the ages `dbt source freshness`
+                              reports, shared by every source
     docs/architecture.svg     the diagram, shown in the README and, with
     docs/index.html           the text for each part, on GitHub Pages;
                               update both in the change that alters

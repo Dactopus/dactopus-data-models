@@ -16,7 +16,8 @@ names the Ossie schema version its models carry.
   ([dbt-labs/dbt#16714](https://github.com/dbt-labs/dbt/issues/16714)).
   A project that installs the packages turns them on with a `dispatch`
   setting (README). Ages match dbt v1's. CI runs freshness on both
-  versions.
+  versions, on a ClickHouse server outside UTC, and checks each age
+  against ClickHouse's own.
 - The README's `packages.yml` example installed all three packages, and
   dbt stops on it: Shopify and WooCommerce write the same tables. It now
   installs GA4 and one store's package, and says that stores on both
