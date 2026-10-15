@@ -28,6 +28,14 @@
 SETTINGS max_insert_threads = 1, min_insert_block_size_rows = 262144, min_insert_block_size_bytes = 67108864
 {%- endmacro %}
 
+{# A refund line refunds a gift card sold: its line item is a gift card in
+   order_lines. Any version will do, as a line item keeps the flag in all
+   of them. orders and refunds both set gift cards apart with this test,
+   so their gift card amounts agree. #}
+{% macro shopify_refunds_gift_card() -%}
+line_item_id IN (SELECT id FROM {{ source('shopify_raw', 'order_lines') }} WHERE is_gift_card)
+{%- endmacro %}
+
 {# Keys of an input table loaded since an incremental run's window start:
    the latest load this model has seen minus the lookback. Load time, not
    version time: a row delivered late, by a loader catching up or a

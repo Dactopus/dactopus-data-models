@@ -166,7 +166,7 @@ LEFT JOIN
     SELECT r.order_id AS order_id, toDecimal64(sum(rl.subtotal + rl.total_tax), 4) AS gift_card_refunded_total
     FROM {{ shopify_latest('refunds', 'order_id, id', where=kept_by_order) }} AS r
     INNER JOIN {{ shopify_latest('refund_lines', 'refund_id, id, refund_updated_at', version='refund_updated_at',
-                                 where='line_item_id IN (SELECT id FROM ' ~ source('shopify_raw', 'order_lines') ~ ' WHERE is_gift_card)') }} AS rl
+                                 where=shopify_refunds_gift_card()) }} AS rl
         ON rl.refund_id = r.id AND rl.refund_updated_at = r.updated_at
     GROUP BY r.order_id
 ) AS gr ON gr.order_id = o.id
