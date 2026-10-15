@@ -10,7 +10,7 @@ names the Ossie schema version its models carry.
 
 ## [0.4.0] - 2026-10-15
 
-Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.7.0,
+Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.8.0,
 dbt v2 (`dbt-oss` 2.0.8) and dbt v1 (`dbt-core` 1.11 with
 `dbt-clickhouse` 1.10) on ClickHouse 26.9, the WooCommerce package also
 on 26.7. Two changes can stop a WooCommerce deployment until it meets
@@ -34,6 +34,10 @@ as in 0.3.0.
   each run keeps the next window's start in that table's comment (Fixed
   below). A role granted `ALTER DELETE` without it fails after the
   upgrade.
+- The README, CONTRIBUTING.md and CI install dactopus-ossie-clickhouse
+  0.8.0 instead of 0.7.0. It reads a model split over several files and
+  reports a misspelt `CLICKHOUSE` entry as a model problem. The models
+  are unchanged and pass the same checks on 0.8.0.
 
 ### Fixed
 
