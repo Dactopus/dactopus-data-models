@@ -1,12 +1,15 @@
 {{ config(unique_key='order_id', order_by='(refund_date, refund_id)',
-          pre_hook="{{ woocommerce_delete_changed() }}") }}
+          pre_hook=["{{ woocommerce_reading() }}", "{{ woocommerce_delete_changed(in_comment=true) }}"],
+          post_hook="{{ woocommerce_read() }}") }}
 -- One row per refund of an order, in its current state (input.sql). A
 -- refund is a row of wc_orders of type shop_order_refund, its order in
 -- parent_order_id, made through the store's admin or a payment gateway
 -- (wc_create_refund, https://github.com/woocommerce/woocommerce/blob/trunk/plugins/woocommerce/includes/wc-order-functions.php).
 -- Keyed by order_id for refreshing: an order's refunds are replaced
--- together, so a deleted refund goes too.
-{% set ids = woocommerce_changed_orders() if is_incremental() else none %}
+-- together, so a deleted refund goes too. The next incremental run
+-- starts from the sync position in the table's comment
+-- (woocommerce_reading).
+{% set ids = woocommerce_changed_orders(in_comment=true) if is_incremental() else none %}
 WITH
 orders AS (
     SELECT id FROM {{ woocommerce_orders('id IN ' ~ ids if ids else 'true') }}
@@ -59,7 +62,7 @@ SELECT
     -{{ woocommerce_total('f.total_amount', 'op.shipping_total_amount', 'op.shipping_tax_amount', 'f.tax_amount') }} AS refunded_amount,
     ifNull(q.quantity, 0) AS refunded_quantity,
     -- When the refund's row was synced; the next incremental run starts
-    -- from it.
+    -- from the latest one while the table's comment has no position.
     f.synced_at AS synced_at
 FROM refunds AS f
 LEFT JOIN operational AS op ON op.order_id = f.id

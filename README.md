@@ -526,7 +526,10 @@ Cloud's CDC, runs PeerDB but is not checked yet.
 5. **Next runs.** CDC keeps the input current; run `dbt build` again,
    and it is incremental. It rereads the orders with a row synced in the
    `woocommerce_lookback_days` (default 3) before the latest sync it has
-   seen. `dbt source freshness` warns when CDC has not synced
+   seen. `refunds` has no row for an order without refunds, so it keeps
+   that sync in its table's comment, rewritten on each run; the dbt user
+   needs `ALTER MODIFY COMMENT` on it (part of `ALTER`).
+   `dbt source freshness` warns when CDC has not synced
    an order for a day; a store without an order in a day warns too.
 
 ## What the GA4 model answers

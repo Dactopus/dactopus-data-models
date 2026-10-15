@@ -304,6 +304,11 @@ jobs:
           test "$(q "SELECT count() FROM analytics.order_lines WHERE order_id = 103 AND sku IS NULL")" = 1
           $DBT_BUILD                 # incremental over unchanged input
           same
+          # refunds keeps where its next window starts in its table's
+          # comment (woocommerce_reading), not in its rows: the latest sync
+          # it read, in UTC on a server that is not.
+          test "$(q "SELECT comment FROM system.tables WHERE database = 'analytics' AND name = 'refunds'")" = \
+               "read through $(q "SELECT toString(toTimeZone(max(_peerdb_synced_at), 'UTC')) FROM woocommerce_input.wp_2_wc_orders") UTC"
           python3 tests/woocommerce/check_numbers.py
           OSSIE_CLICKHOUSE_URL=http://127.0.0.1:8123/analytics_full python3 tests/woocommerce/check_numbers.py
           # Nullable columns but the keys and CDC's own; empty times, the
