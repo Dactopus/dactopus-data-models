@@ -24,7 +24,7 @@ no rebuild is needed.
   ([#8](https://github.com/Dactopus/dactopus-data-models/issues/8)).
   Such a shop now builds in at most 1.1 GB per query, and a shop of 8
   million orders in 2.7 GB; an incremental run of `orders` needs 0.2 GB
-  instead of 1.5 GB. A full build takes about twice as long. Measurements:
+  instead of 1.7 GB. A full build takes about twice as long. Measurements:
   [README](README.md#known-differences-from-shopifys-reports). The saving
   needs the input tables' sorting keys of `input.sql`; with other keys
   the package builds the same rows at the old memory. The suggested
