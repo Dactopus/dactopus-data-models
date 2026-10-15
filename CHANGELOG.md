@@ -8,6 +8,21 @@ names the Ossie schema version its models carry.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-15
+
+Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.8.0,
+dbt v2 (`dbt-oss` 2.0.8) and dbt v1 (`dbt-core` 1.11 with
+`dbt-clickhouse` 1.10) on ClickHouse 26.9, the WooCommerce package also
+on 26.7. Two changes can stop a WooCommerce deployment until it meets
+them (Changed): ClickHouse 26.7 or later, and `ALTER MODIFY COMMENT` on
+`refunds` for its dbt user. No rebuild is needed. The numbers are the
+same except `customer_order_number` (with `new_vs_repeat` and
+`repeat_order_share`) for a customer that
+[#17](https://github.com/Dactopus/dactopus-data-models/issues/17) left
+stale: a full refresh corrects it at once, otherwise the next change to
+one of the customer's orders does. GA4 and Shopify build the same tables
+as in 0.3.0.
+
 ### Changed
 
 - The WooCommerce package needs ClickHouse 26.7 or later: its models
@@ -19,6 +34,10 @@ names the Ossie schema version its models carry.
   each run keeps the next window's start in that table's comment (Fixed
   below). A role granted `ALTER DELETE` without it fails after the
   upgrade.
+- The README, CONTRIBUTING.md and CI install dactopus-ossie-clickhouse
+  0.8.0 instead of 0.7.0. It reads a model split over several files and
+  reports a misspelt `CLICKHOUSE` entry as a model problem. The models
+  are unchanged and pass the same checks on 0.8.0.
 
 ### Fixed
 
@@ -276,7 +295,8 @@ ClickHouse 26.9.
 - Hand-written GA4 rows and the numbers the model must answer over them
   (`tests/ga4`), checked in CI on both dbt versions.
 
-[Unreleased]: https://github.com/Dactopus/dactopus-data-models/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/Dactopus/dactopus-data-models/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/Dactopus/dactopus-data-models/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/Dactopus/dactopus-data-models/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/Dactopus/dactopus-data-models/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/Dactopus/dactopus-data-models/compare/v0.1.0...v0.2.0

@@ -49,9 +49,9 @@ Try the GA4 package on Google's public sample
 [ClickHouse](https://clickhouse.com/docs/install), the
 [gcloud CLI](https://cloud.google.com/sdk/docs/install),
 [uv](https://docs.astral.sh/uv/), dbt v2 (`pip install dbt-oss`) and
-[dactopus-ossie-clickhouse](https://github.com/Dactopus/dactopus-ossie-clickhouse) 0.7.0 or
+[dactopus-ossie-clickhouse](https://github.com/Dactopus/dactopus-ossie-clickhouse) 0.8.0 or
 later with its MCP server
-(`pip install "dactopus-ossie-clickhouse[mcp] @ git+https://github.com/Dactopus/dactopus-ossie-clickhouse@v0.7.0"`).
+(`pip install "dactopus-ossie-clickhouse[mcp] @ git+https://github.com/Dactopus/dactopus-ossie-clickhouse@v0.8.0"`).
 Tested on ClickHouse 26.9.
 
 1. **Export.** A Google Cloud project in the
@@ -711,10 +711,10 @@ WooCommerce, `subdirectory: sources/woocommerce`):
 ```yaml
 packages:
   - git: https://github.com/Dactopus/dactopus-data-models.git
-    revision: v0.3.0
+    revision: v0.4.0
     subdirectory: sources/ga4
   - git: https://github.com/Dactopus/dactopus-data-models.git
-    revision: v0.3.0
+    revision: v0.4.0
     subdirectory: sources/shopify
 ```
 

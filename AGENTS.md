@@ -132,8 +132,10 @@ running queries (`clickhouse local` or a server), not from memory.
 
 ## Development
 
-Packages run on dbt v2 (`pip install dbt-oss`, tested 2.0.5) and on dbt
-v1 (`dbt-core` 1.11 with `dbt-clickhouse` 1.10), with identical results.
+Packages run on dbt v2 (`pip install dbt-oss`) and on dbt v1
+(`dbt-core` 1.11 with `dbt-clickhouse`), with identical results. CI
+installs the latest `dbt-oss` and `dbt-clickhouse`; the changelog names
+the versions each release was tested with.
 Sample data and loading: README, Quick start. Connection:
 `CLICKHOUSE_HOST`, `CLICKHOUSE_PORT` (HTTP), `CLICKHOUSE_USER`,
 `CLICKHOUSE_PASSWORD`; target database `CLICKHOUSE_DATABASE` (default
