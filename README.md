@@ -718,10 +718,10 @@ WooCommerce, `subdirectory: sources/woocommerce`):
 ```yaml
 packages:
   - git: https://github.com/Dactopus/dactopus-data-models.git
-    revision: v0.4.0
+    revision: v0.4.1
     subdirectory: sources/ga4
   - git: https://github.com/Dactopus/dactopus-data-models.git
-    revision: v0.4.0
+    revision: v0.4.1
     subdirectory: sources/shopify
 ```
 
