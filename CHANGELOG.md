@@ -14,6 +14,11 @@ names the Ossie schema version its models carry.
   compute each shared subquery once (`WITH ... AS MATERIALIZED`, Fixed
   below), which ClickHouse 26.3 to 26.6 fail on. CI runs the package on
   26.7 and 26.9.
+- The dbt user of a WooCommerce deployment needs `ALTER MODIFY COMMENT`
+  on `refunds` (part of `ALTER TABLE`, separate from `ALTER DELETE`):
+  each run keeps the next window's start in that table's comment (Fixed
+  below). A role granted `ALTER DELETE` without it fails after the
+  upgrade.
 
 ### Fixed
 
@@ -42,8 +47,7 @@ names the Ossie schema version its models carry.
   The rows are the same. The first run after the upgrade starts from the
   latest refund, as before, and writes the comment; no rebuild is
   needed. Each run rewrites the comment, so a comment set on that table
-  is lost, and the dbt user needs `ALTER MODIFY COMMENT` on it (part of
-  `ALTER TABLE`, separate from `ALTER DELETE`).
+  is lost.
 - WooCommerce's models ran their changed-orders subquery again at every
   reference: with two orders changed out of 320,000, `order_lines` read
   123 million rows (2.5 GB). Each shared subquery now runs once

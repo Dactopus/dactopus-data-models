@@ -732,7 +732,9 @@ package writes the same tables from the seven in `woocommerce_raw`. Name
 other databases, and set the store's time zone: without it, every date
 is in UTC and orders near midnight fall on the wrong day. WooCommerce
 also needs the store's currency, and its report settings where they
-differ from WooCommerce's (Your store, step 4).
+differ from WooCommerce's (Your store, step 4). The WooCommerce package
+needs ClickHouse 26.7 or later, and its dbt user needs
+`ALTER MODIFY COMMENT` on `refunds` (Your store, step 5).
 
 ```yaml
 vars:
