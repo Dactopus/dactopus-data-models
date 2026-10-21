@@ -584,9 +584,11 @@ You need ClickHouse, dbt, dactopus-ossie-clickhouse and
 
    Run it every five minutes (cron, or anything that runs a query on a
    schedule): each run appends the snapshot whole, a few rows per
-   sensor, and the package reads the latest row of each site. The
-   snapshots are also what tells a sensor that has gone quiet from one
-   that never existed. Several countries go in one query
+   sensor, and the package reads the latest row of each site. The table
+   keeps only each sensor's latest snapshot once ClickHouse merges it
+   (`input.sql`), so it stays as large as the country's sensors; the
+   history of the snapshots is not kept. The snapshots are also what
+   tells a sensor that has gone quiet from one that never existed. Several countries go in one query
    (`country=AU,NZ`); the whole network is
    `https://data.sensor.community/static/v2/data.json`, 17,500 rows.
 
@@ -716,8 +718,11 @@ You need ClickHouse, dbt, dactopus-ossie-clickhouse and
 
 4. **Next loads.** Once a day after 10:00 UTC, load from the day after
    the country's last day loaded to yesterday, and keep the snapshots
-   running; the build is incremental. Each day is loaded once. Loading a
-   day twice by hand is harmless: the package reads each reading once.
+   running. The build is incremental for `readings`; `devices`, one row
+   per site, is rebuilt whole and reads every reading, so its time grows
+   with the history: 0.08 seconds on a laptop for a month of Australia,
+   2.3 million readings. Each day is loaded once. Loading a day twice by
+   hand is harmless: the package reads each reading once.
 
    ```bash
    since=$(clickhouse client --query "SELECT max(toDate(timestamp)) + 1 FROM sensor_community_raw.readings

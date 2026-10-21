@@ -418,8 +418,12 @@ jobs:
       # sensor-days it loads whole and keep 22.1, which a run that weighs
       # only the new rows would replace. After it, and after a run over
       # unchanged input, the incremental build must match a full refresh of
-      # the same input row for row. The model's numbers are checked from
-      # entities/iot.yaml (tests/sensor_community/check_numbers.py).
+      # the same input row for row. Last, ClickHouse merges the snapshots,
+      # one row left of each site and sensor, and the tables must not
+      # change. The fixture's own snapshots are never merged: a merge there
+      # would drop the earlier snapshot before it is loaded. The model's
+      # numbers are checked from entities/iot.yaml
+      # (tests/sensor_community/check_numbers.py).
       - name: Build (models, tests), incremental and full refresh
         run: |
           q() { curl -sf http://127.0.0.1:8123/ --data-binary "$1"; }
@@ -442,6 +446,7 @@ jobs:
               diff incremental.tsv full.tsv; }
           load sources/sensor_community/input.sql sensor_community_input
           load sources/sensor_community/input.sql sensor_community_fixture
+          q "SYSTEM STOP MERGES sensor_community_fixture.locations"
           load tests/sensor_community/fixture.sql sensor_community_fixture
           higher="sensor_id = 1003 AND timestamp = '2026-10-18 12:16:34' AND temperature = 22.2"
           $DBT_BUILD                 # empty input
@@ -459,6 +464,12 @@ jobs:
           same
           $DBT_BUILD                 # incremental over unchanged input
           same
+          cp full.tsv unmerged.tsv
+          q "OPTIMIZE TABLE sensor_community_input.locations FINAL"
+          test "$(q 'SELECT count() FROM sensor_community_input.locations')" = 6
+          $DBT_BUILD                 # the snapshots merged
+          same
+          diff unmerged.tsv full.tsv
       # The late rows above were loaded now. dbt v2 needs the package's own
       # freshness macros (macros/freshness.sql) to get this far. The age dbt
       # reports must match ClickHouse's own (tests/check_freshness.py), for

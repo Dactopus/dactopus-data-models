@@ -38,22 +38,28 @@
 -- through https://data.sensor.community/airrohr/v1/filter/country=<code>),
 -- one row per sensor in the snapshot. It is the only source of a site's
 -- country and indoor flag, so a loader takes a snapshot regularly and
--- appends it whole; the package reads the latest row of each site. A
--- site is a "location" in the project's terms: a place with coordinates
--- where one board reports through one or more sensors. The API asks
--- for a User-Agent that names a contact (the wiki, since 2022-11-04).
+-- appends it whole; the package reads the latest row of each site.
+-- Nearly every row repeats the site's row in the snapshot before, so the
+-- table is a ReplacingMergeTree: its merges keep, of each site and
+-- sensor, the row of the latest snapshot, and it grows with the sensors,
+-- not with time. The package picks the latest snapshot itself and
+-- answers the same before a merge and after; the history of the
+-- snapshots is not kept, and the package does not read it. A site is a
+-- "location" in the project's terms: a place with coordinates where one
+-- board reports through one or more sensors. The API asks for a
+-- User-Agent that names a contact (the wiki, since 2022-11-04).
 --
 -- Times are UTC: the archive's timestamps carry no zone and match the
--- API's, which are UTC. Both tables keep every row they are given:
--- delivering a file or a snapshot twice is harmless, the package reads
--- each (sensor, time) once. A file itself can carry one time twice with
+-- API's, which are UTC. Delivering a file or a snapshot twice is
+-- harmless: the package reads each (sensor, time) once, and the latest
+-- snapshot of each site. A file itself can carry one time twice with
 -- values that differ a little (a BME280 on 2026-09-22, 13.2 and 13.1 °C
 -- at 12:16:34); the package keeps the row with the lower values, the
 -- same one whichever order the rows are stored in. A deployment may
--- collapse duplicates with ReplacingMergeTree ORDER BY the keys below.
--- The package does not depend on the engine. loaded_at is filled at
--- insert time; an incremental build rereads the sensor-days loaded since
--- its last run.
+-- collapse the readings' duplicates with ReplacingMergeTree ORDER BY
+-- their key below; the package does not depend on either table's
+-- engine. loaded_at is filled at insert time; an incremental build
+-- rereads the sensor-days loaded since its last run.
 --
 -- The database is a query parameter, the package's
 -- sensor_community_input_database:
@@ -92,5 +98,5 @@ CREATE TABLE IF NOT EXISTS {db:Identifier}.locations
     snapshot_at DateTime('UTC'),                -- when the loader took the snapshot
     loaded_at DateTime64(6, 'UTC') DEFAULT now64(6) -- when the load inserted the row
 )
-ENGINE = MergeTree
-ORDER BY (location_id, sensor_id, snapshot_at);
+ENGINE = ReplacingMergeTree(snapshot_at)
+ORDER BY (location_id, sensor_id);
