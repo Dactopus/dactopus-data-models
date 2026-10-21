@@ -29,8 +29,7 @@ Readings in the fixture, one per sensor, time and measure, times in UTC:
 26 readings: humidity 6, pm10 5, pm2_5 5, pressure 3, temperature 7. Left
 out: the second copy of 12:16:34 (temperature 22.2: of two rows for one
 time the package keeps the one with the lower values), the repeated load
-of 101's October 19 (6 more), SPS30 1005's row (pm10 50, pm2_5 40), PM1
-(P0), altitude and pressure_sealevel.
+of 101's October 19 (6 more) and SPS30 1005's row (pm10 50, pm2_5 40).
 
 Sites: 101 Australia, outdoors in the latest snapshot (indoors in the
 earlier one); 102 New Zealand, indoors; 103 Australia, outdoors, silent
@@ -65,7 +64,7 @@ CASES = [
       {"measure": "temperature", "reading_count": 7, "avg_value": 135.1 / 7, "min_value": 12,
        "max_value": 25}]),
     # 26 readings from sites 101 to 104; 105 has none. 32 with the repeated
-    # load, 29 with both copies of 12:16:34, 28 with SPS30, 28 with PM1.
+    # load, 29 with both copies of 12:16:34, 28 with SPS30.
     (["-m", "reading_count", "-m", "reporting_devices"],
      [{"reading_count": 26, "reporting_devices": 4}]),
     # By the date in UTC. October 18: 101 6 (two SDS011 rows, one DHT22),

@@ -20,9 +20,12 @@
 --   bme280   pressure altitude pressure_sealevel temperature humidity
 --   dht22    temperature humidity
 -- P1 is PM10 and P2 is PM2.5, in µg/m³ (the project's wiki,
--- https://github.com/opendata-stuttgart/meta/wiki/APIs); P0 is PM1.
--- Temperature is in °C, humidity in %, pressure in Pa. altitude and
--- pressure_sealevel are the sensor's own, sent by some firmware only.
+-- https://github.com/opendata-stuttgart/meta/wiki/APIs); temperature is
+-- in °C, humidity in %, pressure in Pa. The table keeps these five and
+-- skips the rest on load: the SDS011's dur and ratio columns; P0, PM1,
+-- empty in all 139,607 PMS5003 rows of a month of Australia; altitude
+-- and pressure_sealevel, which some BME280 firmware derives from the
+-- pressure, filled by 2 of Australia's 12 BME280 sensors.
 -- Some firmware writes the word "unknown" for a measure it could not
 -- take (a BME280's humidity, 2026-09-25); a loader inserts with
 -- input_format_csv_use_default_on_bad_values and the value is NULL.
@@ -67,12 +70,9 @@ CREATE TABLE IF NOT EXISTS {db:Identifier}.readings
     timestamp DateTime('UTC'),                  -- when the reading was taken
     P1 Nullable(Float64),                       -- PM10, µg/m³
     P2 Nullable(Float64),                       -- PM2.5, µg/m³
-    P0 Nullable(Float64),                       -- PM1, µg/m³ (PMS5003)
     temperature Nullable(Float64),              -- °C
     humidity Nullable(Float64),                 -- %
     pressure Nullable(Float64),                 -- Pa (BME280)
-    altitude Nullable(Float64),                 -- m, sent by some BME280 firmware
-    pressure_sealevel Nullable(Float64),        -- Pa, sent by some BME280 firmware
     loaded_at DateTime64(6, 'UTC') DEFAULT now64(6) -- when the load inserted the row
 )
 ENGINE = MergeTree

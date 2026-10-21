@@ -12,11 +12,10 @@
 --        a second before midnight UTC; its file of October 19 loaded twice
 --   102  BME280 1003, New Zealand, indoors: one sensor; a time given twice
 --        in one file with different temperatures; a humidity the firmware
---        could not take (the word unknown, NULL once loaded); altitude and
---        pressure_sealevel, which are not measures
+--        could not take (the word unknown, NULL once loaded)
 --   103  PMS5003 1004 and SPS30 1005, Australia: three hours without a
---        reading, then silent from October 18 11:00; PM1 (P0), not a
---        measure; SPS30 is outside the four types the package reads
+--        reading, then silent from October 18 11:00; SPS30 is outside
+--        the four types the package reads
 --   104  DHT22 1006: readings, no snapshot, so no country and no indoor
 --        flag
 --   105  DNMS (Laerm) 1007, Australia: in the snapshots, no reading of the
@@ -43,22 +42,20 @@ INSERT INTO {db:Identifier}.locations VALUES
 -- Files of October 18, loaded on October 19 at 10:30.
 INSERT INTO {db:Identifier}.readings VALUES
 -- (sensor_id, sensor_type, location, lat, lon, timestamp,
---  P1, P2, P0, temperature, humidity, pressure, altitude, pressure_sealevel, loaded_at)
-(1001, 'SDS011',  101, -33.9,  151.2,  '2026-10-18 10:00:00', 10,   4,    NULL, NULL, NULL, NULL,   NULL, NULL,   '2026-10-19 10:30:00'),
+--  P1, P2, temperature, humidity, pressure, loaded_at)
+(1001, 'SDS011',  101, -33.9,  151.2,  '2026-10-18 10:00:00', 10,   4,    NULL, NULL, NULL,   '2026-10-19 10:30:00'),
 -- A second before midnight UTC: October 18 in UTC, 10:59:59 on October 19
 -- in Sydney.
-(1001, 'SDS011',  101, -33.9,  151.2,  '2026-10-18 23:59:59', 20,   8,    NULL, NULL, NULL, NULL,   NULL, NULL,   '2026-10-19 10:30:00'),
-(1002, 'DHT22',   101, -33.9,  151.2,  '2026-10-18 10:00:05', NULL, NULL, NULL, 18,   60,   NULL,   NULL, NULL,   '2026-10-19 10:30:00'),
--- altitude and pressure_sealevel are the sensor's own, sent by some
--- firmware; they become no measure.
-(1003, 'BME280',  102, -36.85, 174.76, '2026-10-18 12:00:00', NULL, NULL, NULL, 21,   40,   101000, 50,   101600, '2026-10-19 10:30:00'),
+(1001, 'SDS011',  101, -33.9,  151.2,  '2026-10-18 23:59:59', 20,   8,    NULL, NULL, NULL,   '2026-10-19 10:30:00'),
+(1002, 'DHT22',   101, -33.9,  151.2,  '2026-10-18 10:00:05', NULL, NULL, 18,   60,   NULL,   '2026-10-19 10:30:00'),
+(1003, 'BME280',  102, -36.85, 174.76, '2026-10-18 12:00:00', NULL, NULL, 21,   40,   101000, '2026-10-19 10:30:00'),
 -- The file gives 12:16:34 twice, temperatures 22.2 and then 22.1.
-(1003, 'BME280',  102, -36.85, 174.76, '2026-10-18 12:16:34', NULL, NULL, NULL, 22.2, 41,   101100, NULL, NULL,   '2026-10-19 10:30:00'),
-(1003, 'BME280',  102, -36.85, 174.76, '2026-10-18 12:16:34', NULL, NULL, NULL, 22.1, 41,   101100, NULL, NULL,   '2026-10-19 10:30:00'),
-(1004, 'PMS5003', 103, -34.93, 138.6,  '2026-10-18 08:00:00', 6,    3,    2,    NULL, NULL, NULL,   NULL, NULL,   '2026-10-19 10:30:00'),
-(1004, 'PMS5003', 103, -34.93, 138.6,  '2026-10-18 11:00:00', 9,    5,    4,    NULL, NULL, NULL,   NULL, NULL,   '2026-10-19 10:30:00'),
+(1003, 'BME280',  102, -36.85, 174.76, '2026-10-18 12:16:34', NULL, NULL, 22.2, 41,   101100, '2026-10-19 10:30:00'),
+(1003, 'BME280',  102, -36.85, 174.76, '2026-10-18 12:16:34', NULL, NULL, 22.1, 41,   101100, '2026-10-19 10:30:00'),
+(1004, 'PMS5003', 103, -34.93, 138.6,  '2026-10-18 08:00:00', 6,    3,    NULL, NULL, NULL,   '2026-10-19 10:30:00'),
+(1004, 'PMS5003', 103, -34.93, 138.6,  '2026-10-18 11:00:00', 9,    5,    NULL, NULL, NULL,   '2026-10-19 10:30:00'),
 -- SPS30's file loads into the same columns; the package skips its rows.
-(1005, 'SPS30',   103, -34.93, 138.6,  '2026-10-18 08:00:00', 50,   40,   30,   NULL, NULL, NULL,   NULL, NULL,   '2026-10-19 10:30:00');
+(1005, 'SPS30',   103, -34.93, 138.6,  '2026-10-18 08:00:00', 50,   40,   NULL, NULL, NULL,   '2026-10-19 10:30:00');
 
 -- Snapshot of October 19, delivered twice. Site 101 is outdoors now; 103
 -- has gone quiet and is not in it; 104 never is.
@@ -76,16 +73,16 @@ INSERT INTO {db:Identifier}.locations VALUES
 
 -- Files of October 19, loaded on October 20 at 10:30.
 INSERT INTO {db:Identifier}.readings VALUES
-(1001, 'SDS011',  101, -33.9,  151.2,  '2026-10-19 00:00:01', 30,   12,   NULL, NULL, NULL, NULL,   NULL, NULL,   '2026-10-20 10:30:00'),
-(1002, 'DHT22',   101, -33.9,  151.2,  '2026-10-19 00:00:06', NULL, NULL, NULL, 14,   80,   NULL,   NULL, NULL,   '2026-10-20 10:30:00'),
+(1001, 'SDS011',  101, -33.9,  151.2,  '2026-10-19 00:00:01', 30,   12,   NULL, NULL, NULL,   '2026-10-20 10:30:00'),
+(1002, 'DHT22',   101, -33.9,  151.2,  '2026-10-19 00:00:06', NULL, NULL, 14,   80,   NULL,   '2026-10-20 10:30:00'),
 -- Humidity 100 at dew: the package does not clean values.
-(1002, 'DHT22',   101, -33.9,  151.2,  '2026-10-19 06:00:00', NULL, NULL, NULL, 12,   100,  NULL,   NULL, NULL,   '2026-10-20 10:30:00'),
+(1002, 'DHT22',   101, -33.9,  151.2,  '2026-10-19 06:00:00', NULL, NULL, 12,   100,  NULL,   '2026-10-20 10:30:00'),
 -- The firmware wrote unknown for the humidity: NULL, no humidity reading.
-(1003, 'BME280',  102, -36.85, 174.76, '2026-10-19 12:00:00', NULL, NULL, NULL, 23,   NULL, 101200, NULL, NULL,   '2026-10-20 10:30:00'),
-(1006, 'DHT22',   104, -37.81, 144.96, '2026-10-19 09:00:00', NULL, NULL, NULL, 25,   30,   NULL,   NULL, NULL,   '2026-10-20 10:30:00');
+(1003, 'BME280',  102, -36.85, 174.76, '2026-10-19 12:00:00', NULL, NULL, 23,   NULL, 101200, '2026-10-20 10:30:00'),
+(1006, 'DHT22',   104, -37.81, 144.96, '2026-10-19 09:00:00', NULL, NULL, 25,   30,   NULL,   '2026-10-20 10:30:00');
 
 -- Site 101's files of October 19 loaded again: the same rows, a later load.
 INSERT INTO {db:Identifier}.readings VALUES
-(1001, 'SDS011',  101, -33.9,  151.2,  '2026-10-19 00:00:01', 30,   12,   NULL, NULL, NULL, NULL,   NULL, NULL,   '2026-10-20 11:00:00'),
-(1002, 'DHT22',   101, -33.9,  151.2,  '2026-10-19 00:00:06', NULL, NULL, NULL, 14,   80,   NULL,   NULL, NULL,   '2026-10-20 11:00:00'),
-(1002, 'DHT22',   101, -33.9,  151.2,  '2026-10-19 06:00:00', NULL, NULL, NULL, 12,   100,  NULL,   NULL, NULL,   '2026-10-20 11:00:00');
+(1001, 'SDS011',  101, -33.9,  151.2,  '2026-10-19 00:00:01', 30,   12,   NULL, NULL, NULL,   '2026-10-20 11:00:00'),
+(1002, 'DHT22',   101, -33.9,  151.2,  '2026-10-19 00:00:06', NULL, NULL, 14,   80,   NULL,   '2026-10-20 11:00:00'),
+(1002, 'DHT22',   101, -33.9,  151.2,  '2026-10-19 06:00:00', NULL, NULL, 12,   100,  NULL,   '2026-10-20 11:00:00');

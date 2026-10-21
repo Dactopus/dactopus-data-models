@@ -638,7 +638,7 @@ You need ClickHouse, dbt, dactopus-ossie-clickhouse and
    PUBLISHED = (NOW - datetime.timedelta(hours=10)).date() - datetime.timedelta(days=1)
    TYPES = {"SDS011": "sds011", "PMS5003": "pms5003", "BME280": "bme280", "DHT22": "dht22"}
    COLUMNS = ["sensor_id", "sensor_type", "location", "lat", "lon", "timestamp",
-              "P1", "P2", "P0", "temperature", "humidity", "pressure", "altitude", "pressure_sealevel"]
+              "P1", "P2", "temperature", "humidity", "pressure"]
 
 
    def query(sql, body=None, **settings):
