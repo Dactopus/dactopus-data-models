@@ -45,7 +45,8 @@
 -- delivering a file or a snapshot twice is harmless, the package reads
 -- each (sensor, time) once. A file itself can carry one time twice with
 -- values that differ a little (a BME280 on 2026-09-22, 13.2 and 13.1 °C
--- at 12:16:34); the package keeps the first row. A deployment may
+-- at 12:16:34); the package keeps the row with the lower values, the
+-- same one whichever order the rows are stored in. A deployment may
 -- collapse duplicates with ReplacingMergeTree ORDER BY the keys below;
 -- the package does not depend on the engine. loaded_at is filled at
 -- insert time; an incremental build rereads what was loaded since its
