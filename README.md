@@ -607,8 +607,9 @@ You need ClickHouse, dbt, dactopus-ossie-clickhouse and
    Sensors of other types than SDS011, PMS5003, BME280 and DHT22 are
    left out: the package does not read them. The script sends the
    `User-Agent` from `SENSOR_COMMUNITY_AGENT`, or the one shown above;
-   set it to yours. It needs [uv](https://docs.astral.sh/uv/) for the
-   one package it uses, `certifi`: Python from python.org on macOS does
+   set it to yours. It connects to ClickHouse as `CLICKHOUSE_USER`
+   (default `default`) with `CLICKHOUSE_PASSWORD`. It needs
+   [uv](https://docs.astral.sh/uv/) for the one package it uses, `certifi`: Python from python.org on macOS does
    not see the system's root certificates.
 
    <details><summary>load_sensor_community.py</summary>
@@ -621,13 +622,16 @@ You need ClickHouse, dbt, dactopus-ossie-clickhouse and
    AGENT = os.environ.get("SENSOR_COMMUNITY_AGENT", "dactopus-data-models loader (https://github.com/Dactopus)")
    ARCHIVE = "https://archive.sensor.community"
    TLS = ssl.create_default_context(cafile=certifi.where())
+   LOGIN = {"X-ClickHouse-User": os.environ.get("CLICKHOUSE_USER", "default"),
+            "X-ClickHouse-Key": os.environ.get("CLICKHOUSE_PASSWORD", "")}
+   THIS_YEAR = str(datetime.datetime.now(datetime.timezone.utc).year)
    TYPES = {"SDS011": "sds011", "PMS5003": "pms5003", "BME280": "bme280", "DHT22": "dht22"}
    COLUMNS = ["sensor_id", "sensor_type", "location", "lat", "lon", "timestamp",
               "P1", "P2", "P0", "temperature", "humidity", "pressure", "altitude", "pressure_sealevel"]
 
 
    def query(sql, body=None, **settings):
-       req = urllib.request.Request(url + "/?" + urllib.parse.urlencode({"query": sql, **settings}), body)
+       req = urllib.request.Request(url + "/?" + urllib.parse.urlencode({"query": sql, **settings}), body, LOGIN)
        try:
            return urllib.request.urlopen(req).read().decode()
        except urllib.error.HTTPError as e:
@@ -643,7 +647,7 @@ You need ClickHouse, dbt, dactopus-ossie-clickhouse and
            except urllib.error.HTTPError as e:
                if e.code == 404:
                    return None
-               if e.code < 500:
+               if e.code < 500 and e.code != 429:
                    raise
            except (urllib.error.URLError, http.client.HTTPException, TimeoutError):
                pass
@@ -656,7 +660,10 @@ You need ClickHouse, dbt, dactopus-ossie-clickhouse and
        # may have either, so both names are tried, the flagged one first.
        for suffix in (("_indoor", "") if indoor else ("", "_indoor")):
            name = f"{day}_{kind}_sensor_{sensor}{suffix}.csv"
-           for path in (f"{ARCHIVE}/{day}/{name}", f"{ARCHIVE}/{day[:4]}/{day}/{name}.gz"):
+           paths = (f"{ARCHIVE}/{day}/{name}", f"{ARCHIVE}/{day[:4]}/{day}/{name}.gz")
+           # Earlier years are in their year's folder; the current one's
+           # files are in the root until the archive moves them.
+           for path in (paths if day[:4] == THIS_YEAR else paths[::-1]):
                data = get(path)
                if data is not None:
                    return gzip.decompress(data) if path.endswith(".gz") else data
@@ -690,12 +697,13 @@ You need ClickHouse, dbt, dactopus-ossie-clickhouse and
 
    </details>
 
-4. **Next loads.** Load from the day after the last one loaded to
-   yesterday, and keep the snapshots running; the build is incremental.
-   Loading a day twice is harmless: the package reads each reading once.
+4. **Next loads.** Load from the last day loaded to yesterday, and keep
+   the snapshots running; the build is incremental. The last day is
+   loaded again because the archive may still have been publishing it;
+   loading a day twice is harmless: the package reads each reading once.
 
    ```bash
-   since=$(clickhouse client --query "SELECT max(toDate(timestamp)) + 1 FROM sensor_community_raw.readings")
+   since=$(clickhouse client --query "SELECT max(toDate(timestamp)) FROM sensor_community_raw.readings HAVING count() > 0")
    uv run --with certifi load_sensor_community.py http://localhost:8123 sensor_community_raw AU "$since" "$(date -u -v-1d +%F)"
    ```
 
