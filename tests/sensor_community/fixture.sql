@@ -18,14 +18,17 @@
 --        reading, then silent from October 18 11:00; SPS30 is outside
 --        the four types the package reads
 --   104  DHT22 1006 and BME280 1008: readings, no snapshot, so no country
---        and no indoor flag; 1008's firmware sends the pressure in hPa
+--        and no indoor flag; 1008's firmware sends the pressure in
+--        hPa; 1006's file of October 19 loaded again with a copy of a
+--        time that has a lower temperature and no humidity
 --   105  DNMS (Laerm) 1007, Australia: in the snapshots, no reading of the
 --        four types
 --
 -- Loads: the snapshot of October 18 10:00 UTC; the files of October 18,
 -- loaded on October 19 at 10:30; the snapshot of October 19 10:00, loaded
 -- twice; the files of October 19, loaded on October 20 at 10:30; site 101's
--- files of October 19 again at 11:00. Times are UTC.
+-- files of October 19 again at 11:00; 1006's file of October 19 again at
+-- 11:30. Times are UTC.
 
 -- Snapshot of October 18. The API gives a sensor several records in five
 -- minutes: 1001 twice. Site 101 is indoors here, at other coordinates.
@@ -92,3 +95,10 @@ INSERT INTO {db:Identifier}.readings VALUES
 (1001, 'SDS011',  101, -33.9,  151.2,  '2026-10-19 00:00:01', 30,   12,   NULL, NULL, NULL,   '2026-10-20 11:00:00'),
 (1002, 'DHT22',   101, -33.9,  151.2,  '2026-10-19 00:00:06', NULL, NULL, 14,   80,   NULL,   '2026-10-20 11:00:00'),
 (1002, 'DHT22',   101, -33.9,  151.2,  '2026-10-19 06:00:00', NULL, NULL, 12,   100,  NULL,   '2026-10-20 11:00:00');
+
+-- 1006's file of October 19 loaded again, its 09:00 now with temperature
+-- 24 and the humidity unknown. Of the two copies the package keeps this
+-- one, the lower: the reading has no humidity any more, and the humidity
+-- 30 of the first copy must go with it.
+INSERT INTO {db:Identifier}.readings VALUES
+(1006, 'DHT22',   104, -37.81, 144.96, '2026-10-19 09:00:00', NULL, NULL, 24,   NULL, NULL,   '2026-10-20 11:30:00');

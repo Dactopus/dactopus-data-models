@@ -419,7 +419,10 @@ jobs:
       # 12:16:34 (temperature 22.2) comes last, with site 101's day loaded
       # again and the snapshot delivered again: the run must reread the
       # sensor-days it loads whole and keep 22.1, which a run that weighs
-      # only the new rows would replace. After it, and after a run over
+      # only the new rows would replace. With them comes 1006's day again,
+      # its 09:00 lower and without humidity: the run must replace the
+      # whole sensor-day, or the first copy's humidity, a reading the kept
+      # row does not have, would stay. After it, and after a run over
       # unchanged input, the incremental build must match a full refresh of
       # the same input row for row. Last, ClickHouse merges the snapshots,
       # one row left of each site and sensor, and the tables must not
@@ -462,8 +465,9 @@ jobs:
           same
           late readings "$higher"
           late readings "loaded_at = '2026-10-20 11:00:00'"
+          late readings "loaded_at = '2026-10-20 11:30:00'"
           late locations "loaded_at = '2026-10-19 10:05:00'"
-          $DBT_BUILD                 # a higher copy of a time, a day and a snapshot again
+          $DBT_BUILD                 # copies of a time higher and lower, a day and a snapshot again
           same
           $DBT_BUILD                 # incremental over unchanged input
           same
