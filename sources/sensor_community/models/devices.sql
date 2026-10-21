@@ -5,9 +5,9 @@
 -- load.
 SELECT
     ids.device_id AS device_id,
-    -- Coordinates from the latest snapshot, coarsened by the source where
-    -- its exact_location is false; a site without a snapshot has its
-    -- latest reading's.
+    -- Coordinates from the latest snapshot, as the source gives them (it
+    -- coarsens those of sites not marked exact); a site without a snapshot
+    -- has its latest reading's.
     coalesce(s.latitude, f.latitude) AS latitude,
     coalesce(s.longitude, f.longitude) AS longitude,
     s.altitude AS altitude,

@@ -571,14 +571,14 @@ You need ClickHouse, dbt, dactopus-ossie-clickhouse and
 
    ```sql
    INSERT INTO sensor_community_raw.locations (location_id, sensor_id, sensor_type, latitude, longitude, altitude,
-       country, indoor, exact_location, reported_at, snapshot_at)
+       country, indoor, reported_at, snapshot_at)
    SELECT location.id, sensor.id, sensor.sensor_type.name,
           toFloat64(location.latitude), toFloat64(location.longitude), toFloat64OrNull(location.altitude),
-          location.country, location.indoor = 1, location.exact_location = 1,
+          location.country, location.indoor = 1,
           parseDateTimeBestEffort(timestamp, 'UTC'), now('UTC')
    FROM url('https://data.sensor.community/airrohr/v1/filter/country=AU',
             headers('User-Agent' = 'dactopus-data-models loader (https://github.com/Dactopus)'), JSONEachRow,
-            'location Tuple(id UInt32, country String, indoor UInt8, exact_location UInt8, latitude String, longitude String, altitude Nullable(String)),
+            'location Tuple(id UInt32, country String, indoor UInt8, latitude String, longitude String, altitude Nullable(String)),
              sensor Tuple(id UInt32, sensor_type Tuple(id UInt32, name String, manufacturer String)), timestamp String')
    ```
 
@@ -644,7 +644,7 @@ You need ClickHouse, dbt, dactopus-ossie-clickhouse and
    def query(sql, body=None, **settings):
        req = urllib.request.Request(url + "/?" + urllib.parse.urlencode({"query": sql, **settings}), body, LOGIN)
        try:
-           return urllib.request.urlopen(req).read().decode()
+           return urllib.request.urlopen(req, context=TLS).read().decode()
        except urllib.error.HTTPError as e:
            sys.exit(e.read().decode())
 
@@ -942,11 +942,14 @@ vars:
     woocommerce_input_database: my_woocommerce_cdc
     woocommerce_timezone: Europe/Berlin
     woocommerce_currency: EUR
+  dactopus_sensor_community:
+    sensor_community_input_database: my_sensor_community
 ```
 
-`shopify_lookback_days` and `woocommerce_lookback_days` (default 3) are
-how far before its last load or sync an incremental run rereads the
-input, for inserts that commit late.
+`shopify_lookback_days`, `woocommerce_lookback_days` and
+`sensor_community_lookback_days` (default 3) are how far before its last
+load or sync an incremental run rereads the input, for inserts that
+commit late.
 
 Point dactopus-ossie-clickhouse at your target's database
 (`--url http://host:8123/<database>`) and take the Ossie models from the
@@ -965,7 +968,7 @@ after your project's name (`my_project` here):
 ```yaml
 dispatch:
   - macro_namespace: dbt
-    search_order: [my_project, dactopus_ga4, dactopus_shopify, dactopus_woocommerce, dbt]
+    search_order: [my_project, dactopus_ga4, dactopus_shopify, dactopus_woocommerce, dactopus_sensor_community, dbt]
 ```
 
 Freshness then reports the same ages as on dbt v1.

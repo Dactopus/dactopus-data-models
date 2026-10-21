@@ -88,7 +88,6 @@ CREATE TABLE IF NOT EXISTS {db:Identifier}.locations
     altitude Nullable(Float64),                 -- location.altitude, m
     country String,                             -- location.country, ISO 3166-1 alpha-2
     indoor Bool,                                -- location.indoor
-    exact_location Bool,                        -- location.exact_location: coordinates not coarsened
     reported_at DateTime('UTC'),                -- timestamp: the sensor's latest reading in the snapshot
     snapshot_at DateTime('UTC'),                -- when the loader took the snapshot
     loaded_at DateTime64(6, 'UTC') DEFAULT now64(6) -- when the load inserted the row
