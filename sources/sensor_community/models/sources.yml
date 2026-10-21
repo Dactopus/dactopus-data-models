@@ -1,0 +1,24 @@
+version: 2
+sources:
+  - name: sensor_community_raw
+    schema: "{{ var('sensor_community_input_database') }}"
+    tables:
+      - name: readings
+        # `dbt source freshness`: are the archive's days still arriving? A
+        # day is loaded once, after 10:00 UTC of the day after (README), so
+        # the latest load is a day old just before the next one.
+        config:
+          loaded_at_field: loaded_at
+          freshness:
+            warn_after: {count: 36, period: hour}
+            error_after: {count: 3, period: day}
+      - name: locations
+        # Are the snapshots still running? Every five minutes (README). The
+        # loader takes its sensors from them, so without snapshots a new
+        # sensor is never loaded and a site's country and indoor flag stop
+        # changing.
+        config:
+          loaded_at_field: loaded_at
+          freshness:
+            warn_after: {count: 1, period: hour}
+            error_after: {count: 1, period: day}

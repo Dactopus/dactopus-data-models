@@ -1,0 +1,34 @@
+version: 2
+# Structural checks only; descriptions live in entities/iot.yaml.
+models:
+  - name: devices
+    columns:
+      - name: device_id
+        data_tests: [unique, not_null]
+      - {name: latitude, data_tests: [not_null]}
+      - {name: longitude, data_tests: [not_null]}
+  - name: readings
+    columns:
+      - name: device_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('devices')
+                field: device_id
+      - {name: sensor_id, data_tests: [not_null]}
+      - name: sensor_type
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [SDS011, PMS5003, BME280, DHT22]
+      - name: measure
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [pm10, pm2_5, temperature, humidity, pressure]
+      - {name: value, data_tests: [not_null]}
+      - {name: measured_at, data_tests: [not_null]}
+      - {name: reading_date, data_tests: [not_null]}
