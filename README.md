@@ -538,6 +538,169 @@ Cloud's CDC, runs PeerDB but is not checked yet.
    `dbt source freshness` warns when CDC has not synced
    an order for a day; a store without an order in a day warns too.
 
+### Sensor.Community
+
+[Sensor.Community](https://sensor.community/) is a citizen network of
+air quality sensors: over 17,000 sensors reporting particulate matter,
+temperature, humidity and pressure every few minutes, with the sensor
+registry and the readings published as open data (Open Data Commons
+[DbCL 1.0](https://opendatacommons.org/licenses/dbcl/1-0/), linked from
+the site's footer). The package loads one country at a time; the
+examples take Australia (`AU`), 36 sites and 66 sensors in October 2026.
+You need ClickHouse, dbt, dactopus-ossie-clickhouse and
+[uv](https://docs.astral.sh/uv/), as for GA4.
+
+1. **Load** the package's input tables
+   [`sources/sensor_community/input.sql`](sources/sensor_community/input.sql).
+   Their database is a parameter; the package reads it from the dbt
+   variable `sensor_community_input_database` (default
+   `sensor_community_raw`).
+
+   ```bash
+   clickhouse client --param_db=sensor_community_raw --multiquery < sources/sensor_community/input.sql
+   ```
+
+2. **Snapshot** the sensors of the country. The API returns every
+   sensor that reported in the last five minutes, with its site's
+   coordinates, country and whether it is indoors; nothing else carries
+   the country, so the snapshot is the registry, and a sensor appears in
+   it once it has reported during a snapshot. ClickHouse reads the API
+   itself. The API asks every client for a `User-Agent` that names a
+   contact ([the project's wiki](https://github.com/opendata-stuttgart/meta/wiki/APIs));
+   put yours in place of the one below.
+
+   ```sql
+   INSERT INTO sensor_community_raw.locations (location_id, sensor_id, sensor_type, latitude, longitude, altitude,
+       country, indoor, exact_location, reported_at, snapshot_at)
+   SELECT location.id, sensor.id, sensor.sensor_type.name,
+          toFloat64(location.latitude), toFloat64(location.longitude), toFloat64OrNull(location.altitude),
+          location.country, location.indoor = 1, location.exact_location = 1,
+          parseDateTimeBestEffort(timestamp, 'UTC'), now('UTC')
+   FROM url('https://data.sensor.community/airrohr/v1/filter/country=AU',
+            headers('User-Agent' = 'dactopus-data-models loader (https://github.com/Dactopus)'), JSONEachRow,
+            'location Tuple(id UInt32, country String, indoor UInt8, exact_location UInt8, latitude String, longitude String, altitude Nullable(String)),
+             sensor Tuple(id UInt32, sensor_type Tuple(id UInt32, name String, manufacturer String)), timestamp String')
+   ```
+
+   Run it every five minutes (cron, or anything that runs a query on a
+   schedule): each run appends the snapshot whole, a few rows per
+   sensor, and the package reads the latest row of each site. The
+   snapshots are also what tells a sensor that has gone quiet from one
+   that never existed. Several countries go in one query
+   (`country=AU,NZ`); the whole network is
+   `https://data.sensor.community/static/v2/data.json`, 17,500 rows.
+
+3. **Load the history.** The archive publishes one CSV file per sensor
+   and day, the day after, around 08:00 UTC. Save the script below as
+   `load_sensor_community.py` and run it with the ClickHouse HTTP URL,
+   the input database, the country and the first and last day to load:
+
+   ```bash
+   uv run --with certifi load_sensor_community.py http://localhost:8123 sensor_community_raw AU 2025-10-20 2026-10-19
+   ```
+
+   It takes the country's sensors from the snapshots, fetches each
+   sensor's file for each day (four at a time; an indoor sensor's file
+   has the suffix `_indoor`, earlier years are gzipped), and inserts a
+   day at a time: about 20 seconds per day of Australia, two hours for
+   a year. A sensor without a file for a day did not report that day.
+   Sensors of other types than SDS011, PMS5003, BME280 and DHT22 are
+   left out: the package does not read them. The script sends the
+   `User-Agent` from `SENSOR_COMMUNITY_AGENT`, or the one shown above;
+   set it to yours. It needs [uv](https://docs.astral.sh/uv/) for the
+   one package it uses, `certifi`: Python from python.org on macOS does
+   not see the system's root certificates.
+
+   <details><summary>load_sensor_community.py</summary>
+
+   ```python
+   import concurrent.futures, csv, datetime, gzip, http.client, io, os, ssl, sys, time, urllib.error, urllib.parse, urllib.request
+   import certifi
+
+   url, db, country, since, until = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5]
+   AGENT = os.environ.get("SENSOR_COMMUNITY_AGENT", "dactopus-data-models loader (https://github.com/Dactopus)")
+   ARCHIVE = "https://archive.sensor.community"
+   TLS = ssl.create_default_context(cafile=certifi.where())
+   TYPES = {"SDS011": "sds011", "PMS5003": "pms5003", "BME280": "bme280", "DHT22": "dht22"}
+   COLUMNS = ["sensor_id", "sensor_type", "location", "lat", "lon", "timestamp",
+              "P1", "P2", "P0", "temperature", "humidity", "pressure", "altitude", "pressure_sealevel"]
+
+
+   def query(sql, body=None, **settings):
+       req = urllib.request.Request(url + "/?" + urllib.parse.urlencode({"query": sql, **settings}), body)
+       try:
+           return urllib.request.urlopen(req).read().decode()
+       except urllib.error.HTTPError as e:
+           sys.exit(e.read().decode())
+
+
+   def get(path):
+       """The file's bytes, None when the archive has no such file."""
+       for attempt in range(5):
+           try:
+               with urllib.request.urlopen(urllib.request.Request(path, headers={"User-Agent": AGENT}), context=TLS) as r:
+                   return r.read()
+           except urllib.error.HTTPError as e:
+               if e.code == 404:
+                   return None
+               if e.code < 500:
+                   raise
+           except (urllib.error.URLError, http.client.HTTPException, TimeoutError):
+               pass
+           time.sleep(2 ** attempt)  # the archive drops a connection now and then
+       sys.exit(f"gave up on {path}")
+
+
+   def fetch(day, kind, sensor, indoor):
+       # An indoor sensor's file has the suffix _indoor; a sensor that moved
+       # may have either, so both names are tried, the flagged one first.
+       for suffix in (("_indoor", "") if indoor else ("", "_indoor")):
+           name = f"{day}_{kind}_sensor_{sensor}{suffix}.csv"
+           for path in (f"{ARCHIVE}/{day}/{name}", f"{ARCHIVE}/{day[:4]}/{day}/{name}.gz"):
+               data = get(path)
+               if data is not None:
+                   return gzip.decompress(data) if path.endswith(".gz") else data
+       return None
+
+
+   sensors = [(TYPES[t], s, i == "true") for s, t, i in csv.reader(io.StringIO(query(
+       f"SELECT sensor_id, sensor_type, argMax(indoor, snapshot_at) FROM {db}.locations WHERE country = '{country}' "
+       f"AND sensor_type IN ({', '.join(repr(t) for t in TYPES)}) GROUP BY sensor_id, sensor_type FORMAT CSV")))]
+   if not sensors:
+       sys.exit(f"no sensors of {country} in {db}.locations: take a snapshot first")
+   day, last = datetime.date.fromisoformat(since), datetime.date.fromisoformat(until)
+   while day <= last:
+       out = io.StringIO()
+       writer = csv.DictWriter(out, COLUMNS, delimiter=";", extrasaction="ignore", restval="")
+       writer.writeheader()
+       files = 0
+       with concurrent.futures.ThreadPoolExecutor(4) as pool:
+           for data in pool.map(lambda ks: fetch(day.isoformat(), *ks), sensors):
+               if data:
+                   files += 1
+                   writer.writerows(csv.DictReader(io.StringIO(data.decode()), delimiter=";"))
+       if files:
+           # Some firmware writes the word unknown for a measure it could not
+           # take; it becomes NULL.
+           query(f"INSERT INTO {db}.readings FORMAT CSVWithNames", out.getvalue().encode(),
+                 format_csv_delimiter=";", input_format_csv_use_default_on_bad_values=1)
+       print(day, files, "files of", len(sensors), "sensors", flush=True)
+       day += datetime.timedelta(days=1)
+   ```
+
+   </details>
+
+4. **Next loads.** Load from the day after the last one loaded to
+   yesterday, and keep the snapshots running; the build is incremental.
+   Loading a day twice is harmless: the package reads each reading once.
+
+   ```bash
+   since=$(clickhouse client --query "SELECT max(toDate(timestamp)) + 1 FROM sensor_community_raw.readings")
+   uv run --with certifi load_sensor_community.py http://localhost:8123 sensor_community_raw AU "$since" "$(date -u -v-1d +%F)"
+   ```
+
+   On Linux, yesterday is `$(date -u -d yesterday +%F)`.
+
 ## What the GA4 model answers
 
 [`entities/web_analytics.yaml`](entities/web_analytics.yaml) has 12
