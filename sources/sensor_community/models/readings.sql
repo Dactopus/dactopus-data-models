@@ -22,7 +22,8 @@ FROM
 (
     {# Of the rows for one sensor and time, two copies in one file or a
        file loaded twice, the one with the lowest values, compared in the
-       order below, and of equal rows the latest load: the same row
+       order below, then the lowest site, and of equal rows the latest
+       load: the same row
        whichever order the rows are stored in. Sorted by the input's
        sorting key first, so ClickHouse reads it in order and sorts only
        the rows of each key. #}

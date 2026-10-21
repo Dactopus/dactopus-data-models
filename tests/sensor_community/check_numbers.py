@@ -90,6 +90,12 @@ CASES = [
     (["-m", "avg_value", "-f", "readings.measure = 'pm2_5'", "-d", "readings.reading_date",
       "-o", "readings.reading_date"],
      [{"reading_date": "2026-10-18", "avg_value": 5}, {"reading_date": "2026-10-19", "avg_value": 12}]),
+    # By week, from Monday: October 18, a Sunday, is in the week of October
+    # 12 with its 16 readings, and October 19, a Monday, starts the next
+    # with 12. Weeks from Sunday would give one week of 28.
+    (["-m", "reading_count", "-d", "readings.reading_week", "-o", "readings.reading_week"],
+     [{"reading_week": "2026-10-12", "reading_count": 16},
+      {"reading_week": "2026-10-19", "reading_count": 12}]),
     # The hour from 12:00 on October 18: 102's 12:00:00 and 12:16:34, three
     # measures each (9 with both copies of 12:16:34).
     (["-m", "reading_count", "-f", "readings.reading_hour = '2026-10-18 12:00:00'"],

@@ -746,7 +746,7 @@ You need ClickHouse, dbt, dactopus-ossie-clickhouse and
    ```
 
 5. **Validate** the model against the built tables, and **check** the
-   package's answers: `check_numbers.py` asks 13 questions over the
+   package's answers: `check_numbers.py` asks 14 questions over the
    hand-written rows of
    [`tests/sensor_community/fixture.sql`](tests/sensor_community/fixture.sql),
    built into databases of their own, and compares the answers with

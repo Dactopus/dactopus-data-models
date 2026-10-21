@@ -37,7 +37,7 @@ build the same tables as in 0.4.1, and no rebuild is needed.
   inputs. Installs from a git tag with
   `subdirectory: sources/sensor_community`; dbt v2 freshness needs the
   package in the `dispatch` setting (README).
-- Hand-written Sensor.Community rows and the 13 numbers the model must
+- Hand-written Sensor.Community rows and the 14 numbers the model must
   answer over them (`tests/sensor_community`), checked in CI on both dbt
   versions, on the incremental and the full build.
 

@@ -32,7 +32,8 @@ LEFT JOIN
 (
     {# The latest snapshot's row, by the snapshot's time, not the load's: a
        snapshot loaded late must not undo a later one. Of its rows, the
-       latest reported and then the latest loaded. #}
+       latest reported, then the highest sensor id, then the latest
+       loaded. #}
     SELECT
         location_id,
         argMax(latitude, v) AS latitude,
