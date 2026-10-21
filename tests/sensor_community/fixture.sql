@@ -17,8 +17,8 @@
 --   103  PMS5003 1004 and SPS30 1005, Australia: three hours without a
 --        reading, then silent from October 18 11:00; SPS30 is outside
 --        the four types the package reads
---   104  DHT22 1006: readings, no snapshot, so no country and no indoor
---        flag
+--   104  DHT22 1006 and BME280 1008: readings, no snapshot, so no country
+--        and no indoor flag; 1008's firmware sends the pressure in hPa
 --   105  DNMS (Laerm) 1007, Australia: in the snapshots, no reading of the
 --        four types
 --
@@ -83,7 +83,9 @@ INSERT INTO {db:Identifier}.readings VALUES
 -- The firmware wrote nan for every measure: no reading, and not the
 -- site's latest one.
 (1003, 'BME280',  102, -36.85, 174.76, '2026-10-19 12:30:00', NULL, NULL, nan,  nan,  nan,    '2026-10-20 10:30:00'),
-(1006, 'DHT22',   104, -37.81, 144.96, '2026-10-19 09:00:00', NULL, NULL, 25,   30,   NULL,   '2026-10-20 10:30:00');
+(1006, 'DHT22',   104, -37.81, 144.96, '2026-10-19 09:00:00', NULL, NULL, 25,   30,   NULL,   '2026-10-20 10:30:00'),
+-- Pressure in hPa, 1012: the package reads 101200 Pa.
+(1008, 'BME280',  104, -37.81, 144.96, '2026-10-19 09:00:00', NULL, NULL, 25,   30,   1012,   '2026-10-20 10:30:00');
 
 -- Site 101's files of October 19 loaded again: the same rows, a later load.
 INSERT INTO {db:Identifier}.readings VALUES

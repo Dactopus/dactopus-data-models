@@ -622,7 +622,10 @@ You need ClickHouse, dbt, dactopus-ossie-clickhouse and
    snapshots behind that load, taken on October 21, is loaded; the
    archive does not say which sensors its count includes. Sensors of
    other types than SDS011, PMS5003, BME280 and DHT22 are left out: the
-   package does not read them. The script sends the `User-Agent` from
+   package does not read them. Values load as the files have them. Some
+   firmware sends the pressure in hPa instead of Pa (a BME280 in
+   Australia); the package reads a pressure from 300 to 1,100 as hPa and
+   converts it to Pa (`input.sql`). The script sends the `User-Agent` from
    `SENSOR_COMMUNITY_AGENT`, or the one shown above; set it to yours.
    It connects to ClickHouse as `CLICKHOUSE_USER` (default `default`)
    with `CLICKHOUSE_PASSWORD`. It needs

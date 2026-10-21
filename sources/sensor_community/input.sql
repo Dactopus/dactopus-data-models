@@ -26,6 +26,10 @@
 -- empty in all 139,607 PMS5003 rows of a month of Australia; altitude
 -- and pressure_sealevel, which some BME280 firmware derives from the
 -- pressure, filled by 2 of Australia's 12 BME280 sensors.
+-- Some firmware sends the pressure in hPa (a BME280 in Australia, 715 to
+-- 1,031 from 2026-09-20 to 2026-10-19). Air pressure at the ground is
+-- near 100,000 Pa, so a value from 300 to 1,100 can only be hPa: the
+-- package converts it to Pa, and this table keeps it as sent.
 -- Some firmware writes the word "unknown" for a measure it could not
 -- take (a BME280's humidity, 2026-09-25); a loader inserts with
 -- input_format_csv_use_default_on_bad_values and the value is NULL.
