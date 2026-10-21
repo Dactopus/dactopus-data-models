@@ -403,6 +403,7 @@ jobs:
       # sensor_community_input. No lookback: a run rereads only the
       # sensor-days loaded since the last one.
       CLICKHOUSE_DATABASE: analytics
+      OSSIE_CLICKHOUSE_URL: http://127.0.0.1:8123/analytics
       DBT_BUILD: >-
         uvx --from ${{ matrix.dbt.from }} ${{ matrix.dbt.with && format('--with {0}', matrix.dbt.with) || '' }}
         dbt build --project-dir sources/sensor_community --profiles-dir sources/sensor_community
@@ -410,6 +411,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
+      - name: Install dactopus-ossie-clickhouse
+        run: uv tool install "dactopus-ossie-clickhouse @ git+https://github.com/Dactopus/dactopus-ossie-clickhouse@v0.8.0"
       # Hand-written rows (tests/sensor_community/fixture.sql) reach the input
       # in the loads they record, each followed by an incremental run; the
       # first build runs on an empty input. The higher of the two copies of
@@ -470,6 +473,10 @@ jobs:
           $DBT_BUILD                 # the snapshots merged
           same
           diff unmerged.tsv full.tsv
+          python3 tests/sensor_community/check_numbers.py
+          OSSIE_CLICKHOUSE_URL=http://127.0.0.1:8123/analytics_full python3 tests/sensor_community/check_numbers.py
+      - name: Validate the Ossie model against the built tables
+        run: dactopus-ossie-clickhouse validate entities/iot.yaml --url "$OSSIE_CLICKHOUSE_URL"
       # The late rows above were loaded now. dbt v2 needs the package's own
       # freshness macros (macros/freshness.sql) to get this far. The age dbt
       # reports must match ClickHouse's own (tests/check_freshness.py), for

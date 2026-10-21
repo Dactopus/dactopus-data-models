@@ -1,8 +1,8 @@
 {{ config(unique_key='sensor_id, reading_date', order_by='(sensor_id, measured_at, measure)') }}
 -- One row per sensor, time and measure. A row of the archive (input.sql)
 -- carries the measures of its sensor's type side by side; it gives as
--- many readings as it has measures that are not NULL, so a humidity the
--- firmware could not take is no reading. Rows of sensor types other than
+-- many readings as it has measures that are not NULL or NaN, so a
+-- humidity the firmware could not take is no reading. Rows of sensor types other than
 -- the four the package reads are left out. Values are as the archive has
 -- them, not cleaned.
 SELECT
@@ -36,5 +36,5 @@ FROM
 )
 ARRAY JOIN [('pm10', P1), ('pm2_5', P2), ('temperature', temperature), ('humidity', humidity),
             ('pressure', pressure)] AS m
-WHERE m.2 IS NOT NULL
+WHERE m.2 IS NOT NULL AND NOT isNaN(m.2)
 {{ sensor_community_query_settings() }}

@@ -29,6 +29,8 @@
 -- Some firmware writes the word "unknown" for a measure it could not
 -- take (a BME280's humidity, 2026-09-25); a loader inserts with
 -- input_format_csv_use_default_on_bad_values and the value is NULL.
+-- Other firmware writes nan (a BME280's humidity, 2026-10-16 07:32:16),
+-- which loads as NaN; the package reads it as no value, like NULL.
 -- The same data is also on ClickHouse's public S3 bucket by month
 -- (clickhouse-public-datasets/sensors/monthly/, ending February 2023), in
 -- the same columns.

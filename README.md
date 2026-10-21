@@ -609,14 +609,23 @@ You need ClickHouse, dbt, dactopus-ossie-clickhouse and
    day at a time: about 20 seconds per day of Australia, two hours for
    a year. It loads a day only from 10:00 UTC of the day after, when
    the archive has published it whole, and stops before a later one. A
-   sensor without a file for a day did not report that day. A sensor
-   that stopped reporting before the first snapshot is not in the
-   snapshots and is not loaded, so a year back holds fewer sensors than
-   the archive. Sensors of other types than SDS011, PMS5003, BME280 and
-   DHT22 are left out: the package does not read them. The script sends the
-   `User-Agent` from `SENSOR_COMMUNITY_AGENT`, or the one shown above;
-   set it to yours. It connects to ClickHouse as `CLICKHOUSE_USER`
-   (default `default`) with `CLICKHOUSE_PASSWORD`. It needs
+   sensor without a file for a day has no readings that day; some
+   sensors the API lists have no file at all (in Australia, the two of
+   site 30186, from September 20 to October 19, 2026). A sensor that
+   stopped reporting before the first snapshot is not in the snapshots
+   and is not loaded, so a year back holds fewer sensors than the
+   archive. The archive's own count of sensors per country and day
+   (`sensors_per_country_per_day.json` at its root) runs higher: for
+   Australia from September 20 to October 19, 2026, by one PMS5003 and
+   one BME280 every day from September 23, and by one SDS011, one or two
+   DHT22, or both, on 23 of the 30 days. Every sensor with files in the
+   snapshots behind that load, taken on October 21, is loaded; the
+   archive does not say which sensors its count includes. Sensors of
+   other types than SDS011, PMS5003, BME280 and DHT22 are left out: the
+   package does not read them. The script sends the `User-Agent` from
+   `SENSOR_COMMUNITY_AGENT`, or the one shown above; set it to yours.
+   It connects to ClickHouse as `CLICKHOUSE_USER` (default `default`)
+   with `CLICKHOUSE_PASSWORD`. It needs
    [uv](https://docs.astral.sh/uv/) for the one package it uses,
    `certifi`: Python from python.org on macOS does not see the system's
    root certificates.

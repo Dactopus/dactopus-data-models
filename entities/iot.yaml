@@ -1,0 +1,271 @@
+version: "0.2.0.dev0"
+
+name: iot
+description: >
+  Devices that measure the environment and their readings: particulate
+  matter, temperature, humidity and air pressure. A reference domain,
+  built from the public data of Sensor.Community, a citizen network of
+  air quality sensors, by the sources/sensor_community package.
+ai_context:
+  instructions: >
+    Every time is UTC and every date is the date in UTC, not the device's
+    local date: a reading near midnight local time can fall on the day
+    before or after. A device is a site, one place with coordinates where a
+    board reports through one or more sensors. Readings are long: one row
+    per sensor, time and measure (readings.measure: pm10, pm2_5,
+    temperature, humidity, pressure). avg_value, min_value and max_value
+    mean something only for one measure at a time: always filter on
+    readings.measure or break the answer down by it, and never average
+    values of different measures together. Units: PM10 and PM2.5 in µg/m³,
+    temperature in °C, relative humidity in %, pressure in Pa (divide by
+    100 for hPa). Values are as the sensors sent them, not cleaned:
+    humidity of 100 in dew and dust peaks in rain are in the data. An
+    indoor device (devices.is_indoor) measures a room, not the outdoor
+    air. Answer over every device unless asked otherwise; in a per-device
+    answer mark the indoor ones, and with an average across devices say
+    that indoor ones are included.
+    The network publishes a day's readings the day after, so the latest
+    reading is hours old even for a device that works. "Silent" or "not
+    reporting" means no reading for the stated time before the latest
+    reading in the data (last_reading_time with no dimension), not before
+    now: get that time first, then filter devices.last_reading_at below it
+    minus the period, and name the time you measured from.
+
+datasets:
+  - name: readings
+    source: readings
+    primary_key: [sensor_id, measured_at, measure]
+    description: >
+      One row per sensor, time and measure: one value of one quantity. A
+      sensor gives several measures at once (a BME280 temperature, humidity
+      and pressure); each is a row. A measure the sensor could not take is
+      no row.
+    ai_context:
+      synonyms: [measurements, observations, telemetry, sensor data, values]
+    fields:
+      - name: device_id
+        expression: {dialects: [{dialect: ANSI_SQL, expression: device_id}]}
+        description: Site the reading was taken at (devices.device_id).
+        datatype: Integer
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [device, site, location, station]
+      - name: sensor_id
+        expression: {dialects: [{dialect: ANSI_SQL, expression: sensor_id}]}
+        description: >
+          Sensor that took the reading. A device has one sensor of each
+          type it carries, usually one for particulate matter and one for
+          temperature and humidity.
+        datatype: Integer
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [sensor, channel]
+      - name: sensor_type
+        expression: {dialects: [{dialect: ANSI_SQL, expression: sensor_type}]}
+        description: >
+          Model of the sensor: SDS011 or PMS5003 for particulate matter,
+          BME280 for temperature, humidity and pressure, DHT22 for
+          temperature and humidity.
+        datatype: String
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [sensor model, sensor kind]
+      - name: measure
+        expression: {dialects: [{dialect: ANSI_SQL, expression: measure}]}
+        description: >
+          Quantity the value is of: pm10 (particles up to 10 µm, µg/m³),
+          pm2_5 (fine particles up to 2.5 µm, µg/m³), temperature (°C),
+          humidity (relative, %) or pressure (Pa).
+        datatype: String
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [quantity, metric, parameter, variable, PM2.5, PM10, fine dust, air pressure, barometric pressure]
+      - name: value
+        expression: {dialects: [{dialect: ANSI_SQL, expression: value}]}
+        description: >
+          The reading, in the unit of its measure (see measure), as the
+          sensor sent it.
+        datatype: Float
+      - name: measured_at
+        expression: {dialects: [{dialect: ANSI_SQL, expression: measured_at}]}
+        description: Time the reading was taken, UTC.
+        datatype: DateTimeTz
+        dimension: {is_time: true}
+        ai_context:
+          synonyms: [time, timestamp, reading time]
+      - name: reading_hour
+        expression: {dialects: [{dialect: ANSI_SQL, expression: "DATE_TRUNC('hour', measured_at)"}]}
+        description: Start of the hour the reading was taken in, UTC.
+        datatype: DateTimeTz
+        dimension: {is_time: true}
+        ai_context:
+          synonyms: [hour, hourly]
+      - name: reading_date
+        expression: {dialects: [{dialect: ANSI_SQL, expression: reading_date}]}
+        description: Date the reading was taken, in UTC.
+        datatype: Date
+        dimension: {is_time: true}
+        ai_context:
+          synonyms: [date, day, daily]
+      - name: reading_week
+        expression: {dialects: [{dialect: ANSI_SQL, expression: "DATE_TRUNC('week', reading_date)"}]}
+        description: First day (Monday) of the week the reading was taken in, UTC.
+        datatype: Date
+        dimension: {is_time: true}
+        ai_context:
+          synonyms: [week, weekly]
+      - name: reading_month
+        expression: {dialects: [{dialect: ANSI_SQL, expression: "DATE_TRUNC('month', reading_date)"}]}
+        description: First day of the month the reading was taken in, UTC.
+        datatype: Date
+        dimension: {is_time: true}
+        ai_context:
+          synonyms: [month, monthly]
+
+  - name: devices
+    source: devices
+    primary_key: [device_id]
+    description: >
+      One row per site: a place with coordinates where a board reports
+      through one or more sensors. Every site the network listed and every
+      site with a reading, including those that have gone silent.
+    ai_context:
+      synonyms: [sites, locations, stations, sensors, devices]
+    fields:
+      - name: device_id
+        expression: {dialects: [{dialect: ANSI_SQL, expression: device_id}]}
+        description: Identifier of the site, the network's location id.
+        datatype: Integer
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [device, site, location id, station]
+      - name: latitude
+        expression: {dialects: [{dialect: ANSI_SQL, expression: latitude}]}
+        description: >
+          Latitude of the site, in degrees. The network coarsens the
+          coordinates of sites not marked exact, so they can be
+          approximate.
+        datatype: Float
+      - name: longitude
+        expression: {dialects: [{dialect: ANSI_SQL, expression: longitude}]}
+        description: Longitude of the site, in degrees; rounded like latitude.
+        datatype: Float
+      - name: altitude
+        expression: {dialects: [{dialect: ANSI_SQL, expression: altitude}]}
+        description: >
+          Height of the site above sea level, in metres, as the network
+          lists it. Empty when not given or when the network has not listed
+          the site.
+        datatype: Float
+        ai_context:
+          synonyms: [elevation, height]
+      - name: country_code
+        expression: {dialects: [{dialect: ANSI_SQL, expression: country_code}]}
+        description: >
+          Country of the site, ISO 3166-1 alpha-2 (AU, NZ, DE). Empty for a
+          site the network has not listed while it was reporting, known
+          only from its readings.
+        datatype: String
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [country]
+      - name: is_indoor
+        expression: {dialects: [{dialect: ANSI_SQL, expression: is_indoor}]}
+        description: >
+          Whether the site is indoors, by the network's latest listing of
+          it. Empty for a site never listed.
+        datatype: Boolean
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [indoor, inside, outdoor, outside]
+      - name: sensor_types
+        expression: {dialects: [{dialect: ANSI_SQL, expression: sensor_types}]}
+        description: >
+          Sensor models at the site, separated by commas in alphabetical
+          order (DHT22, SDS011). Only SDS011, PMS5003, BME280 and DHT22,
+          the models whose readings are here; empty for a site with other
+          sensors only. Filter with LIKE '%BME280%' for one model.
+        datatype: String
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [sensors, sensor models, equipment]
+      - name: first_reading_at
+        expression: {dialects: [{dialect: ANSI_SQL, expression: first_reading_at}]}
+        description: Time of the site's first reading, UTC. Empty for a site without readings.
+        datatype: DateTimeTz
+        dimension: {is_time: true}
+        ai_context:
+          synonyms: [first seen, installed, online since]
+      - name: last_reading_at
+        expression: {dialects: [{dialect: ANSI_SQL, expression: last_reading_at}]}
+        description: >
+          Time of the site's latest reading, UTC. Empty for a site without
+          readings. Silent sites are those whose latest reading is older
+          than a time; measure it from the latest reading in the data (see
+          the model's instructions), not from now.
+        datatype: DateTimeTz
+        dimension: {is_time: true}
+        ai_context:
+          synonyms: [last seen, last report, last contact, silent, offline, not reporting]
+
+relationships:
+  - name: readings_to_devices
+    from: readings
+    to: devices
+    from_columns: [device_id]
+    to_columns: [device_id]
+    ai_context:
+      synonyms: [readings by country, readings indoors and outdoors]
+
+metrics:
+  - name: reading_count
+    expression: {dialects: [{dialect: ANSI_SQL, expression: COUNT(readings.sensor_id)}]}
+    description: Number of readings, one per sensor, time and measure.
+    datatype: Integer
+    ai_context:
+      synonyms: [readings, number of readings, measurements, data points]
+  - name: avg_value
+    expression: {dialects: [{dialect: ANSI_SQL, expression: AVG(readings.value)}]}
+    description: >
+      Average of the readings' values, over readings, not over time: a
+      sensor that reports more often weighs more. Only for one measure at
+      a time (filter on readings.measure or break down by it).
+    datatype: Float
+    ai_context:
+      synonyms: [average, mean, average temperature, average PM2.5, average humidity]
+  - name: min_value
+    expression: {dialects: [{dialect: ANSI_SQL, expression: MIN(readings.value)}]}
+    description: Lowest reading value, for one measure at a time.
+    datatype: Float
+    ai_context:
+      synonyms: [minimum, lowest, coldest]
+  - name: max_value
+    expression: {dialects: [{dialect: ANSI_SQL, expression: MAX(readings.value)}]}
+    description: Highest reading value, for one measure at a time.
+    datatype: Float
+    ai_context:
+      synonyms: [maximum, highest, peak, hottest]
+  - name: reporting_devices
+    expression: {dialects: [{dialect: ANSI_SQL, expression: COUNT(DISTINCT readings.device_id)}]}
+    description: >
+      Number of sites with at least one reading in the period and the
+      filters: the devices that reported.
+    datatype: Integer
+    ai_context:
+      synonyms: [active devices, devices reporting, online devices, reporting sites]
+  - name: last_reading_time
+    expression: {dialects: [{dialect: ANSI_SQL, expression: MAX(readings.measured_at)}]}
+    description: >
+      Time of the latest reading, UTC. Without a dimension, the latest
+      reading in the data: the time silence is measured from.
+    datatype: DateTimeTz
+    ai_context:
+      synonyms: [latest reading, last update, data up to, most recent reading]
+  - name: device_count
+    expression: {dialects: [{dialect: ANSI_SQL, expression: COUNT(devices.device_id)}]}
+    description: >
+      Number of sites, with or without readings in any period; use
+      reporting_devices for the sites that reported in one.
+    datatype: Integer
+    ai_context:
+      synonyms: [devices, number of devices, sites, stations, how many devices]

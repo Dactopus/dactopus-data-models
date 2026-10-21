@@ -16,9 +16,10 @@ SELECT
     nullIf(s.country, '') AS country_code,
     s.indoor AS is_indoor,
     -- The types of the four the package reads seen at the site, in the
-    -- snapshots or in its readings; empty for a site with others only,
-    -- whose readings the package does not read.
-    arraySort(arrayDistinct(arrayConcat(s.sensor_types, r.sensor_types))) AS sensor_types,
+    -- snapshots or in its readings, in alphabetical order and separated
+    -- by ", " (Ossie has no array type); empty for a site with others
+    -- only, whose readings the package does not read.
+    arrayStringConcat(arraySort(arrayDistinct(arrayConcat(s.sensor_types, r.sensor_types))), ', ') AS sensor_types,
     r.first_reading_at AS first_reading_at,
     r.last_reading_at AS last_reading_at
 FROM

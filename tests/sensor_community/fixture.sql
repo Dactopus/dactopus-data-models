@@ -12,7 +12,8 @@
 --        a second before midnight UTC; its file of October 19 loaded twice
 --   102  BME280 1003, New Zealand, indoors: one sensor; a time given twice
 --        in one file with different temperatures; a humidity the firmware
---        could not take (the word unknown, NULL once loaded)
+--        could not take (the word unknown, NULL once loaded); a time with
+--        nan for every measure (NaN once loaded)
 --   103  PMS5003 1004 and SPS30 1005, Australia: three hours without a
 --        reading, then silent from October 18 11:00; SPS30 is outside
 --        the four types the package reads
@@ -79,6 +80,9 @@ INSERT INTO {db:Identifier}.readings VALUES
 (1002, 'DHT22',   101, -33.9,  151.2,  '2026-10-19 06:00:00', NULL, NULL, 12,   100,  NULL,   '2026-10-20 10:30:00'),
 -- The firmware wrote unknown for the humidity: NULL, no humidity reading.
 (1003, 'BME280',  102, -36.85, 174.76, '2026-10-19 12:00:00', NULL, NULL, 23,   NULL, 101200, '2026-10-20 10:30:00'),
+-- The firmware wrote nan for every measure: no reading, and not the
+-- site's latest one.
+(1003, 'BME280',  102, -36.85, 174.76, '2026-10-19 12:30:00', NULL, NULL, nan,  nan,  nan,    '2026-10-20 10:30:00'),
 (1006, 'DHT22',   104, -37.81, 144.96, '2026-10-19 09:00:00', NULL, NULL, 25,   30,   NULL,   '2026-10-20 10:30:00');
 
 -- Site 101's files of October 19 loaded again: the same rows, a later load.
