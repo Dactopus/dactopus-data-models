@@ -682,10 +682,13 @@ You need ClickHouse, dbt, dactopus-ossie-clickhouse and
 
 
    sensors = [(TYPES[t], s, i == "true") for s, t, i in csv.reader(io.StringIO(query(
-       f"SELECT sensor_id, sensor_type, argMax(indoor, snapshot_at) FROM {db}.locations WHERE country = '{country}' "
-       f"AND sensor_type IN ({', '.join(repr(t) for t in TYPES)}) GROUP BY sensor_id, sensor_type FORMAT CSV")))]
+       f"SELECT sensor_id, sensor_type, argMax(indoor, snapshot_at) FROM {db}.locations WHERE country = {{country:String}} "
+       f"AND sensor_type IN ({', '.join(repr(t) for t in TYPES)}) GROUP BY sensor_id, sensor_type FORMAT CSV",
+       param_country=country)))]
    if not sensors:
        sys.exit(f"no sensors of {country} in {db}.locations: take a snapshot first")
+   if not since:
+       sys.exit(f"no readings of {country} in {db}.readings: load the history first")
    pool = concurrent.futures.ThreadPoolExecutor(4)
    day, last = datetime.date.fromisoformat(since), datetime.date.fromisoformat(until)
    if last > PUBLISHED:
