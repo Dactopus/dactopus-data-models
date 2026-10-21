@@ -604,13 +604,16 @@ You need ClickHouse, dbt, dactopus-ossie-clickhouse and
    has the suffix `_indoor`, earlier years are gzipped), and inserts a
    day at a time: about 20 seconds per day of Australia, two hours for
    a year. A sensor without a file for a day did not report that day.
-   Sensors of other types than SDS011, PMS5003, BME280 and DHT22 are
+   A sensor that stopped reporting before the first snapshot is not in
+   the snapshots and is not loaded, so a year back holds fewer sensors
+   than the archive. Sensors of other types than SDS011, PMS5003, BME280 and DHT22 are
    left out: the package does not read them. The script sends the
    `User-Agent` from `SENSOR_COMMUNITY_AGENT`, or the one shown above;
    set it to yours. It connects to ClickHouse as `CLICKHOUSE_USER`
    (default `default`) with `CLICKHOUSE_PASSWORD`. It needs
-   [uv](https://docs.astral.sh/uv/) for the one package it uses, `certifi`: Python from python.org on macOS does
-   not see the system's root certificates.
+   [uv](https://docs.astral.sh/uv/) for the one package it uses,
+   `certifi`: Python from python.org on macOS does not see the system's
+   root certificates.
 
    <details><summary>load_sensor_community.py</summary>
 
@@ -642,14 +645,14 @@ You need ClickHouse, dbt, dactopus-ossie-clickhouse and
        """The file's bytes, None when the archive has no such file."""
        for attempt in range(5):
            try:
-               with urllib.request.urlopen(urllib.request.Request(path, headers={"User-Agent": AGENT}), context=TLS) as r:
+               with urllib.request.urlopen(urllib.request.Request(path, headers={"User-Agent": AGENT}), context=TLS, timeout=60) as r:
                    return r.read()
            except urllib.error.HTTPError as e:
                if e.code == 404:
                    return None
                if e.code < 500 and e.code != 429:
                    raise
-           except (urllib.error.URLError, http.client.HTTPException, TimeoutError):
+           except (OSError, http.client.HTTPException):  # timeouts and resets, while reading too
                pass
            time.sleep(2 ** attempt)  # the archive drops a connection now and then
        sys.exit(f"gave up on {path}")
@@ -675,17 +678,17 @@ You need ClickHouse, dbt, dactopus-ossie-clickhouse and
        f"AND sensor_type IN ({', '.join(repr(t) for t in TYPES)}) GROUP BY sensor_id, sensor_type FORMAT CSV")))]
    if not sensors:
        sys.exit(f"no sensors of {country} in {db}.locations: take a snapshot first")
+   pool = concurrent.futures.ThreadPoolExecutor(4)
    day, last = datetime.date.fromisoformat(since), datetime.date.fromisoformat(until)
    while day <= last:
        out = io.StringIO()
        writer = csv.DictWriter(out, COLUMNS, delimiter=";", extrasaction="ignore", restval="")
        writer.writeheader()
        files = 0
-       with concurrent.futures.ThreadPoolExecutor(4) as pool:
-           for data in pool.map(lambda ks: fetch(day.isoformat(), *ks), sensors):
-               if data:
-                   files += 1
-                   writer.writerows(csv.DictReader(io.StringIO(data.decode()), delimiter=";"))
+       for data in pool.map(lambda ks: fetch(day.isoformat(), *ks), sensors):
+           if data:
+               files += 1
+               writer.writerows(csv.DictReader(io.StringIO(data.decode()), delimiter=";"))
        if files:
            # Some firmware writes the word unknown for a measure it could not
            # take; it becomes NULL.
@@ -697,13 +700,15 @@ You need ClickHouse, dbt, dactopus-ossie-clickhouse and
 
    </details>
 
-4. **Next loads.** Load from the last day loaded to yesterday, and keep
-   the snapshots running; the build is incremental. The last day is
-   loaded again because the archive may still have been publishing it;
-   loading a day twice is harmless: the package reads each reading once.
+4. **Next loads.** Load from the country's last day loaded to
+   yesterday, and keep the snapshots running; the build is incremental.
+   The last day is loaded again because the archive may still have been
+   publishing it; loading a day twice is harmless: the package reads
+   each reading once.
 
    ```bash
-   since=$(clickhouse client --query "SELECT max(toDate(timestamp)) FROM sensor_community_raw.readings HAVING count() > 0")
+   since=$(clickhouse client --query "SELECT max(toDate(timestamp)) FROM sensor_community_raw.readings
+       WHERE sensor_id IN (SELECT sensor_id FROM sensor_community_raw.locations WHERE country = 'AU') HAVING count() > 0")
    uv run --with certifi load_sensor_community.py http://localhost:8123 sensor_community_raw AU "$since" "$(date -u -v-1d +%F)"
    ```
 

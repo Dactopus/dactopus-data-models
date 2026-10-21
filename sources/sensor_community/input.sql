@@ -26,8 +26,8 @@
 -- Some firmware writes the word "unknown" for a measure it could not
 -- take (a BME280's humidity, 2026-09-25); a loader inserts with
 -- input_format_csv_use_default_on_bad_values and the value is NULL.
--- The same month's data is also on ClickHouse's public S3 bucket
--- (clickhouse-public-datasets/sensors/monthly/, ending February 2023) in
+-- The same data is also on ClickHouse's public S3 bucket by month
+-- (clickhouse-public-datasets/sensors/monthly/, ending February 2023), in
 -- the same columns.
 --
 -- locations: the API's snapshot of the last five minutes
@@ -47,8 +47,9 @@
 -- values that differ a little (a BME280 on 2026-09-22, 13.2 and 13.1 °C
 -- at 12:16:34); the package keeps the first row. A deployment may
 -- collapse duplicates with ReplacingMergeTree ORDER BY the keys below;
--- the package does not depend on the engine. loaded_at is filled at insert time; an
--- incremental build rereads what was loaded since its last run.
+-- the package does not depend on the engine. loaded_at is filled at
+-- insert time; an incremental build rereads what was loaded since its
+-- last run.
 --
 -- The database is a query parameter, the package's
 -- sensor_community_input_database:
