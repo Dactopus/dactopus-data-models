@@ -57,9 +57,9 @@ Try the GA4 package on Google's public sample
 [ClickHouse](https://clickhouse.com/docs/install), the
 [gcloud CLI](https://cloud.google.com/sdk/docs/install),
 [uv](https://docs.astral.sh/uv/), dbt v2 (`pip install dbt-oss`) and
-[dactopus-ossie-clickhouse](https://github.com/Dactopus/dactopus-ossie-clickhouse) 0.8.0 or
+[dactopus-ossie-clickhouse](https://github.com/Dactopus/dactopus-ossie-clickhouse) 0.9.1 or
 later with its MCP server
-(`pip install "dactopus-ossie-clickhouse[mcp] @ git+https://github.com/Dactopus/dactopus-ossie-clickhouse@v0.8.0"`).
+(`pip install "dactopus-ossie-clickhouse[mcp] @ git+https://github.com/Dactopus/dactopus-ossie-clickhouse@v0.9.1"`).
 Tested on ClickHouse 26.9.
 
 1. **Export.** A Google Cloud project in the
@@ -992,10 +992,13 @@ Units: PM10 and PM2.5 in µg/m³, temperature in °C, relative humidity in
   tells agents to say so and to offer the outdoor ones
   (`devices.is_indoor`). A site that was never in a snapshot has no
   country and no indoor flag.
-- **Devices without a reading on a date** are found through
-  `devices.last_reading_at`: dactopus-ossie-clickhouse 0.8.0 does not
-  count devices filtered by their readings
+- **Devices by their readings.** `device_count` filtered on a field of
+  `readings` (`readings.reading_date = '2026-10-19'`) counts each site
+  with at least one such reading, as `reporting_devices` does. Sites
+  without a reading on a date cannot be counted: `NOT` in that filter
+  keeps every site with a reading on another date
   ([dactopus-ossie-clickhouse#10](https://github.com/Dactopus/dactopus-ossie-clickhouse/issues/10)).
+  Sites silent since a time are found through `devices.last_reading_at`.
 - **Sensor types**: SDS011, PMS5003, BME280 and DHT22. Readings of other
   types, noise meters among them, are left out.
 - **`devices`** is rebuilt whole on every run (Quick start, step 7).

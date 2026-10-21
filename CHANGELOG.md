@@ -10,7 +10,7 @@ names the Ossie schema version its models carry.
 
 ## [0.5.0] - 2026-10-21
 
-Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.8.0,
+Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.9.1,
 dbt v2 (`dbt-oss` 2.0.8) and dbt v1 (`dbt-core` 1.11 with
 `dbt-clickhouse` 1.10) on ClickHouse 26.9, the WooCommerce package also
 on 26.7. A new domain and its package; GA4, Shopify and WooCommerce
@@ -45,6 +45,11 @@ build the same tables as in 0.4.1, and no rebuild is needed.
 
 - CI: a new push to a pull request cancels the run on its previous push;
   each run on `main` finishes.
+- The README, CONTRIBUTING.md and CI install dactopus-ossie-clickhouse
+  0.9.1 instead of 0.8.0. It counts devices filtered by their readings
+  (README, Limits of the iot model). The models are unchanged, and
+  their questions get the same SQL apart from the setting
+  `transform_null_in = 0`.
 
 ## [0.4.1] - 2026-10-15
 
