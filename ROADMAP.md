@@ -57,6 +57,19 @@ levels, price and quantity. An entity with one row per purchased item
 would answer revenue by product or category, which the model cannot
 answer today. It adds a column to the package's input, a breaking change.
 
+### IoT: local time
+
+The `iot` domain dates every reading in UTC: the source gives a site no
+time zone. A site's time zone from its coordinates would answer "by day"
+in local days, which matters in a country with several zones.
+
+### IoT: `devices` built incrementally
+
+`devices` is rebuilt whole on every run and reads every reading, so its
+build time grows with the history (0.08 seconds for a month of
+Australia). An incremental model would read only the sensor-days a run
+loads; the input and the numbers stay the same.
+
 ### Stream as a dimension
 
 A GA4 property can have a website stream and app streams. The package

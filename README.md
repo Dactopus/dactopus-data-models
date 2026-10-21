@@ -6,13 +6,14 @@
 
 Open data models for e-commerce on [ClickHouse](https://clickhouse.com/docs),
 written in the [Apache Ossie](https://github.com/apache/ossie) semantic model
-format. Two kinds of content:
+format, with IoT devices as a reference domain. Two kinds of content:
 
 - **Canonical entities**: sessions, events and purchases from web
   analytics; orders, their lines, refunds and sales events from the
-  store. They have the same shape whatever the data came from.
+  store; devices and their readings, the reference domain `iot`. They
+  have the same shape whatever the data came from.
 - **Source packages**: each maps one source onto those entities. GA4,
-  Shopify and WooCommerce are available.
+  Shopify, WooCommerce and Sensor.Community are available.
 
 What comes next is in [ROADMAP.md](ROADMAP.md).
 
@@ -21,7 +22,7 @@ once both are mapped, and one query works on both. The same model serves
 BI tools through ClickHouse tables and AI agents through
 [dactopus-ossie-clickhouse](https://github.com/Dactopus/dactopus-ossie-clickhouse).
 
-<a href="https://dactopus.github.io/dactopus-data-models/"><img src="docs/architecture.svg" width="680" alt="How the packages work: the GA4 export, Shopify's orders and a WooCommerce store's order tables are loaded into input tables in your ClickHouse; the dbt packages build the canonical tables; BI tools read them directly and AI agents through dactopus-ossie-clickhouse and the Ossie models."></a>
+<a href="https://dactopus.github.io/dactopus-data-models/"><img src="docs/architecture.svg" width="680" alt="How the packages work: the GA4 export, Shopify's orders, a WooCommerce store's order tables and Sensor.Community's readings are loaded into input tables in your ClickHouse; the dbt packages build the canonical tables; BI tools read them directly and AI agents through dactopus-ossie-clickhouse and the Ossie models."></a>
 
 Click the diagram for the [interactive version](https://dactopus.github.io/dactopus-data-models/):
 what each part does and where it takes its settings from, and one
@@ -34,10 +35,17 @@ purchase followed from GA4 to an AI agent's answer.
 | GA4 (BigQuery export) | `events`, `sessions`, `purchases` | available |
 | Shopify (GraphQL Admin API) | `orders`, `order_lines`, `refunds`, `sales_events` | available |
 | WooCommerce (the store's MySQL tables through CDC) | `orders`, `order_lines`, `refunds`, `sales_events` | available |
+| Sensor.Community (the archive's files and the API's snapshots) | `devices`, `readings` | available, reference domain |
 
 Both order sources map onto the same entities. Where they differ, such as
 which orders the store's reports count, the entities' descriptions say
 how.
+
+`iot` is a reference domain: its entities are drawn from one public
+dataset, the readings of the [Sensor.Community](https://sensor.community/)
+air quality network, and from no business's own data. A field goes into
+them when any network of devices would have it with the same meaning
+([Authoring rules](#authoring-rules)). No second source is planned for it.
 
 ## Quick start
 
@@ -728,13 +736,46 @@ You need ClickHouse, dbt, dactopus-ossie-clickhouse and
 
    </details>
 
-4. **Next loads.** Once a day after 10:00 UTC, load from the day after
-   the country's last day loaded to yesterday, and keep the snapshots
-   running. The build is incremental for `readings`; `devices`, one row
-   per site, is rebuilt whole and reads every reading, so its time grows
-   with the history: 0.08 seconds on a laptop for a month of Australia,
-   2.3 million readings. Each day is loaded once. Loading a day twice by
-   hand is harmless: the package reads each reading once.
+4. **Build** `devices` and `readings` into the target database
+   (`CLICKHOUSE_DATABASE`, default `dactopus`), with the connection
+   settings of GA4's step 3. Every time and date is UTC, so there is no
+   time zone to set.
+
+   ```bash
+   dbt build --project-dir sources/sensor_community --profiles-dir sources/sensor_community
+   ```
+
+5. **Validate** the model against the built tables, and **check** the
+   package's answers: `check_numbers.py` asks 13 questions over the
+   hand-written rows of
+   [`tests/sensor_community/fixture.sql`](tests/sensor_community/fixture.sql),
+   built into databases of their own, and compares the answers with
+   numbers worked out by hand from the rows.
+
+   ```bash
+   dactopus-ossie-clickhouse validate entities/iot.yaml --url http://user:password@host:8123/dactopus
+   clickhouse client --param_db=sensor_community_sample_raw --multiquery < sources/sensor_community/input.sql
+   clickhouse client --param_db=sensor_community_sample_raw --multiquery < tests/sensor_community/fixture.sql
+   CLICKHOUSE_DATABASE=sensor_community_sample dbt build --project-dir sources/sensor_community \
+       --profiles-dir sources/sensor_community --vars '{sensor_community_input_database: sensor_community_sample_raw}'
+   OSSIE_CLICKHOUSE_URL=http://user:password@host:8123/sensor_community_sample python3 tests/sensor_community/check_numbers.py
+   ```
+
+6. **Ask.** Serve `entities/iot.yaml` with `dactopus-ossie-clickhouse serve`
+   at the database of step 4. Try the average temperature at each site
+   over the last week, the devices silent for more than an hour, PM2.5
+   by day, and how many devices reported yesterday. The archive
+   publishes a day the night after, so the latest reading is hours old;
+   the model tells agents to measure silence from it.
+
+7. **Next loads.** Once a day after 10:00 UTC, load from the day after
+   the country's last day loaded to yesterday, keep the snapshots
+   running, and build again. The build is incremental for `readings`;
+   `devices`, one row per site, is rebuilt whole and reads every reading,
+   so its time grows with the history: 0.08 seconds on a laptop for a
+   month of Australia, 2.3 million readings. Each day is loaded once.
+   Loading a day twice by hand is harmless: the package reads each
+   reading once.
 
    ```bash
    since=$(clickhouse client --query "SELECT max(toDate(timestamp)) + 1 FROM sensor_community_raw.readings
@@ -915,19 +956,64 @@ next run completes the order. A store in compatibility mode can drift
 from its legacy storage between runs of `wp wc hpos verify_data
 --re-migrate` (Your store, step 1).
 
+## What the iot model answers
+
+[`entities/iot.yaml`](entities/iot.yaml) has 7 metrics:
+
+- readings: `reading_count`, `avg_value`, `min_value`, `max_value`,
+  `reporting_devices`, `last_reading_time`. They break down by measure
+  (`pm10`, `pm2_5`, `temperature`, `humidity`, `pressure`); the
+  reading's hour, date, week and month; device, sensor and sensor type;
+  and by the device fields below.
+- devices: `device_count`. It breaks down by country, indoor or not,
+  the sensor types a site has, and its first and latest reading.
+
+A device is a site: one place with coordinates, where a board reports
+through one or more sensors. A value metric means something for one
+measure at a time, so the model tells agents to filter or break down by
+`readings.measure` and never to average different measures together.
+Units: PM10 and PM2.5 in µg/m³, temperature in °C, relative humidity in
+%, pressure in Pa.
+
+## Limits of the iot model
+
+- **Time.** Every time is UTC, and a reading's date is its date in UTC.
+  The source gives a site no time zone, and Australia alone has three,
+  so a reading near local midnight falls on another date.
+- **Values** are as the sensors sent them, not cleaned: humidity of 100
+  in dew, dust peaks in rain and a faulty sensor's readings stay (a site
+  in Australia averaged 129.9 °C over a week). The package corrects two
+  things only: `nan` is no reading, and a pressure from 300 to 1,100 is
+  read as hPa and converted to Pa.
+- **Silence** is measured from the latest reading in the data, since the
+  archive publishes a day the day after: "silent for more than an hour"
+  is an hour before that reading.
+- **Indoor sites** count in every average across devices; the model
+  tells agents to say so and to offer the outdoor ones
+  (`devices.is_indoor`). A site that was never in a snapshot has no
+  country and no indoor flag.
+- **Devices without a reading on a date** are found through
+  `devices.last_reading_at`: dactopus-ossie-clickhouse 0.8.0 does not
+  count devices filtered by their readings
+  ([dactopus-ossie-clickhouse#10](https://github.com/Dactopus/dactopus-ossie-clickhouse/issues/10)).
+- **Sensor types**: SDS011, PMS5003, BME280 and DHT22. Readings of other
+  types, noise meters among them, are left out.
+- **`devices`** is rebuilt whole on every run (Quick start, step 7).
+
 ## Use in your dbt project
 
 Add the packages you need to your project's `packages.yml`, pinned to a
 release tag: GA4 and your store's package, here Shopify (for
-WooCommerce, `subdirectory: sources/woocommerce`):
+WooCommerce, `subdirectory: sources/woocommerce`; for Sensor.Community,
+`sources/sensor_community`):
 
 ```yaml
 packages:
   - git: https://github.com/Dactopus/dactopus-data-models.git
-    revision: v0.4.1
+    revision: v0.5.0
     subdirectory: sources/ga4
   - git: https://github.com/Dactopus/dactopus-data-models.git
-    revision: v0.4.1
+    revision: v0.5.0
     subdirectory: sources/shopify
 ```
 
@@ -940,7 +1026,9 @@ The GA4 package writes `events`, `sessions` and `purchases` to your
 target's database and reads its input from `ga4_raw.events`. The Shopify
 package writes `orders`, `order_lines`, `refunds` and `sales_events` and
 reads its input from the four tables in `shopify_raw`; the WooCommerce
-package writes the same tables from the seven in `woocommerce_raw`. Name
+package writes the same tables from the seven in `woocommerce_raw`. The
+Sensor.Community package writes `devices` and `readings` from
+`locations` and `readings` in `sensor_community_raw`. Name
 other databases, and set the store's time zone: without it, every date
 is in UTC and orders near midnight fall on the wrong day. WooCommerce
 also needs the store's currency, and its report settings where they
@@ -999,7 +1087,7 @@ table prefix.
 
 ## Layout
 
-    entities/<domain>.yaml    one Ossie model per domain (web_analytics, commerce)
+    entities/<domain>.yaml    one Ossie model per domain (web_analytics, commerce, iot)
     sources/<source>/         one package per source, a dbt project:
       input.sql               the input table the package accepts
       macros/                 SQL the package's models share
@@ -1069,7 +1157,9 @@ single source (GA4 for events), a field qualifies when its meaning does
 not depend on that source. Where the second source is known but not yet
 packaged, the field must exist there too, checked against its
 documentation. A field only one source has is not modelled until a
-second source needs it.
+second source needs it. A reference domain (`iot`) is built from one
+public dataset with no second source planned: a field qualifies when any
+network of devices would have it with the same meaning.
 
 **Descriptions are part of the model.** Agents answer from descriptions,
 synonyms and `ai_context`. Without them even strong models guess. A dbt
@@ -1112,7 +1202,8 @@ release, after 1.0 in a major one. New fields and metrics are minor, fixes
 are patches.
 
 A deployment pins a tag: the dbt package from the git tag with its
-subdirectory (`sources/ga4`, `sources/shopify`, `sources/woocommerce`),
+subdirectory (`sources/ga4`, `sources/shopify`, `sources/woocommerce`,
+`sources/sensor_community`),
 the Ossie model from the same tag. Upgrading is changing the tag and
 running `dbt build --full-refresh`: a package never writes its input
 tables, so every canonical table rebuilds from them. The changelog marks

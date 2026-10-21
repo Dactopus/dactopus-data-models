@@ -80,7 +80,10 @@ profile and the sample. CI builds into other databases to keep it so.
   field qualifies when its meaning does not depend on that source; where
   the second source is known but not yet packaged, it must exist there
   too, checked against its documentation. A source-only field is not
-  modelled yet. Do not add canonical fields "for completeness".
+  modelled yet. A reference domain (`iot`) is built from one public
+  dataset with no second source planned: a field qualifies when any
+  network of devices would have it with the same meaning. Do not add
+  canonical fields "for completeness".
 - Every field and metric gets a description, and `ai_context` with
   synonyms where an analyst could phrase it differently. Agents answer
   from these; a missing description is a defect, not a style issue.

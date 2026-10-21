@@ -8,6 +8,44 @@ names the Ossie schema version its models carry.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-21
+
+Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.8.0,
+dbt v2 (`dbt-oss` 2.0.8) and dbt v1 (`dbt-core` 1.11 with
+`dbt-clickhouse` 1.10) on ClickHouse 26.9, the WooCommerce package also
+on 26.7. A new domain and its package; GA4, Shopify and WooCommerce
+build the same tables as in 0.4.1, and no rebuild is needed.
+
+### Added
+
+- Ossie model `entities/iot.yaml`, a reference domain built from one
+  public dataset: `readings` (one row per sensor, time and measure:
+  PM10, PM2.5, temperature, humidity, pressure) and `devices` (one row
+  per site, with its country, indoor flag and latest reading), one
+  relationship and 7 metrics. Every time is UTC. The model tells agents
+  to read value metrics one measure at a time, to say when an average
+  across devices includes indoor ones, and to measure silence from the
+  latest reading in the data.
+- Sensor.Community package `sources/sensor_community` over the
+  archive's daily files and the API's snapshots, loaded into the input
+  tables `sources/sensor_community/input.sql` by the README's recipe.
+  Of two rows for one sensor and time it keeps the one with the lower
+  values; `nan` is no reading, and a pressure sent in hPa becomes Pa.
+  `readings` is incremental: a run rereads whole sensor-days loaded
+  since the last one (`sensor_community_lookback_days`, default 3);
+  `devices` is rebuilt whole. Structural checks and freshness of both
+  inputs. Installs from a git tag with
+  `subdirectory: sources/sensor_community`; dbt v2 freshness needs the
+  package in the `dispatch` setting (README).
+- Hand-written Sensor.Community rows and the 13 numbers the model must
+  answer over them (`tests/sensor_community`), checked in CI on both dbt
+  versions, on the incremental and the full build.
+
+### Changed
+
+- CI: a new push to a pull request cancels the run on its previous push;
+  each run on `main` finishes.
+
 ## [0.4.1] - 2026-10-15
 
 Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.8.0,
@@ -317,7 +355,8 @@ ClickHouse 26.9.
 - Hand-written GA4 rows and the numbers the model must answer over them
   (`tests/ga4`), checked in CI on both dbt versions.
 
-[Unreleased]: https://github.com/Dactopus/dactopus-data-models/compare/v0.4.1...HEAD
+[Unreleased]: https://github.com/Dactopus/dactopus-data-models/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/Dactopus/dactopus-data-models/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/Dactopus/dactopus-data-models/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/Dactopus/dactopus-data-models/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/Dactopus/dactopus-data-models/compare/v0.2.1...v0.3.0
