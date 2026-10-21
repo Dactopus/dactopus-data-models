@@ -376,3 +376,97 @@ jobs:
         run: |
           ${DBT_BUILD/dbt build/dbt source freshness}
           python3 tests/check_freshness.py sources/woocommerce "SELECT max(_peerdb_synced_at) FROM woocommerce_input.wp_2_wc_orders"
+
+  sensor_community:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        dbt:
+          - {name: v2, from: "dbt-oss", with: ""}
+          - {name: v1, from: "dbt-core~=1.11.0", with: "dbt-clickhouse"}
+    name: Sensor.Community package (dbt ${{ matrix.dbt.name }})
+    services:
+      clickhouse:
+        image: clickhouse/clickhouse-server:26.9
+        ports: ["8123:8123"]
+        env:
+          CLICKHOUSE_SKIP_USER_SETUP: 1  # passwordless default user over the network
+          # A server time zone other than UTC: nothing may assume UTC.
+          TZ: Asia/Makassar
+        options: >-
+          --health-cmd "wget -qO- http://localhost:8123/ping || exit 1"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+    env:
+      # Databases other than the defaults (sensor_community_raw, dactopus):
+      # nothing may assume a database name. The input database is
+      # sensor_community_input. No lookback: a run rereads only the
+      # sensor-days loaded since the last one.
+      CLICKHOUSE_DATABASE: analytics
+      DBT_BUILD: >-
+        uvx --from ${{ matrix.dbt.from }} ${{ matrix.dbt.with && format('--with {0}', matrix.dbt.with) || '' }}
+        dbt build --project-dir sources/sensor_community --profiles-dir sources/sensor_community
+        --vars {"sensor_community_input_database":"sensor_community_input","sensor_community_lookback_days":0}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      # Hand-written rows (tests/sensor_community/fixture.sql) reach the input
+      # in the loads they record, each followed by an incremental run; the
+      # first build runs on an empty input. The higher of the two copies of
+      # 12:16:34 (temperature 22.2) comes last, with site 101's day loaded
+      # again and the snapshot delivered again: the run must reread the
+      # sensor-days it loads whole and keep 22.1, which a run that weighs
+      # only the new rows would replace. After it, and after a run over
+      # unchanged input, the incremental build must match a full refresh of
+      # the same input row for row. The model's numbers are checked from
+      # entities/iot.yaml (tests/sensor_community/check_numbers.py).
+      - name: Build (models, tests), incremental and full refresh
+        run: |
+          q() { curl -sf http://127.0.0.1:8123/ --data-binary "$1"; }
+          load() { python3 -c "
+          import pathlib, sys, urllib.request
+          for s in pathlib.Path(sys.argv[1]).read_text().split(';\n'):
+              if s.strip():
+                  urllib.request.urlopen('http://127.0.0.1:8123/?param_db=' + sys.argv[2], s.encode())" "$1" "$2"; }
+          # early <table> <rows>, as the fixture loaded them; late <table> <rows>, loaded now
+          early() { q "INSERT INTO sensor_community_input.$1 SELECT * FROM sensor_community_fixture.$1 WHERE $2"; }
+          late() { q "INSERT INTO sensor_community_input.$1 SELECT * REPLACE (now64(6) AS loaded_at) FROM (SELECT * FROM sensor_community_fixture.$1 WHERE $2)"; }
+          # tables <database>: a checksum of each table
+          tables() { for t in devices readings; do
+              q "SELECT '$t', count(), groupBitXor(cityHash64(toString(tuple(*)))) FROM $1.$t FORMAT TSV"; done; }
+          same() {
+              CLICKHOUSE_DATABASE=analytics_full $DBT_BUILD --full-refresh
+              tables analytics > incremental.tsv
+              tables analytics_full > full.tsv
+              cat full.tsv
+              diff incremental.tsv full.tsv; }
+          load sources/sensor_community/input.sql sensor_community_input
+          load sources/sensor_community/input.sql sensor_community_fixture
+          load tests/sensor_community/fixture.sql sensor_community_fixture
+          higher="sensor_id = 1003 AND timestamp = '2026-10-18 12:16:34' AND temperature = 22.2"
+          $DBT_BUILD                 # empty input
+          early locations "snapshot_at = '2026-10-18 10:00:00'"
+          early readings "loaded_at = '2026-10-19 10:30:00' AND NOT ($higher)"
+          $DBT_BUILD                 # October 18 into empty tables
+          early locations "loaded_at = '2026-10-19 10:00:01'"
+          early readings "loaded_at = '2026-10-20 10:30:00'"
+          $DBT_BUILD                 # October 19
+          same
+          late readings "$higher"
+          late readings "loaded_at = '2026-10-20 11:00:00'"
+          late locations "loaded_at = '2026-10-19 10:05:00'"
+          $DBT_BUILD                 # a higher copy of a time, a day and a snapshot again
+          same
+          $DBT_BUILD                 # incremental over unchanged input
+          same
+      # The late rows above were loaded now. dbt v2 needs the package's own
+      # freshness macros (macros/freshness.sql) to get this far. The age dbt
+      # reports must match ClickHouse's own (tests/check_freshness.py), for
+      # each source with freshness.
+      - name: Source freshness
+        run: |
+          ${DBT_BUILD/dbt build/dbt source freshness}
+          for t in readings locations; do
+              ${DBT_BUILD/dbt build/dbt source freshness} --select "source:sensor_community_raw.$t"
+              python3 tests/check_freshness.py sources/sensor_community "SELECT max(loaded_at) FROM sensor_community_input.$t"
+          done

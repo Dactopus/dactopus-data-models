@@ -1,8 +1,8 @@
 -- Input of the Sensor.Community package: two tables, filled from the
 -- project's public data by any loader (README, Quick start). Only the
 -- columns the package reads; a loader may deliver more. Sensor.Community
--- is a citizen network of air quality sensors (https://sensor.community/);
--- its data is under the Open Data Commons Database Contents License
+-- is a citizen network of air quality sensors (https://sensor.community/).
+-- Its data is under the Open Data Commons Database Contents License
 -- (DbCL 1.0), linked from the site's footer (checked 2026-10-18).
 --
 -- readings: the archive's daily CSV files (https://archive.sensor.community/,
@@ -44,16 +44,16 @@
 -- for a User-Agent that names a contact (the wiki, since 2022-11-04).
 --
 -- Times are UTC: the archive's timestamps carry no zone and match the
--- API's, which are UTC. Both tables keep every row they are given;
+-- API's, which are UTC. Both tables keep every row they are given:
 -- delivering a file or a snapshot twice is harmless, the package reads
 -- each (sensor, time) once. A file itself can carry one time twice with
 -- values that differ a little (a BME280 on 2026-09-22, 13.2 and 13.1 °C
 -- at 12:16:34); the package keeps the row with the lower values, the
 -- same one whichever order the rows are stored in. A deployment may
--- collapse duplicates with ReplacingMergeTree ORDER BY the keys below;
--- the package does not depend on the engine. loaded_at is filled at
--- insert time; an incremental build rereads what was loaded since its
--- last run.
+-- collapse duplicates with ReplacingMergeTree ORDER BY the keys below.
+-- The package does not depend on the engine. loaded_at is filled at
+-- insert time; an incremental build rereads the sensor-days loaded since
+-- its last run.
 --
 -- The database is a query parameter, the package's
 -- sensor_community_input_database:

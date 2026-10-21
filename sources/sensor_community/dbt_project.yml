@@ -1,0 +1,20 @@
+name: dactopus_sensor_community
+version: "0.4.1"
+profile: dactopus
+model-paths: ["models"]
+macro-paths: ["macros"]
+vars:
+  # The database holding the input tables (input.sql).
+  sensor_community_input_database: sensor_community_raw
+  # Each incremental run rereads the sensor-days loaded (loaded_at) in this
+  # many days before the latest load it has seen: an insert that began
+  # before that load may commit after it.
+  sensor_community_lookback_days: 3
+models:
+  dactopus_sensor_community:
+    +materialized: incremental
+    +incremental_strategy: delete+insert
+    # A release that changes a model's columns stops an incremental run
+    # with an error rather than leave the old table: run it once with
+    # --full-refresh, as the CHANGELOG says.
+    +on_schema_change: fail
