@@ -591,7 +591,9 @@ You need ClickHouse, dbt, dactopus-ossie-clickhouse and
    `https://data.sensor.community/static/v2/data.json`, 17,500 rows.
 
 3. **Load the history.** The archive publishes one CSV file per sensor
-   and day, the day after, around 08:00 UTC. Save the script below as
+   and day, all of a day at once the night after: between 03:20 and
+   06:00 UTC on every day of 2026 but one, which ended at 08:45. A
+   published file does not change. Save the script below as
    `load_sensor_community.py` and run it with the ClickHouse HTTP URL,
    the input database, the country and the first and last day to load:
 
@@ -603,11 +605,13 @@ You need ClickHouse, dbt, dactopus-ossie-clickhouse and
    sensor's file for each day (four at a time; an indoor sensor's file
    has the suffix `_indoor`, earlier years are gzipped), and inserts a
    day at a time: about 20 seconds per day of Australia, two hours for
-   a year. A sensor without a file for a day did not report that day.
-   A sensor that stopped reporting before the first snapshot is not in
-   the snapshots and is not loaded, so a year back holds fewer sensors
-   than the archive. Sensors of other types than SDS011, PMS5003, BME280 and DHT22 are
-   left out: the package does not read them. The script sends the
+   a year. It loads a day only from 10:00 UTC of the day after, when
+   the archive has published it whole, and stops before a later one. A
+   sensor without a file for a day did not report that day. A sensor
+   that stopped reporting before the first snapshot is not in the
+   snapshots and is not loaded, so a year back holds fewer sensors than
+   the archive. Sensors of other types than SDS011, PMS5003, BME280 and
+   DHT22 are left out: the package does not read them. The script sends the
    `User-Agent` from `SENSOR_COMMUNITY_AGENT`, or the one shown above;
    set it to yours. It connects to ClickHouse as `CLICKHOUSE_USER`
    (default `default`) with `CLICKHOUSE_PASSWORD`. It needs
@@ -627,7 +631,11 @@ You need ClickHouse, dbt, dactopus-ossie-clickhouse and
    TLS = ssl.create_default_context(cafile=certifi.where())
    LOGIN = {"X-ClickHouse-User": os.environ.get("CLICKHOUSE_USER", "default"),
             "X-ClickHouse-Key": os.environ.get("CLICKHOUSE_PASSWORD", "")}
-   THIS_YEAR = str(datetime.datetime.now(datetime.timezone.utc).year)
+   NOW = datetime.datetime.now(datetime.timezone.utc)
+   THIS_YEAR = str(NOW.year)
+   # The archive publishes a day the night after, done by 10:00 UTC; the
+   # last day it has whole.
+   PUBLISHED = (NOW - datetime.timedelta(hours=10)).date() - datetime.timedelta(days=1)
    TYPES = {"SDS011": "sds011", "PMS5003": "pms5003", "BME280": "bme280", "DHT22": "dht22"}
    COLUMNS = ["sensor_id", "sensor_type", "location", "lat", "lon", "timestamp",
               "P1", "P2", "P0", "temperature", "humidity", "pressure", "altitude", "pressure_sealevel"]
@@ -680,6 +688,9 @@ You need ClickHouse, dbt, dactopus-ossie-clickhouse and
        sys.exit(f"no sensors of {country} in {db}.locations: take a snapshot first")
    pool = concurrent.futures.ThreadPoolExecutor(4)
    day, last = datetime.date.fromisoformat(since), datetime.date.fromisoformat(until)
+   if last > PUBLISHED:
+       print(f"the archive may still be publishing the days after {PUBLISHED}: loading to {PUBLISHED}", flush=True)
+       last = PUBLISHED
    while day <= last:
        out = io.StringIO()
        writer = csv.DictWriter(out, COLUMNS, delimiter=";", extrasaction="ignore", restval="")
@@ -700,14 +711,13 @@ You need ClickHouse, dbt, dactopus-ossie-clickhouse and
 
    </details>
 
-4. **Next loads.** Load from the country's last day loaded to
-   yesterday, and keep the snapshots running; the build is incremental.
-   The last day is loaded again because the archive may still have been
-   publishing it; loading a day twice is harmless: the package reads
-   each reading once.
+4. **Next loads.** Once a day after 10:00 UTC, load from the day after
+   the country's last day loaded to yesterday, and keep the snapshots
+   running; the build is incremental. Each day is loaded once. Loading a
+   day twice by hand is harmless: the package reads each reading once.
 
    ```bash
-   since=$(clickhouse client --query "SELECT max(toDate(timestamp)) FROM sensor_community_raw.readings
+   since=$(clickhouse client --query "SELECT max(toDate(timestamp)) + 1 FROM sensor_community_raw.readings
        WHERE sensor_id IN (SELECT sensor_id FROM sensor_community_raw.locations WHERE country = 'AU') HAVING count() > 0")
    uv run --with certifi load_sensor_community.py http://localhost:8123 sensor_community_raw AU "$since" "$(date -u -v-1d +%F)"
    ```
