@@ -55,7 +55,10 @@ profile named `dactopus`. A package ships none: add this one to
 connection from `CLICKHOUSE_HOST`, `CLICKHOUSE_PORT` (HTTP, default
 8123), `CLICKHOUSE_USER` and `CLICKHOUSE_PASSWORD`, and the database the
 tables go to from `CLICKHOUSE_DATABASE` (default `dactopus`). Over TLS,
-as ClickHouse Cloud requires, add `secure: true` and set the HTTPS port.
+as ClickHouse Cloud requires, add `secure: true` and set the HTTPS port,
+and give dactopus-ossie-clickhouse an `https://` URL in place of the
+`http://` ones below: it uses TLS whenever the URL is `https://`, on any
+port.
 
 ```yaml
 dactopus:
@@ -83,9 +86,9 @@ Try the GA4 package on Google's public sample
 [ClickHouse](https://clickhouse.com/docs/install), the
 [gcloud CLI](https://cloud.google.com/sdk/docs/install),
 [uv](https://docs.astral.sh/uv/), dbt v2 (`pip install dbt-oss`) and
-[dactopus-ossie-clickhouse](https://github.com/Dactopus/dactopus-ossie-clickhouse) 0.9.4 or
+[dactopus-ossie-clickhouse](https://github.com/Dactopus/dactopus-ossie-clickhouse) 0.9.5 or
 later with its MCP server
-(`pip install "dactopus-ossie-clickhouse[mcp] @ git+https://github.com/Dactopus/dactopus-ossie-clickhouse@v0.9.4"`).
+(`pip install "dactopus-ossie-clickhouse[mcp] @ git+https://github.com/Dactopus/dactopus-ossie-clickhouse@v0.9.5"`).
 Tested on ClickHouse 26.9.
 
 1. **Export.** A Google Cloud project in the
@@ -1131,8 +1134,8 @@ load or sync an incremental run rereads the input, for inserts that
 commit late.
 
 Point dactopus-ossie-clickhouse at your target's database
-(`--url http://host:8123/<database>`) and take the Ossie models from the
-same tag. On dbt v2 with ClickHouse 26.x, set
+(`--url http://host:8123/<database>`, or `https://` over TLS) and take
+the Ossie models from the same tag. On dbt v2 with ClickHouse 26.x, set
 `custom_settings: {network_compression_method: LZ4}` in your profile, as
 the profile of [Quick start](#quick-start) does: the v2
 ClickHouse adapter (beta) cannot read ClickHouse's default ZSTD

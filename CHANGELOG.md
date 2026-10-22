@@ -10,7 +10,7 @@ names the Ossie schema version its models carry.
 
 ## [0.5.2] - 2026-10-22
 
-Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.9.4,
+Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.9.5,
 dbt v2 (`dbt-oss` 2.0.8) and dbt v1 (`dbt-core` 1.11 with
 `dbt-clickhouse` 1.10) on ClickHouse 26.9. The packages ship no dbt
 profile ([#25](https://github.com/Dactopus/dactopus-data-models/issues/25)).
@@ -31,6 +31,11 @@ Every package builds the same tables as in 0.5.1; no rebuild is needed.
 ### Changed
 
 - CI and the checks build with `tests/profiles.yml`.
+- dactopus-ossie-clickhouse 0.9.5 instead of 0.9.4. It connects over TLS
+  whenever the URL is `https://`, where 0.9.4 did so only on ports 443
+  and 8443 and otherwise sent the user and password in the clear; an
+  `http://` URL on those ports no longer gets TLS. The README's Quick
+  start says to write `https://` over TLS.
 
 ## [0.5.1] - 2026-10-22
 

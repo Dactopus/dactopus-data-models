@@ -172,9 +172,10 @@ maintainer, not by an agent on its own.
 
 `tests/profiles.yml` and the README's sample profile set
 `network_compression_method: LZ4`: the dbt v2 ClickHouse adapter (beta)
-cannot read the ZSTD responses ClickHouse 26.x sends by default. dbt v2's own `dbt source freshness` fails on ClickHouse
-for any project (it selects `now()`, which arrives as an integer); each
-package's `macros/freshness.sql` replaces it with a query that casts both
-times to `DateTime64`. A project that installs the packages reaches these
-macros through the `dispatch` setting in the README. Remove both once a
+cannot read the ZSTD responses ClickHouse 26.x sends by default. dbt v2's
+own `dbt source freshness` fails on ClickHouse for any project (it
+selects `now()`, which arrives as an integer); each package's
+`macros/freshness.sql` replaces it with a query that casts both times to
+`DateTime64`. A project that installs the packages reaches these macros
+through the `dispatch` setting in the README. Remove both once a
 `dbt-oss` release fixes dbt-labs/dbt#16714.
