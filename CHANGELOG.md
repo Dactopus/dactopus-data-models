@@ -15,8 +15,8 @@ dbt v2 (`dbt-oss` 2.0.8) and dbt v1 (`dbt-core` 1.11 with
 `dbt-clickhouse` 1.10) on ClickHouse 26.9. The Sensor.Community package
 answers silence from the API's snapshots
 ([#26](https://github.com/Dactopus/dactopus-data-models/issues/26)).
-The commerce and GA4 models count "today" in the store's time zone when
-served in it
+The README serves the commerce and GA4 models in the zone their dates
+were built in, so that "today" is the store's or the property's date
 ([#31](https://github.com/Dactopus/dactopus-data-models/issues/31)).
 GA4, Shopify and WooCommerce build the same tables as in 0.5.0. No
 rebuild is needed: a `dbt build` replaces the table `devices` with a
@@ -54,7 +54,8 @@ view, from 0.5.0 on both dbt versions.
   `--time-zone` set to the zone the package was built in, so a question
   about today counts the store's date (Use in your dbt project). CI
   validates and checks the Shopify and WooCommerce models with that
-  zone set.
+  zone set, and each asks one more question whose answer depends on it,
+  19 in all.
 
 ## [0.5.0] - 2026-10-21
 

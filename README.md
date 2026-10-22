@@ -192,12 +192,13 @@ dactopus-ossie-clickhouse, as for GA4.
    ```
 
 3. **Validate** the model and **check** its answers: `check_numbers.py`
-   asks 18 questions through dactopus-ossie-clickhouse and compares the answers
-   with numbers worked out by hand from the rows.
+   asks 19 questions through dactopus-ossie-clickhouse, in the zone of
+   step 2, and compares the answers with numbers worked out by hand from
+   the rows.
 
    ```bash
-   dactopus-ossie-clickhouse validate entities/commerce.yaml --url http://user:password@host:8123/shopify_sample
-   OSSIE_CLICKHOUSE_URL=http://user:password@host:8123/shopify_sample python3 tests/shopify/check_numbers.py
+   dactopus-ossie-clickhouse validate entities/commerce.yaml --url http://user:password@host:8123/shopify_sample --time-zone America/New_York
+   OSSIE_CLICKHOUSE_URL=http://user:password@host:8123/shopify_sample OSSIE_CLICKHOUSE_TIME_ZONE=America/New_York python3 tests/shopify/check_numbers.py
    ```
 
 4. **Ask.** Serve `entities/commerce.yaml` in the zone of step 2, so
@@ -433,12 +434,12 @@ on 26.7 and 26.9.
    ```
 
 3. **Validate** the model and **check** its answers: `check_numbers.py`
-   asks 18 questions and compares the answers with numbers worked out by
-   hand from the rows.
+   asks 19 questions, in the zone of step 2, and compares the answers
+   with numbers worked out by hand from the rows.
 
    ```bash
-   dactopus-ossie-clickhouse validate entities/commerce.yaml --url http://user:password@host:8123/woocommerce_sample
-   OSSIE_CLICKHOUSE_URL=http://user:password@host:8123/woocommerce_sample python3 tests/woocommerce/check_numbers.py
+   dactopus-ossie-clickhouse validate entities/commerce.yaml --url http://user:password@host:8123/woocommerce_sample --time-zone America/New_York
+   OSSIE_CLICKHOUSE_URL=http://user:password@host:8123/woocommerce_sample OSSIE_CLICKHOUSE_TIME_ZONE=America/New_York python3 tests/woocommerce/check_numbers.py
    ```
 
 4. **Ask.** Serve `entities/commerce.yaml` in the zone of step 2, so
@@ -849,7 +850,9 @@ the model states in its descriptions:
   several currencies has to read it by `purchases.currency`;
   `revenue_usd` is converted by Google at a rate it does not document.
 - **Dates** are in the GA4 property's time zone; a session that crosses
-  midnight counts once, on the day it started. Properties outside UTC
+  midnight counts once, on the day it started. "Today" is the
+  property's date when the model is served in that zone (Use in your dbt
+  project). Properties outside UTC
   are not tested yet ([#1](https://github.com/Dactopus/dactopus-data-models/issues/1)).
 
 ## What the commerce model answers
@@ -1117,8 +1120,10 @@ built in: `--time-zone` with the value of `shopify_timezone` or
 `woocommerce_timezone`, and for GA4 the property's time zone, in which
 the export writes `event_date` ([export
 schema](https://support.google.com/analytics/answer/7029846)). "Today"
-(`CURRENT_DATE`) is then the date there, and so is a time written
-without an offset; times in answers carry their offset from UTC. Keep
+(`CURRENT_DATE`) is then the date there, and so is a timestamp literal
+without an offset (`TIMESTAMP '2026-10-01 09:00:00'`); a plain string
+compared with a time field (`'2026-10-01 09:00:00'`) is still read in
+UTC. Times in answers carry their offset from UTC. Keep
 the two values the same: a store in New York built with
 `America/New_York` and served in UTC finds no orders of today after
 20:00 (19:00 in winter), when the date in UTC is already tomorrow. The

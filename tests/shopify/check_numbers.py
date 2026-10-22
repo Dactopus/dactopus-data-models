@@ -9,10 +9,11 @@ package over it in the shop's time zone, America/New_York:
     clickhouse client --param_db=shopify_input --multiquery < tests/shopify/fixture.sql
     dbt build --project-dir sources/shopify --profiles-dir sources/shopify \
         --vars '{shopify_input_database: shopify_input, shopify_timezone: America/New_York}'
-    python3 tests/shopify/check_numbers.py
+    OSSIE_CLICKHOUSE_TIME_ZONE=America/New_York python3 tests/shopify/check_numbers.py
 
 $OSSIE_CLICKHOUSE_URL is the ClickHouse URL with the package's target
-database, e.g. http://127.0.0.1:8123/dactopus.
+database, e.g. http://127.0.0.1:8123/dactopus. The model is asked in the
+zone it was built in, $OSSIE_CLICKHOUSE_TIME_ZONE.
 
 Orders in the fixture, test order 1009 left out (sales, refunded):
     August     1001 (110), 1002 (80, guest), 1003 (30, 22:00 on August 31
@@ -84,6 +85,12 @@ CASES = [
     # Revenue without cancelled orders: 1360 - 60 - 70.
     (["-m", "orders", "-m", "revenue", "-f", "orders.is_cancelled = false"],
      [{"orders": 9, "revenue": 1230}]),
+    # Placed before midnight of September 1, a time without an offset, which
+    # is read in the zone the model is served in, New York: August's 1001,
+    # 1002 and 1003 (22:00 on August 31), 110 + 80 + 30. Served in UTC, 1003
+    # (02:00 on September 1 there) is not there: 2 orders, 190.
+    (["-m", "orders", "-m", "revenue", "-f", "orders.order_time < TIMESTAMP '2026-09-01 00:00:00'"],
+     [{"orders": 3, "revenue": 220}]),
     # Refunds by the month they were made, in New York: 1001's gift card in
     # August, a refund of 0 as it is not a return (25 paid back), 1005's 60
     # and 1006's 210 (September 30, October 1 in UTC) in September, 1004's
