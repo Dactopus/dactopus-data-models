@@ -57,9 +57,9 @@ Try the GA4 package on Google's public sample
 [ClickHouse](https://clickhouse.com/docs/install), the
 [gcloud CLI](https://cloud.google.com/sdk/docs/install),
 [uv](https://docs.astral.sh/uv/), dbt v2 (`pip install dbt-oss`) and
-[dactopus-ossie-clickhouse](https://github.com/Dactopus/dactopus-ossie-clickhouse) 0.9.2 or
+[dactopus-ossie-clickhouse](https://github.com/Dactopus/dactopus-ossie-clickhouse) 0.9.4 or
 later with its MCP server
-(`pip install "dactopus-ossie-clickhouse[mcp] @ git+https://github.com/Dactopus/dactopus-ossie-clickhouse@v0.9.2"`).
+(`pip install "dactopus-ossie-clickhouse[mcp] @ git+https://github.com/Dactopus/dactopus-ossie-clickhouse@v0.9.4"`).
 Tested on ClickHouse 26.9.
 
 1. **Export.** A Google Cloud project in the
@@ -156,7 +156,10 @@ Tested on ClickHouse 26.9.
    `dactopus-ossie-clickhouse serve entities/web_analytics.yaml --url ...`, the
    same URL; its [README](https://github.com/Dactopus/dactopus-ossie-clickhouse#readme)
    shows how to connect an agent. Try sessions, conversion rate and
-   revenue, by traffic source, device, country and date.
+   revenue, by traffic source, device, country and date. The sample's
+   dates are in UTC, the default, so the command takes no time zone; an
+   export of your own property takes the property's (Use in your dbt
+   project).
 
 ### Shopify
 
@@ -189,17 +192,24 @@ dactopus-ossie-clickhouse, as for GA4.
    ```
 
 3. **Validate** the model and **check** its answers: `check_numbers.py`
-   asks 18 questions through dactopus-ossie-clickhouse and compares the answers
-   with numbers worked out by hand from the rows.
+   asks 20 questions through dactopus-ossie-clickhouse, in the zone of
+   step 2, and compares the answers with numbers worked out by hand from
+   the rows.
 
    ```bash
-   dactopus-ossie-clickhouse validate entities/commerce.yaml --url http://user:password@host:8123/shopify_sample
-   OSSIE_CLICKHOUSE_URL=http://user:password@host:8123/shopify_sample python3 tests/shopify/check_numbers.py
+   dactopus-ossie-clickhouse validate entities/commerce.yaml --url http://user:password@host:8123/shopify_sample --time-zone America/New_York
+   OSSIE_CLICKHOUSE_URL=http://user:password@host:8123/shopify_sample OSSIE_CLICKHOUSE_TIME_ZONE=America/New_York python3 tests/shopify/check_numbers.py
    ```
 
-4. **Ask.** Serve `entities/commerce.yaml` with `dactopus-ossie-clickhouse serve`.
-   Try net revenue, refunds by month, average order value and repeat
-   orders, by shipping country and new or returning customer.
+4. **Ask.** Serve `entities/commerce.yaml` in the zone of step 2, so
+   that "today" in a question is the shop's date. Try net revenue,
+   refunds by month, average order value and repeat orders, by shipping
+   country and new or returning customer.
+
+   ```bash
+   dactopus-ossie-clickhouse serve entities/commerce.yaml \
+       --url http://user:password@host:8123/shopify_sample --time-zone America/New_York
+   ```
 
 #### Your store
 
@@ -372,9 +382,9 @@ dactopus-ossie-clickhouse, as for GA4.
    ```
 
 4. **Build** with the shop's time zone (Settings > General in the admin)
-   as `shopify_timezone`, then validate and ask as above, at the
-   database the tables went to (`CLICKHOUSE_DATABASE`, default
-   `dactopus`).
+   as `shopify_timezone`, then validate and ask as above, with the same
+   zone as `--time-zone`, at the database the tables went to
+   (`CLICKHOUSE_DATABASE`, default `dactopus`).
 
 5. **Next loads.** Export from an hour before the latest change already
    loaded, load, and build again: the build is incremental. A refund or a
@@ -424,17 +434,23 @@ on 26.7 and 26.9.
    ```
 
 3. **Validate** the model and **check** its answers: `check_numbers.py`
-   asks 18 questions and compares the answers with numbers worked out by
-   hand from the rows.
+   asks 20 questions, in the zone of step 2, and compares the answers
+   with numbers worked out by hand from the rows.
 
    ```bash
-   dactopus-ossie-clickhouse validate entities/commerce.yaml --url http://user:password@host:8123/woocommerce_sample
-   OSSIE_CLICKHOUSE_URL=http://user:password@host:8123/woocommerce_sample python3 tests/woocommerce/check_numbers.py
+   dactopus-ossie-clickhouse validate entities/commerce.yaml --url http://user:password@host:8123/woocommerce_sample --time-zone America/New_York
+   OSSIE_CLICKHOUSE_URL=http://user:password@host:8123/woocommerce_sample OSSIE_CLICKHOUSE_TIME_ZONE=America/New_York python3 tests/woocommerce/check_numbers.py
    ```
 
-4. **Ask.** Serve `entities/commerce.yaml` with `dactopus-ossie-clickhouse serve`.
-   Try sales by month, orders awaiting payment, refunds by month and
-   average order value, by shipping country and new or returning customer.
+4. **Ask.** Serve `entities/commerce.yaml` in the zone of step 2, so
+   that "today" in a question is the store's date. Try sales by month,
+   orders awaiting payment, refunds by month and average order value, by
+   shipping country and new or returning customer.
+
+   ```bash
+   dactopus-ossie-clickhouse serve entities/commerce.yaml \
+       --url http://user:password@host:8123/woocommerce_sample --time-zone America/New_York
+   ```
 
 #### Your store
 
@@ -513,8 +529,9 @@ Cloud's CDC, runs PeerDB but is not checked yet.
    `PEERDB_NULLABLE` is on; the package reads both forms.
 
 4. **Build** with the store's settings as variables, then validate and
-   ask as above, at the database the tables went to
-   (`CLICKHOUSE_DATABASE`, default `dactopus`). The numbers match
+   ask as above, with `woocommerce_timezone` as `--time-zone`, at the
+   database the tables went to (`CLICKHOUSE_DATABASE`, default
+   `dactopus`). The numbers match
    WooCommerce Analytics only while the date type and the excluded
    statuses repeat its settings.
 
@@ -833,7 +850,9 @@ the model states in its descriptions:
   several currencies has to read it by `purchases.currency`;
   `revenue_usd` is converted by Google at a rate it does not document.
 - **Dates** are in the GA4 property's time zone; a session that crosses
-  midnight counts once, on the day it started. Properties outside UTC
+  midnight counts once, on the day it started. "Today" is the
+  property's date when the model is served in that zone (Use in your dbt
+  project). Properties outside UTC
   are not tested yet ([#1](https://github.com/Dactopus/dactopus-data-models/issues/1)).
 
 ## What the commerce model answers
@@ -868,12 +887,8 @@ by `orders.order_month`, what each month's orders earned, later refunds
 included. `revenue` is orders as placed. Amounts are in the store's
 currency.
 
-Dates are in the store's time zone, while "today" in a question
-(`CURRENT_DATE`) is the date in UTC: dactopus-ossie-clickhouse takes the
-zone from the model file, and the model, shared by every store, names
-none. In a store west of UTC, today's orders asked for in the evening
-are tomorrow's in UTC, and there are none. The GA4 model's dates, in the
-property's time zone, have the same limit.
+Dates are in the store's time zone, and so is "today" (`CURRENT_DATE`)
+when the model is served in that zone (Use in your dbt project).
 
 ## Known differences from Shopify's reports
 
@@ -1099,6 +1114,27 @@ same tag. On dbt v2 with ClickHouse 26.x, set
 [`sources/ga4/profiles.yml`](sources/ga4/profiles.yml) does: the v2
 ClickHouse adapter (beta) cannot read ClickHouse's default ZSTD
 responses.
+
+Serve the commerce and GA4 models in the time zone their dates were
+built in: `--time-zone` with the value of `shopify_timezone` or
+`woocommerce_timezone`, and for GA4 the property's time zone, in which
+the export writes `event_date` ([export
+schema](https://support.google.com/analytics/answer/7029846)). "Today"
+(`CURRENT_DATE`) is then the date there, and so is a time written
+without an offset, as a plain string (`'2026-10-01 09:00:00'`) or a
+literal (`TIMESTAMP '2026-10-01 09:00:00'`); times in answers carry
+their offset from UTC. Keep
+the two values the same: a store in New York built with
+`America/New_York` and served in UTC finds no orders of today after
+20:00 (19:00 in winter), when the date in UTC is already tomorrow. The
+iot model's dates are in UTC, the default, so it takes no zone.
+`OSSIE_CLICKHOUSE_TIME_ZONE` sets the zone for every model served from
+that environment, the iot model included; give the option to each model
+instead.
+
+```bash
+dactopus-ossie-clickhouse serve entities/commerce.yaml --url http://host:8123/<database> --time-zone Europe/Berlin
+```
 
 On dbt v2, `dbt source freshness` fails on ClickHouse for every source
 ([dbt-labs/dbt#16714](https://github.com/dbt-labs/dbt/issues/16714)).

@@ -9,10 +9,11 @@ package over it in the store's time zone, America/New_York:
     clickhouse client --param_db=woocommerce_input --multiquery < tests/woocommerce/fixture.sql
     dbt build --project-dir sources/woocommerce --profiles-dir sources/woocommerce \
         --vars '{woocommerce_input_database: woocommerce_input, woocommerce_timezone: America/New_York, woocommerce_currency: USD}'
-    python3 tests/woocommerce/check_numbers.py
+    OSSIE_CLICKHOUSE_TIME_ZONE=America/New_York python3 tests/woocommerce/check_numbers.py
 
 $OSSIE_CLICKHOUSE_URL is the ClickHouse URL with the package's target
-database, e.g. http://127.0.0.1:8123/dactopus.
+database, e.g. http://127.0.0.1:8123/dactopus. The model is asked in the
+zone it was built in, $OSSIE_CLICKHOUSE_TIME_ZONE.
 
 The numbers are those of the store's reports with WooCommerce's default
 settings: an order is dated by its payment and counted unless it is
@@ -85,6 +86,15 @@ CASES = [
      [{"order_month": "2026-08-01", "orders": 2, "revenue": 121, "net_revenue": 121, "refunded_amount": 0},
       {"order_month": "2026-09-01", "orders": 4, "revenue": 180.2, "net_revenue": 117.5, "refunded_amount": 62.7},
       {"order_month": "2026-10-01", "orders": 3, "revenue": 148.5, "net_revenue": 143.5, "refunded_amount": 5}]),
+    # Paid before midnight of September 1, a time without an offset, which is
+    # read in the zone the model is served in, New York: August's 101 88 and
+    # 103 33 (22:10 on August 31). Served in UTC, 103 (02:10 on September 1
+    # there) is not there: 1 order, 88. A plain string reads as the TIMESTAMP
+    # literal does.
+    (["-m", "orders", "-m", "revenue", "-f", "orders.order_time < TIMESTAMP '2026-09-01 00:00:00'"],
+     [{"orders": 2, "revenue": 121}]),
+    (["-m", "orders", "-m", "revenue", "-f", "orders.order_time < '2026-09-01 00:00:00'"],
+     [{"orders": 2, "revenue": 121}]),
     # Sales by the month they happened, as the store's reports count them:
     # each order in the month of its payment, each refund in its own month.
     # August 101 88 + 103 33 = 121. September 104 70.40 + 109 30.80 + 110
