@@ -41,6 +41,13 @@ Sites: 101 Australia, outdoors in the latest snapshot (indoors in the
 earlier one); 102 New Zealand, indoors; 103 Australia, outdoors, silent
 from October 18 11:00; 104 no snapshot, so no country and no indoor flag;
 105 Australia, outdoors, a noise sensor only, no reading.
+
+Last contact, the later of a site's latest report in the snapshots (any
+sensor type) and its latest reading: 101 October 19 12:29:50 (1001's
+second record in the snapshot of 12:30; its latest reading is 06:00);
+102 12:00 (a reading; its latest report is 09:58:10); 103 October 18
+11:00 (a reading; reported 09:59); 104 October 19 09:00 (readings only);
+105 09:58:40 (the noise sensor's report, no reading).
 """
 import pathlib
 import sys
@@ -129,6 +136,24 @@ CASES = [
     # so it has no last reading to compare.
     (["-m", "device_count", "-f", "devices.last_reading_at < '2026-10-19 11:00:00'"],
      [{"device_count": 3}]),
+    # Silence by last contact. The latest contact in the data is 101's
+    # 12:29:50 in the snapshot of October 19 12:30; by readings alone it
+    # would be 102's 12:00, and with the earlier of 1001's two records
+    # 12:28:00, 1002's.
+    (["-m", "last_contact_time"], [{"last_contact_time": "2026-10-19 12:29:50"}]),
+    (["-m", "last_contact_time", "-d", "devices.device_id", "-o", "devices.device_id"],
+     [{"device_id": 101, "last_contact_time": "2026-10-19 12:29:50"},
+      {"device_id": 102, "last_contact_time": "2026-10-19 12:00:00"},
+      {"device_id": 103, "last_contact_time": "2026-10-18 11:00:00"},
+      {"device_id": 104, "last_contact_time": "2026-10-19 09:00:00"},
+      {"device_id": 105, "last_contact_time": "2026-10-19 09:58:40"}]),
+    # Silent for more than an hour before 12:29:50: 103, 104 and 105. By
+    # their latest readings the silent sites would be 101, 103 and 104, and
+    # by the snapshots alone 102, 103 and 105.
+    (["-m", "device_count", "-d", "devices.device_id", "-f", "devices.last_contact_at < '2026-10-19 11:29:50'",
+      "-o", "devices.device_id"],
+     [{"device_id": 103, "device_count": 1}, {"device_id": 104, "device_count": 1},
+      {"device_id": 105, "device_count": 1}]),
     # Five devices: the sites in the snapshots and in the readings. Country
     # and indoor flag from each site's latest snapshot row: 101 is outdoors
     # (indoors by its earlier snapshot, which would make it 2 and 2); 104
