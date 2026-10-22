@@ -279,7 +279,7 @@ metrics:
       last_contact_time.
     datatype: DateTimeTz
     ai_context:
-      synonyms: [latest reading, last update, data up to, most recent reading]
+      synonyms: [latest reading, most recent reading]
   - name: device_count
     expression: {dialects: [{dialect: ANSI_SQL, expression: COUNT(devices.device_id)}]}
     description: >
@@ -297,7 +297,7 @@ metrics:
       when they do not.
     datatype: DateTimeTz
     ai_context:
-      synonyms: [data as of, latest contact, how current, freshest data]
+      synonyms: [data as of, latest contact, how current, freshest data, latest data, last update, data up to]
   - name: minutes_since_last_contact
     expression: {dialects: [{dialect: ANSI_SQL, expression: "DATEDIFF(MINUTE, MAX(devices.last_contact_at), CURRENT_TIMESTAMP)"}]}
     description: >
