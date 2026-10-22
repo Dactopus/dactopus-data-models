@@ -7,6 +7,11 @@ models:
         data_tests: [unique, not_null]
       - {name: latitude, data_tests: [not_null]}
       - {name: longitude, data_tests: [not_null]}
+      - {name: last_contact_at, data_tests: [not_null]}
+  - name: devices_archive
+    columns:
+      - name: device_id
+        data_tests: [unique, not_null]
   - name: readings
     columns:
       - name: device_id

@@ -63,12 +63,13 @@ The `iot` domain dates every reading in UTC: the source gives a site no
 time zone. A site's time zone from its coordinates would answer "by day"
 in local days, which matters in a country with several zones.
 
-### IoT: `devices` built incrementally
+### IoT: `devices_archive` built incrementally
 
-`devices` is rebuilt whole on every run and reads every reading, so its
-build time grows with the history (0.08 seconds for a month of
-Australia). An incremental model would read only the sensor-days a run
-loads; the input and the numbers stay the same.
+`devices_archive`, the table behind the view `devices`, is rebuilt whole
+on every run and reads every reading, so its build time grows with the
+history (0.05 seconds for a month of Australia). An incremental model
+would read only the sensor-days a run loads; the input and the numbers
+stay the same.
 
 ### Stream as a dimension
 

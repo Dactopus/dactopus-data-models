@@ -46,7 +46,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
       - name: Install dactopus-ossie-clickhouse
-        run: uv tool install "dactopus-ossie-clickhouse @ git+https://github.com/Dactopus/dactopus-ossie-clickhouse@v0.9.1"
+        run: uv tool install "dactopus-ossie-clickhouse @ git+https://github.com/Dactopus/dactopus-ossie-clickhouse@v0.9.2"
       # The GA4 sample needs a Google login, so CI runs on hand-written rows
       # (tests/ga4/fixture.sql) and checks the model's answers against numbers
       # derived from them by hand. The first build runs on an empty input, as
@@ -115,7 +115,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
       - name: Install dactopus-ossie-clickhouse
-        run: uv tool install "dactopus-ossie-clickhouse @ git+https://github.com/Dactopus/dactopus-ossie-clickhouse@v0.9.1"
+        run: uv tool install "dactopus-ossie-clickhouse @ git+https://github.com/Dactopus/dactopus-ossie-clickhouse@v0.9.2"
       # Hand-written rows (tests/shopify/fixture.sql) and the model's answers
       # over them, checked against numbers derived by hand; the first build
       # runs on an empty input. The fixture goes into a database of its own
@@ -239,7 +239,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
       - name: Install dactopus-ossie-clickhouse
-        run: uv tool install "dactopus-ossie-clickhouse @ git+https://github.com/Dactopus/dactopus-ossie-clickhouse@v0.9.1"
+        run: uv tool install "dactopus-ossie-clickhouse @ git+https://github.com/Dactopus/dactopus-ossie-clickhouse@v0.9.2"
       # Hand-written CDC rows (tests/woocommerce/fixture.sql); the first
       # build runs on an empty input. The fixture goes into a database of
       # its own and reaches the input in syncs, each followed by an
@@ -412,7 +412,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
       - name: Install dactopus-ossie-clickhouse
-        run: uv tool install "dactopus-ossie-clickhouse @ git+https://github.com/Dactopus/dactopus-ossie-clickhouse@v0.9.1"
+        run: uv tool install "dactopus-ossie-clickhouse @ git+https://github.com/Dactopus/dactopus-ossie-clickhouse@v0.9.2"
       # Hand-written rows (tests/sensor_community/fixture.sql) reach the input
       # in the loads they record, each followed by an incremental run; the
       # first build runs on an empty input. The higher of the two copies of
@@ -426,7 +426,9 @@ jobs:
       # unchanged input, the incremental build must match a full refresh of
       # the same input row for row. Last, ClickHouse merges the snapshots,
       # one row left of each site and sensor, and the tables must not
-      # change. The fixture's own snapshots are never merged: a merge there
+      # change. Then the snapshot of October 19 12:30 arrives with no run
+      # after it: devices is a view, and the model's answers must already
+      # see it. The fixture's own snapshots are never merged: a merge there
       # would drop the earlier snapshot before it is loaded. The model's
       # numbers are checked from entities/iot.yaml
       # (tests/sensor_community/check_numbers.py).
@@ -442,7 +444,7 @@ jobs:
           early() { q "INSERT INTO sensor_community_input.$1 SELECT * FROM sensor_community_fixture.$1 WHERE $2"; }
           late() { q "INSERT INTO sensor_community_input.$1 SELECT * REPLACE (now64(6) AS loaded_at) FROM (SELECT * FROM sensor_community_fixture.$1 WHERE $2)"; }
           # tables <database>: a checksum of each table
-          tables() { for t in devices readings; do
+          tables() { for t in devices_archive devices readings; do
               q "SELECT '$t', count(), groupBitXor(cityHash64(toString(tuple(*)))) FROM $1.$t FORMAT TSV"; done; }
           same() {
               CLICKHOUSE_DATABASE=analytics_full $DBT_BUILD --full-refresh
@@ -477,6 +479,7 @@ jobs:
           $DBT_BUILD                 # the snapshots merged
           same
           diff unmerged.tsv full.tsv
+          late locations "snapshot_at = '2026-10-19 12:30:00'"   # no run after it
           python3 tests/sensor_community/check_numbers.py
           OSSIE_CLICKHOUSE_URL=http://127.0.0.1:8123/analytics_full python3 tests/sensor_community/check_numbers.py
       - name: Validate the Ossie model against the built tables

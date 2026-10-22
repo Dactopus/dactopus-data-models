@@ -43,14 +43,21 @@
 -- (https://data.sensor.community/static/v2/data.json, or one country
 -- through https://data.sensor.community/airrohr/v1/filter/country=<code>),
 -- one row per sensor in the snapshot. It is the only source of a site's
--- country and indoor flag, so a loader takes a snapshot regularly and
--- appends it whole; the package reads the latest row of each site.
+-- country and indoor flag, and the freshest of its last contact, so a
+-- loader takes a snapshot regularly and appends it, one row per sensor:
+-- the API gives a sensor several records in five minutes, and the
+-- README's query keeps the latest. The package reads the latest row of
+-- each site and its latest reported_at.
 -- Nearly every row repeats the site's row in the snapshot before, so the
 -- table is a ReplacingMergeTree: its merges keep, of each site and
 -- sensor, the row of the latest snapshot, and it grows with the sensors,
 -- not with time. The package picks the latest snapshot itself and
 -- answers the same before a merge and after; the history of the
--- snapshots is not kept, and the package does not read it. A site is a
+-- snapshots is not kept, and the package does not read it. An insert
+-- already keeps one row of each site and sensor, the last it carries
+-- (optimize_on_insert, on by default): 0.5.0's query inserted a sensor's
+-- records in the API's order, so the row kept is not necessarily the
+-- latest reported. A site is a
 -- "location" in the project's terms: a place with coordinates where one
 -- board reports through one or more sensors. The API asks for a
 -- User-Agent that names a contact (the wiki, since 2022-11-04).

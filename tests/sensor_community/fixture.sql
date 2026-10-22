@@ -8,12 +8,16 @@
 --
 -- Five sites (devices), their sensors and what each one tests:
 --   101  SDS011 1001 and DHT22 1002, Australia; moved outdoors between the
---        two snapshots, so only the latest row says where it is; a reading
---        a second before midnight UTC; its file of October 19 loaded twice
+--        first two snapshots, so only the latest row says where it is; a
+--        reading a second before midnight UTC; its file of October 19
+--        loaded twice; in the last snapshot, after its latest reading, so
+--        heard from by the snapshots but silent by its readings
 --   102  BME280 1003, New Zealand, indoors: one sensor; a time given twice
 --        in one file with different temperatures; a humidity the firmware
 --        could not take (the word unknown, NULL once loaded); a time with
---        nan for every measure (NaN once loaded)
+--        nan for every measure (NaN once loaded); a reading after its
+--        latest report in the snapshots, so silent by the snapshots but
+--        heard from by its readings
 --   103  PMS5003 1004 and SPS30 1005, Australia: three hours without a
 --        reading, then silent from October 18 11:00; SPS30 is outside
 --        the four types the package reads
@@ -26,12 +30,13 @@
 --
 -- Loads: the snapshot of October 18 10:00 UTC; the files of October 18,
 -- loaded on October 19 at 10:30; the snapshot of October 19 10:00, loaded
--- twice; the files of October 19, loaded on October 20 at 10:30; site 101's
--- files of October 19 again at 11:00; 1006's file of October 19 again at
--- 11:30. Times are UTC.
+-- twice; the snapshot of October 19 12:30; the files of October 19,
+-- loaded on October 20 at 10:30; site 101's files of October 19 again at
+-- 11:00; 1006's file of October 19 again at 11:30. Times are UTC.
 
 -- Snapshot of October 18. The API gives a sensor several records in five
--- minutes: 1001 twice. Site 101 is indoors here, at other coordinates.
+-- minutes: 1001 twice, and the insert keeps the last, 09:59:40. Site 101
+-- is indoors here, at other coordinates.
 INSERT INTO {db:Identifier}.locations VALUES
 -- (location_id, sensor_id, sensor_type, latitude, longitude, altitude, country, indoor,
 --  reported_at, snapshot_at, loaded_at)
@@ -74,6 +79,14 @@ INSERT INTO {db:Identifier}.locations VALUES
 (101, 1002, 'DHT22',        -33.9,  151.2,  35,   'AU', false, '2026-10-19 09:59:21', '2026-10-19 10:00:00', '2026-10-19 10:05:00'),
 (102, 1003, 'BME280',       -36.85, 174.76, NULL, 'NZ', true,  '2026-10-19 09:58:10', '2026-10-19 10:00:00', '2026-10-19 10:05:00'),
 (105, 1007, 'DNMS (Laerm)', -33.85, 151.21, 20,   'AU', false, '2026-10-19 09:58:40', '2026-10-19 10:00:00', '2026-10-19 10:05:00');
+
+-- Snapshot of October 19 12:30, as the query of 0.5.0 took it: 1001
+-- twice, the later record second. The insert keeps the last row of each
+-- sensor (input.sql), 12:29:50. Only site 101 is in it.
+INSERT INTO {db:Identifier}.locations VALUES
+(101, 1001, 'SDS011',       -33.9,  151.2,  35,   'AU', false, '2026-10-19 12:25:10', '2026-10-19 12:30:00', '2026-10-19 12:30:01'),
+(101, 1001, 'SDS011',       -33.9,  151.2,  35,   'AU', false, '2026-10-19 12:29:50', '2026-10-19 12:30:00', '2026-10-19 12:30:01'),
+(101, 1002, 'DHT22',        -33.9,  151.2,  35,   'AU', false, '2026-10-19 12:28:00', '2026-10-19 12:30:00', '2026-10-19 12:30:01');
 
 -- Files of October 19, loaded on October 20 at 10:30.
 INSERT INTO {db:Identifier}.readings VALUES

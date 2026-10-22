@@ -29,7 +29,10 @@ The README describes what works today. Plans go in
     sources/<source>/         one package per source, a dbt project:
       input.sql               the input table the package accepts
       macros/                 SQL the package's models share
-      models/<entity>.sql     one model per entity, named after it
+      models/<entity>.sql     one model per entity, named after it; an
+                              entity that is a view over a built table
+                              has that table as <entity>_<part>.sql
+                              (devices_archive.sql)
       models/schema.yml       structural checks (dbt tests only)
       tests/                  singular dbt tests, for checks a generic
                               test cannot express
@@ -46,8 +49,8 @@ The README describes what works today. Plans go in
 An entity holds schema (grain, keys), field descriptions and simple
 metrics. A package holds the mapping from the source, the refresh
 strategy and structural checks. Never put source-specific logic in an
-entity. A model writes the table `<entity>`, which the entity's `source`
-names. Descriptions live in the Ossie entity only; do not repeat them in
+entity. A model writes the table or view `<entity>`, which the entity's
+`source` names. Descriptions live in the Ossie entity only; do not repeat them in
 `schema.yml`.
 
 No database name is written into a model, an entity or a package: the

@@ -57,9 +57,9 @@ Try the GA4 package on Google's public sample
 [ClickHouse](https://clickhouse.com/docs/install), the
 [gcloud CLI](https://cloud.google.com/sdk/docs/install),
 [uv](https://docs.astral.sh/uv/), dbt v2 (`pip install dbt-oss`) and
-[dactopus-ossie-clickhouse](https://github.com/Dactopus/dactopus-ossie-clickhouse) 0.9.1 or
+[dactopus-ossie-clickhouse](https://github.com/Dactopus/dactopus-ossie-clickhouse) 0.9.2 or
 later with its MCP server
-(`pip install "dactopus-ossie-clickhouse[mcp] @ git+https://github.com/Dactopus/dactopus-ossie-clickhouse@v0.9.1"`).
+(`pip install "dactopus-ossie-clickhouse[mcp] @ git+https://github.com/Dactopus/dactopus-ossie-clickhouse@v0.9.2"`).
 Tested on ClickHouse 26.9.
 
 1. **Export.** A Google Cloud project in the
@@ -580,19 +580,28 @@ You need ClickHouse, dbt, dactopus-ossie-clickhouse and
    ```sql
    INSERT INTO sensor_community_raw.locations (location_id, sensor_id, sensor_type, latitude, longitude, altitude,
        country, indoor, reported_at, snapshot_at)
-   SELECT location.id, sensor.id, sensor.sensor_type.name,
-          toFloat64(location.latitude), toFloat64(location.longitude), toFloat64OrNull(location.altitude),
-          location.country, location.indoor = 1,
-          parseDateTimeBestEffort(timestamp, 'UTC'), now('UTC')
-   FROM url('https://data.sensor.community/airrohr/v1/filter/country=AU',
-            headers('User-Agent' = 'dactopus-data-models loader (https://github.com/Dactopus)'), JSONEachRow,
-            'location Tuple(id UInt32, country String, indoor UInt8, latitude String, longitude String, altitude Nullable(String)),
-             sensor Tuple(id UInt32, sensor_type Tuple(id UInt32, name String, manufacturer String)), timestamp String')
+   SELECT location.id, sensor.id, argMax(sensor.sensor_type.name, t),
+          argMax(toFloat64(location.latitude), t), argMax(toFloat64(location.longitude), t),
+          argMax(toFloat64OrNull(location.altitude), t), argMax(location.country, t), argMax(location.indoor = 1, t),
+          max(t), now('UTC')
+   FROM
+   (
+       SELECT *, parseDateTimeBestEffort(timestamp, 'UTC') AS t
+       FROM url('https://data.sensor.community/airrohr/v1/filter/country=AU',
+                headers('User-Agent' = 'dactopus-data-models loader (https://github.com/Dactopus)'), JSONEachRow,
+                'location Tuple(id UInt32, country String, indoor UInt8, latitude String, longitude String, altitude Nullable(String)),
+                 sensor Tuple(id UInt32, sensor_type Tuple(id UInt32, name String, manufacturer String)), timestamp String')
+   )
+   GROUP BY location.id, sensor.id
    ```
 
    Run it every five minutes (cron, or anything that runs a query on a
-   schedule): each run appends the snapshot whole, a few rows per
-   sensor, and the package reads the latest row of each site. The table
+   schedule): each run appends the snapshot, one row per sensor with its
+   latest record (the API gives a sensor several in five minutes), and
+   the package reads the latest row of each site. A snapshot is visible
+   to the model as soon as it is loaded, with no build: it gives each
+   site's last contact (`devices.last_contact_at`), country and indoor
+   flag. The table
    keeps only each sensor's latest snapshot once ClickHouse merges it
    (`input.sql`), so it stays as large as the country's sensors; the
    history of the snapshots is not kept. The snapshots are also what
@@ -736,9 +745,9 @@ You need ClickHouse, dbt, dactopus-ossie-clickhouse and
 
    </details>
 
-4. **Build** `devices` and `readings` into the target database
-   (`CLICKHOUSE_DATABASE`, default `dactopus`), with the connection
-   settings of GA4's step 3. Every time and date is UTC, so there is no
+4. **Build** `readings`, `devices_archive` and the view `devices` into
+   the target database (`CLICKHOUSE_DATABASE`, default `dactopus`), with
+   the connection settings of GA4's step 3. Every time and date is UTC, so there is no
    time zone to set.
 
    ```bash
@@ -746,7 +755,7 @@ You need ClickHouse, dbt, dactopus-ossie-clickhouse and
    ```
 
 5. **Validate** the model against the built tables, and **check** the
-   package's answers: `check_numbers.py` asks 14 questions over the
+   package's answers: `check_numbers.py` asks 17 questions over the
    hand-written rows of
    [`tests/sensor_community/fixture.sql`](tests/sensor_community/fixture.sql),
    built into databases of their own, and compares the answers with
@@ -766,14 +775,17 @@ You need ClickHouse, dbt, dactopus-ossie-clickhouse and
    over the last week, the devices silent for more than an hour, PM2.5
    by day, and how many devices reported yesterday. The archive
    publishes a day the night after, so the latest reading is hours old;
-   the model tells agents to measure silence from it.
+   the model tells agents to measure silence from the latest contact in
+   the data, which the snapshots keep within minutes of now, and to name
+   that time and its age.
 
 7. **Next loads.** Once a day after 10:00 UTC, load from the day after
    the country's last day loaded to yesterday, keep the snapshots
    running, and build again. The build is incremental for `readings`;
-   `devices`, one row per site, is rebuilt whole and reads every reading,
-   so its time grows with the history: 0.08 seconds on a laptop for a
-   month of Australia, 2.3 million readings. Each day is loaded once.
+   `devices_archive`, one row per site, is rebuilt whole and reads every
+   reading, so its time grows with the history: 0.05 seconds on a laptop
+   for a month of Australia, 2.3 million readings. The snapshots need no
+   build. Each day is loaded once.
    Loading a day twice by hand is harmless: the package reads each
    reading once.
 
@@ -855,6 +867,13 @@ reports show them, a refund or a cancellation in the month it was made;
 by `orders.order_month`, what each month's orders earned, later refunds
 included. `revenue` is orders as placed. Amounts are in the store's
 currency.
+
+Dates are in the store's time zone, while "today" in a question
+(`CURRENT_DATE`) is the date in UTC: dactopus-ossie-clickhouse takes the
+zone from the model file, and the model, shared by every store, names
+none. In a store west of UTC, today's orders asked for in the evening
+are tomorrow's in UTC, and there are none. The GA4 model's dates, in the
+property's time zone, have the same limit.
 
 ## Known differences from Shopify's reports
 
@@ -958,15 +977,18 @@ from its legacy storage between runs of `wp wc hpos verify_data
 
 ## What the iot model answers
 
-[`entities/iot.yaml`](entities/iot.yaml) has 7 metrics:
+[`entities/iot.yaml`](entities/iot.yaml) has 9 metrics:
 
 - readings: `reading_count`, `avg_value`, `min_value`, `max_value`,
   `reporting_devices`, `last_reading_time`. They break down by measure
   (`pm10`, `pm2_5`, `temperature`, `humidity`, `pressure`); the
   reading's hour, date, week and month; device, sensor and sensor type;
   and by the device fields below.
-- devices: `device_count`. It breaks down by country, indoor or not,
-  the sensor types a site has, and its first and latest reading.
+- devices: `device_count`, `last_contact_time`,
+  `minutes_since_last_contact`. They break down by country, indoor or
+  not, the sensor types a site has, its first and latest reading, and its
+  last contact: the later of its latest report in the snapshots and its
+  latest reading.
 
 A device is a site: one place with coordinates, where a board reports
 through one or more sensors. A value metric means something for one
@@ -985,9 +1007,18 @@ Units: PM10 and PM2.5 in µg/m³, temperature in °C, relative humidity in
   in Australia averaged 129.9 °C over a week). The package corrects two
   things only: `nan` is no reading, and a pressure from 300 to 1,100 is
   read as hPa and converted to Pa.
-- **Silence** is measured from the latest reading in the data, since the
-  archive publishes a day the day after: "silent for more than an hour"
-  is an hour before that reading.
+- **Silence** is measured from the latest contact in the data
+  (`last_contact_time`), not from the clock: "silent for more than an
+  hour" is an hour before it, and the agent names it and its age. While
+  the snapshots run it is within minutes of now; without them it is the
+  latest reading, hours old, since the archive publishes a day the day
+  after. The snapshots keep no history, so the answer is exact only if
+  they ran without a gap through the hour before that time.
+- **Snapshots loaded by 0.5.0's query** took several records per
+  sensor, and ClickHouse kept the last of them on insert, in the API's
+  order, which may not be the latest. A sensor silent since then can
+  show a last contact up to five minutes early. The query of step 2
+  keeps each sensor's latest record.
 - **Indoor sites** count in every average across devices; the model
   tells agents to say so and to offer the outdoor ones
   (`devices.is_indoor`). A site that was never in a snapshot has no
@@ -998,10 +1029,11 @@ Units: PM10 and PM2.5 in µg/m³, temperature in °C, relative humidity in
   without a reading on a date cannot be counted: `NOT` in that filter
   keeps every site with a reading on another date
   ([dactopus-ossie-clickhouse#10](https://github.com/Dactopus/dactopus-ossie-clickhouse/issues/10)).
-  Sites silent since a time are found through `devices.last_reading_at`.
+  Sites silent since a time are found through `devices.last_contact_at`.
 - **Sensor types**: SDS011, PMS5003, BME280 and DHT22. Readings of other
   types, noise meters among them, are left out.
-- **`devices`** is rebuilt whole on every run (Quick start, step 7).
+- **`devices_archive`**, behind the view `devices`, is rebuilt whole on
+  every run (Quick start, step 7).
 
 ## Use in your dbt project
 
@@ -1013,10 +1045,10 @@ WooCommerce, `subdirectory: sources/woocommerce`; for Sensor.Community,
 ```yaml
 packages:
   - git: https://github.com/Dactopus/dactopus-data-models.git
-    revision: v0.5.0
+    revision: v0.5.1
     subdirectory: sources/ga4
   - git: https://github.com/Dactopus/dactopus-data-models.git
-    revision: v0.5.0
+    revision: v0.5.1
     subdirectory: sources/shopify
 ```
 
@@ -1030,8 +1062,9 @@ target's database and reads its input from `ga4_raw.events`. The Shopify
 package writes `orders`, `order_lines`, `refunds` and `sales_events` and
 reads its input from the four tables in `shopify_raw`; the WooCommerce
 package writes the same tables from the seven in `woocommerce_raw`. The
-Sensor.Community package writes `devices` and `readings` from
-`locations` and `readings` in `sensor_community_raw`. Name
+Sensor.Community package writes `readings`, `devices_archive` and the
+view `devices` from `locations` and `readings` in
+`sensor_community_raw`. Name
 other databases, and set the store's time zone: without it, every date
 is in UTC and orders near midnight fall on the wrong day. WooCommerce
 also needs the store's currency, and its report settings where they

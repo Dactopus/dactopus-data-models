@@ -25,11 +25,16 @@ ai_context:
     answer mark the indoor ones, and with an average across devices say
     that indoor ones are included.
     The network publishes a day's readings the day after, so the latest
-    reading is hours old even for a device that works. "Silent" or "not
-    reporting" means no reading for the stated time before the latest
-    reading in the data (last_reading_time with no dimension), not before
-    now: get that time first, then filter devices.last_reading_at below it
-    minus the period, and name the time you measured from.
+    reading is hours old even for a device that works; where the API's
+    snapshots run, every few minutes, they tell when each site last
+    reported. "Silent", "offline" or "not reporting" means no contact for
+    the stated time before the latest contact in the data
+    (last_contact_time with no dimension), not before now: get that time
+    and minutes_since_last_contact first, then filter
+    devices.last_contact_at below the time minus the period. Name both in
+    the answer ("as of 00:35 UTC, 3 minutes ago"). An age of hours or days
+    means the snapshots are not running: say so, the answer is about that
+    time.
 
 datasets:
   - name: readings
@@ -199,14 +204,27 @@ datasets:
       - name: last_reading_at
         expression: {dialects: [{dialect: ANSI_SQL, expression: last_reading_at}]}
         description: >
-          Time of the site's latest reading, UTC. Empty for a site without
-          readings. Silent sites are those whose latest reading is older
-          than a time; measure it from the latest reading in the data (see
-          the model's instructions), not from now.
+          Time of the site's latest reading in the archive, UTC, hours old
+          even for a site that works: the archive publishes a day the day
+          after. Empty for a site without readings. For silent or offline
+          sites use last_contact_at.
         datatype: DateTimeTz
         dimension: {is_time: true}
         ai_context:
-          synonyms: [last seen, last report, last contact, silent, offline, not reporting]
+          synonyms: [latest reading, last measurement]
+      - name: last_contact_at
+        expression: {dialects: [{dialect: ANSI_SQL, expression: last_contact_at}]}
+        description: >
+          Time the network last heard from the site, UTC: its latest report
+          in the API's snapshots, from a sensor of any type, or its latest
+          reading, whichever is later. Never empty. Silent sites are those
+          whose last contact is older than a time; measure it from the
+          latest contact in the data (see the model's instructions), not
+          from now.
+        datatype: DateTimeTz
+        dimension: {is_time: true}
+        ai_context:
+          synonyms: [last seen, last contact, last heard from, silent, offline, not reporting, online]
 
 relationships:
   - name: readings_to_devices
@@ -257,7 +275,8 @@ metrics:
     expression: {dialects: [{dialect: ANSI_SQL, expression: MAX(readings.measured_at)}]}
     description: >
       Time of the latest reading, UTC. Without a dimension, the latest
-      reading in the data: the time silence is measured from.
+      reading in the data, hours old: silence is measured from
+      last_contact_time.
     datatype: DateTimeTz
     ai_context:
       synonyms: [latest reading, last update, data up to, most recent reading]
@@ -269,3 +288,22 @@ metrics:
     datatype: Integer
     ai_context:
       synonyms: [devices, number of devices, sites, stations, how many devices]
+  - name: last_contact_time
+    expression: {dialects: [{dialect: ANSI_SQL, expression: MAX(devices.last_contact_at)}]}
+    description: >
+      Time of the latest contact, UTC. Without a dimension, the latest the
+      network heard from any site: the time silence is measured from.
+      Within minutes of now while the snapshots run; the latest reading
+      when they do not.
+    datatype: DateTimeTz
+    ai_context:
+      synonyms: [data as of, latest contact, how current, freshest data]
+  - name: minutes_since_last_contact
+    expression: {dialects: [{dialect: ANSI_SQL, expression: "DATEDIFF(MINUTE, MAX(devices.last_contact_at), CURRENT_TIMESTAMP)"}]}
+    description: >
+      Minutes from the latest contact to now, by the database's clock.
+      Without a dimension, the age of last_contact_time: a few minutes
+      while the snapshots run, hours or days when they do not.
+    datatype: Integer
+    ai_context:
+      synonyms: [how old is the data, data age, minutes ago, how fresh]

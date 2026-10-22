@@ -1,5 +1,5 @@
 name: dactopus_woocommerce
-version: "0.5.0"
+version: "0.5.1"
 profile: dactopus
 model-paths: ["models"]
 macro-paths: ["macros"]
