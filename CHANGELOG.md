@@ -8,6 +8,29 @@ names the Ossie schema version its models carry.
 
 ## [Unreleased]
 
+## [0.5.4] - 2026-10-23
+
+Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.9.5,
+dbt v2 (`dbt-oss` 2.0.8) and dbt v1 (`dbt-core` 1.11 with
+`dbt-clickhouse` 1.10) on ClickHouse 26.9. The view `devices` has the
+same rows as in 0.5.3; `devices_archive` gains coordinates for sites in
+the snapshots. A plain `dbt build` updates both; no `--full-refresh`.
+
+### Changed
+
+- The iot model sends "latest data", "last update" and "data up to" to
+  `last_contact_time`, which `last_reading_time` had for the last two.
+  An agent asked what the data is up to answered with the latest
+  reading, hours older than the latest contact while the snapshots run
+  ([#30](https://github.com/Dactopus/dactopus-data-models/issues/30)).
+- `devices_archive` keeps every site's coordinates at its latest reading
+  and no longer reads `locations`. `devices` still prefers the
+  snapshot's coordinates; a site that leaves the snapshots, as when
+  `locations` is reloaded for other countries, keeps its coordinates
+  instead of NULL until the next run. The view `devices` reads
+  `locations` and `devices_archive` once per question instead of twice
+  ([#29](https://github.com/Dactopus/dactopus-data-models/issues/29)).
+
 ## [0.5.3] - 2026-10-22
 
 Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.9.5,
@@ -474,7 +497,8 @@ ClickHouse 26.9.
 - Hand-written GA4 rows and the numbers the model must answer over them
   (`tests/ga4`), checked in CI on both dbt versions.
 
-[Unreleased]: https://github.com/Dactopus/dactopus-data-models/compare/v0.5.3...HEAD
+[Unreleased]: https://github.com/Dactopus/dactopus-data-models/compare/v0.5.4...HEAD
+[0.5.4]: https://github.com/Dactopus/dactopus-data-models/compare/v0.5.3...v0.5.4
 [0.5.3]: https://github.com/Dactopus/dactopus-data-models/compare/v0.5.2...v0.5.3
 [0.5.2]: https://github.com/Dactopus/dactopus-data-models/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/Dactopus/dactopus-data-models/compare/v0.5.0...v0.5.1
