@@ -5,12 +5,13 @@
 -- run is in it at once: a site's last contact, country and indoor flag
 -- need no build. The snapshots stay as large as the sensors (input.sql),
 -- so reading them at every question is cheap; the readings are read by
--- the build only.
+-- the build only. A full join of the two reads each once.
 SELECT
-    ids.device_id AS device_id,
+    -- Every row has the site on one side at least.
+    assumeNotNull(coalesce(s.location_id, a.device_id)) AS device_id,
     -- Coordinates from the latest snapshot, as the source gives them (it
     -- coarsens those of sites not marked exact); a site without a snapshot
-    -- has its latest reading's.
+    -- has those of its latest row in the archive.
     coalesce(s.latitude, a.latitude) AS latitude,
     coalesce(s.longitude, a.longitude) AS longitude,
     s.altitude AS altitude,
@@ -33,12 +34,6 @@ SELECT
             greatest(a.last_reading_at, s.last_reported_at)) AS last_contact_at
 FROM
 (
-    SELECT device_id FROM {{ ref('devices_archive') }}
-    UNION DISTINCT
-    SELECT DISTINCT location_id FROM {{ source('sensor_community_raw', 'locations') }}
-) AS ids
-LEFT JOIN
-(
     {# The latest snapshot's row, by the snapshot's time, not the load's: a
        snapshot loaded late must not undo a later one. Of its rows, the
        latest reported, then the highest sensor id, then the latest
@@ -60,8 +55,8 @@ LEFT JOIN
         FROM {{ source('sensor_community_raw', 'locations') }}
     )
     GROUP BY location_id
-) AS s ON s.location_id = ids.device_id
-LEFT JOIN {{ ref('devices_archive') }} AS a ON a.device_id = ids.device_id
+) AS s
+FULL OUTER JOIN {{ ref('devices_archive') }} AS a ON a.device_id = s.location_id
 {# The view keeps this setting: a query over it gets NULL, not 0 or an
    empty string, for a site missing on one side. #}
 SETTINGS join_use_nulls = 1

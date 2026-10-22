@@ -12,6 +12,8 @@ models:
     columns:
       - name: device_id
         data_tests: [unique, not_null]
+      - {name: latitude, data_tests: [not_null]}
+      - {name: longitude, data_tests: [not_null]}
   - name: readings
     columns:
       - name: device_id
