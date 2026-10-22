@@ -19,9 +19,10 @@ ai_context:
     if you queried it. gross_purchase_revenue is GA4's gross purchase
     revenue: refunds are not subtracted, while GA4's "Purchase revenue"
     subtracts the refunds the site sent; say so when someone compares it
-    with the GA4 interface. Revenue, tax, shipping and
-    average_gross_purchase_revenue are in the currency the site sent with
-    each purchase (purchases.currency), which GA4 calls "local currency".
+    with the GA4 interface. gross_purchase_revenue,
+    average_gross_purchase_revenue, purchases.tax and purchases.shipping
+    are in the currency the site sent with each purchase
+    (purchases.currency), which GA4 calls "local currency".
     Query gross_purchase_revenue and average_gross_purchase_revenue with
     purchases.currency as a dimension. With one currency, answer in it and
     name its code. With several, give each currency separately and offer
