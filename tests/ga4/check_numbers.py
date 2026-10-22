@@ -31,8 +31,10 @@ CASES = [
        "session_conversion_rate": 0.6, "user_conversion_rate": 0.75}]),
     # Purchases: T1 once + 2 in u2.300 + T9 + T4 = 5. Revenue 100 + 50 + 30
     # + 20 = 200, T9 has none; average over the 4 with a value = 50.
-    (["-m", "purchases", "-m", "revenue", "-m", "revenue_usd", "-m", "average_order_value"],
-     [{"purchases": 5, "revenue": 200, "revenue_usd": 220, "average_order_value": 50}]),
+    (["-m", "purchases", "-m", "gross_purchase_revenue", "-m", "gross_purchase_revenue_usd",
+      "-m", "average_gross_purchase_revenue"],
+     [{"purchases": 5, "gross_purchase_revenue": 200, "gross_purchase_revenue_usd": 220,
+       "average_gross_purchase_revenue": 50}]),
     # The last-click record wins (u1.100 newsletter, not google); old exports
     # take the session's first source (u1.200 google/organic, u2.300
     # google/cpc); none at all is (not set) (u3.400, u5.300).
@@ -41,19 +43,20 @@ CASES = [
       {"source": "newsletter", "sessions": 1}]),
     # T9 has no value: (not set) has no revenue. T4 has no session, so no
     # source either.
-    (["-m", "revenue", "-d", "sessions.source_medium", "-o", "sessions.source_medium"],
-     [{"source_medium": "(not set) / (not set)", "revenue": None},
-      {"source_medium": "google / cpc", "revenue": 80},
-      {"source_medium": "newsletter / email", "revenue": 100},
-      {"source_medium": None, "revenue": 20}]),
+    (["-m", "gross_purchase_revenue", "-d", "sessions.source_medium", "-o", "sessions.source_medium"],
+     [{"source_medium": "(not set) / (not set)", "gross_purchase_revenue": None},
+      {"source_medium": "google / cpc", "gross_purchase_revenue": 80},
+      {"source_medium": "newsletter / email", "gross_purchase_revenue": 100},
+      {"source_medium": None, "gross_purchase_revenue": 20}]),
     # Two currencies: EUR is T1 100 + u2.300's 50 + 30 = 180 over 3
     # purchases, GBP is T4 20; T9 has neither value nor currency. The total
     # of 200 above adds both, which is why the model breaks revenue down by
     # currency.
-    (["-m", "purchases", "-m", "revenue", "-d", "purchases.currency", "-o", "purchases.currency"],
-     [{"currency": "EUR", "purchases": 3, "revenue": 180},
-      {"currency": "GBP", "purchases": 1, "revenue": 20},
-      {"currency": None, "purchases": 1, "revenue": None}]),
+    (["-m", "purchases", "-m", "gross_purchase_revenue", "-d", "purchases.currency",
+      "-o", "purchases.currency"],
+     [{"currency": "EUR", "purchases": 3, "gross_purchase_revenue": 180},
+      {"currency": "GBP", "purchases": 1, "gross_purchase_revenue": 20},
+      {"currency": None, "purchases": 1, "gross_purchase_revenue": None}]),
     # u1.200 crosses midnight and belongs to March 1.
     (["-m", "sessions", "-d", "sessions.session_date", "-o", "sessions.session_date"],
      [{"session_date": "2025-03-01", "sessions": 2}, {"session_date": "2025-03-02", "sessions": 3}]),

@@ -16,15 +16,25 @@ ai_context:
     its numbers can be slightly different. "Conversion rate" without a
     qualifier means session_conversion_rate; name the definition in the
     answer and mention user_conversion_rate by name, giving its value only
-    if you queried it. Revenue, tax, shipping and average_order_value are
-    in the currency the site sent with each purchase (purchases.currency),
-    which GA4 calls "local currency". Query revenue and average_order_value
-    with purchases.currency as a dimension. With one currency, answer in it
-    and name its code. With several, give each currency separately and
-    offer revenue_usd for a single total; never add up amounts in
-    different currencies. Use revenue_usd also when asked for US dollars.
-    Name the currency by the code purchases.currency returns; do not guess
-    a currency sign.
+    if you queried it. gross_purchase_revenue is GA4's gross purchase
+    revenue: refunds are not subtracted, while GA4's "Purchase revenue"
+    subtracts the refunds the site sent; say so when someone compares it
+    with the GA4 interface. gross_purchase_revenue,
+    average_gross_purchase_revenue, purchases.tax and purchases.shipping
+    are in the currency the site sent with each purchase
+    (purchases.currency), which GA4 calls "local currency".
+    Query gross_purchase_revenue and average_gross_purchase_revenue with
+    purchases.currency as a dimension. With one currency, answer in it and
+    name its code. With several, give each currency separately and offer
+    gross_purchase_revenue_usd for a single total; never add up amounts in
+    different currencies. Use gross_purchase_revenue_usd also when asked
+    for US dollars. Name the currency by the code purchases.currency
+    returns; do not guess a currency sign. When this model is served
+    together with the commerce model, questions about sales, revenue,
+    orders or average order value mean the store's figures there; answer
+    them from it alone. The metrics here answer what web analytics
+    recorded, and a comparison of the two names both; any amount from
+    here goes by purchases.currency or as gross_purchase_revenue_usd.
 
 datasets:
   - name: sessions
@@ -163,7 +173,7 @@ datasets:
       reloaded or opened twice sends the same purchase again; repeats with
       the same transaction id from the same user count once, as in GA4.
     ai_context:
-      synonyms: [transactions, orders, conversions, sales]
+      synonyms: [conversions, ecommerce purchases, web purchases]
     fields:
       - name: purchase_key
         expression: {dialects: [{dialect: ANSI_SQL, expression: purchase_key}]}
@@ -363,32 +373,37 @@ metrics:
     description: Number of purchases recorded on the site.
     datatype: Integer
     ai_context:
-      synonyms: [transactions, orders, number of orders, conversions]
-  - name: revenue
+      synonyms: [conversions, ecommerce purchases, number of purchases]
+  - name: gross_purchase_revenue
     expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(purchases.revenue)}]}
     description: >
-      Total value of purchases in their currency (purchases.currency).
-      Amounts in different currencies are added as they are: break revenue
-      down by purchases.currency, or use revenue_usd for a single total.
-      Purchases the site sent without a value add nothing.
+      Total value of purchases as the site sent them, in their currency
+      (purchases.currency): GA4's gross purchase revenue. Refunds are not
+      subtracted; GA4's "Purchase revenue" subtracts the refunds the site
+      sent, so it is lower when there were any. Amounts in different
+      currencies are added as they are: break it down by
+      purchases.currency, or use gross_purchase_revenue_usd for a single
+      total. Purchases the site sent without a value add nothing.
     datatype: Float
     ai_context:
-      synonyms: [sales, turnover, purchase revenue, total revenue, income]
-  - name: revenue_usd
+      synonyms: [purchase revenue, ecommerce revenue, tracked revenue, web revenue, GA4 revenue]
+  - name: gross_purchase_revenue_usd
     expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(purchases.revenue_usd)}]}
-    description: Total value of purchases in US dollars, converted by Google.
+    description: >
+      Total value of purchases in US dollars, converted by Google; refunds
+      are not subtracted, as in gross_purchase_revenue.
     datatype: Float
     ai_context:
-      synonyms: [revenue in dollars, USD revenue]
-  - name: average_order_value
+      synonyms: [purchase revenue in dollars, USD purchase revenue, web revenue in USD]
+  - name: average_gross_purchase_revenue
     expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(purchases.revenue) / COUNT(purchases.revenue)}]}
     description: >
       Average value of a purchase over purchases that have a value, in
-      their currency (purchases.currency); break it down by currency when
-      there are several.
+      their currency (purchases.currency), refunds not subtracted; break it
+      down by currency when there are several.
     datatype: Float
     ai_context:
-      synonyms: [AOV, average order, average check, basket size]
+      synonyms: [average purchase revenue, average purchase value]
   - name: events
     expression: {dialects: [{dialect: ANSI_SQL, expression: COUNT(events.event_name)}]}
     description: Number of recorded actions; filter by event_name for a specific one.
