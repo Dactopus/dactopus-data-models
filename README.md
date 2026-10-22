@@ -1007,11 +1007,11 @@ Units: PM10 and PM2.5 in µg/m³, temperature in °C, relative humidity in
   latest reading, hours old, since the archive publishes a day the day
   after. The snapshots keep no history, so the answer is exact only if
   they ran without a gap through the hour before that time.
-- **Snapshots loaded by 0.5.0's query** hold several rows per sensor.
-  Once ClickHouse merges them, the row a sensor keeps may not be its
-  latest record, so a sensor silent since then can show a last contact
-  up to five minutes early. Snapshots taken with the query of step 2
-  have one row per sensor.
+- **Snapshots loaded by 0.5.0's query** took several records per
+  sensor, and ClickHouse kept the last of them on insert, in the API's
+  order, which may not be the latest. A sensor silent since then can
+  show a last contact up to five minutes early. The query of step 2
+  keeps each sensor's latest record.
 - **Indoor sites** count in every average across devices; the model
   tells agents to say so and to offer the outdoor ones
   (`devices.is_indoor`). A site that was never in a snapshot has no

@@ -43,7 +43,7 @@ view, from 0.5.0 on both dbt versions.
 - The snapshot query (README, Quick start, Sensor.Community, step 2)
   keeps one row per sensor, its latest record. Snapshots loaded by the
   query of 0.5.0 can show a sensor's last contact up to five minutes
-  early once merged (README, Limits of the iot model).
+  early (README, Limits of the iot model).
 
 ## [0.5.0] - 2026-10-21
 

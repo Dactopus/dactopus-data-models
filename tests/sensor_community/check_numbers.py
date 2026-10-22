@@ -138,8 +138,8 @@ CASES = [
      [{"device_count": 3}]),
     # Silence by last contact. The latest contact in the data is 101's
     # 12:29:50 in the snapshot of October 19 12:30; by readings alone it
-    # would be 102's 12:00, and with the earlier of 1001's two records
-    # 12:28:00, 1002's.
+    # would be 102's 12:00, and had the insert kept the earlier of 1001's
+    # two records, 12:28:00, 1002's.
     (["-m", "last_contact_time"], [{"last_contact_time": "2026-10-19 12:29:50"}]),
     (["-m", "last_contact_time", "-d", "devices.device_id", "-o", "devices.device_id"],
      [{"device_id": 101, "last_contact_time": "2026-10-19 12:29:50"},

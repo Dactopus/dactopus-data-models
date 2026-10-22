@@ -53,9 +53,11 @@
 -- sensor, the row of the latest snapshot, and it grows with the sensors,
 -- not with time. The package picks the latest snapshot itself and
 -- answers the same before a merge and after; the history of the
--- snapshots is not kept, and the package does not read it. A snapshot
--- with several rows for one sensor (0.5.0's query) is the exception: a
--- merge keeps one of them, not necessarily the latest reported. A site is a
+-- snapshots is not kept, and the package does not read it. An insert
+-- already keeps one row of each site and sensor, the last it carries
+-- (optimize_on_insert, on by default): 0.5.0's query inserted a sensor's
+-- records in the API's order, so the row kept is not necessarily the
+-- latest reported. A site is a
 -- "location" in the project's terms: a place with coordinates where one
 -- board reports through one or more sensors. The API asks for a
 -- User-Agent that names a contact (the wiki, since 2022-11-04).

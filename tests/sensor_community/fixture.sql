@@ -35,7 +35,8 @@
 -- 11:00; 1006's file of October 19 again at 11:30. Times are UTC.
 
 -- Snapshot of October 18. The API gives a sensor several records in five
--- minutes: 1001 twice. Site 101 is indoors here, at other coordinates.
+-- minutes: 1001 twice, and the insert keeps the last, 09:59:40. Site 101
+-- is indoors here, at other coordinates.
 INSERT INTO {db:Identifier}.locations VALUES
 -- (location_id, sensor_id, sensor_type, latitude, longitude, altitude, country, indoor,
 --  reported_at, snapshot_at, loaded_at)
@@ -79,8 +80,9 @@ INSERT INTO {db:Identifier}.locations VALUES
 (102, 1003, 'BME280',       -36.85, 174.76, NULL, 'NZ', true,  '2026-10-19 09:58:10', '2026-10-19 10:00:00', '2026-10-19 10:05:00'),
 (105, 1007, 'DNMS (Laerm)', -33.85, 151.21, 20,   'AU', false, '2026-10-19 09:58:40', '2026-10-19 10:00:00', '2026-10-19 10:05:00');
 
--- Snapshot of October 19 12:30, as the query of 0.5.0 loaded it: 1001
--- twice, the later record second. Only site 101 is in it.
+-- Snapshot of October 19 12:30, as the query of 0.5.0 took it: 1001
+-- twice, the later record second. The insert keeps the last row of each
+-- sensor (input.sql), 12:29:50. Only site 101 is in it.
 INSERT INTO {db:Identifier}.locations VALUES
 (101, 1001, 'SDS011',       -33.9,  151.2,  35,   'AU', false, '2026-10-19 12:25:10', '2026-10-19 12:30:00', '2026-10-19 12:30:01'),
 (101, 1001, 'SDS011',       -33.9,  151.2,  35,   'AU', false, '2026-10-19 12:29:50', '2026-10-19 12:30:00', '2026-10-19 12:30:01'),
