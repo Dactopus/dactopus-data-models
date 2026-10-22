@@ -23,12 +23,13 @@ the snapshots. A plain `dbt build` updates both; no `--full-refresh`.
   An agent asked what the data is up to answered with the latest
   reading, hours older than the latest contact while the snapshots run
   ([#30](https://github.com/Dactopus/dactopus-data-models/issues/30)).
-- `devices_archive` keeps every site's coordinates at its latest reading
-  and no longer reads `locations`. `devices` still prefers the
-  snapshot's coordinates; a site that leaves the snapshots, as when
-  `locations` is reloaded for other countries, keeps its coordinates;
-  in 0.5.3 they were NULL until the next run. The view `devices` reads
-  `locations` and `devices_archive` once per question instead of twice
+- `devices_archive` keeps every site's coordinates from its latest row
+  in the archive and no longer reads `locations`. `devices` still
+  prefers the snapshot's coordinates; a site that leaves the snapshots,
+  as when `locations` is reloaded for other countries, keeps its
+  coordinates; in 0.5.3 they were NULL until the next run. The view
+  `devices` reads `locations` and `devices_archive` once per question
+  instead of twice
   ([#29](https://github.com/Dactopus/dactopus-data-models/issues/29)).
 
 ## [0.5.3] - 2026-10-22

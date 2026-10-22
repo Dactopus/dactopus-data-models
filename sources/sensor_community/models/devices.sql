@@ -11,7 +11,7 @@ SELECT
     assumeNotNull(coalesce(s.location_id, a.device_id)) AS device_id,
     -- Coordinates from the latest snapshot, as the source gives them (it
     -- coarsens those of sites not marked exact); a site without a snapshot
-    -- has its latest reading's.
+    -- has those of its latest row in the archive.
     coalesce(s.latitude, a.latitude) AS latitude,
     coalesce(s.longitude, a.longitude) AS longitude,
     s.altitude AS altitude,
