@@ -8,6 +8,41 @@ names the Ossie schema version its models carry.
 
 ## [Unreleased]
 
+## [0.5.3] - 2026-10-22
+
+Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.9.5,
+dbt v2 (`dbt-oss` 2.0.8) and dbt v1 (`dbt-core` 1.11 with
+`dbt-clickhouse` 1.10) on ClickHouse 26.9. The GA4 and commerce models
+can be served together
+([#28](https://github.com/Dactopus/dactopus-data-models/issues/28)).
+No table or column changes; no rebuild is needed.
+
+### Changed
+
+- The GA4 model's revenue metrics are renamed after GA4's own terms, so
+  that they no longer clash with the commerce model's `revenue` and
+  `average_order_value`, which the executor refused to serve in one
+  model. This breaks saved questions and dashboards that ask for the old
+  names; update them:
+
+  | Old | New |
+  | --- | --- |
+  | `revenue` | `gross_purchase_revenue` |
+  | `revenue_usd` | `gross_purchase_revenue_usd` |
+  | `average_order_value` | `average_gross_purchase_revenue` |
+
+  The names say gross because refunds are not subtracted: GA4's
+  "Purchase revenue" subtracts the refunds the site sent, "Gross
+  purchase revenue" does not, and the model reads purchase events only.
+  Expressions and numbers are unchanged, and so are the fields
+  (`purchases.revenue`, `purchases.revenue_usd`).
+- Store terms (sales, orders, number of orders, transactions, income,
+  turnover, AOV, average order, average check) leave the GA4 metrics'
+  and datasets' synonyms, so an agent served both models finds the
+  store's figures for them. The GA4 model's instructions say so too.
+- CI validates every model together, so a name defined in two files
+  fails the build.
+
 ## [0.5.2] - 2026-10-22
 
 Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.9.5,
@@ -439,7 +474,8 @@ ClickHouse 26.9.
 - Hand-written GA4 rows and the numbers the model must answer over them
   (`tests/ga4`), checked in CI on both dbt versions.
 
-[Unreleased]: https://github.com/Dactopus/dactopus-data-models/compare/v0.5.2...HEAD
+[Unreleased]: https://github.com/Dactopus/dactopus-data-models/compare/v0.5.3...HEAD
+[0.5.3]: https://github.com/Dactopus/dactopus-data-models/compare/v0.5.2...v0.5.3
 [0.5.2]: https://github.com/Dactopus/dactopus-data-models/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/Dactopus/dactopus-data-models/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/Dactopus/dactopus-data-models/compare/v0.4.1...v0.5.0

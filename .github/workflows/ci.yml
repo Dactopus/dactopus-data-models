@@ -47,6 +47,10 @@ jobs:
       - uses: astral-sh/setup-uv@v5
       - name: Install dactopus-ossie-clickhouse
         run: uv tool install "dactopus-ossie-clickhouse @ git+https://github.com/Dactopus/dactopus-ossie-clickhouse@v0.9.5"
+      # A deployment with several packages serves their models as one, and
+      # the executor refuses a name defined in two files. No server needed.
+      - name: Validate every Ossie model together
+        run: dactopus-ossie-clickhouse validate entities/*.yaml
       # The GA4 sample needs a Google login, so CI runs on hand-written rows
       # (tests/ga4/fixture.sql) and checks the model's answers against numbers
       # derived from them by hand. The first build runs on an empty input, as

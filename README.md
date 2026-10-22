@@ -849,8 +849,9 @@ metrics:
   `session_conversion_rate`, `user_conversion_rate`, `page_views`. They
   break down by the session's date, week and month; traffic source,
   medium and campaign; landing page, device and country.
-- purchases: `purchases`, `revenue`, `revenue_usd`, `average_order_value`.
-  They break down by the session fields above, and by the purchase's own
+- purchases: `purchases`, `gross_purchase_revenue`,
+  `gross_purchase_revenue_usd`, `average_gross_purchase_revenue`. They
+  break down by the session fields above, and by the purchase's own
   date, week, month and currency.
 - events: `events`. It breaks down by the session fields above, and by
   the event's own date, name, page, device and country.
@@ -874,7 +875,12 @@ the model states in its descriptions:
   by the same user with the same transaction id counts once, as in GA4.
 - **Revenue** is in the currency of each purchase. A store that sells in
   several currencies has to read it by `purchases.currency`;
-  `revenue_usd` is converted by Google at a rate it does not document.
+  `gross_purchase_revenue_usd` is converted by Google at a rate it does
+  not document.
+- **Refunds** are not subtracted: the model reads purchase events only.
+  The metrics are GA4's gross purchase revenue; the interface's
+  "Purchase revenue" subtracts the refunds the site sent to GA4, so it
+  is lower when there were any ([GA4 metrics](https://support.google.com/analytics/answer/9143382)).
 - **Dates** are in the GA4 property's time zone; a session that crosses
   midnight counts once, on the day it started. "Today" is the
   property's date when the model is served in that zone (Use in your dbt
@@ -1086,10 +1092,10 @@ WooCommerce, `subdirectory: sources/woocommerce`; for Sensor.Community,
 ```yaml
 packages:
   - git: https://github.com/Dactopus/dactopus-data-models.git
-    revision: v0.5.2
+    revision: v0.5.3
     subdirectory: sources/ga4
   - git: https://github.com/Dactopus/dactopus-data-models.git
-    revision: v0.5.2
+    revision: v0.5.3
     subdirectory: sources/shopify
 ```
 
@@ -1161,6 +1167,20 @@ instead.
 ```bash
 dactopus-ossie-clickhouse serve entities/commerce.yaml --url http://host:8123/<database> --time-zone Europe/Berlin
 ```
+
+A store with GA4 and a store package built into one database serves both
+models to one agent as one model. One `--time-zone` covers both, so
+build the store package in the GA4 property's zone; otherwise "today"
+is another date in one of them:
+
+```bash
+dactopus-ossie-clickhouse serve entities/web_analytics.yaml entities/commerce.yaml --url http://host:8123/<database> --time-zone Europe/Berlin
+```
+
+There "sales", "revenue", "orders" and "average order value" are the
+store's figures from the commerce model; the GA4 metrics are named after
+GA4's own (`gross_purchase_revenue`), and the agent names both when
+asked to compare them.
 
 On dbt v2, `dbt source freshness` fails on ClickHouse for every source
 ([dbt-labs/dbt#16714](https://github.com/dbt-labs/dbt/issues/16714)).
