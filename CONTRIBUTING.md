@@ -32,7 +32,7 @@ network):
 ```bash
 docker run -d --name ch -p 8123:8123 -p 9000:9000 -e CLICKHOUSE_SKIP_USER_SETUP=1 clickhouse/clickhouse-server:26.9
 pip install dbt-oss                     # dbt v2; or dbt-core~=1.11 with dbt-clickhouse (v1)
-pip install "dactopus-ossie-clickhouse @ git+https://github.com/Dactopus/dactopus-ossie-clickhouse@v0.9.1"
+pip install "dactopus-ossie-clickhouse @ git+https://github.com/Dactopus/dactopus-ossie-clickhouse@v0.9.5"
 ```
 
 Load the GA4 sample as the README's [Quick start](README.md#quick-start)
@@ -44,7 +44,7 @@ describes. CI runs on ClickHouse 26.9; older releases are untested.
 package or a model:
 
 ```bash
-dbt build --project-dir sources/ga4 --profiles-dir sources/ga4      # models and tests
+dbt build --project-dir sources/ga4 --profiles-dir tests      # models and tests
 dactopus-ossie-clickhouse validate entities/web_analytics.yaml --url http://127.0.0.1:8123/dactopus
 ```
 

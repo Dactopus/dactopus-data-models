@@ -41,6 +41,8 @@ The README describes what works today. Plans go in
     tests/ask_model.py        asks the questions, shared by every source
     tests/check_freshness.py  checks the ages `dbt source freshness`
                               reports, shared by every source
+    tests/profiles.yml        the dbt profile CI and the checks build
+                              with; a package ships none
     docs/architecture.svg     the diagram, shown in the README and, with
     docs/index.html           the text for each part, on GitHub Pages;
                               update both in the change that alters
@@ -58,8 +60,8 @@ deployment chooses them. A `source` is a bare table name, read in the
 database dactopus-ossie-clickhouse connects to; a package writes to its dbt
 target's database and reads its input from a variable
 (`ga4_input_database`); `input.sql` takes the database as a query
-parameter. `dactopus` and `ga4_raw` are only defaults for the standalone
-profile and the sample. CI builds into other databases to keep it so.
+parameter. `dactopus` and `ga4_raw` are only defaults for the sample
+profile and the sample data. CI builds into other databases to keep it so.
 
 ## Model format
 
@@ -153,24 +155,27 @@ Packages run on dbt v2 (`pip install dbt-oss`) and on dbt v1
 (`dbt-core` 1.11 with `dbt-clickhouse`), with identical results. CI
 installs the latest `dbt-oss` and `dbt-clickhouse`; the changelog names
 the versions each release was tested with.
-Sample data and loading: README, Quick start. Connection:
+Sample data and loading: README, Quick start. A package ships no dbt
+profile: the runner writes its own, a project that installs the packages
+has one, and CI and the checks use `tests/profiles.yml`. Its connection:
 `CLICKHOUSE_HOST`, `CLICKHOUSE_PORT` (HTTP), `CLICKHOUSE_USER`,
 `CLICKHOUSE_PASSWORD`; target database `CLICKHOUSE_DATABASE` (default
 `dactopus`).
 
 ```bash
-dbt build --project-dir sources/ga4 --profiles-dir sources/ga4                 # models + tests
-dbt build --project-dir sources/ga4 --profiles-dir sources/ga4 --full-refresh  # rebuild all
+dbt build --project-dir sources/ga4 --profiles-dir tests                 # models + tests
+dbt build --project-dir sources/ga4 --profiles-dir tests --full-refresh  # rebuild all
 ```
 
 Issues and pull requests in this repository are opened by the
 maintainer, not by an agent on its own.
 
-The package profile sets `network_compression_method: LZ4`: the dbt v2
-ClickHouse adapter (beta) cannot read the ZSTD responses ClickHouse 26.x
-sends by default. dbt v2's own `dbt source freshness` fails on ClickHouse
-for any project (it selects `now()`, which arrives as an integer); each
-package's `macros/freshness.sql` replaces it with a query that casts both
-times to `DateTime64`. A project that installs the packages reaches these
-macros through the `dispatch` setting in the README. Remove both once a
+`tests/profiles.yml` and the README's sample profile set
+`network_compression_method: LZ4`: the dbt v2 ClickHouse adapter (beta)
+cannot read the ZSTD responses ClickHouse 26.x sends by default. dbt v2's
+own `dbt source freshness` fails on ClickHouse for any project (it
+selects `now()`, which arrives as an integer); each package's
+`macros/freshness.sql` replaces it with a query that casts both times to
+`DateTime64`. A project that installs the packages reaches these macros
+through the `dispatch` setting in the README. Remove both once a
 `dbt-oss` release fixes dbt-labs/dbt#16714.

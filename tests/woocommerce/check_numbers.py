@@ -7,7 +7,7 @@ package over it in the store's time zone, America/New_York:
 
     clickhouse client --param_db=woocommerce_input --multiquery < sources/woocommerce/input.sql
     clickhouse client --param_db=woocommerce_input --multiquery < tests/woocommerce/fixture.sql
-    dbt build --project-dir sources/woocommerce --profiles-dir sources/woocommerce \
+    dbt build --project-dir sources/woocommerce --profiles-dir tests \
         --vars '{woocommerce_input_database: woocommerce_input, woocommerce_timezone: America/New_York, woocommerce_currency: USD}'
     OSSIE_CLICKHOUSE_TIME_ZONE=America/New_York python3 tests/woocommerce/check_numbers.py
 

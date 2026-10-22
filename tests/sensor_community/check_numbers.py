@@ -7,7 +7,7 @@ Sensor.Community package over it:
 
     clickhouse client --param_db=sensor_community_input --multiquery < sources/sensor_community/input.sql
     clickhouse client --param_db=sensor_community_input --multiquery < tests/sensor_community/fixture.sql
-    dbt build --project-dir sources/sensor_community --profiles-dir sources/sensor_community \
+    dbt build --project-dir sources/sensor_community --profiles-dir tests \
         --vars '{sensor_community_input_database: sensor_community_input}'
     python3 tests/sensor_community/check_numbers.py
 
