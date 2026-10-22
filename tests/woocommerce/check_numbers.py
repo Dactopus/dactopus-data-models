@@ -89,8 +89,11 @@ CASES = [
     # Paid before midnight of September 1, a time without an offset, which is
     # read in the zone the model is served in, New York: August's 101 88 and
     # 103 33 (22:10 on August 31). Served in UTC, 103 (02:10 on September 1
-    # there) is not there: 1 order, 88.
+    # there) is not there: 1 order, 88. A plain string reads as the TIMESTAMP
+    # literal does.
     (["-m", "orders", "-m", "revenue", "-f", "orders.order_time < TIMESTAMP '2026-09-01 00:00:00'"],
+     [{"orders": 2, "revenue": 121}]),
+    (["-m", "orders", "-m", "revenue", "-f", "orders.order_time < '2026-09-01 00:00:00'"],
      [{"orders": 2, "revenue": 121}]),
     # Sales by the month they happened, as the store's reports count them:
     # each order in the month of its payment, each refund in its own month.

@@ -57,9 +57,9 @@ Try the GA4 package on Google's public sample
 [ClickHouse](https://clickhouse.com/docs/install), the
 [gcloud CLI](https://cloud.google.com/sdk/docs/install),
 [uv](https://docs.astral.sh/uv/), dbt v2 (`pip install dbt-oss`) and
-[dactopus-ossie-clickhouse](https://github.com/Dactopus/dactopus-ossie-clickhouse) 0.9.3 or
+[dactopus-ossie-clickhouse](https://github.com/Dactopus/dactopus-ossie-clickhouse) 0.9.4 or
 later with its MCP server
-(`pip install "dactopus-ossie-clickhouse[mcp] @ git+https://github.com/Dactopus/dactopus-ossie-clickhouse@v0.9.3"`).
+(`pip install "dactopus-ossie-clickhouse[mcp] @ git+https://github.com/Dactopus/dactopus-ossie-clickhouse@v0.9.4"`).
 Tested on ClickHouse 26.9.
 
 1. **Export.** A Google Cloud project in the
@@ -192,7 +192,7 @@ dactopus-ossie-clickhouse, as for GA4.
    ```
 
 3. **Validate** the model and **check** its answers: `check_numbers.py`
-   asks 19 questions through dactopus-ossie-clickhouse, in the zone of
+   asks 20 questions through dactopus-ossie-clickhouse, in the zone of
    step 2, and compares the answers with numbers worked out by hand from
    the rows.
 
@@ -434,7 +434,7 @@ on 26.7 and 26.9.
    ```
 
 3. **Validate** the model and **check** its answers: `check_numbers.py`
-   asks 19 questions, in the zone of step 2, and compares the answers
+   asks 20 questions, in the zone of step 2, and compares the answers
    with numbers worked out by hand from the rows.
 
    ```bash
@@ -1120,10 +1120,10 @@ built in: `--time-zone` with the value of `shopify_timezone` or
 `woocommerce_timezone`, and for GA4 the property's time zone, in which
 the export writes `event_date` ([export
 schema](https://support.google.com/analytics/answer/7029846)). "Today"
-(`CURRENT_DATE`) is then the date there, and so is a timestamp literal
-without an offset (`TIMESTAMP '2026-10-01 09:00:00'`); a plain string
-compared with a time field (`'2026-10-01 09:00:00'`) is still read in
-UTC. Times in answers carry their offset from UTC. Keep
+(`CURRENT_DATE`) is then the date there, and so is a time written
+without an offset, as a plain string (`'2026-10-01 09:00:00'`) or a
+literal (`TIMESTAMP '2026-10-01 09:00:00'`); times in answers carry
+their offset from UTC. Keep
 the two values the same: a store in New York built with
 `America/New_York` and served in UTC finds no orders of today after
 20:00 (19:00 in winter), when the date in UTC is already tomorrow. The

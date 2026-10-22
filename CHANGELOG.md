@@ -10,7 +10,7 @@ names the Ossie schema version its models carry.
 
 ## [0.5.1] - 2026-10-22
 
-Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.9.3,
+Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.9.4,
 dbt v2 (`dbt-oss` 2.0.8) and dbt v1 (`dbt-core` 1.11 with
 `dbt-clickhouse` 1.10) on ClickHouse 26.9. The Sensor.Community package
 answers silence from the API's snapshots
@@ -47,15 +47,16 @@ view, from 0.5.0 on both dbt versions.
   keeps one row per sensor, its latest record. Snapshots loaded by the
   query of 0.5.0 can show a sensor's last contact up to five minutes
   early (README, Limits of the iot model).
-- dactopus-ossie-clickhouse 0.9.3 instead of 0.9.1. It shows times with
+- dactopus-ossie-clickhouse 0.9.4 instead of 0.9.1. It shows times with
   their offset (`2026-10-19 12:29:50+00:00`), and its "today" is the
   date in the zone it is served in, UTC by default, not in the server's
-  zone. The README serves the GA4 and commerce models with
+  zone; so is a time written without an offset, as a plain string or a
+  `TIMESTAMP` literal. The README serves the GA4 and commerce models with
   `--time-zone` set to the zone the package was built in, so a question
   about today counts the store's date (Use in your dbt project). CI
   validates and checks the Shopify and WooCommerce models with that
-  zone set, and each asks one more question whose answer depends on it,
-  19 in all.
+  zone set, and each asks two more questions whose answers depend on
+  it, 20 in all.
 
 ## [0.5.0] - 2026-10-21
 
