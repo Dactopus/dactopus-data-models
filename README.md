@@ -49,6 +49,32 @@ them when any network of devices would have it with the same meaning
 
 ## Quick start
 
+Each walkthrough builds a package with dbt, which connects through a
+profile named `dactopus`. A package ships none: add this one to
+`~/.dbt/profiles.yml`, where dbt v2 and v1 look by default. It reads the
+connection from `CLICKHOUSE_HOST`, `CLICKHOUSE_PORT` (HTTP, default
+8123), `CLICKHOUSE_USER` and `CLICKHOUSE_PASSWORD`, and the database the
+tables go to from `CLICKHOUSE_DATABASE` (default `dactopus`). Over TLS,
+as ClickHouse Cloud requires, add `secure: true` and set the HTTPS port.
+
+```yaml
+dactopus:
+  target: default
+  outputs:
+    default:
+      type: clickhouse
+      # The database the canonical tables are written to.
+      schema: "{{ env_var('CLICKHOUSE_DATABASE', 'dactopus') }}"
+      host: "{{ env_var('CLICKHOUSE_HOST', 'localhost') }}"
+      port: "{{ env_var('CLICKHOUSE_PORT', '8123') | int }}"
+      user: "{{ env_var('CLICKHOUSE_USER', 'default') }}"
+      password: "{{ env_var('CLICKHOUSE_PASSWORD', '') }}"
+      custom_settings:
+        # The dbt v2 ClickHouse adapter (beta) decompresses LZ4 only, while
+        # ClickHouse 26.x compresses HTTP responses with ZSTD by default.
+        network_compression_method: LZ4
+```
+
 ### GA4
 
 Try the GA4 package on Google's public sample
@@ -135,13 +161,10 @@ Tested on ClickHouse 26.9.
      AS session_traffic_source_last_click
    ```
 
-3. **Build** the canonical tables. Connection settings come from
-   `CLICKHOUSE_HOST`, `CLICKHOUSE_PORT` (HTTP, default 8123),
-   `CLICKHOUSE_USER` and `CLICKHOUSE_PASSWORD`; the database the tables go
-   to from `CLICKHOUSE_DATABASE` (default `dactopus`).
+3. **Build** the canonical tables, with the profile of Quick start.
 
    ```bash
-   dbt build --project-dir sources/ga4 --profiles-dir sources/ga4
+   dbt build --project-dir sources/ga4
    ```
 
 4. **Validate** the model against the built tables. The model names its
@@ -187,7 +210,7 @@ dactopus-ossie-clickhouse, as for GA4.
    default is UTC.
 
    ```bash
-   CLICKHOUSE_DATABASE=shopify_sample dbt build --project-dir sources/shopify --profiles-dir sources/shopify \
+   CLICKHOUSE_DATABASE=shopify_sample dbt build --project-dir sources/shopify \
        --vars '{shopify_input_database: shopify_sample_raw, shopify_timezone: America/New_York}'
    ```
 
@@ -429,7 +452,7 @@ on 26.7 and 26.9.
    UTC, and without a currency the build stops.
 
    ```bash
-   CLICKHOUSE_DATABASE=woocommerce_sample dbt build --project-dir sources/woocommerce --profiles-dir sources/woocommerce \
+   CLICKHOUSE_DATABASE=woocommerce_sample dbt build --project-dir sources/woocommerce \
        --vars '{woocommerce_input_database: woocommerce_sample_raw, woocommerce_timezone: America/New_York, woocommerce_currency: USD}'
    ```
 
@@ -764,11 +787,11 @@ You need ClickHouse, dbt, dactopus-ossie-clickhouse and
 
 4. **Build** `readings`, `devices_archive` and the view `devices` into
    the target database (`CLICKHOUSE_DATABASE`, default `dactopus`), with
-   the connection settings of GA4's step 3. Every time and date is UTC, so there is no
-   time zone to set.
+   the profile of Quick start. Every time and date is UTC, so there is
+   no time zone to set.
 
    ```bash
-   dbt build --project-dir sources/sensor_community --profiles-dir sources/sensor_community
+   dbt build --project-dir sources/sensor_community
    ```
 
 5. **Validate** the model against the built tables, and **check** the
@@ -783,7 +806,7 @@ You need ClickHouse, dbt, dactopus-ossie-clickhouse and
    clickhouse client --param_db=sensor_community_sample_raw --multiquery < sources/sensor_community/input.sql
    clickhouse client --param_db=sensor_community_sample_raw --multiquery < tests/sensor_community/fixture.sql
    CLICKHOUSE_DATABASE=sensor_community_sample dbt build --project-dir sources/sensor_community \
-       --profiles-dir sources/sensor_community --vars '{sensor_community_input_database: sensor_community_sample_raw}'
+       --vars '{sensor_community_input_database: sensor_community_sample_raw}'
    OSSIE_CLICKHOUSE_URL=http://user:password@host:8123/sensor_community_sample python3 tests/sensor_community/check_numbers.py
    ```
 
@@ -1060,10 +1083,10 @@ WooCommerce, `subdirectory: sources/woocommerce`; for Sensor.Community,
 ```yaml
 packages:
   - git: https://github.com/Dactopus/dactopus-data-models.git
-    revision: v0.5.1
+    revision: v0.5.2
     subdirectory: sources/ga4
   - git: https://github.com/Dactopus/dactopus-data-models.git
-    revision: v0.5.1
+    revision: v0.5.2
     subdirectory: sources/shopify
 ```
 
@@ -1111,7 +1134,7 @@ Point dactopus-ossie-clickhouse at your target's database
 (`--url http://host:8123/<database>`) and take the Ossie models from the
 same tag. On dbt v2 with ClickHouse 26.x, set
 `custom_settings: {network_compression_method: LZ4}` in your profile, as
-[`sources/ga4/profiles.yml`](sources/ga4/profiles.yml) does: the v2
+the profile of [Quick start](#quick-start) does: the v2
 ClickHouse adapter (beta) cannot read ClickHouse's default ZSTD
 responses.
 
@@ -1168,6 +1191,8 @@ table prefix.
       tests/                  checks that need their own SQL
     tests/<source>/           hand-written input rows and the numbers the
                               model must answer over them
+    tests/profiles.yml        the dbt profile CI builds with; a package
+                              ships none
     docs/                     the diagram above and its interactive page
 
 A package's model writes the entity's table, named after it, in the

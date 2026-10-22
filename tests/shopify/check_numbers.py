@@ -7,7 +7,7 @@ package over it in the shop's time zone, America/New_York:
 
     clickhouse client --param_db=shopify_input --multiquery < sources/shopify/input.sql
     clickhouse client --param_db=shopify_input --multiquery < tests/shopify/fixture.sql
-    dbt build --project-dir sources/shopify --profiles-dir sources/shopify \
+    dbt build --project-dir sources/shopify --profiles-dir tests \
         --vars '{shopify_input_database: shopify_input, shopify_timezone: America/New_York}'
     OSSIE_CLICKHOUSE_TIME_ZONE=America/New_York python3 tests/shopify/check_numbers.py
 

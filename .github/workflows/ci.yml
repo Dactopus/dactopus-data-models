@@ -39,7 +39,7 @@ jobs:
       CLICKHOUSE_DATABASE: analytics
       DBT_BUILD: >-
         uvx --from ${{ matrix.dbt.from }} ${{ matrix.dbt.with && format('--with {0}', matrix.dbt.with) || '' }}
-        dbt build --project-dir sources/ga4 --profiles-dir sources/ga4
+        dbt build --project-dir sources/ga4 --profiles-dir tests
         --vars {"ga4_input_database":"ga4_input"}
       OSSIE_CLICKHOUSE_URL: http://127.0.0.1:8123/analytics
     steps:
@@ -108,7 +108,7 @@ jobs:
       CLICKHOUSE_DATABASE: analytics
       DBT_BUILD: >-
         uvx --from ${{ matrix.dbt.from }} ${{ matrix.dbt.with && format('--with {0}', matrix.dbt.with) || '' }}
-        dbt build --project-dir sources/shopify --profiles-dir sources/shopify
+        dbt build --project-dir sources/shopify --profiles-dir tests
         --vars {"shopify_input_database":"shopify_input","shopify_timezone":"America/New_York","shopify_lookback_days":0}
       OSSIE_CLICKHOUSE_URL: http://127.0.0.1:8123/analytics
       # The model is served in the zone the package was built in (README,
@@ -233,7 +233,7 @@ jobs:
       CLICKHOUSE_DATABASE: analytics
       DBT_BUILD: >-
         uvx --from ${{ matrix.dbt.from }} ${{ matrix.dbt.with && format('--with {0}', matrix.dbt.with) || '' }}
-        dbt build --project-dir sources/woocommerce --profiles-dir sources/woocommerce
+        dbt build --project-dir sources/woocommerce --profiles-dir tests
         --vars {"woocommerce_input_database":"woocommerce_input","woocommerce_table_prefix":"wp_2_","woocommerce_timezone":"America/New_York","woocommerce_currency":"USD","woocommerce_lookback_days":0}
       OSSIE_CLICKHOUSE_URL: http://127.0.0.1:8123/analytics
       # The model is served in the zone the package was built in (README,
@@ -412,7 +412,7 @@ jobs:
       OSSIE_CLICKHOUSE_URL: http://127.0.0.1:8123/analytics
       DBT_BUILD: >-
         uvx --from ${{ matrix.dbt.from }} ${{ matrix.dbt.with && format('--with {0}', matrix.dbt.with) || '' }}
-        dbt build --project-dir sources/sensor_community --profiles-dir sources/sensor_community
+        dbt build --project-dir sources/sensor_community --profiles-dir tests
         --vars {"sensor_community_input_database":"sensor_community_input","sensor_community_lookback_days":0}
     steps:
       - uses: actions/checkout@v4

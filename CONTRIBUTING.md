@@ -44,7 +44,7 @@ describes. CI runs on ClickHouse 26.9; older releases are untested.
 package or a model:
 
 ```bash
-dbt build --project-dir sources/ga4 --profiles-dir sources/ga4      # models and tests
+dbt build --project-dir sources/ga4 --profiles-dir tests      # models and tests
 dactopus-ossie-clickhouse validate entities/web_analytics.yaml --url http://127.0.0.1:8123/dactopus
 ```
 

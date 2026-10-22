@@ -1,3 +1,5 @@
+# The profile CI and the checks build the packages with. A package ships
+# none: whoever runs it gives dbt a profile named `dactopus`.
 dactopus:
   target: default
   outputs:
