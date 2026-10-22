@@ -13,7 +13,7 @@ names the Ossie schema version its models carry.
 Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.9.5,
 dbt v2 (`dbt-oss` 2.0.8) and dbt v1 (`dbt-core` 1.11 with
 `dbt-clickhouse` 1.10) on ClickHouse 26.9. The view `devices` has the
-same rows as in 0.5.3; `devices_archive` gains coordinates for sites in
+same sites as in 0.5.3; `devices_archive` gains coordinates for sites in
 the snapshots. A plain `dbt build` updates both; no `--full-refresh`.
 
 ### Changed
@@ -26,8 +26,8 @@ the snapshots. A plain `dbt build` updates both; no `--full-refresh`.
 - `devices_archive` keeps every site's coordinates at its latest reading
   and no longer reads `locations`. `devices` still prefers the
   snapshot's coordinates; a site that leaves the snapshots, as when
-  `locations` is reloaded for other countries, keeps its coordinates
-  instead of NULL until the next run. The view `devices` reads
+  `locations` is reloaded for other countries, keeps its coordinates;
+  in 0.5.3 they were NULL until the next run. The view `devices` reads
   `locations` and `devices_archive` once per question instead of twice
   ([#29](https://github.com/Dactopus/dactopus-data-models/issues/29)).
 
