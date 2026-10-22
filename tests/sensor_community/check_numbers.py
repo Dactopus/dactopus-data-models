@@ -127,10 +127,10 @@ CASES = [
     # The latest reading of each device: 101 October 19 06:00 (DHT22), 102
     # October 19 12:00, 103 October 18 11:00, 104 October 19 09:00.
     (["-m", "last_reading_time", "-d", "readings.device_id", "-o", "readings.device_id"],
-     [{"device_id": 101, "last_reading_time": "2026-10-19 06:00:00"},
-      {"device_id": 102, "last_reading_time": "2026-10-19 12:00:00"},
-      {"device_id": 103, "last_reading_time": "2026-10-18 11:00:00"},
-      {"device_id": 104, "last_reading_time": "2026-10-19 09:00:00"}]),
+     [{"device_id": 101, "last_reading_time": "2026-10-19 06:00:00+00:00"},
+      {"device_id": 102, "last_reading_time": "2026-10-19 12:00:00+00:00"},
+      {"device_id": 103, "last_reading_time": "2026-10-18 11:00:00+00:00"},
+      {"device_id": 104, "last_reading_time": "2026-10-19 09:00:00+00:00"}]),
     # Silent for more than an hour at 12:00 on October 19, the fixture's
     # latest reading: 101, 103 and 104. 105 has never reported a reading,
     # so it has no last reading to compare.
@@ -140,13 +140,13 @@ CASES = [
     # 12:29:50 in the snapshot of October 19 12:30; by readings alone it
     # would be 102's 12:00, and had the insert kept the earlier of 1001's
     # two records, 12:28:00, 1002's.
-    (["-m", "last_contact_time"], [{"last_contact_time": "2026-10-19 12:29:50"}]),
+    (["-m", "last_contact_time"], [{"last_contact_time": "2026-10-19 12:29:50+00:00"}]),
     (["-m", "last_contact_time", "-d", "devices.device_id", "-o", "devices.device_id"],
-     [{"device_id": 101, "last_contact_time": "2026-10-19 12:29:50"},
-      {"device_id": 102, "last_contact_time": "2026-10-19 12:00:00"},
-      {"device_id": 103, "last_contact_time": "2026-10-18 11:00:00"},
-      {"device_id": 104, "last_contact_time": "2026-10-19 09:00:00"},
-      {"device_id": 105, "last_contact_time": "2026-10-19 09:58:40"}]),
+     [{"device_id": 101, "last_contact_time": "2026-10-19 12:29:50+00:00"},
+      {"device_id": 102, "last_contact_time": "2026-10-19 12:00:00+00:00"},
+      {"device_id": 103, "last_contact_time": "2026-10-18 11:00:00+00:00"},
+      {"device_id": 104, "last_contact_time": "2026-10-19 09:00:00+00:00"},
+      {"device_id": 105, "last_contact_time": "2026-10-19 09:58:40+00:00"}]),
     # Silent for more than an hour before 12:29:50: 103, 104 and 105. By
     # their latest readings the silent sites would be 101, 103 and 104, and
     # by the snapshots alone 102, 103 and 105.

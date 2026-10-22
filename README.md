@@ -57,9 +57,9 @@ Try the GA4 package on Google's public sample
 [ClickHouse](https://clickhouse.com/docs/install), the
 [gcloud CLI](https://cloud.google.com/sdk/docs/install),
 [uv](https://docs.astral.sh/uv/), dbt v2 (`pip install dbt-oss`) and
-[dactopus-ossie-clickhouse](https://github.com/Dactopus/dactopus-ossie-clickhouse) 0.9.1 or
+[dactopus-ossie-clickhouse](https://github.com/Dactopus/dactopus-ossie-clickhouse) 0.9.2 or
 later with its MCP server
-(`pip install "dactopus-ossie-clickhouse[mcp] @ git+https://github.com/Dactopus/dactopus-ossie-clickhouse@v0.9.1"`).
+(`pip install "dactopus-ossie-clickhouse[mcp] @ git+https://github.com/Dactopus/dactopus-ossie-clickhouse@v0.9.2"`).
 Tested on ClickHouse 26.9.
 
 1. **Export.** A Google Cloud project in the
@@ -867,6 +867,13 @@ reports show them, a refund or a cancellation in the month it was made;
 by `orders.order_month`, what each month's orders earned, later refunds
 included. `revenue` is orders as placed. Amounts are in the store's
 currency.
+
+Dates are in the store's time zone, while "today" in a question
+(`CURRENT_DATE`) is the date in UTC: dactopus-ossie-clickhouse takes the
+zone from the model file, and the model, shared by every store, names
+none. In a store west of UTC, today's orders asked for in the evening
+are tomorrow's in UTC, and there are none. The GA4 model's dates, in the
+property's time zone, have the same limit.
 
 ## Known differences from Shopify's reports
 
