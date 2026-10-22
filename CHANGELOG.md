@@ -8,6 +8,43 @@ names the Ossie schema version its models carry.
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-22
+
+Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.9.1,
+dbt v2 (`dbt-oss` 2.0.8) and dbt v1 (`dbt-core` 1.11 with
+`dbt-clickhouse` 1.10) on ClickHouse 26.9. The Sensor.Community package
+answers silence from the API's snapshots
+([#26](https://github.com/Dactopus/dactopus-data-models/issues/26)).
+GA4, Shopify and WooCommerce build the same tables as in 0.5.0. No
+rebuild is needed: a `dbt build` replaces the table `devices` with a
+view, from 0.5.0 on both dbt versions.
+
+### Added
+
+- `devices.last_contact_at` in `entities/iot.yaml`: the later of a
+  site's latest report in the API's snapshots, from a sensor of any
+  type, and its latest reading. Metrics `last_contact_time`, the latest
+  contact with any site, and `minutes_since_last_contact`, its age by
+  the database's clock.
+- Hand-written rows of a snapshot loaded after the last build, and 3
+  more numbers the model must answer over them, 17 in all.
+
+### Changed
+
+- Silence is measured from the latest contact in the data, within
+  minutes of now while the snapshots run, instead of from the latest
+  reading, hours old. The model tells agents to name that time and its
+  age. "Silent", "offline" and "last seen" now lead to `last_contact_at`;
+  `last_reading_at` and `last_reading_time` keep their numbers.
+- `devices` is a view over the snapshots and the new table
+  `devices_archive`, which the build writes from the readings: a
+  snapshot reaches the model as soon as it is loaded, with a site's
+  country and indoor flag, without a build.
+- The snapshot query (README, Quick start, Sensor.Community, step 2)
+  keeps one row per sensor, its latest record. Snapshots loaded by the
+  query of 0.5.0 can show a sensor's last contact up to five minutes
+  early once merged (README, Limits of the iot model).
+
 ## [0.5.0] - 2026-10-21
 
 Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.9.1,
@@ -360,7 +397,8 @@ ClickHouse 26.9.
 - Hand-written GA4 rows and the numbers the model must answer over them
   (`tests/ga4`), checked in CI on both dbt versions.
 
-[Unreleased]: https://github.com/Dactopus/dactopus-data-models/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/Dactopus/dactopus-data-models/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/Dactopus/dactopus-data-models/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/Dactopus/dactopus-data-models/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/Dactopus/dactopus-data-models/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/Dactopus/dactopus-data-models/compare/v0.3.0...v0.4.0
