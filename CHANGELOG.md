@@ -8,13 +8,9 @@ names the Ossie schema version its models carry.
 
 ## [Unreleased]
 
-## [0.5.4] - 2026-10-23
-
-Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.9.5,
-dbt v2 (`dbt-oss` 2.0.8) and dbt v1 (`dbt-core` 1.11 with
-`dbt-clickhouse` 1.10) on ClickHouse 26.9. The view `devices` has the
-same sites as in 0.5.3; `devices_archive` gains coordinates for sites in
-the snapshots. A plain `dbt build` updates both; no `--full-refresh`.
+The view `devices` has the same sites as in 0.5.3; `devices_archive`
+gains coordinates for sites in the snapshots. A plain `dbt build`
+updates both; no `--full-refresh`.
 
 ### Changed
 
@@ -498,8 +494,7 @@ ClickHouse 26.9.
 - Hand-written GA4 rows and the numbers the model must answer over them
   (`tests/ga4`), checked in CI on both dbt versions.
 
-[Unreleased]: https://github.com/Dactopus/dactopus-data-models/compare/v0.5.4...HEAD
-[0.5.4]: https://github.com/Dactopus/dactopus-data-models/compare/v0.5.3...v0.5.4
+[Unreleased]: https://github.com/Dactopus/dactopus-data-models/compare/v0.5.3...HEAD
 [0.5.3]: https://github.com/Dactopus/dactopus-data-models/compare/v0.5.2...v0.5.3
 [0.5.2]: https://github.com/Dactopus/dactopus-data-models/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/Dactopus/dactopus-data-models/compare/v0.5.0...v0.5.1
