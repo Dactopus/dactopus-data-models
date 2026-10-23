@@ -208,8 +208,9 @@ jobs:
       # failing. Over the fixture loaded at once, with 1012 (a guest's,
       # on one day in both zones) loaded again now, a build in New York
       # and a run in UTC leave 1003, at 02:00 UTC, on New York's day: the
-      # count must find it and the check fail. (The refund of 1006, also
-      # at 02:00 UTC, is loaded last in the fixture and so reread.)
+      # count must find it and the check fail on orders, not for another
+      # reason. (The refund of 1006, also at 02:00 UTC, is loaded last in
+      # the fixture and so reread.)
       - name: Check deployment.yml, in one zone and in two
         run: |
           q() { curl -sf http://127.0.0.1:8123/ --data-binary "$1"; }
@@ -224,7 +225,9 @@ jobs:
           ZONES=${DBT_BUILD/'"shopify_input"'/'"shopify_zones"'}
           CLICKHOUSE_DATABASE=analytics_zones $ZONES --full-refresh
           CLICKHOUSE_DATABASE=analytics_zones ${ZONES/America\/New_York/UTC}
-          if CLICKHOUSE_DATABASE=analytics_zones uv run tests/check_deployment.py sources/shopify --time-zone UTC; then exit 1; fi
+          if CLICKHOUSE_DATABASE=analytics_zones uv run tests/check_deployment.py sources/shopify --time-zone UTC > zones.txt; then cat zones.txt; exit 1; fi
+          cat zones.txt
+          grep -q '^FAIL orders was not built in UTC' zones.txt
       - name: Validate the Ossie model against the built tables
         run: dactopus-ossie-clickhouse validate entities/commerce.yaml --url "$OSSIE_CLICKHOUSE_URL"
       # The late rows above were loaded now. dbt v2 needs the package's own
@@ -418,7 +421,7 @@ jobs:
       # the fixture synced at once, with a version of guest 112 (on one
       # day in both zones) synced again now, a build in New York and a run
       # in UTC leave 103, paid at 02:10 UTC, on New York's day: the count
-      # must find it and the check fail.
+      # must find it and the check fail on orders, not for another reason.
       - name: Check deployment.yml, in one zone and in two
         run: |
           q() { curl -sf http://127.0.0.1:8123/ --data-binary "$1"; }
@@ -433,7 +436,9 @@ jobs:
           ZONES=${DBT_BUILD/'"woocommerce_input"'/'"woocommerce_zones"'}
           CLICKHOUSE_DATABASE=analytics_zones $ZONES --full-refresh
           CLICKHOUSE_DATABASE=analytics_zones ${ZONES/America\/New_York/UTC}
-          if CLICKHOUSE_DATABASE=analytics_zones uv run tests/check_deployment.py sources/woocommerce --time-zone UTC; then exit 1; fi
+          if CLICKHOUSE_DATABASE=analytics_zones uv run tests/check_deployment.py sources/woocommerce --time-zone UTC > zones.txt; then cat zones.txt; exit 1; fi
+          cat zones.txt
+          grep -q '^FAIL orders was not built in UTC' zones.txt
       - name: Validate the Ossie model against the built tables
         run: dactopus-ossie-clickhouse validate entities/commerce.yaml --url "$OSSIE_CLICKHOUSE_URL"
       # The late rows above were synced now. dbt v2 needs the package's own
