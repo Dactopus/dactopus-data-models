@@ -28,6 +28,10 @@ The README describes what works today. Plans go in
                               relationships and metrics
     sources/<source>/         one package per source, a dbt project:
       input.sql               the input table the package accepts
+      deployment.yml          what a deployment sets and reads: the Ossie
+                              model, the variables for the input database
+                              and the time zone, the tables counted per
+                              day; every package ships one
       macros/                 SQL the package's models share
       models/<entity>.sql     one model per entity, named after it; an
                               entity that is a view over a built table
@@ -41,6 +45,8 @@ The README describes what works today. Plans go in
     tests/ask_model.py        asks the questions, shared by every source
     tests/check_freshness.py  checks the ages `dbt source freshness`
                               reports, shared by every source
+    tests/check_deployment.py checks each package's deployment.yml against
+                              the package and its built tables
     tests/profiles.yml        the dbt profile CI and the checks build
                               with; a package ships none
     docs/architecture.svg     the diagram, shown in the README and, with
