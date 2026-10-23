@@ -12,6 +12,22 @@ The view `devices` has the same sites as in 0.5.3; `devices_archive`
 gains coordinates for sites in the snapshots. A plain `dbt build`
 updates both; no `--full-refresh`.
 
+### Added
+
+- `deployment.yml` in every package: what a deployment sets and reads,
+  for the tools that deploy the packages without reading their SQL. It
+  names the Ossie model the package's tables serve, the dbt variables
+  for the input database and the time zone by role, and the tables a
+  deployment counts rows per day in, with the Date column, the time
+  column that date is the day of, and whether a day without rows is a
+  gap. `tests/check_deployment.py` holds each file to its package and
+  built tables; with `--time-zone` it counts the rows whose date is not
+  the day of their time in the zone, which finds a Shopify or
+  WooCommerce table built in two zones: an incremental run after the
+  zone variable changed rebuilds only the orders and refunds loaded
+  since the last run, and no dbt test fails
+  ([#36](https://github.com/Dactopus/dactopus-data-models/issues/36)).
+
 ### Changed
 
 - The iot model sends "latest data", "last update" and "data up to" to

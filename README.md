@@ -1139,6 +1139,18 @@ vars:
 load or sync an incremental run rereads the input, for inserts that
 commit late.
 
+Each package's `deployment.yml` lists what a deployment sets and reads:
+the Ossie model its tables serve, the variables above by their role
+(input database, time zone) and the tables a deployment counts rows per
+day in, with the Date column it counts by and the time column that date
+is the day of. A tool that deploys the packages reads it in place of
+this section. A change of `shopify_timezone` or `woocommerce_timezone`
+needs `dbt build --full-refresh`: an incremental run rebuilds only the
+orders and refunds loaded since the last one, the rest keep the days of
+the old zone, and no dbt test fails. `uv run tests/check_deployment.py
+sources/shopify --time-zone <zone>` counts the rows whose date is not
+the day of their time in the zone: none in a table built whole in it.
+
 Point dactopus-ossie-clickhouse at your target's database
 (`--url http://host:8123/<database>`, or `https://` over TLS) and take
 the Ossie models from the same tag. On dbt v2 with ClickHouse 26.x, set
@@ -1208,6 +1220,9 @@ table prefix.
     entities/<domain>.yaml    one Ossie model per domain (web_analytics, commerce, iot)
     sources/<source>/         one package per source, a dbt project:
       input.sql               the input table the package accepts
+      deployment.yml          what a deployment sets and reads: the Ossie
+                              model, the dbt variables, the tables counted
+                              per day
       macros/                 SQL the package's models share
       models/                 one model per entity, named after it
       models/schema.yml       structural checks (dbt tests)

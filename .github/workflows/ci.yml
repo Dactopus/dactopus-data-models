@@ -71,6 +71,12 @@ jobs:
           python3 tests/ga4/check_numbers.py
           $DBT_BUILD --full-refresh
           python3 tests/ga4/check_numbers.py
+      # deployment.yml names what a deployment sets and reads; the check
+      # holds it to the package and the built tables. GA4's days are the
+      # property's and the package takes no zone, so the count against
+      # UTC only prints.
+      - name: Check deployment.yml
+        run: uv run tests/check_deployment.py sources/ga4 --time-zone UTC
       - name: Validate the Ossie model against the built tables
         run: dactopus-ossie-clickhouse validate entities/web_analytics.yaml --url "$OSSIE_CLICKHOUSE_URL"
       # The fixture's events are from 2025: one event now, in the input
@@ -193,6 +199,35 @@ jobs:
           python3 tests/shopify/check_numbers.py
           same
           OSSIE_CLICKHOUSE_URL=http://127.0.0.1:8123/analytics_full python3 tests/shopify/check_numbers.py
+      # deployment.yml names what a deployment sets and reads; the check
+      # holds it to the package and the built tables, and counts the rows
+      # whose date is not the day of their time in the build's zone: none
+      # after builds in one zone. A run in another zone without
+      # --full-refresh rebuilds only the orders and refunds loaded since
+      # the last run, and the rest keep New York's days, with no dbt test
+      # failing. Over the fixture loaded at once, with 1012 (a guest's,
+      # on one day in both zones) loaded again now, a build in New York
+      # and a run in UTC leave 1003, at 02:00 UTC, on New York's day: the
+      # count must find it and the check fail on orders, not for another
+      # reason. (The refund of 1006, also at 02:00 UTC, is loaded last in
+      # the fixture and so reread.)
+      - name: Check deployment.yml, in one zone and in two
+        run: |
+          q() { curl -sf http://127.0.0.1:8123/ --data-binary "$1"; }
+          uv run tests/check_deployment.py sources/shopify --time-zone America/New_York
+          CLICKHOUSE_DATABASE=analytics_full uv run tests/check_deployment.py sources/shopify --time-zone America/New_York
+          q "CREATE DATABASE shopify_zones"
+          for t in orders order_lines refunds refund_lines; do
+              q "CREATE TABLE shopify_zones.$t AS shopify_fixture.$t"
+              q "INSERT INTO shopify_zones.$t SELECT * FROM shopify_fixture.$t"
+          done
+          q "INSERT INTO shopify_zones.orders SELECT * REPLACE (now64(6) AS loaded_at) FROM shopify_fixture.orders WHERE id = 1012"
+          ZONES=${DBT_BUILD/'"shopify_input"'/'"shopify_zones"'}
+          CLICKHOUSE_DATABASE=analytics_zones $ZONES --full-refresh
+          CLICKHOUSE_DATABASE=analytics_zones ${ZONES/America\/New_York/UTC}
+          if CLICKHOUSE_DATABASE=analytics_zones uv run tests/check_deployment.py sources/shopify --time-zone UTC > zones.txt; then cat zones.txt; exit 1; fi
+          cat zones.txt
+          grep -q '^FAIL orders was not built in UTC' zones.txt
       - name: Validate the Ossie model against the built tables
         run: dactopus-ossie-clickhouse validate entities/commerce.yaml --url "$OSSIE_CLICKHOUSE_URL"
       # The late rows above were loaded now. dbt v2 needs the package's own
@@ -377,6 +412,33 @@ jobs:
           # events add up to (sales_events_make_net_total): 22, not 0.
           CLICKHOUSE_DATABASE=analytics_cancelled ${DBT_BUILD/'"woocommerce_lookback_days":0'/'"woocommerce_lookback_days":0,"woocommerce_excluded_statuses":["pending","failed"]'}
           test "$(q "SELECT in_sales_reports AND net_total = 22 FROM analytics_cancelled.orders WHERE order_id = 107")" = 1
+      # deployment.yml names what a deployment sets and reads; the check
+      # holds it to the package and the built tables, and counts the rows
+      # whose date is not the day of their time in the build's zone: none
+      # after builds in one zone. A run in another zone without
+      # --full-refresh rebuilds only the orders synced since the last run,
+      # and the rest keep New York's days, with no dbt test failing. Over
+      # the fixture synced at once, with a version of guest 112 (on one
+      # day in both zones) synced again now, a build in New York and a run
+      # in UTC leave 103, paid at 02:10 UTC, on New York's day: the count
+      # must find it and the check fail on orders, not for another reason.
+      - name: Check deployment.yml, in one zone and in two
+        run: |
+          q() { curl -sf http://127.0.0.1:8123/ --data-binary "$1"; }
+          uv run tests/check_deployment.py sources/woocommerce --time-zone America/New_York
+          CLICKHOUSE_DATABASE=analytics_full uv run tests/check_deployment.py sources/woocommerce --time-zone America/New_York
+          q "CREATE DATABASE woocommerce_zones"
+          for t in wc_orders wc_order_operational_data wc_order_addresses wc_orders_meta woocommerce_order_items woocommerce_order_itemmeta wc_product_meta_lookup; do
+              q "CREATE TABLE woocommerce_zones.wp_2_$t AS woocommerce_fixture.wp_2_$t"
+              q "INSERT INTO woocommerce_zones.wp_2_$t SELECT * FROM woocommerce_fixture.wp_2_$t"
+          done
+          q "INSERT INTO woocommerce_zones.wp_2_wc_orders SELECT * REPLACE (now64(9) AS _peerdb_synced_at) FROM woocommerce_fixture.wp_2_wc_orders WHERE _peerdb_version = 275"
+          ZONES=${DBT_BUILD/'"woocommerce_input"'/'"woocommerce_zones"'}
+          CLICKHOUSE_DATABASE=analytics_zones $ZONES --full-refresh
+          CLICKHOUSE_DATABASE=analytics_zones ${ZONES/America\/New_York/UTC}
+          if CLICKHOUSE_DATABASE=analytics_zones uv run tests/check_deployment.py sources/woocommerce --time-zone UTC > zones.txt; then cat zones.txt; exit 1; fi
+          cat zones.txt
+          grep -q '^FAIL orders was not built in UTC' zones.txt
       - name: Validate the Ossie model against the built tables
         run: dactopus-ossie-clickhouse validate entities/commerce.yaml --url "$OSSIE_CLICKHOUSE_URL"
       # The late rows above were synced now. dbt v2 needs the package's own
@@ -492,6 +554,12 @@ jobs:
           late locations "snapshot_at = '2026-10-19 12:30:00'"   # no run after it
           python3 tests/sensor_community/check_numbers.py
           OSSIE_CLICKHOUSE_URL=http://127.0.0.1:8123/analytics_full python3 tests/sensor_community/check_numbers.py
+      # deployment.yml names what a deployment sets and reads; the check
+      # holds it to the package and the built tables. reading_date is the
+      # UTC day by the model, not by a variable, so the count against
+      # UTC only prints.
+      - name: Check deployment.yml
+        run: uv run tests/check_deployment.py sources/sensor_community --time-zone UTC
       - name: Validate the Ossie model against the built tables
         run: dactopus-ossie-clickhouse validate entities/iot.yaml --url "$OSSIE_CLICKHOUSE_URL"
       # The late rows above were loaded now. dbt v2 needs the package's own
