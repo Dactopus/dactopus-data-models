@@ -114,8 +114,8 @@ CASES = [
       {"refund_month": "2026-10-01", "refund_count": 2, "refunds_total": 45}]),
     # The same refunds by the month of their order, through the order: 1001's
     # gift card in August; 1004's 45, 1005's 60, 1006's 210 and 1010's 0 in
-    # September, as refunded_amount by order month. October's 1011 and 1012
-    # have none.
+    # September, as orders.refunded_amount by order month. October's 1011
+    # and 1012 have none.
     (["-m", "refund_count", "-m", "refunds_total", "-d", "orders.order_month",
       "-o", "orders.order_month"],
      [{"order_month": "2026-08-01", "refund_count": 1, "refunds_total": 0},

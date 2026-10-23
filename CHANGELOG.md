@@ -24,8 +24,9 @@ table or column changes, no rebuild is needed.
   The name says whose rows a metric counts, in `list_model` too, and
   `describe_object` of a dataset lists its metrics. The five commerce
   metrics that read order lines or refunds together with
-  `orders.in_sales_reports` stay on the model under their own names. A metric named like a field or a dataset is
-  renamed, since a dataset's fields and metrics share one set of names.
+  `orders.in_sales_reports` stay on the model under their own names. A
+  metric named like a field or a dataset is renamed, since a dataset's
+  fields and metrics share one set of names.
   This breaks saved questions and dashboards that ask for the old names,
   and result columns are named `dataset.metric` too; update them:
 

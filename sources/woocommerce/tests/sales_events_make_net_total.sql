@@ -1,6 +1,7 @@
 -- The sales events of an order the store's reports count add up to its
--- net_total, whichever statuses the reports exclude: net_revenue by the
--- month of the order then equals the orders' net_total. Both come from
+-- net_total, whichever statuses the reports exclude:
+-- sales_events.net_revenue by the month of the order then equals the
+-- orders' net_total. Both come from
 -- orders and refunds of the same run, so they never differ by timing.
 SELECT o.order_id, o.net_total, e.amount
 FROM {{ ref('orders') }} AS o
