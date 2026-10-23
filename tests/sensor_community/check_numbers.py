@@ -70,106 +70,120 @@ CASES = [
     # Pa; with 1012 as sent the average would be 76078 and the lowest 1012.
     # The repeated load of October 19 would add pm10 30, pm2_5 12,
     # temperature 14 and 12, humidity 80 and 100.
-    (["-m", "reading_count", "-m", "avg_value", "-m", "min_value", "-m", "max_value",
-      "-d", "readings.measure", "-o", "readings.measure"],
-     [{"measure": "humidity", "reading_count": 6, "avg_value": 351 / 6, "min_value": 30, "max_value": 100},
-      {"measure": "pm10", "reading_count": 5, "avg_value": 15, "min_value": 6, "max_value": 30},
-      {"measure": "pm2_5", "reading_count": 5, "avg_value": 6.4, "min_value": 3, "max_value": 12},
-      {"measure": "pressure", "reading_count": 4, "avg_value": 101125, "min_value": 101000,
-       "max_value": 101200},
-      {"measure": "temperature", "reading_count": 8, "avg_value": 159.1 / 8, "min_value": 12,
-       "max_value": 25}]),
+    (["-m", "readings.reading_count", "-m", "readings.avg_value", "-m", "readings.min_value",
+      "-m", "readings.max_value", "-d", "readings.measure", "-o", "readings.measure"],
+     [{"measure": "humidity", "readings.reading_count": 6, "readings.avg_value": 351 / 6,
+       "readings.min_value": 30, "readings.max_value": 100},
+      {"measure": "pm10", "readings.reading_count": 5, "readings.avg_value": 15,
+       "readings.min_value": 6, "readings.max_value": 30},
+      {"measure": "pm2_5", "readings.reading_count": 5, "readings.avg_value": 6.4,
+       "readings.min_value": 3, "readings.max_value": 12},
+      {"measure": "pressure", "readings.reading_count": 4, "readings.avg_value": 101125,
+       "readings.min_value": 101000, "readings.max_value": 101200},
+      {"measure": "temperature", "readings.reading_count": 8, "readings.avg_value": 159.1 / 8,
+       "readings.min_value": 12, "readings.max_value": 25}]),
     # 28 readings from sites 101 to 104; 105 has none. 34 with the repeated
     # load, 31 with both copies of 12:16:34, 30 with SPS30, 29 with 1006's
     # first humidity.
-    (["-m", "reading_count", "-m", "reporting_devices"],
-     [{"reading_count": 28, "reporting_devices": 4}]),
+    (["-m", "readings.reading_count", "-m", "readings.reporting_devices"],
+     [{"readings.reading_count": 28, "readings.reporting_devices": 4}]),
     # By the date in UTC. October 18: 101 6 (two SDS011 rows, one DHT22),
     # 102 6, 103 4; October 19: 101 6, 102 2, 104 4. A device reports on a
     # date when it has a reading then: 101, 102, 103 and 101, 102, 104.
-    (["-m", "reading_count", "-m", "reporting_devices", "-d", "readings.reading_date",
-      "-o", "readings.reading_date"],
-     [{"reading_date": "2026-10-18", "reading_count": 16, "reporting_devices": 3},
-      {"reading_date": "2026-10-19", "reading_count": 12, "reporting_devices": 3}]),
+    (["-m", "readings.reading_count", "-m", "readings.reporting_devices",
+      "-d", "readings.reading_date", "-o", "readings.reading_date"],
+     [{"reading_date": "2026-10-18", "readings.reading_count": 16, "readings.reporting_devices": 3},
+      {"reading_date": "2026-10-19", "readings.reading_count": 12, "readings.reporting_devices": 3}]),
     # PM2.5 by day: October 18 4 + 8 + 3 + 5 over 4, October 19 12. 101's
     # reading at 23:59:59 UTC is October 19 in Sydney; by Sydney's dates the
     # days would be 4 and 10.
-    (["-m", "avg_value", "-f", "readings.measure = 'pm2_5'", "-d", "readings.reading_date",
+    (["-m", "readings.avg_value", "-f", "readings.measure = 'pm2_5'", "-d", "readings.reading_date",
       "-o", "readings.reading_date"],
-     [{"reading_date": "2026-10-18", "avg_value": 5}, {"reading_date": "2026-10-19", "avg_value": 12}]),
+     [{"reading_date": "2026-10-18", "readings.avg_value": 5},
+      {"reading_date": "2026-10-19", "readings.avg_value": 12}]),
     # By week, from Monday: October 18, a Sunday, is in the week of October
     # 12 with its 16 readings, and October 19, a Monday, starts the next
     # with 12. Weeks from Sunday would give one week of 28.
-    (["-m", "reading_count", "-d", "readings.reading_week", "-o", "readings.reading_week"],
-     [{"reading_week": "2026-10-12", "reading_count": 16},
-      {"reading_week": "2026-10-19", "reading_count": 12}]),
+    (["-m", "readings.reading_count", "-d", "readings.reading_week", "-o", "readings.reading_week"],
+     [{"reading_week": "2026-10-12", "readings.reading_count": 16},
+      {"reading_week": "2026-10-19", "readings.reading_count": 12}]),
     # The hour from 12:00 on October 18: 102's 12:00:00 and 12:16:34, three
     # measures each (9 with both copies of 12:16:34).
-    (["-m", "reading_count", "-f", "readings.reading_hour = '2026-10-18 12:00:00'"],
-     [{"reading_count": 6}]),
+    (["-m", "readings.reading_count", "-f", "readings.reading_hour = '2026-10-18 12:00:00'"],
+     [{"readings.reading_count": 6}]),
     # Average temperature by device: 101 (18 + 14 + 12) / 3, 102 (21 + 22.1
     # + 23) / 3, 104 (24 + 25) / 2. On October 19 alone: 101 (14 + 12) /
     # 2, 102 23, 104 24.5.
-    (["-m", "avg_value", "-f", "readings.measure = 'temperature'", "-d", "readings.device_id",
-      "-o", "readings.device_id"],
-     [{"device_id": 101, "avg_value": 44 / 3}, {"device_id": 102, "avg_value": 66.1 / 3},
-      {"device_id": 104, "avg_value": 24.5}]),
-    (["-m", "avg_value", "-f", "readings.measure = 'temperature'", "-f", "readings.reading_date = '2026-10-19'",
+    (["-m", "readings.avg_value", "-f", "readings.measure = 'temperature'",
       "-d", "readings.device_id", "-o", "readings.device_id"],
-     [{"device_id": 101, "avg_value": 13}, {"device_id": 102, "avg_value": 23},
-      {"device_id": 104, "avg_value": 24.5}]),
+     [{"device_id": 101, "readings.avg_value": 44 / 3},
+      {"device_id": 102, "readings.avg_value": 66.1 / 3},
+      {"device_id": 104, "readings.avg_value": 24.5}]),
+    (["-m", "readings.avg_value", "-f", "readings.measure = 'temperature'",
+      "-f", "readings.reading_date = '2026-10-19'", "-d", "readings.device_id",
+      "-o", "readings.device_id"],
+     [{"device_id": 101, "readings.avg_value": 13},
+      {"device_id": 102, "readings.avg_value": 23},
+      {"device_id": 104, "readings.avg_value": 24.5}]),
     # By sensor type: BME280 3 + 3 + 2 (1003) + 3 (1008), DHT22 2 + 4
     # (1002) + 1 (1006),
     # PMS5003 4, SDS011 6. SPS30 is not there.
-    (["-m", "reading_count", "-d", "readings.sensor_type", "-o", "readings.sensor_type"],
-     [{"sensor_type": "BME280", "reading_count": 11}, {"sensor_type": "DHT22", "reading_count": 7},
-      {"sensor_type": "PMS5003", "reading_count": 4}, {"sensor_type": "SDS011", "reading_count": 6}]),
+    (["-m", "readings.reading_count", "-d", "readings.sensor_type", "-o", "readings.sensor_type"],
+     [{"sensor_type": "BME280", "readings.reading_count": 11},
+      {"sensor_type": "DHT22", "readings.reading_count": 7},
+      {"sensor_type": "PMS5003", "readings.reading_count": 4},
+      {"sensor_type": "SDS011", "readings.reading_count": 6}]),
     # The latest reading of each device: 101 October 19 06:00 (DHT22), 102
     # October 19 12:00, 103 October 18 11:00, 104 October 19 09:00.
-    (["-m", "last_reading_time", "-d", "readings.device_id", "-o", "readings.device_id"],
-     [{"device_id": 101, "last_reading_time": "2026-10-19 06:00:00+00:00"},
-      {"device_id": 102, "last_reading_time": "2026-10-19 12:00:00+00:00"},
-      {"device_id": 103, "last_reading_time": "2026-10-18 11:00:00+00:00"},
-      {"device_id": 104, "last_reading_time": "2026-10-19 09:00:00+00:00"}]),
+    (["-m", "readings.last_reading_time", "-d", "readings.device_id", "-o", "readings.device_id"],
+     [{"device_id": 101, "readings.last_reading_time": "2026-10-19 06:00:00+00:00"},
+      {"device_id": 102, "readings.last_reading_time": "2026-10-19 12:00:00+00:00"},
+      {"device_id": 103, "readings.last_reading_time": "2026-10-18 11:00:00+00:00"},
+      {"device_id": 104, "readings.last_reading_time": "2026-10-19 09:00:00+00:00"}]),
     # Silent for more than an hour at 12:00 on October 19, the fixture's
     # latest reading: 101, 103 and 104. 105 has never reported a reading,
     # so it has no last reading to compare.
-    (["-m", "device_count", "-f", "devices.last_reading_at < '2026-10-19 11:00:00'"],
-     [{"device_count": 3}]),
+    (["-m", "devices.device_count", "-f", "devices.last_reading_at < '2026-10-19 11:00:00'"],
+     [{"devices.device_count": 3}]),
     # Silence by last contact. The latest contact in the data is 101's
     # 12:29:50 in the snapshot of October 19 12:30; by readings alone it
     # would be 102's 12:00, and had the insert kept the earlier of 1001's
     # two records, 12:28:00, 1002's.
-    (["-m", "last_contact_time"], [{"last_contact_time": "2026-10-19 12:29:50+00:00"}]),
-    (["-m", "last_contact_time", "-d", "devices.device_id", "-o", "devices.device_id"],
-     [{"device_id": 101, "last_contact_time": "2026-10-19 12:29:50+00:00"},
-      {"device_id": 102, "last_contact_time": "2026-10-19 12:00:00+00:00"},
-      {"device_id": 103, "last_contact_time": "2026-10-18 11:00:00+00:00"},
-      {"device_id": 104, "last_contact_time": "2026-10-19 09:00:00+00:00"},
-      {"device_id": 105, "last_contact_time": "2026-10-19 09:58:40+00:00"}]),
+    (["-m", "devices.last_contact_time"],
+     [{"devices.last_contact_time": "2026-10-19 12:29:50+00:00"}]),
+    (["-m", "devices.last_contact_time", "-d", "devices.device_id", "-o", "devices.device_id"],
+     [{"device_id": 101, "devices.last_contact_time": "2026-10-19 12:29:50+00:00"},
+      {"device_id": 102, "devices.last_contact_time": "2026-10-19 12:00:00+00:00"},
+      {"device_id": 103, "devices.last_contact_time": "2026-10-18 11:00:00+00:00"},
+      {"device_id": 104, "devices.last_contact_time": "2026-10-19 09:00:00+00:00"},
+      {"device_id": 105, "devices.last_contact_time": "2026-10-19 09:58:40+00:00"}]),
     # Silent for more than an hour before 12:29:50: 103, 104 and 105. By
     # their latest readings the silent sites would be 101, 103 and 104, and
     # by the snapshots alone 102, 103 and 105.
-    (["-m", "device_count", "-d", "devices.device_id", "-f", "devices.last_contact_at < '2026-10-19 11:29:50'",
-      "-o", "devices.device_id"],
-     [{"device_id": 103, "device_count": 1}, {"device_id": 104, "device_count": 1},
-      {"device_id": 105, "device_count": 1}]),
+    (["-m", "devices.device_count", "-d", "devices.device_id",
+      "-f", "devices.last_contact_at < '2026-10-19 11:29:50'", "-o", "devices.device_id"],
+     [{"device_id": 103, "devices.device_count": 1},
+      {"device_id": 104, "devices.device_count": 1},
+      {"device_id": 105, "devices.device_count": 1}]),
     # Five devices: the sites in the snapshots and in the readings. Country
     # and indoor flag from each site's latest snapshot row: 101 is outdoors
     # (indoors by its earlier snapshot, which would make it 2 and 2); 104
     # has no snapshot.
-    (["-m", "device_count", "-d", "devices.country_code", "-o", "devices.country_code"],
-     [{"country_code": "AU", "device_count": 3}, {"country_code": "NZ", "device_count": 1},
-      {"country_code": None, "device_count": 1}]),
-    (["-m", "device_count", "-d", "devices.is_indoor", "-o", "devices.is_indoor"],
-     [{"is_indoor": False, "device_count": 3}, {"is_indoor": True, "device_count": 1},
-      {"is_indoor": None, "device_count": 1}]),
+    (["-m", "devices.device_count", "-d", "devices.country_code", "-o", "devices.country_code"],
+     [{"country_code": "AU", "devices.device_count": 3},
+      {"country_code": "NZ", "devices.device_count": 1},
+      {"country_code": None, "devices.device_count": 1}]),
+    (["-m", "devices.device_count", "-d", "devices.is_indoor", "-o", "devices.is_indoor"],
+     [{"is_indoor": False, "devices.device_count": 3},
+      {"is_indoor": True, "devices.device_count": 1},
+      {"is_indoor": None, "devices.device_count": 1}]),
     # Readings by their device's flag: outdoor temperature is 101's, indoor
     # 102's, and 104's (24 and 25) has no flag.
-    (["-m", "avg_value", "-f", "readings.measure = 'temperature'", "-d", "devices.is_indoor",
-      "-o", "devices.is_indoor"],
-     [{"is_indoor": False, "avg_value": 44 / 3}, {"is_indoor": True, "avg_value": 66.1 / 3},
-      {"is_indoor": None, "avg_value": 24.5}]),
+    (["-m", "readings.avg_value", "-f", "readings.measure = 'temperature'",
+      "-d", "devices.is_indoor", "-o", "devices.is_indoor"],
+     [{"is_indoor": False, "readings.avg_value": 44 / 3},
+      {"is_indoor": True, "readings.avg_value": 66.1 / 3},
+      {"is_indoor": None, "readings.avg_value": 24.5}]),
 ]
 
 

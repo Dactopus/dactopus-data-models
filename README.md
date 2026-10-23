@@ -843,18 +843,20 @@ You need ClickHouse, dbt, dactopus-ossie-clickhouse and
 ## What the GA4 model answers
 
 [`entities/web_analytics.yaml`](entities/web_analytics.yaml) has 12
-metrics:
+metrics, each on the dataset whose rows it counts; a question names one
+as `dataset.metric` (`sessions.session_count`):
 
-- sessions: `sessions`, `engaged_sessions`, `engagement_rate`, `users`,
-  `session_conversion_rate`, `user_conversion_rate`, `page_views`. They
-  break down by the session's date, week and month; traffic source,
-  medium and campaign; landing page, device and country.
-- purchases: `purchases`, `gross_purchase_revenue`,
+- sessions: `session_count`, `engaged_sessions`, `engagement_rate`,
+  `users`, `session_conversion_rate`, `user_conversion_rate`,
+  `page_view_count`. They break down by the session's date, week and
+  month; traffic source, medium and campaign; landing page, device and
+  country.
+- purchases: `purchase_count`, `gross_purchase_revenue`,
   `gross_purchase_revenue_usd`, `average_gross_purchase_revenue`. They
   break down by the session fields above, and by the purchase's own
   date, week, month and currency.
-- events: `events`. It breaks down by the session fields above, and by
-  the event's own date, name, page, device and country.
+- events: `event_count`. It breaks down by the session fields above, and
+  by the event's own date, name, page, device and country.
 
 The descriptions in the file say what each one counts.
 
@@ -875,8 +877,8 @@ the model states in its descriptions:
   by the same user with the same transaction id counts once, as in GA4.
 - **Revenue** is in the currency of each purchase. A store that sells in
   several currencies has to read it by `purchases.currency`;
-  `gross_purchase_revenue_usd` is converted by Google at a rate it does
-  not document.
+  `purchases.gross_purchase_revenue_usd` is converted by Google at a
+  rate it does not document.
 - **Refunds** are not subtracted: the model reads purchase events only.
   The metrics are GA4's gross purchase revenue; the interface's
   "Purchase revenue" subtracts the refunds the site sent to GA4, so it
@@ -889,58 +891,67 @@ the model states in its descriptions:
 
 ## What the commerce model answers
 
-[`entities/commerce.yaml`](entities/commerce.yaml) has 19 metrics:
+[`entities/commerce.yaml`](entities/commerce.yaml) has 19 metrics. A
+metric that counts the rows of one dataset is on that dataset, and a
+question names it as `dataset.metric` (`orders.revenue`). The five that
+read order lines or refunds together with `orders.in_sales_reports` are
+on the model and go by their name alone:
 
-- orders: `orders`, `all_orders`, `all_orders_total`, `revenue`,
+- orders: `order_count`, `all_orders`, `all_orders_total`, `revenue`,
   `refunded_amount`, `refund_rate`, `average_order_value`,
-  `items_per_order`, `discount_total`, `shipping_total`, `tax_total`,
-  `customers`, `repeat_order_share`. They break down by the order's date,
-  week and month; payment and fulfillment status, cancelled or not,
-  counted in the store's reports or not, channel and currency; shipping
-  country, region and city; new or repeat customer.
-- order lines: `items_sold`, `items_net`, `line_revenue`. They break down
-  by product, variant, SKU and title, and by the order fields above.
-- refunds: `refunds`, `refunds_total`. They break down by the refund's
-  own date, week and month, and by the order fields above.
+  `items_per_order`, `discount_amount`, `shipping_amount`, `tax_amount`,
+  `customers`, `repeat_order_share`. They break down by the order's
+  date, week and month; payment and fulfillment status, cancelled or
+  not, counted in the store's reports or not, channel and currency;
+  shipping country, region and city; new or repeat customer.
+- order lines (on the model): `items_sold`, `items_net`, `line_revenue`.
+  They break down by product, variant, SKU and title, and by the order
+  fields above.
+- refunds (on the model): `refund_count`, `refunds_total`. They break
+  down by the refund's own date, week and month, and by the order fields
+  above.
 - sales events: `net_revenue`. It breaks down by the event's date, week,
   month and kind (an order, a refund, a cancellation), and by the order
   fields above.
 
 The numbers follow the store's own sales reports: every metric but
-`all_orders` and `all_orders_total` counts only the orders those reports
-count (`orders.in_sales_reports`). Shopify's reports count every order;
-WooCommerce's, by default, paid orders that are not cancelled or failed.
+`orders.all_orders` and `orders.all_orders_total` counts only the orders
+those reports count (`orders.in_sales_reports`). Shopify's reports count
+every order; WooCommerce's, by default, paid orders that are not
+cancelled or failed.
 
-"Sales" or "revenue" without a qualifier is `net_revenue`: orders less
-refunds and cancellations, with shipping and tax. By
+"Sales" or "revenue" without a qualifier is `sales_events.net_revenue`:
+orders less refunds and cancellations, with shipping and tax. By
 `sales_events.event_month` it gives each month's sales as the store's
 reports show them, a refund or a cancellation in the month it was made;
 by `orders.order_month`, what each month's orders earned, later refunds
-included. `revenue` is orders as placed. Amounts are in the store's
-currency.
+included. `orders.revenue` is orders as placed. Amounts are in the
+store's currency.
 
 Dates are in the store's time zone, and so is "today" (`CURRENT_DATE`)
 when the model is served in that zone (Use in your dbt project).
 
 ## Known differences from Shopify's reports
 
-On the development store the package was checked against, `net_revenue`
-equals Shopify's total sales overall, by shipping country and by new or
-returning customer, and, by `sales_events.event_date`, for each order on
-each day; `average_order_value` equals the store's. Test orders are left
+On the development store the package was checked against,
+`sales_events.net_revenue` equals Shopify's total sales overall, by
+shipping country and by new or returning customer, and, by
+`sales_events.event_date`, for each order on each day;
+`orders.average_order_value` equals the store's. Test orders are left
 out, as in the reports. Other numbers differ by definition, and the
 model's descriptions say how:
 
 - **Gross and net sales** in Shopify's reports are goods only.
-  `revenue` and `net_revenue` add shipping, tax and import duties;
-  `line_revenue` is goods after discounts.
+  `orders.revenue` and `sales_events.net_revenue` add shipping, tax and
+  import duties; `line_revenue` is goods after discounts.
 - **Sales reversals** (formerly returns) in the reports are without tax
-  and count a cancelled unpaid order as reversed. `refunded_amount` is
-  the money paid back, with its tax; a cancelled unpaid order has nothing
-  refunded. `net_revenue` takes a cancelled order back on the day it was
-  cancelled, as the reports do, through a cancellation event.
-- **Taxes** in the reports are net of refunded tax; `tax_total` is the
-  tax on the order as placed.
+  and count a cancelled unpaid order as reversed.
+  `orders.refunded_amount` is the money paid back, with its tax; a
+  cancelled unpaid order has nothing refunded.
+  `sales_events.net_revenue` takes a cancelled order back on the day it
+  was cancelled, as the reports do, through a cancellation event.
+- **Taxes** in the reports are net of refunded tax; `orders.tax_amount`
+  is the tax on the order as placed.
 - **New or returning**: the reports keep a cancelled order in its
   customer's sequence (a cancelled first order shows as new). The model
   gives a cancelled order no place in the sequence, so a customer's
@@ -960,7 +971,7 @@ a line's tax rates are added up, so compound taxes are not exact; orders
 deleted in Shopify stay; amounts are in the shop's currency, not the
 currency the customer paid in. In a shop whose prices include tax, a
 line's discount is computed in cents, so in a currency without them,
-such as the yen, `discount_total` can carry a fraction
+such as the yen, `orders.discount_total` can carry a fraction
 ([#7](https://github.com/Dactopus/dactopus-data-models/issues/7)). The
 reports date an order edit on the day of the edit, `sales_events` on the
 day of the order; a cancellation and a refund of one order on different
@@ -981,24 +992,25 @@ memory.
 
 ## Known differences from WooCommerce Analytics
 
-On a local test store (WooCommerce 11.2.1) the package was checked against
-Analytics under each of its three date types, other settings as
+On a local test store (WooCommerce 11.2.1) the package was checked
+against Analytics under each of its three date types, other settings as
 WooCommerce ships them. Every order's total, subtotal, tax, shipping,
 items, refunds, report date and whether the reports count it matched.
-`net_revenue` by `sales_events.event_month` equals the reports' total
-sales for every month, and `orders`, `average_order_value`,
-`items_per_order`, `discount_total`, `items_net`, refunds by month and
-new or returning registered customers equal the reports' numbers. After
-a refund, a deleted order and a new one, an incremental run matched a
-full rebuild and the reports again. Other numbers differ by definition,
-and the model's descriptions say how:
+`sales_events.net_revenue` by `sales_events.event_month` equals the
+reports' total sales for every month, and `orders.order_count`,
+`orders.average_order_value`, `orders.items_per_order`,
+`orders.discount_amount`, `items_net`, refunds by month and new or
+returning registered customers equal the reports' numbers. After a
+refund, a deleted order and a new one, an incremental run matched a full
+rebuild and the reports again. Other numbers differ by definition, and
+the model's descriptions say how:
 
 - **Net sales** in the reports are goods after refunds, without shipping
-  and tax. `net_revenue` is the reports' total sales; `line_revenue` is
-  goods after discounts, before refunds.
+  and tax. `sales_events.net_revenue` is the reports' total sales;
+  `line_revenue` is goods after discounts, before refunds.
 - **Shipping and tax** in the reports are net of what was refunded, in
-  the month of the refund; `shipping_total` and `tax_total` are as on the
-  order.
+  the month of the refund; `orders.shipping_amount` and
+  `orders.tax_amount` are as on the order.
 - **New or returning**: the reports count a guest as a customer by email.
   The model gives guest orders no place in a customer's sequence, as at
   Shopify; registered customers match.
@@ -1024,7 +1036,9 @@ from its legacy storage between runs of `wp wc hpos verify_data
 
 ## What the iot model answers
 
-[`entities/iot.yaml`](entities/iot.yaml) has 9 metrics:
+[`entities/iot.yaml`](entities/iot.yaml) has 9 metrics, each on the
+dataset whose rows it counts; a question names one as `dataset.metric`
+(`devices.device_count`):
 
 - readings: `reading_count`, `avg_value`, `min_value`, `max_value`,
   `reporting_devices`, `last_reading_time`. They break down by measure
@@ -1055,12 +1069,12 @@ Units: PM10 and PM2.5 in µg/m³, temperature in °C, relative humidity in
   things only: `nan` is no reading, and a pressure from 300 to 1,100 is
   read as hPa and converted to Pa.
 - **Silence** is measured from the latest contact in the data
-  (`last_contact_time`), not from the clock: "silent for more than an
-  hour" is an hour before it, and the agent names it and its age. While
-  the snapshots run it is within minutes of now; without them it is the
-  latest reading, hours old, since the archive publishes a day the day
-  after. The snapshots keep no history, so the answer is exact only if
-  they ran without a gap through the hour before that time.
+  (`devices.last_contact_time`), not from the clock: "silent for more
+  than an hour" is an hour before it, and the agent names it and its
+  age. While the snapshots run it is within minutes of now; without them
+  it is the latest reading, hours old, since the archive publishes a day
+  the day after. The snapshots keep no history, so the answer is exact
+  only if they ran without a gap through the hour before that time.
 - **Snapshots loaded by 0.5.0's query** took several records per
   sensor, and ClickHouse kept the last of them on insert, in the API's
   order, which may not be the latest. A sensor silent since then can
@@ -1070,11 +1084,12 @@ Units: PM10 and PM2.5 in µg/m³, temperature in °C, relative humidity in
   tells agents to say so and to offer the outdoor ones
   (`devices.is_indoor`). A site that was never in a snapshot has no
   country and no indoor flag.
-- **Devices by their readings.** `device_count` filtered on a field of
-  `readings` (`readings.reading_date = '2026-10-19'`) counts each site
-  with at least one such reading, as `reporting_devices` does. Sites
-  without a reading on a date cannot be counted: `NOT` in that filter
-  keeps every site with a reading on another date
+- **Devices by their readings.** `devices.device_count` filtered on a
+  field of `readings` (`readings.reading_date = '2026-10-19'`) counts
+  each site with at least one such reading, as
+  `readings.reporting_devices` does. Sites without a reading on a date
+  cannot be counted: `NOT` in that filter keeps every site with a
+  reading on another date
   ([dactopus-ossie-clickhouse#10](https://github.com/Dactopus/dactopus-ossie-clickhouse/issues/10)).
   Sites silent since a time are found through `devices.last_contact_at`.
 - **Sensor types**: SDS011, PMS5003, BME280 and DHT22. Readings of other
@@ -1092,10 +1107,10 @@ WooCommerce, `subdirectory: sources/woocommerce`; for Sensor.Community,
 ```yaml
 packages:
   - git: https://github.com/Dactopus/dactopus-data-models.git
-    revision: v0.6.0
+    revision: v0.6.1
     subdirectory: sources/ga4
   - git: https://github.com/Dactopus/dactopus-data-models.git
-    revision: v0.6.0
+    revision: v0.6.1
     subdirectory: sources/shopify
 ```
 
@@ -1191,8 +1206,8 @@ dactopus-ossie-clickhouse serve entities/web_analytics.yaml entities/commerce.ya
 
 There "sales", "revenue", "orders" and "average order value" are the
 store's figures from the commerce model; the GA4 metrics are named after
-GA4's own (`gross_purchase_revenue`), and the agent names both when
-asked to compare them.
+GA4's own (`purchases.gross_purchase_revenue`), and the agent names both
+when asked to compare them.
 
 On dbt v2, `dbt source freshness` fails on ClickHouse for every source
 ([dbt-labs/dbt#16714](https://github.com/dbt-labs/dbt/issues/16714)).

@@ -9,32 +9,30 @@ description: >
 ai_context:
   instructions: >
     Every time is UTC and every date is the date in UTC, not the device's
-    local date: a reading near midnight local time can fall on the day
-    before or after. A device is a site, one place with coordinates where a
-    board reports through one or more sensors. Readings are long: one row
-    per sensor, time and measure (readings.measure: pm10, pm2_5,
-    temperature, humidity, pressure). avg_value, min_value and max_value
-    mean something only for one measure at a time: always filter on
-    readings.measure or break the answer down by it, and never average
-    values of different measures together. Units: PM10 and PM2.5 in µg/m³,
-    temperature in °C, relative humidity in %, pressure in Pa (divide by
-    100 for hPa). Values are as the sensors sent them, not cleaned:
-    humidity of 100 in dew and dust peaks in rain are in the data. An
-    indoor device (devices.is_indoor) measures a room, not the outdoor
-    air. Answer over every device unless asked otherwise; in a per-device
-    answer mark the indoor ones, and with an average across devices say
-    that indoor ones are included.
-    The network publishes a day's readings the day after, so the latest
-    reading is hours old even for a device that works; where the API's
-    snapshots run, every few minutes, they tell when each site last
-    reported. "Silent", "offline" or "not reporting" means no contact for
-    the stated time before the latest contact in the data
-    (last_contact_time with no dimension), not before now: get that time
-    and minutes_since_last_contact first, then filter
-    devices.last_contact_at below the time minus the period. Name both in
-    the answer ("as of 00:35 UTC, 3 minutes ago"). An age of hours or days
-    means the snapshots are not running: say so, the answer is about that
-    time.
+    local date: a reading near midnight local time can fall on the day before
+    or after. A device is a site, one place with coordinates where a board
+    reports through one or more sensors. Readings are long: one row per
+    sensor, time and measure (readings.measure: pm10, pm2_5, temperature,
+    humidity, pressure). readings.avg_value, readings.min_value and
+    readings.max_value mean something only for one measure at a time: always
+    filter on readings.measure or break the answer down by it, and never
+    average values of different measures together. Units: PM10 and PM2.5 in
+    µg/m³, temperature in °C, relative humidity in %, pressure in Pa (divide
+    by 100 for hPa). Values are as the sensors sent them, not cleaned:
+    humidity of 100 in dew and dust peaks in rain are in the data. An indoor
+    device (devices.is_indoor) measures a room, not the outdoor air. Answer
+    over every device unless asked otherwise; in a per-device answer mark the
+    indoor ones, and with an average across devices say that indoor ones are
+    included. The network publishes a day's readings the day after, so the
+    latest reading is hours old even for a device that works; where the API's
+    snapshots run, every few minutes, they tell when each site last reported.
+    "Silent", "offline" or "not reporting" means no contact for the stated
+    time before the latest contact in the data (devices.last_contact_time with
+    no dimension), not before now: get that time and
+    devices.minutes_since_last_contact first, then filter
+    devices.last_contact_at below the time minus the period. Name both in the
+    answer ("as of 00:35 UTC, 3 minutes ago"). An age of hours or days means
+    the snapshots are not running: say so, the answer is about that time.
 
 datasets:
   - name: readings
@@ -126,6 +124,51 @@ datasets:
         dimension: {is_time: true}
         ai_context:
           synonyms: [month, monthly]
+    metrics:
+      - name: reading_count
+        expression: {dialects: [{dialect: ANSI_SQL, expression: COUNT(*)}]}
+        description: Number of readings, one per sensor, time and measure.
+        datatype: Integer
+        ai_context:
+          synonyms: [readings, number of readings, measurements, data points]
+      - name: avg_value
+        expression: {dialects: [{dialect: ANSI_SQL, expression: AVG(value)}]}
+        description: >
+          Average of the readings' values, over readings, not over time: a
+          sensor that reports more often weighs more. Only for one measure at
+          a time (filter on readings.measure or break down by it).
+        datatype: Float
+        ai_context:
+          synonyms: [average, mean, average temperature, average PM2.5, average humidity]
+      - name: min_value
+        expression: {dialects: [{dialect: ANSI_SQL, expression: MIN(value)}]}
+        description: Lowest reading value, for one measure at a time.
+        datatype: Float
+        ai_context:
+          synonyms: [minimum, lowest, coldest]
+      - name: max_value
+        expression: {dialects: [{dialect: ANSI_SQL, expression: MAX(value)}]}
+        description: Highest reading value, for one measure at a time.
+        datatype: Float
+        ai_context:
+          synonyms: [maximum, highest, peak, hottest]
+      - name: reporting_devices
+        expression: {dialects: [{dialect: ANSI_SQL, expression: COUNT(DISTINCT device_id)}]}
+        description: >
+          Number of sites with at least one reading in the period and the
+          filters: the devices that reported.
+        datatype: Integer
+        ai_context:
+          synonyms: [active devices, devices reporting, online devices, reporting sites]
+      - name: last_reading_time
+        expression: {dialects: [{dialect: ANSI_SQL, expression: MAX(measured_at)}]}
+        description: >
+          Time of the latest reading, UTC. Without a dimension, the latest
+          reading in the data, hours old: silence is measured from
+          devices.last_contact_time.
+        datatype: DateTimeTz
+        ai_context:
+          synonyms: [latest reading, most recent reading]
 
   - name: devices
     source: devices
@@ -225,6 +268,34 @@ datasets:
         dimension: {is_time: true}
         ai_context:
           synonyms: [last seen, last contact, last heard from, silent, offline, not reporting, online]
+    metrics:
+      - name: device_count
+        expression: {dialects: [{dialect: ANSI_SQL, expression: COUNT(*)}]}
+        description: >
+          Number of sites, with or without readings in any period; use
+          readings.reporting_devices for the sites that reported in one.
+        datatype: Integer
+        ai_context:
+          synonyms: [devices, number of devices, sites, stations, how many devices]
+      - name: last_contact_time
+        expression: {dialects: [{dialect: ANSI_SQL, expression: MAX(last_contact_at)}]}
+        description: >
+          Time of the latest contact, UTC. Without a dimension, the latest the
+          network heard from any site: the time silence is measured from.
+          Within minutes of now while the snapshots run; the latest reading
+          when they do not.
+        datatype: DateTimeTz
+        ai_context:
+          synonyms: [data as of, latest contact, how current, freshest data, latest data, last update, data up to]
+      - name: minutes_since_last_contact
+        expression: {dialects: [{dialect: ANSI_SQL, expression: "DATEDIFF(MINUTE, MAX(last_contact_at), CURRENT_TIMESTAMP)"}]}
+        description: >
+          Minutes from the latest contact to now, by the database's clock.
+          Without a dimension, the age of devices.last_contact_time: a few
+          minutes while the snapshots run, hours or days when they do not.
+        datatype: Integer
+        ai_context:
+          synonyms: [how old is the data, data age, minutes ago, how fresh]
 
 relationships:
   - name: readings_to_devices
@@ -234,76 +305,3 @@ relationships:
     to_columns: [device_id]
     ai_context:
       synonyms: [readings by country, readings indoors and outdoors]
-
-metrics:
-  - name: reading_count
-    expression: {dialects: [{dialect: ANSI_SQL, expression: COUNT(readings.sensor_id)}]}
-    description: Number of readings, one per sensor, time and measure.
-    datatype: Integer
-    ai_context:
-      synonyms: [readings, number of readings, measurements, data points]
-  - name: avg_value
-    expression: {dialects: [{dialect: ANSI_SQL, expression: AVG(readings.value)}]}
-    description: >
-      Average of the readings' values, over readings, not over time: a
-      sensor that reports more often weighs more. Only for one measure at
-      a time (filter on readings.measure or break down by it).
-    datatype: Float
-    ai_context:
-      synonyms: [average, mean, average temperature, average PM2.5, average humidity]
-  - name: min_value
-    expression: {dialects: [{dialect: ANSI_SQL, expression: MIN(readings.value)}]}
-    description: Lowest reading value, for one measure at a time.
-    datatype: Float
-    ai_context:
-      synonyms: [minimum, lowest, coldest]
-  - name: max_value
-    expression: {dialects: [{dialect: ANSI_SQL, expression: MAX(readings.value)}]}
-    description: Highest reading value, for one measure at a time.
-    datatype: Float
-    ai_context:
-      synonyms: [maximum, highest, peak, hottest]
-  - name: reporting_devices
-    expression: {dialects: [{dialect: ANSI_SQL, expression: COUNT(DISTINCT readings.device_id)}]}
-    description: >
-      Number of sites with at least one reading in the period and the
-      filters: the devices that reported.
-    datatype: Integer
-    ai_context:
-      synonyms: [active devices, devices reporting, online devices, reporting sites]
-  - name: last_reading_time
-    expression: {dialects: [{dialect: ANSI_SQL, expression: MAX(readings.measured_at)}]}
-    description: >
-      Time of the latest reading, UTC. Without a dimension, the latest
-      reading in the data, hours old: silence is measured from
-      last_contact_time.
-    datatype: DateTimeTz
-    ai_context:
-      synonyms: [latest reading, most recent reading]
-  - name: device_count
-    expression: {dialects: [{dialect: ANSI_SQL, expression: COUNT(devices.device_id)}]}
-    description: >
-      Number of sites, with or without readings in any period; use
-      reporting_devices for the sites that reported in one.
-    datatype: Integer
-    ai_context:
-      synonyms: [devices, number of devices, sites, stations, how many devices]
-  - name: last_contact_time
-    expression: {dialects: [{dialect: ANSI_SQL, expression: MAX(devices.last_contact_at)}]}
-    description: >
-      Time of the latest contact, UTC. Without a dimension, the latest the
-      network heard from any site: the time silence is measured from.
-      Within minutes of now while the snapshots run; the latest reading
-      when they do not.
-    datatype: DateTimeTz
-    ai_context:
-      synonyms: [data as of, latest contact, how current, freshest data, latest data, last update, data up to]
-  - name: minutes_since_last_contact
-    expression: {dialects: [{dialect: ANSI_SQL, expression: "DATEDIFF(MINUTE, MAX(devices.last_contact_at), CURRENT_TIMESTAMP)"}]}
-    description: >
-      Minutes from the latest contact to now, by the database's clock.
-      Without a dimension, the age of last_contact_time: a few minutes
-      while the snapshots run, hours or days when they do not.
-    datatype: Integer
-    ai_context:
-      synonyms: [how old is the data, data age, minutes ago, how fresh]

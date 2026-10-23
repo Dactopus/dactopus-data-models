@@ -78,7 +78,7 @@ const STEPS = [
   [["input"], "Both copies of the event land in the input table as they are."],
   [["dbt"], "The package collapses them on user and transaction_id: one purchase of 100 EUR, in session u1.100, from newsletter / email."],
   [["canon"], "One row in purchases. The next incremental run re-reads the window and does not count it twice."],
-  [["model", "oc"], "An agent asks for the revenue GA4 recorded. The model tells it to break gross_purchase_revenue down by currency; dactopus-ossie-clickhouse runs SUM(revenue) ... GROUP BY currency."],
+  [["model", "oc"], "An agent asks for the revenue GA4 recorded. The model tells it to break purchases.gross_purchase_revenue down by currency; dactopus-ossie-clickhouse runs SUM(revenue) ... GROUP BY currency."],
   [["agents"], "On the repository's test rows (tests/ga4) the answer is EUR 180 and GBP 20, not 200; in US dollars the total is 220."]
 ];
 const OVERVIEW = ["Select a box, or follow a purchase", "Purple is what this repository holds. Everything else is what it works with.", ""];
