@@ -8,7 +8,9 @@ names the Ossie schema version its models carry.
 
 ## [Unreleased]
 
-The view `devices` has the same sites as in 0.5.3; `devices_archive`
+Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.10.0,
+dbt v2 (`dbt-oss` 2.0.8) and dbt v1 (`dbt-core` 1.11 with
+`dbt-clickhouse` 1.10) on ClickHouse 26.9. The view `devices` has the same sites as in 0.5.3; `devices_archive`
 gains coordinates for sites in the snapshots. A plain `dbt build`
 updates both; no `--full-refresh`.
 
@@ -43,6 +45,13 @@ updates both; no `--full-refresh`.
   `devices` reads `locations` and `devices_archive` once per question
   instead of twice
   ([#29](https://github.com/Dactopus/dactopus-data-models/issues/29)).
+- dactopus-ossie-clickhouse 0.10.0 instead of 0.9.5. Its `query` tool
+  says when `limit` cut off rows (`truncated`), and an agent is told to
+  draw no conclusion about the whole set then; before, 100 rows came
+  back with nothing to say they might not be all. A failure to connect
+  is one line that names what to check. Keys and relationships now name
+  fields of their dataset, as the Ossie spec says; the models here name
+  their key fields after their columns and load unchanged.
 
 ## [0.5.3] - 2026-10-22
 
