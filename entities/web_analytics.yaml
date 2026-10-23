@@ -8,33 +8,34 @@ description: >
 ai_context:
   instructions: >
     Purchases and revenue here are what web analytics recorded on the site,
-    not the store's orders: they miss purchases made with tracking blocked
-    and may differ from the store's own figures. Say so when someone
-    compares them with sales. Dates are in the GA4 property's time zone.
-    A user is a browser on a device (GA4 user_pseudo_id), not a person.
-    Session and user counts are exact; the GA4 interface estimates them, so
-    its numbers can be slightly different. "Conversion rate" without a
-    qualifier means session_conversion_rate; name the definition in the
-    answer and mention user_conversion_rate by name, giving its value only
-    if you queried it. gross_purchase_revenue is GA4's gross purchase
+    not the store's orders: they miss purchases made with tracking blocked and
+    may differ from the store's own figures. Say so when someone compares them
+    with sales. Dates are in the GA4 property's time zone. A user is a browser
+    on a device (GA4 user_pseudo_id), not a person. Session and user counts
+    are exact; the GA4 interface estimates them, so its numbers can be
+    slightly different. "Conversion rate" without a qualifier means
+    sessions.session_conversion_rate; name the definition in the answer and
+    mention sessions.user_conversion_rate by name, giving its value only if
+    you queried it. purchases.gross_purchase_revenue is GA4's gross purchase
     revenue: refunds are not subtracted, while GA4's "Purchase revenue"
-    subtracts the refunds the site sent; say so when someone compares it
-    with the GA4 interface. gross_purchase_revenue,
-    average_gross_purchase_revenue, purchases.tax and purchases.shipping
-    are in the currency the site sent with each purchase
-    (purchases.currency), which GA4 calls "local currency".
-    Query gross_purchase_revenue and average_gross_purchase_revenue with
-    purchases.currency as a dimension. With one currency, answer in it and
-    name its code. With several, give each currency separately and offer
-    gross_purchase_revenue_usd for a single total; never add up amounts in
-    different currencies. Use gross_purchase_revenue_usd also when asked
-    for US dollars. Name the currency by the code purchases.currency
-    returns; do not guess a currency sign. When this model is served
-    together with the commerce model, questions about sales, revenue,
-    orders or average order value mean the store's figures there; answer
-    them from it alone. The metrics here answer what web analytics
-    recorded, and a comparison of the two names both; any amount from
-    here goes by purchases.currency or as gross_purchase_revenue_usd.
+    subtracts the refunds the site sent; say so when someone compares it with
+    the GA4 interface. purchases.gross_purchase_revenue,
+    purchases.average_gross_purchase_revenue, purchases.tax and
+    purchases.shipping are in the currency the site sent with each purchase
+    (purchases.currency), which GA4 calls "local currency". Query
+    purchases.gross_purchase_revenue and
+    purchases.average_gross_purchase_revenue with purchases.currency as a
+    dimension. With one currency, answer in it and name its code. With
+    several, give each currency separately and offer
+    purchases.gross_purchase_revenue_usd for a single total; never add up
+    amounts in different currencies. Use purchases.gross_purchase_revenue_usd
+    also when asked for US dollars. Name the currency by the code
+    purchases.currency returns; do not guess a currency sign. When this model
+    is served together with the commerce model, questions about sales,
+    revenue, orders or average order value mean the store's figures there;
+    answer them from it alone. The metrics here answer what web analytics
+    recorded, and a comparison of the two names both; any amount from here
+    goes by purchases.currency or as purchases.gross_purchase_revenue_usd.
 
 datasets:
   - name: sessions
@@ -164,6 +165,53 @@ datasets:
         dimension: {is_time: false}
         ai_context:
           synonyms: [geo, location]
+    metrics:
+      - name: session_count
+        expression: {dialects: [{dialect: ANSI_SQL, expression: COUNT(*)}]}
+        description: Number of visits.
+        datatype: Integer
+        ai_context:
+          synonyms: [sessions, visits, traffic, number of sessions]
+      - name: engaged_sessions
+        expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(CASE WHEN is_engaged THEN 1 END)"}]}
+        description: Number of engaged visits (see is_engaged).
+        datatype: Integer
+      - name: engagement_rate
+        expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(CASE WHEN is_engaged THEN 1 END) * 1.0 / COUNT(*)"}]}
+        description: Share of visits that were engaged, from 0 to 1.
+        datatype: Float
+        ai_context:
+          synonyms: [engagement]
+      - name: users
+        expression: {dialects: [{dialect: ANSI_SQL, expression: COUNT(DISTINCT user_pseudo_id)}]}
+        description: >
+          Number of distinct browsers on devices that visited. Not people: one
+          person on two devices counts twice.
+        datatype: Integer
+        ai_context:
+          synonyms: [visitors, unique visitors, total users]
+      - name: session_conversion_rate
+        expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(CASE WHEN has_purchase THEN 1 END) * 1.0 / COUNT(*)"}]}
+        description: >
+          Share of visits that included a purchase, from 0 to 1. The default
+          meaning of conversion rate, as in the Shopify dashboard.
+        datatype: Float
+        ai_context:
+          synonyms: [conversion rate, conversion, ecommerce conversion rate, session key event rate]
+      - name: user_conversion_rate
+        expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(DISTINCT CASE WHEN has_purchase THEN user_pseudo_id END) * 1.0 / COUNT(DISTINCT user_pseudo_id)"}]}
+        description: >
+          Share of visitors (browsers on devices) who bought at least once in the
+          period, from 0 to 1.
+        datatype: Float
+        ai_context:
+          synonyms: [purchaser rate, user key event rate, buyer conversion]
+      - name: page_view_count
+        expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(page_views)}]}
+        description: Number of pages viewed.
+        datatype: Integer
+        ai_context:
+          synonyms: [page views, pageviews, views]
 
   - name: purchases
     source: purchases
@@ -253,13 +301,50 @@ datasets:
         expression: {dialects: [{dialect: ANSI_SQL, expression: shipping}]}
         description: Shipping cost in the order, in the same currency as revenue.
         datatype: Float
+    metrics:
+      - name: purchase_count
+        expression: {dialects: [{dialect: ANSI_SQL, expression: COUNT(*)}]}
+        description: Number of purchases recorded on the site.
+        datatype: Integer
+        ai_context:
+          synonyms: [conversions, ecommerce purchases, number of purchases]
+      - name: gross_purchase_revenue
+        expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(revenue)}]}
+        description: >
+          Total value of purchases as the site sent them, in their currency
+          (purchases.currency): GA4's gross purchase revenue. Refunds are not
+          subtracted; GA4's "Purchase revenue" subtracts the refunds the site
+          sent, so it is lower when there were any. Amounts in different
+          currencies are added as they are: break it down by
+          purchases.currency, or use purchases.gross_purchase_revenue_usd for
+          a single total. Purchases the site sent without a value add nothing.
+        datatype: Float
+        ai_context:
+          synonyms: [purchase revenue, ecommerce revenue, tracked revenue, web revenue, GA4 revenue]
+      - name: gross_purchase_revenue_usd
+        expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(revenue_usd)}]}
+        description: >
+          Total value of purchases in US dollars, converted by Google; refunds
+          are not subtracted, as in purchases.gross_purchase_revenue.
+        datatype: Float
+        ai_context:
+          synonyms: [purchase revenue in dollars, USD purchase revenue, web revenue in USD]
+      - name: average_gross_purchase_revenue
+        expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(revenue) / COUNT(revenue)}]}
+        description: >
+          Average value of a purchase over purchases that have a value, in
+          their currency (purchases.currency), refunds not subtracted; break it
+          down by currency when there are several.
+        datatype: Float
+        ai_context:
+          synonyms: [average purchase revenue, average purchase value]
 
   - name: events
     source: events
     description: >
       One row per action recorded on the site: page_view, view_item,
       add_to_cart, begin_checkout, purchase and others. Use for funnels and
-      counts of specific actions; use sessions for visits.
+      counts of specific actions; use sessions.session_count for visits.
     ai_context:
       synonyms: [actions, hits, interactions]
     fields:
@@ -312,6 +397,13 @@ datasets:
         description: Country of the visitor, from the IP address.
         datatype: String
         dimension: {is_time: false}
+    metrics:
+      - name: event_count
+        expression: {dialects: [{dialect: ANSI_SQL, expression: COUNT(*)}]}
+        description: Number of recorded actions; filter by event_name for a specific one.
+        datatype: Integer
+        ai_context:
+          synonyms: [events, actions]
 
 relationships:
   - name: purchases_to_sessions
@@ -326,93 +418,3 @@ relationships:
     to: sessions
     from_columns: [session_key]
     to_columns: [session_key]
-
-metrics:
-  - name: sessions
-    expression: {dialects: [{dialect: ANSI_SQL, expression: COUNT(sessions.session_key)}]}
-    description: Number of visits.
-    datatype: Integer
-    ai_context:
-      synonyms: [visits, traffic, number of sessions]
-  - name: engaged_sessions
-    expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(CASE WHEN sessions.is_engaged THEN 1 END)"}]}
-    description: Number of engaged visits (see is_engaged).
-    datatype: Integer
-  - name: engagement_rate
-    expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(CASE WHEN sessions.is_engaged THEN 1 END) * 1.0 / COUNT(sessions.session_key)"}]}
-    description: Share of visits that were engaged, from 0 to 1.
-    datatype: Float
-    ai_context:
-      synonyms: [engagement]
-  - name: users
-    expression: {dialects: [{dialect: ANSI_SQL, expression: COUNT(DISTINCT sessions.user_pseudo_id)}]}
-    description: >
-      Number of distinct browsers on devices that visited. Not people: one
-      person on two devices counts twice.
-    datatype: Integer
-    ai_context:
-      synonyms: [visitors, unique visitors, total users]
-  - name: session_conversion_rate
-    expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(CASE WHEN sessions.has_purchase THEN 1 END) * 1.0 / COUNT(sessions.session_key)"}]}
-    description: >
-      Share of visits that included a purchase, from 0 to 1. The default
-      meaning of conversion rate, as in the Shopify dashboard.
-    datatype: Float
-    ai_context:
-      synonyms: [conversion rate, conversion, ecommerce conversion rate, session key event rate]
-  - name: user_conversion_rate
-    expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(DISTINCT CASE WHEN sessions.has_purchase THEN sessions.user_pseudo_id END) * 1.0 / COUNT(DISTINCT sessions.user_pseudo_id)"}]}
-    description: >
-      Share of visitors (browsers on devices) who bought at least once in the
-      period, from 0 to 1.
-    datatype: Float
-    ai_context:
-      synonyms: [purchaser rate, user key event rate, buyer conversion]
-  - name: purchases
-    expression: {dialects: [{dialect: ANSI_SQL, expression: COUNT(purchases.purchase_key)}]}
-    description: Number of purchases recorded on the site.
-    datatype: Integer
-    ai_context:
-      synonyms: [conversions, ecommerce purchases, number of purchases]
-  - name: gross_purchase_revenue
-    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(purchases.revenue)}]}
-    description: >
-      Total value of purchases as the site sent them, in their currency
-      (purchases.currency): GA4's gross purchase revenue. Refunds are not
-      subtracted; GA4's "Purchase revenue" subtracts the refunds the site
-      sent, so it is lower when there were any. Amounts in different
-      currencies are added as they are: break it down by
-      purchases.currency, or use gross_purchase_revenue_usd for a single
-      total. Purchases the site sent without a value add nothing.
-    datatype: Float
-    ai_context:
-      synonyms: [purchase revenue, ecommerce revenue, tracked revenue, web revenue, GA4 revenue]
-  - name: gross_purchase_revenue_usd
-    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(purchases.revenue_usd)}]}
-    description: >
-      Total value of purchases in US dollars, converted by Google; refunds
-      are not subtracted, as in gross_purchase_revenue.
-    datatype: Float
-    ai_context:
-      synonyms: [purchase revenue in dollars, USD purchase revenue, web revenue in USD]
-  - name: average_gross_purchase_revenue
-    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(purchases.revenue) / COUNT(purchases.revenue)}]}
-    description: >
-      Average value of a purchase over purchases that have a value, in
-      their currency (purchases.currency), refunds not subtracted; break it
-      down by currency when there are several.
-    datatype: Float
-    ai_context:
-      synonyms: [average purchase revenue, average purchase value]
-  - name: events
-    expression: {dialects: [{dialect: ANSI_SQL, expression: COUNT(events.event_name)}]}
-    description: Number of recorded actions; filter by event_name for a specific one.
-    datatype: Integer
-    ai_context:
-      synonyms: [event count, actions]
-  - name: page_views
-    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(sessions.page_views)}]}
-    description: Number of pages viewed.
-    datatype: Integer
-    ai_context:
-      synonyms: [pageviews, views]

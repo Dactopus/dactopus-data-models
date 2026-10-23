@@ -64,12 +64,14 @@ CASES = [
     # (1012) = 76.95. Tax 12 (1007) + 17.55 + 1.95 (1008) + 31.35 (1012's
     # lines, shipping and duties) = 62.85. Customers 1 and 2; guests do not
     # count.
-    (["-m", "orders", "-m", "revenue", "-m", "refunded_amount", "-m", "net_revenue",
-      "-m", "refund_rate", "-m", "average_order_value", "-m", "discount_total",
-      "-m", "shipping_total", "-m", "tax_total", "-m", "customers"],
-     [{"orders": 11, "revenue": 1360, "refunded_amount": 315, "net_revenue": 975,
-       "refund_rate": 315 / 1360, "average_order_value": 1186 / 11, "discount_total": 44,
-       "shipping_total": 76.95, "tax_total": 62.85, "customers": 2}]),
+    (["-m", "orders.order_count", "-m", "orders.revenue", "-m", "orders.refunded_amount",
+      "-m", "sales_events.net_revenue", "-m", "orders.refund_rate",
+      "-m", "orders.average_order_value", "-m", "orders.discount_amount",
+      "-m", "orders.shipping_amount", "-m", "orders.tax_amount", "-m", "orders.customers"],
+     [{"orders.order_count": 11, "orders.revenue": 1360, "orders.refunded_amount": 315,
+       "sales_events.net_revenue": 975, "orders.refund_rate": 315 / 1360,
+       "orders.average_order_value": 1186 / 11, "orders.discount_amount": 44,
+       "orders.shipping_amount": 76.95, "orders.tax_amount": 62.85, "orders.customers": 2}]),
     # By month of processed_at in New York. 1003 is August (September in
     # UTC); 1008 is September (created in October). September net:
     # (181 - 45) + (210 - 210) + 137 + 169.50 = 442.50. August net: 110
@@ -77,40 +79,47 @@ CASES = [
     # month: 1004, 1005 and 1006 are September's, 1004's refund in October
     # included; 1001's gift card is not there. October: 1011 40 + 1012
     # 272.50.
-    (["-m", "orders", "-m", "revenue", "-m", "net_revenue", "-m", "refunded_amount",
-      "-d", "orders.order_month", "-o", "orders.order_month"],
-     [{"order_month": "2026-08-01", "orders": 3, "revenue": 220, "net_revenue": 220, "refunded_amount": 0},
-      {"order_month": "2026-09-01", "orders": 6, "revenue": 827.5, "net_revenue": 442.5, "refunded_amount": 315},
-      {"order_month": "2026-10-01", "orders": 2, "revenue": 312.5, "net_revenue": 312.5, "refunded_amount": 0}]),
+    (["-m", "orders.order_count", "-m", "orders.revenue", "-m", "sales_events.net_revenue",
+      "-m", "orders.refunded_amount", "-d", "orders.order_month", "-o", "orders.order_month"],
+     [{"order_month": "2026-08-01", "orders.order_count": 3, "orders.revenue": 220,
+       "sales_events.net_revenue": 220, "orders.refunded_amount": 0},
+      {"order_month": "2026-09-01", "orders.order_count": 6, "orders.revenue": 827.5,
+       "sales_events.net_revenue": 442.5, "orders.refunded_amount": 315},
+      {"order_month": "2026-10-01", "orders.order_count": 2, "orders.revenue": 312.5,
+       "sales_events.net_revenue": 312.5, "orders.refunded_amount": 0}]),
     # Revenue without cancelled orders: 1360 - 60 - 70.
-    (["-m", "orders", "-m", "revenue", "-f", "orders.is_cancelled = false"],
-     [{"orders": 9, "revenue": 1230}]),
+    (["-m", "orders.order_count", "-m", "orders.revenue", "-f", "orders.is_cancelled = false"],
+     [{"orders.order_count": 9, "orders.revenue": 1230}]),
     # Placed before midnight of September 1, a time without an offset, which
     # is read in the zone the model is served in, New York: August's 1001,
     # 1002 and 1003 (22:00 on August 31), 110 + 80 + 30. Served in UTC, 1003
     # (02:00 on September 1 there) is not there: 2 orders, 190. A plain
     # string reads as the TIMESTAMP literal does.
-    (["-m", "orders", "-m", "revenue", "-f", "orders.order_time < TIMESTAMP '2026-09-01 00:00:00'"],
-     [{"orders": 3, "revenue": 220}]),
-    (["-m", "orders", "-m", "revenue", "-f", "orders.order_time < '2026-09-01 00:00:00'"],
-     [{"orders": 3, "revenue": 220}]),
+    (["-m", "orders.order_count", "-m", "orders.revenue",
+      "-f", "orders.order_time < TIMESTAMP '2026-09-01 00:00:00'"],
+     [{"orders.order_count": 3, "orders.revenue": 220}]),
+    (["-m", "orders.order_count", "-m", "orders.revenue",
+      "-f", "orders.order_time < '2026-09-01 00:00:00'"],
+     [{"orders.order_count": 3, "orders.revenue": 220}]),
     # Refunds by the month they were made, in New York: 1001's gift card in
     # August, a refund of 0 as it is not a return (25 paid back), 1005's 60
     # and 1006's 210 (September 30, October 1 in UTC) in September, 1004's
     # 45 and 1010's cancel, a refund of no money, in October; the test
     # order's 500 is not there. In UTC September and October would be 60
     # and 255.
-    (["-m", "refunds", "-m", "refunds_total", "-d", "refunds.refund_month", "-o", "refunds.refund_month"],
-     [{"refund_month": "2026-08-01", "refunds": 1, "refunds_total": 0},
-      {"refund_month": "2026-09-01", "refunds": 2, "refunds_total": 270},
-      {"refund_month": "2026-10-01", "refunds": 2, "refunds_total": 45}]),
+    (["-m", "refund_count", "-m", "refunds_total", "-d", "refunds.refund_month",
+      "-o", "refunds.refund_month"],
+     [{"refund_month": "2026-08-01", "refund_count": 1, "refunds_total": 0},
+      {"refund_month": "2026-09-01", "refund_count": 2, "refunds_total": 270},
+      {"refund_month": "2026-10-01", "refund_count": 2, "refunds_total": 45}]),
     # The same refunds by the month of their order, through the order: 1001's
     # gift card in August; 1004's 45, 1005's 60, 1006's 210 and 1010's 0 in
     # September, as refunded_amount by order month. October's 1011 and 1012
     # have none.
-    (["-m", "refunds", "-m", "refunds_total", "-d", "orders.order_month", "-o", "orders.order_month"],
-     [{"order_month": "2026-08-01", "refunds": 1, "refunds_total": 0},
-      {"order_month": "2026-09-01", "refunds": 4, "refunds_total": 315}]),
+    (["-m", "refund_count", "-m", "refunds_total", "-d", "orders.order_month",
+      "-o", "orders.order_month"],
+     [{"order_month": "2026-08-01", "refund_count": 1, "refunds_total": 0},
+      {"order_month": "2026-09-01", "refund_count": 4, "refunds_total": 315}]),
     # Sales by the month they happened, as Shopify's reports count them:
     # each order in its month, each refund and cancel in its own. August
     # 1001 110 + 1002 80 + 1003 30 (1001's gift card refund is 0) = 220.
@@ -121,78 +130,98 @@ CASES = [
     # month of the order above (220, 442.50, 312.50). 1005, cancelled and
     # refunded whole at once, has no cancel to take back: counting its
     # cancel as well would take 60 more off September.
-    (["-m", "net_revenue", "-d", "sales_events.event_month", "-o", "sales_events.event_month"],
-     [{"event_month": "2026-08-01", "net_revenue": 220},
-      {"event_month": "2026-09-01", "net_revenue": 557.5},
-      {"event_month": "2026-10-01", "net_revenue": 197.5}]),
+    (["-m", "sales_events.net_revenue", "-d", "sales_events.event_month",
+      "-o", "sales_events.event_month"],
+     [{"event_month": "2026-08-01", "sales_events.net_revenue": 220},
+      {"event_month": "2026-09-01", "sales_events.net_revenue": 557.5},
+      {"event_month": "2026-10-01", "sales_events.net_revenue": 197.5}]),
     # The same sales by kind of event: the 11 orders, 1360; refunds 45 +
     # 60 + 210 = 315 (the gift card's and 1010's cancel are 0); 1010's
     # cancel takes back its 70.
-    (["-m", "net_revenue", "-d", "sales_events.event_type", "-o", "sales_events.event_type"],
-     [{"event_type": "cancellation", "net_revenue": -70}, {"event_type": "order", "net_revenue": 1360},
-      {"event_type": "refund", "net_revenue": -315}]),
+    (["-m", "sales_events.net_revenue", "-d", "sales_events.event_type",
+      "-o", "sales_events.event_type"],
+     [{"event_type": "cancellation", "sales_events.net_revenue": -70},
+      {"event_type": "order", "sales_events.net_revenue": 1360},
+      {"event_type": "refund", "sales_events.net_revenue": -315}]),
     # Units per order over the 11 orders: the lines' 18 items (see
     # items_sold below) / 11. Gift cards and tips are not goods: 1001's
     # gift card and 1007's tip would make it 20 / 11.
-    (["-m", "items_per_order"], [{"items_per_order": 18 / 11}]),
+    (["-m", "orders.items_per_order"],
+     [{"orders.items_per_order": 18 / 11}]),
     # By shipping city, as typed: New York 1001 (2 items, 110), 1004 (3,
     # 181), 1007 (2, 137); San Francisco 1010 (1, 70, cancelled); Toronto
     # 1005 (1, 60, cancelled), 1006 (1, 210), 1008 (2, 169.50), 1011 (2,
     # 40), 1012 (2, 272.50); no address 1002 (1, 80), 1003 (1, 30).
-    (["-m", "orders", "-m", "revenue", "-m", "items_per_order", "-d", "orders.shipping_city", "-o", "orders.shipping_city"],
-     [{"shipping_city": "New York", "orders": 3, "revenue": 428, "items_per_order": 7 / 3},
-      {"shipping_city": "San Francisco", "orders": 1, "revenue": 70, "items_per_order": 1.0},
-      {"shipping_city": "Toronto", "orders": 5, "revenue": 752, "items_per_order": 1.6},
-      {"shipping_city": None, "orders": 2, "revenue": 110, "items_per_order": 1.0}]),
+    (["-m", "orders.order_count", "-m", "orders.revenue", "-m", "orders.items_per_order",
+      "-d", "orders.shipping_city", "-o", "orders.shipping_city"],
+     [{"shipping_city": "New York", "orders.order_count": 3, "orders.revenue": 428,
+       "orders.items_per_order": 7 / 3},
+      {"shipping_city": "San Francisco", "orders.order_count": 1, "orders.revenue": 70,
+       "orders.items_per_order": 1.0},
+      {"shipping_city": "Toronto", "orders.order_count": 5, "orders.revenue": 752,
+       "orders.items_per_order": 1.6},
+      {"shipping_city": None, "orders.order_count": 2, "orders.revenue": 110,
+       "orders.items_per_order": 1.0}]),
     # US: 1001 110, 1004 181 (net 136), 1007 137, 1010 70 (cancelled).
     # CA: 1005 60 (cancelled), 1006 210 (net 0), 1008 169.50, 1011 40, 1012
     # 272.50.
     # No address: 1002 80, 1003 30.
-    (["-m", "revenue", "-m", "net_revenue", "-d", "orders.shipping_country", "-o", "orders.shipping_country"],
-     [{"shipping_country": "CA", "revenue": 752, "net_revenue": 482},
-      {"shipping_country": "US", "revenue": 498, "net_revenue": 383},
-      {"shipping_country": None, "revenue": 110, "net_revenue": 110}]),
+    (["-m", "orders.revenue", "-m", "sales_events.net_revenue", "-d", "orders.shipping_country",
+      "-o", "orders.shipping_country"],
+     [{"shipping_country": "CA", "orders.revenue": 752, "sales_events.net_revenue": 482},
+      {"shipping_country": "US", "orders.revenue": 498, "sales_events.net_revenue": 383},
+      {"shipping_country": None, "orders.revenue": 110, "sales_events.net_revenue": 110}]),
     # Paid: 1007, 1008, 1011, 1012. PENDING (1002) is unpaid; 1010's voided authorization and 1003's
     # expired one are voided (unpaid 2, voided 1 if EXPIRED were unpaid). 1001
     # (its gift card) and 1004 are partially refunded. 1005 is refunded: its
     # earlier version, paid, has the same updated_at but an earlier load.
     # The mapping of every Shopify status is decided in #4.
-    (["-m", "orders", "-d", "orders.financial_status", "-o", "orders.financial_status"],
-     [{"financial_status": "paid", "orders": 4}, {"financial_status": "partially_refunded", "orders": 2},
-      {"financial_status": "refunded", "orders": 2}, {"financial_status": "unpaid", "orders": 1},
-      {"financial_status": "voided", "orders": 2}]),
+    (["-m", "orders.order_count", "-d", "orders.financial_status", "-o", "orders.financial_status"],
+     [{"financial_status": "paid", "orders.order_count": 4},
+      {"financial_status": "partially_refunded", "orders.order_count": 2},
+      {"financial_status": "refunded", "orders.order_count": 2},
+      {"financial_status": "unpaid", "orders.order_count": 1},
+      {"financial_status": "voided", "orders.order_count": 2}]),
     # Fulfilled: 1001; partially: 1007; ON_HOLD (1011) and the download
     # 1003, which Shopify leaves unfulfilled, are unfulfilled, as are the
     # rest: 1006, refunded whole before shipping, as FULFILLMENT_NOT_REQUIRED
     # (API 2026-10), and cancelled 1010 as UNFULFILLED (earlier versions).
     # The mapping of every Shopify status is decided in #4.
-    (["-m", "orders", "-d", "orders.fulfillment_status", "-o", "orders.fulfillment_status"],
-     [{"fulfillment_status": "fulfilled", "orders": 1}, {"fulfillment_status": "partially_fulfilled", "orders": 1},
-      {"fulfillment_status": "unfulfilled", "orders": 9}]),
+    (["-m", "orders.order_count", "-d", "orders.fulfillment_status",
+      "-o", "orders.fulfillment_status"],
+     [{"fulfillment_status": "fulfilled", "orders.order_count": 1},
+      {"fulfillment_status": "partially_fulfilled", "orders.order_count": 1},
+      {"fulfillment_status": "unfulfilled", "orders.order_count": 9}]),
     # The customer's orders in sequence of processed_at, cancelled ones
     # skipped: 1001 110 and 1003 30 are first; 1004 181 and 1006 210
     # second (1006 would be third if cancelled 1005 counted); 1008 169.50
     # and 1011 40 third; 1007 137 fourth. In sequence of created_at, 1007
     # would be third (187) and 1008 fourth (169.50). Guests and cancelled
     # orders have no number: 1002 80, 1005 60, 1010 70, 1012 272.50.
-    (["-m", "orders", "-m", "revenue", "-d", "orders.customer_order_number", "-o", "orders.customer_order_number"],
-     [{"customer_order_number": 1, "orders": 2, "revenue": 140},
-      {"customer_order_number": 2, "orders": 2, "revenue": 391},
-      {"customer_order_number": 3, "orders": 2, "revenue": 209.5},
-      {"customer_order_number": 4, "orders": 1, "revenue": 137},
-      {"customer_order_number": None, "orders": 4, "revenue": 482.5}]),
+    (["-m", "orders.order_count", "-m", "orders.revenue", "-d", "orders.customer_order_number",
+      "-o", "orders.customer_order_number"],
+     [{"customer_order_number": 1, "orders.order_count": 2, "orders.revenue": 140},
+      {"customer_order_number": 2, "orders.order_count": 2, "orders.revenue": 391},
+      {"customer_order_number": 3, "orders.order_count": 2, "orders.revenue": 209.5},
+      {"customer_order_number": 4, "orders.order_count": 1, "orders.revenue": 137},
+      {"customer_order_number": None, "orders.order_count": 4, "orders.revenue": 482.5}]),
     # New: 1001 110 + 1003 30. Repeat: 1004 181 (net 136), 1006 210 (net
     # 0), 1007 137, 1008 169.50, 1011 40. None: 1002 80, 1005 60, 1010 70,
     # 1012 272.50.
-    (["-m", "orders", "-m", "revenue", "-m", "net_revenue", "-d", "orders.new_vs_repeat", "-o", "orders.new_vs_repeat"],
-     [{"new_vs_repeat": "new", "orders": 2, "revenue": 140, "net_revenue": 140},
-      {"new_vs_repeat": "repeat", "orders": 5, "revenue": 737.5, "net_revenue": 482.5},
-      {"new_vs_repeat": None, "orders": 4, "revenue": 482.5, "net_revenue": 352.5}]),
+    (["-m", "orders.order_count", "-m", "orders.revenue", "-m", "sales_events.net_revenue",
+      "-d", "orders.new_vs_repeat", "-o", "orders.new_vs_repeat"],
+     [{"new_vs_repeat": "new", "orders.order_count": 2, "orders.revenue": 140,
+       "sales_events.net_revenue": 140},
+      {"new_vs_repeat": "repeat", "orders.order_count": 5, "orders.revenue": 737.5,
+       "sales_events.net_revenue": 482.5},
+      {"new_vs_repeat": None, "orders.order_count": 4, "orders.revenue": 482.5,
+       "sales_events.net_revenue": 352.5}]),
     # Repeat orders over the orders that have a customer and are not
     # cancelled, the ones numbered in sequence: 5 / 7. Guests (1002, 1010,
     # 1012) and cancelled 1005 are not counted; over all orders it would be
     # 5 / 11.
-    (["-m", "repeat_order_share"], [{"repeat_order_share": 5 / 7}]),
+    (["-m", "orders.repeat_order_share"],
+     [{"orders.repeat_order_share": 5 / 7}]),
     # Lines of the 11 orders: 18 items ordered, 14 left after refunds and
     # cancels (1004 -1, 1005 -1, 1006 -1, 1010 -1; 15 if 1005's earlier
     # version were read). line_revenue is after discounts and without tax:
@@ -211,10 +240,12 @@ CASES = [
     # Top SKU by revenue: JACKET 200 (1006, refunded: revenue as placed),
     # TEE-COTTON 190 (1012, without its duties) and TEE-M 100 + (100 - 10),
     # tied and ordered by SKU, HOODIE (100 - 19) + 100.
-    (["-m", "line_revenue", "-d", "order_lines.sku", "-o", "line_revenue desc", "-o", "order_lines.sku",
-      "-l", "4"],
-     [{"sku": "JACKET", "line_revenue": 200}, {"sku": "TEE-COTTON", "line_revenue": 190},
-      {"sku": "TEE-M", "line_revenue": 190}, {"sku": "HOODIE", "line_revenue": 181}]),
+    (["-m", "line_revenue", "-d", "order_lines.sku", "-o", "line_revenue desc",
+      "-o", "order_lines.sku", "-l", "4"],
+     [{"sku": "JACKET", "line_revenue": 200},
+      {"sku": "TEE-COTTON", "line_revenue": 190},
+      {"sku": "TEE-M", "line_revenue": 190},
+      {"sku": "HOODIE", "line_revenue": 181}]),
 ]
 
 
