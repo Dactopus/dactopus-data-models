@@ -8,9 +8,7 @@ names the Ossie schema version its models carry.
 
 ## [Unreleased]
 
-## [0.6.1] - 2026-10-23
-
-Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.10.0,
+Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.10.1,
 dbt v2 (`dbt-oss` 2.0.8) and dbt v1 (`dbt-core` 1.11 with
 `dbt-clickhouse` 1.10) on ClickHouse 26.9. Metric names change; no
 table or column changes, no rebuild is needed.
@@ -53,6 +51,14 @@ table or column changes, no rebuild is needed.
   `orders.discount_total`, `orders.shipping_total`, `orders.tax_total`
   and `sessions.page_views`. A count of a dataset's rows is `COUNT(*)`,
   where it counted a key that is never NULL.
+- dactopus-ossie-clickhouse 0.10.1 instead of 0.10.0. A field asked for
+  as a metric, such as `refunds.refunded_amount`, or an old metric name
+  that is a field now, such as `tax_total`, gets the metrics that add
+  it up (`refunds_total`, `orders.tax_amount`) instead of names close in
+  spelling
+  ([dactopus-ossie-clickhouse#66](https://github.com/Dactopus/dactopus-ossie-clickhouse/issues/66)).
+  `search_model` lists matching metrics apart from fields, so a broad
+  word such as "refund" no longer leaves `refunds_total` out.
 
 ## [0.6.0] - 2026-10-23
 
@@ -570,8 +576,7 @@ ClickHouse 26.9.
 - Hand-written GA4 rows and the numbers the model must answer over them
   (`tests/ga4`), checked in CI on both dbt versions.
 
-[Unreleased]: https://github.com/Dactopus/dactopus-data-models/compare/v0.6.1...HEAD
-[0.6.1]: https://github.com/Dactopus/dactopus-data-models/compare/v0.6.0...v0.6.1
+[Unreleased]: https://github.com/Dactopus/dactopus-data-models/compare/v0.6.0...HEAD
 [0.6.0]: https://github.com/Dactopus/dactopus-data-models/compare/v0.5.3...v0.6.0
 [0.5.3]: https://github.com/Dactopus/dactopus-data-models/compare/v0.5.2...v0.5.3
 [0.5.2]: https://github.com/Dactopus/dactopus-data-models/compare/v0.5.1...v0.5.2
