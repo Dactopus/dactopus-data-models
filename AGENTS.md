@@ -73,6 +73,13 @@ profile and the sample data. CI builds into other databases to keep it so.
 
 - Ossie schema version is pinned to `0.2.0.dev0`. Do not change it.
 - Write expressions in `ANSI_SQL`.
+- A metric that reads one dataset goes in that dataset's `metrics`,
+  its fields named without the dataset; a count of its rows is
+  `COUNT(*)`. The model's `metrics` holds only metrics over several
+  datasets. A dataset's metric is not named like one of its fields or
+  like a dataset: a count is `<row>_count` (`order_count`), a sum of a
+  field `<field>_total` is `<field>_amount` (`discount_amount`).
+  Descriptions name a dataset's metric as `dataset.metric`.
 - Entities are plain Ossie. Mapping, refresh and checks belong in the
   package's dbt project, never in `custom_extensions`. The only extension
   used is dactopus-ossie-clickhouse's `CLICKHOUSE` namespace, for its `dedup` key.

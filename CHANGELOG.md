@@ -8,6 +8,58 @@ names the Ossie schema version its models carry.
 
 ## [Unreleased]
 
+Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.10.1,
+dbt v2 (`dbt-oss` 2.0.8) and dbt v1 (`dbt-core` 1.11 with
+`dbt-clickhouse` 1.10) on ClickHouse 26.9. Metric names change; no
+table or column changes, no rebuild is needed.
+
+### Changed
+
+- A metric that reads one dataset is declared on it
+  (`datasets[].metrics`, the Ossie spec's "Metric Scoping",
+  apache/ossie#591), and a question names it `dataset.metric`:
+  `orders.revenue`, `sessions.session_count`, `devices.device_count`.
+  The name says whose rows a metric counts, in `list_model` too, and
+  `describe_object` of a dataset lists its metrics. The five commerce
+  metrics that read order lines or refunds together with
+  `orders.in_sales_reports` stay on the model under their own names. A
+  metric named like a field or a dataset is renamed, since a dataset's
+  fields and metrics share one set of names.
+  This breaks saved questions and dashboards that ask for the old names,
+  and result columns are named `dataset.metric` too; update them:
+
+  | Old | New |
+  | --- | --- |
+  | `orders` | `orders.order_count` |
+  | `all_orders`, `all_orders_total`, `revenue`, `refunded_amount`, `refund_rate`, `average_order_value`, `items_per_order`, `customers`, `repeat_order_share` | the same name on `orders`: `orders.revenue` |
+  | `discount_total` | `orders.discount_amount` |
+  | `shipping_total` | `orders.shipping_amount` |
+  | `tax_total` | `orders.tax_amount` |
+  | `net_revenue` | `sales_events.net_revenue` |
+  | `refunds` | `refund_count` |
+  | `items_sold`, `items_net`, `line_revenue`, `refunds_total` | unchanged |
+  | `sessions` | `sessions.session_count` |
+  | `engaged_sessions`, `engagement_rate`, `users`, `session_conversion_rate`, `user_conversion_rate` | the same name on `sessions` |
+  | `page_views` | `sessions.page_view_count` |
+  | `purchases` | `purchases.purchase_count` |
+  | `gross_purchase_revenue`, `gross_purchase_revenue_usd`, `average_gross_purchase_revenue` | the same name on `purchases` |
+  | `events` | `events.event_count` |
+  | `reading_count`, `avg_value`, `min_value`, `max_value`, `reporting_devices`, `last_reading_time` | the same name on `readings` |
+  | `device_count`, `last_contact_time`, `minutes_since_last_contact` | the same name on `devices` |
+
+  Numbers are unchanged, and so are the fields, among them
+  `orders.discount_total`, `orders.shipping_total`, `orders.tax_total`
+  and `sessions.page_views`. A count of a dataset's rows is `COUNT(*)`,
+  where it counted a key that is never NULL.
+- dactopus-ossie-clickhouse 0.10.1 instead of 0.10.0. A field asked for
+  as a metric, such as `refunds.refunded_amount`, or an old metric name
+  that is a field now, such as `tax_total`, gets the metrics that add
+  it up (`refunds_total`, `orders.tax_amount`) instead of names close in
+  spelling
+  ([dactopus-ossie-clickhouse#66](https://github.com/Dactopus/dactopus-ossie-clickhouse/issues/66)).
+  `search_model` lists matching metrics apart from fields, so a broad
+  word such as "refund" no longer leaves `refunds_total` out.
+
 ## [0.6.0] - 2026-10-23
 
 Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.10.0,
