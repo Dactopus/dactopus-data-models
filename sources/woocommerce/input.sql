@@ -1,5 +1,7 @@
--- Input of the WooCommerce package: the store's own order tables, copied
--- from its MySQL database into ClickHouse by change data capture (CDC).
+-- Input of the WooCommerce package: the store's own order tables, and
+-- WordPress's tables of its products and their categories and brands,
+-- copied from its MySQL database into ClickHouse by change data capture
+-- (CDC).
 -- WooCommerce 8.2 and later keeps orders in these tables (High-Performance
 -- Order Storage, HPOS:
 -- https://developer.woocommerce.com/docs/features/high-performance-order-storage/).
@@ -14,7 +16,10 @@
 -- String. The schema of each table:
 -- https://github.com/woocommerce/woocommerce/blob/trunk/plugins/woocommerce/src/Internal/DataStores/Orders/OrdersTableDataStore.php
 -- (get_database_schema) and
--- https://github.com/woocommerce/woocommerce/blob/trunk/plugins/woocommerce/includes/class-wc-install.php.
+-- https://github.com/woocommerce/woocommerce/blob/trunk/plugins/woocommerce/includes/class-wc-install.php,
+-- and of WordPress's own tables:
+-- https://github.com/WordPress/wordpress-develop/blob/trunk/src/wp-admin/includes/schema.php
+-- (wp_get_db_schema).
 --
 -- Each table is a log of versions. CDC appends a row for every insert,
 -- update and delete in MySQL, with
@@ -156,3 +161,73 @@ CREATE TABLE IF NOT EXISTS {db:Identifier}.wp_wc_product_meta_lookup
 )
 ENGINE = MergeTree
 ORDER BY (product_id, _peerdb_version);
+
+-- Posts of every kind: products (post_type product) and their variations
+-- (product_variation), and also pages, revisions and, with HPOS, a
+-- placeholder of each order (shop_order_placehold). The CDC copy needs none
+-- of the text columns (post_content, post_excerpt, post_content_filtered,
+-- to_ping, pinged, post_password). An order line names the product in
+-- _product_id and its variation in _variation_id
+-- (WC_Order_Item_Product::set_product).
+CREATE TABLE IF NOT EXISTS {db:Identifier}.wp_posts
+(
+    ID UInt64,
+    post_title String,   -- the product's name as it is now
+    post_status String,  -- publish, draft, pending, private, future, trash, ...
+    post_type String,
+    _peerdb_synced_at DateTime64(9),
+    _peerdb_is_deleted UInt8,
+    _peerdb_version UInt64
+)
+ENGINE = MergeTree
+ORDER BY (ID, _peerdb_version);
+
+-- Product categories, brands and tags are terms of a taxonomy
+-- (https://developer.wordpress.org/plugins/taxonomies/): the term's name in
+-- wp_terms, its taxonomy in wp_term_taxonomy, the products it is on in
+-- wp_term_relationships. A product is linked to term_taxonomy_id, not to
+-- term_id: the two come from counters of their own and can differ.
+CREATE TABLE IF NOT EXISTS {db:Identifier}.wp_terms
+(
+    term_id UInt64,
+    name String,  -- as the owner typed it; one name can be in several taxonomies (Uncategorized)
+    _peerdb_synced_at DateTime64(9),
+    _peerdb_is_deleted UInt8,
+    _peerdb_version UInt64
+)
+ENGINE = MergeTree
+ORDER BY (term_id, _peerdb_version);
+
+-- Categories nest: parent names the parent category. WooCommerce
+-- Analytics (checked on 11.2.1) counts a sale in the categories its product
+-- is in, not in their parents: the Categories report groups by the
+-- product's own terms (Admin/API/Reports/Categories/DataStore.php). Its
+-- filter by category, in the Products, Orders and Revenue reports, also
+-- takes the products of the subcategories: it finds them with
+-- wc_get_products, whose tax query includes child terms by default
+-- (Admin/API/Reports/DataStore.php, get_products_by_cat_ids).
+CREATE TABLE IF NOT EXISTS {db:Identifier}.wp_term_taxonomy
+(
+    term_taxonomy_id UInt64,
+    term_id UInt64,
+    taxonomy String,  -- product_cat, product_brand (in the core, checked on 11.2.1), product_tag, ...
+    parent UInt64,    -- the parent's term_id, not its term_taxonomy_id; 0 at the top
+    _peerdb_synced_at DateTime64(9),
+    _peerdb_is_deleted UInt8,
+    _peerdb_version UInt64
+)
+ENGINE = MergeTree
+ORDER BY (term_taxonomy_id, _peerdb_version);
+
+-- One row per term on a post: a product in two categories has two. Keyed
+-- by both columns.
+CREATE TABLE IF NOT EXISTS {db:Identifier}.wp_term_relationships
+(
+    object_id UInt64,         -- the product's ID
+    term_taxonomy_id UInt64,
+    _peerdb_synced_at DateTime64(9),
+    _peerdb_is_deleted UInt8,
+    _peerdb_version UInt64
+)
+ENGINE = MergeTree
+ORDER BY (object_id, term_taxonomy_id, _peerdb_version);

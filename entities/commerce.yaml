@@ -3,7 +3,8 @@ version: "0.2.0.dev0"
 name: commerce
 description: >
   Orders of an online store as the store recorded them: orders, their lines
-  of goods, refunds, and sales events, the store's sales over time. Built
+  of goods, refunds, and sales events, the store's sales over time; and the
+  store's catalogue of products, with their categories and brands. Built
   from the store's own data by a source package (sources/shopify,
   sources/woocommerce).
 ai_context:
@@ -44,7 +45,29 @@ ai_context:
     tell a refunded tip from a refund of goods (Shopify), the tip counts as a
     refund. Customers are the store's customer records: guest checkouts have
     none and are not counted. channel holds the source's own values, which
-    differ between sources.
+    differ between sources. Categories and brands are the product's current
+    ones: moving a product moves its past sales too, as in the store's
+    reports, and a deleted product's sales have none. A category is the
+    product type at Shopify and a product category at WooCommerce; a brand
+    is the vendor at Shopify. WooCommerce categories nest: a product in
+    T-Shirts, under Clothing, is in Clothing too. For sales by category, use
+    the category metrics (category_revenue and the others): they count a
+    line in its product's own categories, as the store's category report
+    does, and a parent category whose products all sit in subcategories has
+    0 there. For one category the question names, count it with its
+    subcategories: line_revenue, items_sold, items_returned,
+    line_returned_amount or line_net_revenue filtered by
+    line_categories.category_path, or line_categories.category when the
+    question gives the name alone, each line once; category_revenue with the
+    same filter gives the category without its subcategories. Products the
+    same way: product_categories.product_count by category, and
+    products.product_count filtered by product_categories.category_path for
+    one category with its subcategories. A line counts in every category and
+    every brand of its product: categories and brands overlap, never add
+    them up for a total. Returns
+    of goods (items_returned, line_returned_amount and the category and
+    brand ones) count by the date of the order, whenever the refund was
+    made.
 
 datasets:
   - name: orders
@@ -420,7 +443,13 @@ datasets:
           neither. This is how both Shopify and WooCommerce Analytics define
           it, so it matches the store's dashboard. It is not orders.revenue
           over orders.order_count, which would add shipping and tax. Filter by
-          orders.is_cancelled = false to leave cancelled orders out.
+          orders.is_cancelled = false to leave cancelled orders out. Filtered
+          by a category (line_categories), it is the average of the orders
+          with a line in it, each order once with all its goods, as
+          WooCommerce Analytics' Orders report filtered by a category. Shopify's
+          sales report filtered by product type counts only the lines of
+          that type in those orders, so its number is lower wherever an order
+          holds other goods too.
         datatype: Float
         ai_context:
           synonyms: [AOV, average order, average check, average basket value, average transaction value]
@@ -555,6 +584,186 @@ datasets:
         datatype: Decimal
         ai_context:
           synonyms: [line amount, item revenue]
+      - name: returned_quantity
+        expression: {dialects: [{dialect: ANSI_SQL, expression: returned_quantity}]}
+        description: >
+          Units of the line taken back by the order's refunds, whenever they
+          were made: a return belongs to the order, not to the day of the
+          refund. At Shopify a cancelled order's lines are taken back too,
+          paid or not, as Shopify records a cancel as a refund; at
+          WooCommerce only a refund takes them back. A refund of an amount
+          alone takes back no units.
+        datatype: Integer
+        ai_context:
+          synonyms: [units returned, returned units, qty refunded]
+      - name: returned_amount
+        expression: {dialects: [{dialect: ANSI_SQL, expression: returned_amount}]}
+        description: >
+          Amount of the line taken back by the order's refunds, as
+          line_total counts it: after discounts and without tax. It is the
+          goods returned, not the money paid back, which has tax and
+          shipping in it (refunds.refunded_amount). At Shopify a cancelled
+          order's lines count at the price sold even when nothing was paid.
+        datatype: Decimal
+        ai_context:
+          synonyms: [returns, returned value, value of returns]
+
+  - name: line_categories
+    source: line_categories
+    description: >
+      One row for each line of goods (order_lines) and each category of its
+      product, with the line's units and amounts. A line counts in every
+      category of its product (a WooCommerce product can have several) and
+      in every category above them: a product in T-Shirts, under Clothing,
+      has a row for each. A line whose product has no category or has been
+      deleted, or an item added by hand, has one row without a category;
+      at WooCommerce a product in the trash keeps its categories, though it
+      has left the catalogue. Categories are the product's current ones:
+      moving a product to another category moves its past sales too, as in
+      the store's reports. Use it for sales and returns by category: the
+      category metrics count a line in its product's own categories
+      (is_direct), and a filter on a category reaches its subcategories
+      through the rows above them. The rows of a line can add up to more
+      than the line.
+    ai_context:
+      synonyms: [sales by category, category sales, lines by category, product type sales]
+    fields:
+      - name: line_id
+        expression: {dialects: [{dialect: ANSI_SQL, expression: line_id}]}
+        description: The line of goods (order_lines.line_id).
+        datatype: Integer
+        ai_context:
+          synonyms: [line item id]
+      - name: category
+        expression: {dialects: [{dialect: ANSI_SQL, expression: category}]}
+        description: >
+          Name of the category as the store's owner gave it: at Shopify the
+          product type (the "Type" the store's reports group by), at
+          WooCommerce a product category. Two WooCommerce categories under
+          different parents can share a name (Accessories under Clothing and
+          under Kitchen); group by category_path to tell them apart. Empty
+          for a line without a category.
+        datatype: String
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [product category, product type, type, department]
+      - name: category_path
+        expression: {dialects: [{dialect: ANSI_SQL, expression: category_path}]}
+        description: >
+          The category with every category above it, from the top, as the
+          store shows it: Clothing > T-Shirts. Each category has a path of
+          its own: group by it. A filter on it for a metric of order lines,
+          such as line_revenue, counts the category with its subcategories.
+          At Shopify, whose product types have no subcategories, the path is
+          the name. Empty for a line without a category.
+        datatype: String
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [category, full category, category tree, category hierarchy]
+      - name: is_direct
+        expression: {dialects: [{dialect: ANSI_SQL, expression: is_direct = 1}]}
+        description: >
+          Whether the product is in this category itself, not only in a
+          category under it. The category metrics (category_revenue and the
+          others) count only these rows, as WooCommerce Analytics'
+          Categories report counts a sale in the product's own categories
+          only. A filter on a category for a metric of order lines, such as
+          line_revenue, reaches the other rows too and counts the category
+          with its subcategories, each line once, as WooCommerce Analytics'
+          filter by category does. True for a line without a category, and
+          for every row at Shopify.
+        datatype: Boolean
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [own category, direct category, without subcategories]
+      - name: quantity
+        expression: {dialects: [{dialect: ANSI_SQL, expression: quantity}]}
+        description: Units of the line ordered (order_lines.quantity).
+        datatype: Integer
+        ai_context:
+          synonyms: [units, qty]
+      - name: line_total
+        expression: {dialects: [{dialect: ANSI_SQL, expression: line_total}]}
+        description: >
+          Amount of the line as ordered, before refunds, after discounts and
+          without tax (order_lines.line_total).
+        datatype: Decimal
+        ai_context:
+          synonyms: [line amount]
+      - name: returned_quantity
+        expression: {dialects: [{dialect: ANSI_SQL, expression: returned_quantity}]}
+        description: Units of the line taken back by refunds (order_lines.returned_quantity).
+        datatype: Integer
+        ai_context:
+          synonyms: [units returned]
+      - name: returned_amount
+        expression: {dialects: [{dialect: ANSI_SQL, expression: returned_amount}]}
+        description: >
+          Amount of the line taken back by refunds, after discounts and
+          without tax (order_lines.returned_amount).
+        datatype: Decimal
+        ai_context:
+          synonyms: [returns]
+
+  - name: line_brands
+    source: line_brands
+    description: >
+      One row for each line of goods (order_lines) and each brand of its
+      product, with the line's units and amounts. A WooCommerce product can
+      have several brands, and its line counts in each. A line whose
+      product has no brand or has been deleted, or an item added by hand,
+      has one row without a brand; at WooCommerce a product in the trash
+      keeps its brands. Brands are the product's current ones. Use it for
+      sales and returns by brand.
+    ai_context:
+      synonyms: [sales by brand, brand sales, sales by vendor, lines by brand]
+    fields:
+      - name: line_id
+        expression: {dialects: [{dialect: ANSI_SQL, expression: line_id}]}
+        description: The line of goods (order_lines.line_id).
+        datatype: Integer
+        ai_context:
+          synonyms: [line item id]
+      - name: brand
+        expression: {dialects: [{dialect: ANSI_SQL, expression: brand}]}
+        description: >
+          The product's brand as it is now. At Shopify it is the product's
+          vendor, "the manufacturer, wholesaler, or other vendor", as the
+          store's reports group by it: it can be a supplier or the store's
+          own name. At WooCommerce it is a product brand. Empty for a line
+          without a brand.
+        datatype: String
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [vendor, manufacturer, make, label]
+      - name: quantity
+        expression: {dialects: [{dialect: ANSI_SQL, expression: quantity}]}
+        description: Units of the line ordered (order_lines.quantity).
+        datatype: Integer
+        ai_context:
+          synonyms: [units, qty]
+      - name: line_total
+        expression: {dialects: [{dialect: ANSI_SQL, expression: line_total}]}
+        description: >
+          Amount of the line as ordered, before refunds, after discounts and
+          without tax (order_lines.line_total).
+        datatype: Decimal
+        ai_context:
+          synonyms: [line amount]
+      - name: returned_quantity
+        expression: {dialects: [{dialect: ANSI_SQL, expression: returned_quantity}]}
+        description: Units of the line taken back by refunds (order_lines.returned_quantity).
+        datatype: Integer
+        ai_context:
+          synonyms: [units returned]
+      - name: returned_amount
+        expression: {dialects: [{dialect: ANSI_SQL, expression: returned_amount}]}
+        description: >
+          Amount of the line taken back by refunds, after discounts and
+          without tax (order_lines.returned_amount).
+        datatype: Decimal
+        ai_context:
+          synonyms: [returns]
 
   - name: refunds
     source: refunds
@@ -714,6 +923,170 @@ datasets:
         ai_context:
           synonyms: [sales, revenue, turnover, income, sales after refunds, total sales]
 
+  - name: products
+    source: products
+    primary_key: [product_id]
+    description: >
+      One row per product in the store's catalogue as it is now, sold or
+      not: drafts and archived products included, deleted products left
+      out, and at WooCommerce products in the trash too. Gift cards are not
+      products here. A variant, such as a size or colour, is part of its
+      product. Use it for the assortment: how many products, which have not
+      sold since a date.
+    ai_context:
+      synonyms: [catalogue, catalog, assortment, product list]
+    fields:
+      - name: product_id
+        expression: {dialects: [{dialect: ANSI_SQL, expression: product_id}]}
+        description: The store's product (order_lines.product_id).
+        datatype: Integer
+        ai_context:
+          synonyms: [product]
+      - name: title
+        expression: {dialects: [{dialect: ANSI_SQL, expression: title}]}
+        description: >
+          Name of the product as it is now; order_lines.title keeps the name
+          it sold under.
+        datatype: String
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [product name, name]
+      - name: status
+        expression: {dialects: [{dialect: ANSI_SQL, expression: status}]}
+        description: >
+          active when customers can buy it: at Shopify ACTIVE, and UNLISTED
+          (sold through a link, hidden from search); at WooCommerce
+          published. draft: at Shopify DRAFT; at WooCommerce a draft, pending
+          review or scheduled. archived: at Shopify ARCHIVED; at WooCommerce
+          private, seen only by the store's staff. Empty for a status the
+          source adds later.
+        datatype: String
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [product status, published, live]
+      - name: last_sold_date
+        expression: {dialects: [{dialect: ANSI_SQL, expression: last_sold_date}]}
+        description: >
+          Latest order date (orders.order_date) of an order with the product
+          that the store's reports count and that is not cancelled; a
+          refunded order still sold it. Empty for a product never sold. For
+          products not sold since a date, filter last_sold_date before that
+          date or empty: products.last_sold_date IS NULL OR
+          products.last_sold_date < CURRENT_DATE - INTERVAL '29' DAY for the
+          last 30 days. It tells only the latest sale: whether a product
+          sold in a past period that ended before today is not known.
+        datatype: Date
+        dimension: {is_time: true}
+        ai_context:
+          synonyms: [last sale, last sold, last ordered, date of last sale]
+    metrics:
+      - name: product_count
+        expression: {dialects: [{dialect: ANSI_SQL, expression: COUNT(*)}]}
+        description: >
+          Number of products in the catalogue. Filter by products.status =
+          'active' for the products customers can buy.
+        datatype: Integer
+        ai_context:
+          synonyms: [products, number of products, assortment size]
+
+  - name: product_categories
+    source: product_categories
+    description: >
+      One row for each product of the catalogue (products) and each of its
+      categories, and every category above them, as in line_categories. A
+      product without a category has no row here; products.product_count
+      counts every product. Categories are as defined in
+      line_categories.category.
+    ai_context:
+      synonyms: [products by category, category assortment]
+    fields:
+      - name: product_id
+        expression: {dialects: [{dialect: ANSI_SQL, expression: product_id}]}
+        description: The product (products.product_id).
+        datatype: Integer
+        ai_context:
+          synonyms: [product]
+      - name: category
+        expression: {dialects: [{dialect: ANSI_SQL, expression: category}]}
+        description: >
+          Name of the category (line_categories.category). Names can repeat
+          under different parents: group by category_path.
+        datatype: String
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [product category, product type, type]
+      - name: category_path
+        expression: {dialects: [{dialect: ANSI_SQL, expression: category_path}]}
+        description: >
+          The category with every category above it, from the top:
+          Clothing > T-Shirts (line_categories.category_path).
+        datatype: String
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [category, full category]
+      - name: is_direct
+        expression: {dialects: [{dialect: ANSI_SQL, expression: is_direct = 1}]}
+        description: >
+          Whether the product is in this category itself, not only in a
+          category under it; product_categories.product_count counts only
+          these rows. A filter on a category for products.product_count
+          reaches the other rows too and counts the category with its
+          subcategories.
+        datatype: Boolean
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [own category, direct category]
+    metrics:
+      - name: product_count
+        expression: {dialects: [{dialect: ANSI_SQL, expression: COUNT(DISTINCT CASE WHEN is_direct THEN product_id END)}]}
+        description: >
+          Number of products in each category, the products in the category
+          itself (product_categories.is_direct): a parent category whose
+          products all sit in subcategories has 0. For one category with its
+          subcategories, ask products.product_count filtered by
+          product_categories.category_path. A product in two categories
+          counts in each: the categories add up to more than the catalogue.
+          Filter by products.status = 'active' for the products customers
+          can buy.
+        datatype: Integer
+        ai_context:
+          synonyms: [products in category, number of products by category, category size]
+
+  - name: product_brands
+    source: product_brands
+    description: >
+      One row for each product of the catalogue (products) and each of its
+      brands, as defined in line_brands.brand. A product without a brand
+      has no row here; products.product_count counts every product.
+    ai_context:
+      synonyms: [products by brand, brand assortment]
+    fields:
+      - name: product_id
+        expression: {dialects: [{dialect: ANSI_SQL, expression: product_id}]}
+        description: The product (products.product_id).
+        datatype: Integer
+        ai_context:
+          synonyms: [product]
+      - name: brand
+        expression: {dialects: [{dialect: ANSI_SQL, expression: brand}]}
+        description: >
+          The product's brand: the vendor at Shopify, a product brand at
+          WooCommerce (line_brands.brand).
+        datatype: String
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [vendor, manufacturer, make, label]
+    metrics:
+      - name: product_count
+        expression: {dialects: [{dialect: ANSI_SQL, expression: COUNT(DISTINCT product_id)}]}
+        description: >
+          Number of products of a brand. A WooCommerce product with two
+          brands counts in each. Filter by products.status = 'active' for
+          the products customers can buy.
+        datatype: Integer
+        ai_context:
+          synonyms: [products of brand, number of products by brand]
+
 relationships:
   - name: order_lines_to_orders
     from: order_lines
@@ -732,6 +1105,30 @@ relationships:
     to: orders
     from_columns: [order_id]
     to_columns: [order_id]
+  - name: line_categories_to_order_lines
+    from: line_categories
+    to: order_lines
+    from_columns: [line_id]
+    to_columns: [line_id]
+    ai_context:
+      synonyms: [categories by month, orders with a category]
+  - name: line_brands_to_order_lines
+    from: line_brands
+    to: order_lines
+    from_columns: [line_id]
+    to_columns: [line_id]
+    ai_context:
+      synonyms: [brands by month, orders with a brand]
+  - name: product_categories_to_products
+    from: product_categories
+    to: products
+    from_columns: [product_id]
+    to_columns: [product_id]
+  - name: product_brands_to_products
+    from: product_brands
+    to: products
+    from_columns: [product_id]
+    to_columns: [product_id]
 
 metrics:
   - name: items_sold
@@ -752,10 +1149,141 @@ metrics:
       Revenue of goods as ordered (order_lines.line_total): after
       discounts, without shipping and tax, before refunds, cancelled orders
       included where the store's reports count them. Use for revenue by
-      product or SKU.
+      product or SKU; by category or brand, use category_revenue or
+      brand_revenue. Filtered by line_categories.category_path, it is the
+      revenue of that category with its subcategories.
     datatype: Decimal
     ai_context:
       synonyms: [product revenue, sales by product, item revenue, SKU revenue]
+  - name: items_returned
+    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN orders.in_sales_reports THEN order_lines.returned_quantity ELSE 0 END)}]}
+    description: >
+      Units of goods taken back by refunds and, at Shopify, cancellations
+      (order_lines.returned_quantity), by the date of the order, whenever
+      taken back. Units removed by editing the order are not in it, though
+      items_net leaves them out: items_sold less items_returned can be more
+      than items_net.
+    datatype: Integer
+    ai_context:
+      synonyms: [units returned, returned items, returns in units]
+  - name: line_returned_amount
+    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN orders.in_sales_reports THEN order_lines.returned_amount ELSE 0 END)}]}
+    description: >
+      Goods taken back by refunds and, at Shopify, cancellations
+      (order_lines.returned_amount): after discounts and without tax, by
+      the date of the order, whenever taken back. Not the money paid back
+      (refunds_total), which has tax and shipping in it.
+    datatype: Decimal
+    ai_context:
+      synonyms: [returns, returned value, value of returned goods]
+  - name: line_net_revenue
+    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN orders.in_sales_reports THEN order_lines.line_total - order_lines.returned_amount ELSE 0 END)}]}
+    description: >
+      Revenue of goods less what was taken back: line_revenue less
+      line_returned_amount, by the date of the order. At Shopify a
+      cancelled order's goods are taken back whole; units removed by editing
+      the order stay in it unless a refund took them back.
+    datatype: Decimal
+    ai_context:
+      synonyms: [net product revenue, net sales of goods, revenue after returns]
+  - name: category_items_sold
+    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN orders.in_sales_reports AND line_categories.is_direct THEN line_categories.quantity ELSE 0 END)}]}
+    description: >
+      Units of goods ordered in each category (line_categories), as
+      items_sold, counted in the product's own categories, as
+      category_revenue. The categories add up to more than items_sold where
+      a product is in several.
+    datatype: Integer
+    ai_context:
+      synonyms: [units sold by category, category units, quantity by category]
+  - name: category_revenue
+    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN orders.in_sales_reports AND line_categories.is_direct THEN line_categories.line_total ELSE 0 END)}]}
+    description: >
+      Revenue of goods in each category, as line_revenue: after discounts,
+      without shipping and tax, before refunds, by the date of the order. A
+      line counts in its product's own categories
+      (line_categories.is_direct), as the store's category report
+      (WooCommerce Analytics' Categories) counts it: a parent category whose
+      products all sit in subcategories has 0. For one category with its
+      subcategories, ask line_revenue filtered by
+      line_categories.category_path or category. The categories add up to
+      more than line_revenue where a product is in several: never add them
+      up for a total. WooCommerce Analytics' Categories and Products reports
+      also count orders on hold that are not paid yet, which its Revenue and
+      Orders reports and these metrics leave out: there the reports can
+      show more.
+    datatype: Decimal
+    ai_context:
+      synonyms: [sales by category, revenue by category, category sales, revenue by product type]
+  - name: category_items_returned
+    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN orders.in_sales_reports AND line_categories.is_direct THEN line_categories.returned_quantity ELSE 0 END)}]}
+    description: >
+      Units taken back in each category, as items_returned: by the date of
+      the order, whenever taken back, counted in the product's own
+      categories, as category_revenue. For one category with its
+      subcategories, ask items_returned filtered by
+      line_categories.category_path.
+    datatype: Integer
+    ai_context:
+      synonyms: [returns by category, returned units by category]
+  - name: category_returned_amount
+    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN orders.in_sales_reports AND line_categories.is_direct THEN line_categories.returned_amount ELSE 0 END)}]}
+    description: >
+      Goods taken back in each category, as line_returned_amount: after
+      discounts and without tax, by the date of the order, counted in the
+      product's own categories, as category_revenue.
+    datatype: Decimal
+    ai_context:
+      synonyms: [returns value by category, returned amount by category]
+  - name: category_net_revenue
+    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN orders.in_sales_reports AND line_categories.is_direct THEN line_categories.line_total - line_categories.returned_amount ELSE 0 END)}]}
+    description: >
+      Revenue of goods in each category less what was taken back, as
+      line_net_revenue, by the date of the order, counted in the product's
+      own categories, as category_revenue.
+    datatype: Decimal
+    ai_context:
+      synonyms: [net sales by category, category revenue after returns]
+  - name: brand_items_sold
+    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN orders.in_sales_reports THEN line_brands.quantity ELSE 0 END)}]}
+    description: >
+      Units of goods ordered of a brand (line_brands), as items_sold. A
+      line of a WooCommerce product with two brands counts in each.
+    datatype: Integer
+    ai_context:
+      synonyms: [units sold by brand, brand units, units by vendor]
+  - name: brand_revenue
+    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN orders.in_sales_reports THEN line_brands.line_total ELSE 0 END)}]}
+    description: >
+      Revenue of goods of a brand (line_brands), as line_revenue: after
+      discounts, without shipping and tax, before refunds, by the date of
+      the order. A line of a WooCommerce product with two brands counts in
+      each: the brands can add up to more than line_revenue.
+    datatype: Decimal
+    ai_context:
+      synonyms: [sales by brand, revenue by brand, brand sales, sales by vendor]
+  - name: brand_items_returned
+    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN orders.in_sales_reports THEN line_brands.returned_quantity ELSE 0 END)}]}
+    description: Units of a brand taken back, as items_returned, by the date of the order.
+    datatype: Integer
+    ai_context:
+      synonyms: [returns by brand, returned units by brand]
+  - name: brand_returned_amount
+    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN orders.in_sales_reports THEN line_brands.returned_amount ELSE 0 END)}]}
+    description: >
+      Goods of a brand taken back, as line_returned_amount: after discounts
+      and without tax, by the date of the order.
+    datatype: Decimal
+    ai_context:
+      synonyms: [returns value by brand, returned amount by brand]
+  - name: brand_net_revenue
+    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN orders.in_sales_reports THEN line_brands.line_total - line_brands.returned_amount ELSE 0 END)}]}
+    description: >
+      Revenue of goods of a brand less what was taken back, as
+      line_net_revenue, by the date of the order.
+    datatype: Decimal
+    ai_context:
+      synonyms: [net sales by brand, brand revenue after returns]
   - name: refund_count
     expression: {dialects: [{dialect: ANSI_SQL, expression: COUNT(CASE WHEN orders.in_sales_reports THEN refunds.refund_id END)}]}
     description: >

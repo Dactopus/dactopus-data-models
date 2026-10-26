@@ -448,3 +448,123 @@ INSERT INTO {db:Identifier}.wp_wc_product_meta_lookup
 (13, '', '2026-08-01 00:00:05', 0, 5),
 (14, 'CAP', '2026-08-01 00:00:05', 0, 6),
 (14, 'CAP', '2026-10-10 10:00:05', 1, 359);
+
+-- Products, their categories and brands. Categories (product_cat) and
+-- brands (product_brand) are the owner's, now: a line counts in its
+-- product's latest terms, whatever they were when it sold. Categories and
+-- brands are on the product, not on its variations (121, 122): WooCommerce
+-- puts only shipping class and visibility terms on a variation, and its
+-- lines name the product (12).
+--   11  Mug       Kitchen, Gifts and Kitchen > Accessories; no brand
+--   12  Tee       T-Shirts (under Clothing); two brands, Acme and Northwind,
+--                 a third, Beta, put on and then deleted
+--   13  Sticker   renamed Sticker pack; Uncategorized, moved there from
+--                 Gifts; Acme; moved to the trash on October 20, after its
+--                 sale: its terms stay
+--   14  Cap       Clothing, Northwind; deleted on October 10, after its sale
+--   15  Tote      Gifts and Clothing > Accessories, Acme; never sold
+--   16  Apron     Kitchen; a draft, never sold
+--   17  Notebook  Gifts; in the trash, never sold
+-- Kitchen was renamed Kitchen & Dining. A product is linked to the term's
+-- term_taxonomy_id, here term_id + 10, so a join on term_id finds nothing.
+-- T-Shirts was at the top until September 10, then moved under Clothing:
+-- its parent is Clothing's term_id, 16, which no term_taxonomy_id has.
+-- Two categories are named Accessories, one under Clothing (term 24), one
+-- under Kitchen (term 25, whose number is also Uncategorized's
+-- term_taxonomy_id): WordPress refuses a name twice under one parent
+-- only. The Mug is in Kitchen and in the Accessories under it.
+-- Two terms are named Uncategorized: 1 in the posts' category, 15 in
+-- product_cat. Each product also has its product_type term (simple,
+-- variable), which is no category. Posts other than products are there as
+-- the CDC copy holds them: a page and the placeholders HPOS keeps for
+-- orders, with the orders' ids.
+
+INSERT INTO {db:Identifier}.wp_posts
+    (ID, post_title, post_status, post_type, _peerdb_synced_at, _peerdb_is_deleted, _peerdb_version) SETTINGS session_timezone = 'UTC' VALUES
+(2, 'Sample Page', 'publish', 'page', '2026-08-01 00:00:05', 0, 401),
+(11, 'Mug', 'publish', 'product', '2026-08-01 00:00:05', 0, 402),
+(12, 'Tee', 'publish', 'product', '2026-08-01 00:00:05', 0, 403),
+(121, 'Tee - M', 'publish', 'product_variation', '2026-08-01 00:00:05', 0, 404),
+(122, 'Tee - L', 'publish', 'product_variation', '2026-08-01 00:00:05', 0, 405),
+(13, 'Sticker', 'publish', 'product', '2026-08-01 00:00:05', 0, 406),
+(14, 'Cap', 'publish', 'product', '2026-08-01 00:00:05', 0, 407),
+(15, 'Tote', 'publish', 'product', '2026-08-15 10:00:05', 0, 408),
+(16, 'Apron', 'draft', 'product', '2026-09-01 10:00:05', 0, 409),
+(17, 'Notebook', 'publish', 'product', '2026-09-01 10:00:05', 0, 410),
+(101, 'Order', 'draft', 'shop_order_placehold', '2026-08-10 14:00:05', 0, 411),
+(112, 'Order', 'draft', 'shop_order_placehold', '2026-10-01 13:00:05', 0, 412),
+(13, 'Sticker pack', 'publish', 'product', '2026-09-20 10:00:05', 0, 413),
+(17, 'Notebook', 'trash', 'product', '2026-09-25 10:00:05', 0, 414),
+(14, 'Cap', 'publish', 'product', '2026-10-10 10:00:05', 1, 415),
+(13, 'Sticker pack', 'trash', 'product', '2026-10-20 10:00:05', 0, 416);
+
+INSERT INTO {db:Identifier}.wp_terms
+    (term_id, name, _peerdb_synced_at, _peerdb_is_deleted, _peerdb_version) SETTINGS session_timezone = 'UTC' VALUES
+(1, 'Uncategorized', '2026-08-01 00:00:05', 0, 421),
+(2, 'simple', '2026-08-01 00:00:05', 0, 422),
+(4, 'variable', '2026-08-01 00:00:05', 0, 423),
+(15, 'Uncategorized', '2026-08-01 00:00:05', 0, 424),
+(16, 'Clothing', '2026-08-01 00:00:05', 0, 425),
+(17, 'T-Shirts', '2026-08-01 00:00:05', 0, 426),
+(18, 'Kitchen', '2026-08-01 00:00:05', 0, 427),
+(19, 'Gifts', '2026-08-01 00:00:05', 0, 428),
+(20, 'Acme', '2026-08-01 00:00:05', 0, 429),
+(21, 'Northwind', '2026-08-01 00:00:05', 0, 430),
+(22, 'gift', '2026-08-01 00:00:05', 0, 431),
+(23, 'Beta', '2026-09-05 10:00:05', 0, 432),
+(18, 'Kitchen & Dining', '2026-09-15 10:00:05', 0, 433),
+(23, 'Beta', '2026-09-06 10:00:05', 1, 434),
+(24, 'Accessories', '2026-09-10 10:00:05', 0, 435),
+(25, 'Accessories', '2026-09-10 10:00:05', 0, 436);
+
+INSERT INTO {db:Identifier}.wp_term_taxonomy
+    (term_taxonomy_id, term_id, taxonomy, parent, _peerdb_synced_at, _peerdb_is_deleted, _peerdb_version) SETTINGS session_timezone = 'UTC' VALUES
+(1, 1, 'category', 0, '2026-08-01 00:00:05', 0, 441),
+(2, 2, 'product_type', 0, '2026-08-01 00:00:05', 0, 442),
+(4, 4, 'product_type', 0, '2026-08-01 00:00:05', 0, 443),
+(25, 15, 'product_cat', 0, '2026-08-01 00:00:05', 0, 444),
+(26, 16, 'product_cat', 0, '2026-08-01 00:00:05', 0, 445),
+(27, 17, 'product_cat', 0, '2026-08-01 00:00:05', 0, 446),
+(28, 18, 'product_cat', 0, '2026-08-01 00:00:05', 0, 447),
+(29, 19, 'product_cat', 0, '2026-08-01 00:00:05', 0, 448),
+(30, 20, 'product_brand', 0, '2026-08-01 00:00:05', 0, 449),
+(31, 21, 'product_brand', 0, '2026-08-01 00:00:05', 0, 450),
+(32, 22, 'product_tag', 0, '2026-08-01 00:00:05', 0, 451),
+(33, 23, 'product_brand', 0, '2026-09-05 10:00:05', 0, 452),
+(33, 23, 'product_brand', 0, '2026-09-06 10:00:05', 1, 453),
+(27, 17, 'product_cat', 16, '2026-09-10 10:00:05', 0, 454),
+(34, 24, 'product_cat', 16, '2026-09-10 10:00:05', 0, 455),
+(35, 25, 'product_cat', 18, '2026-09-10 10:00:05', 0, 456);
+
+INSERT INTO {db:Identifier}.wp_term_relationships
+    (object_id, term_taxonomy_id, _peerdb_synced_at, _peerdb_is_deleted, _peerdb_version) SETTINGS session_timezone = 'UTC' VALUES
+(11, 2, '2026-08-01 00:00:05', 0, 461),
+(11, 28, '2026-08-01 00:00:05', 0, 462),
+(11, 29, '2026-08-01 00:00:05', 0, 463),
+(11, 32, '2026-08-01 00:00:05', 0, 464),
+(12, 4, '2026-08-01 00:00:05', 0, 465),
+(12, 27, '2026-08-01 00:00:05', 0, 466),
+(12, 30, '2026-08-01 00:00:05', 0, 467),
+(12, 31, '2026-08-01 00:00:05', 0, 468),
+(13, 2, '2026-08-01 00:00:05', 0, 469),
+(13, 29, '2026-08-01 00:00:05', 0, 470),
+(13, 30, '2026-08-01 00:00:05', 0, 471),
+(14, 2, '2026-08-01 00:00:05', 0, 472),
+(14, 26, '2026-08-01 00:00:05', 0, 473),
+(14, 31, '2026-08-01 00:00:05', 0, 474),
+(15, 2, '2026-08-15 10:00:05', 0, 475),
+(15, 29, '2026-08-15 10:00:05', 0, 476),
+(15, 30, '2026-08-15 10:00:05', 0, 477),
+(16, 2, '2026-09-01 10:00:05', 0, 478),
+(16, 28, '2026-09-01 10:00:05', 0, 479),
+(17, 2, '2026-09-01 10:00:05', 0, 480),
+(17, 29, '2026-09-01 10:00:05', 0, 481),
+(12, 33, '2026-09-05 10:00:05', 0, 482),
+(12, 33, '2026-09-06 10:00:05', 1, 483),
+(13, 29, '2026-09-20 10:00:05', 1, 484),
+(13, 25, '2026-09-20 10:00:05', 0, 485),
+(14, 2, '2026-10-10 10:00:05', 1, 486),
+(14, 26, '2026-10-10 10:00:05', 1, 487),
+(14, 31, '2026-10-10 10:00:05', 1, 488),
+(15, 34, '2026-09-10 10:00:05', 0, 489),
+(11, 35, '2026-09-10 10:00:05', 0, 490);

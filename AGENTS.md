@@ -94,8 +94,11 @@ profile and the sample data. CI builds into other databases to keep it so.
 ## Authoring rules
 
 - A field goes into a canonical entity only when at least two sources
-  provide it. While a domain has a single source (GA4 for events), a
-  field qualifies when its meaning does not depend on that source; where
+  provide it. A source that has less of it still provides it when the
+  meaning is the same: a category with its subcategories, where
+  Shopify's product types have no subcategories. While a domain has a
+  single source (GA4 for events), a field qualifies when its meaning
+  does not depend on that source; where
   the second source is known but not yet packaged, it must exist there
   too, checked against its documentation. A source-only field is not
   modelled yet. A reference domain (`iot`) is built from one public

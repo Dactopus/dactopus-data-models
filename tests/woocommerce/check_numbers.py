@@ -203,8 +203,158 @@ CASES = [
     # holds a plugin's 1, which the package reads only when told its key.
     (["-m", "orders.order_count", "-d", "orders.order_number", "-f", "orders.order_id = 101"],
      [{"order_number": "101", "orders.order_count": 1}]),
+    # Products. Lines of the counted orders as in line_revenue above, each
+    # in every one of its product's latest categories and brands; returns
+    # are the refunds' lines (904's, of cancelled 107, left out with its
+    # order), by the month of the order: 104's tee 27 and 111's mug 20, 2
+    # items, 47; net 340.818182 - 47 = 293.818182.
+    (["-m", "items_returned", "-m", "line_returned_amount", "-m", "line_net_revenue"],
+     [{"items_returned": 2, "line_returned_amount": 47, "line_net_revenue": 293.818182}]),
+    # By category, the product's own ones, as Analytics' Categories report
+    # counts them, without a filter; a category is told apart by its path,
+    # as two are named Accessories. Gifts, Kitchen & Dining and Kitchen &
+    # Dining > Accessories all have the Mug, 40 + 20 + 20 + 50 = 130 over 6
+    # items, 111's mug returned (20): net 110 each. Clothing > T-Shirts the
+    # Tee, 30 + 54 + 31.818182 + 60 = 175.818182 over 6 items, 104's tee
+    # returned (27): net 148.818182. Uncategorized the Sticker pack, 113's
+    # 10 over 2 items (102 is on hold, not counted); it is in the trash now
+    # and keeps its terms. None: the Cap (deleted, its terms gone with it),
+    # 25. Clothing has 0: the Tee is in T-Shirts under it, not in Clothing
+    # itself; counted with the rows above the product's categories, it
+    # would have the Tee's 175.818182. Clothing > Accessories has no row:
+    # the Tote never sold. The categories add up to 600.818182, the Mug's
+    # 130 twice more than line_revenue's 340.818182. Read with the old
+    # name, Kitchen would have the Mug's 130; with the Sticker's old link,
+    # Gifts would have 140 over 8 items; joined on term_id, the Sticker
+    # pack's 10 would be in Accessories and no other line would have a
+    # category.
+    (["-m", "category_items_sold", "-m", "category_revenue", "-m", "category_items_returned",
+      "-m", "category_returned_amount", "-m", "category_net_revenue",
+      "-d", "line_categories.category_path", "-o", "line_categories.category_path"],
+     [{"category_path": "Clothing", "category_items_sold": 0, "category_revenue": 0,
+       "category_items_returned": 0, "category_returned_amount": 0, "category_net_revenue": 0},
+      {"category_path": "Clothing > T-Shirts", "category_items_sold": 6,
+       "category_revenue": 175.818182, "category_items_returned": 1,
+       "category_returned_amount": 27, "category_net_revenue": 148.818182},
+      {"category_path": "Gifts", "category_items_sold": 6, "category_revenue": 130,
+       "category_items_returned": 1, "category_returned_amount": 20, "category_net_revenue": 110},
+      {"category_path": "Kitchen & Dining", "category_items_sold": 6, "category_revenue": 130,
+       "category_items_returned": 1, "category_returned_amount": 20, "category_net_revenue": 110},
+      {"category_path": "Kitchen & Dining > Accessories", "category_items_sold": 6,
+       "category_revenue": 130, "category_items_returned": 1, "category_returned_amount": 20,
+       "category_net_revenue": 110},
+      {"category_path": "Uncategorized", "category_items_sold": 2, "category_revenue": 10,
+       "category_items_returned": 0, "category_returned_amount": 0, "category_net_revenue": 10},
+      {"category_path": None, "category_items_sold": 1, "category_revenue": 25,
+       "category_items_returned": 0, "category_returned_amount": 0, "category_net_revenue": 25}]),
+    # One category with its subcategories, as Analytics' filter by category
+    # takes them: the lines' metrics filtered by the category, each line
+    # once. Clothing the Tee through T-Shirts, 175.818182 over 6 items, 1
+    # returned for 27, net 148.818182; Kitchen & Dining the Mug, 130 over 6,
+    # net 110, not 260 over 12 for its two categories there. Read with
+    # T-Shirts' parent before September 10 (none), or with the parent
+    # matched to term_taxonomy_id, Clothing would have nothing.
+    (["-m", "items_sold", "-m", "line_revenue", "-m", "items_returned", "-m", "line_returned_amount",
+      "-m", "line_net_revenue", "-f", "line_categories.category_path = 'Clothing'"],
+     [{"items_sold": 6, "line_revenue": 175.818182, "items_returned": 1,
+       "line_returned_amount": 27, "line_net_revenue": 148.818182}]),
+    (["-m", "items_sold", "-m", "line_revenue", "-m", "line_net_revenue",
+      "-f", "line_categories.category_path = 'Kitchen & Dining'"],
+     [{"items_sold": 6, "line_revenue": 130, "line_net_revenue": 110}]),
+    # September by category: Gifts, Kitchen & Dining and its Accessories
+    # 109's 20 + 111's 20 = 40, net 20 each; T-Shirts 104's 54 + 110's
+    # 31.818182 = 85.818182, net 58.818182; Clothing, above T-Shirts, 0.
+    (["-m", "category_revenue", "-m", "category_net_revenue", "-d", "line_categories.category_path",
+      "-f", "orders.order_month = DATE '2026-09-01'", "-o", "line_categories.category_path"],
+     [{"category_path": "Clothing", "category_revenue": 0, "category_net_revenue": 0},
+      {"category_path": "Clothing > T-Shirts", "category_revenue": 85.818182,
+       "category_net_revenue": 58.818182},
+      {"category_path": "Gifts", "category_revenue": 40, "category_net_revenue": 20},
+      {"category_path": "Kitchen & Dining", "category_revenue": 40, "category_net_revenue": 20},
+      {"category_path": "Kitchen & Dining > Accessories", "category_revenue": 40,
+       "category_net_revenue": 20}]),
+    # By brand: Acme the Tee and the Sticker pack, 175.818182 + 10 =
+    # 185.818182 over 8 items, 1 returned for 27; Northwind the Tee,
+    # 175.818182 over 6, 1 returned for 27; none the Mug and the Cap, 130 +
+    # 25 = 155 over 7, 1 returned for 20. Beta, deleted, has nothing; read
+    # with it, it would have the Tee's 175.818182.
+    (["-m", "brand_items_sold", "-m", "brand_revenue", "-m", "brand_items_returned",
+      "-m", "brand_returned_amount", "-m", "brand_net_revenue", "-d", "line_brands.brand",
+      "-o", "line_brands.brand"],
+     [{"brand": "Acme", "brand_items_sold": 8, "brand_revenue": 185.818182, "brand_items_returned": 1,
+       "brand_returned_amount": 27, "brand_net_revenue": 158.818182},
+      {"brand": "Northwind", "brand_items_sold": 6, "brand_revenue": 175.818182,
+       "brand_items_returned": 1, "brand_returned_amount": 27, "brand_net_revenue": 148.818182},
+      {"brand": None, "brand_items_sold": 7, "brand_revenue": 155, "brand_items_returned": 1,
+       "brand_returned_amount": 20, "brand_net_revenue": 135}]),
+    # Brand by month: Acme August 30 (101's tee), September 85.818182,
+    # October 60 + 10 = 70; Northwind August 30, September 85.818182,
+    # October 60; none August 40 + 25 = 65, September 40, October 50.
+    (["-m", "brand_revenue", "-d", "line_brands.brand", "-d", "orders.order_month",
+      "-o", "line_brands.brand", "-o", "orders.order_month"],
+     [{"brand": "Acme", "order_month": "2026-08-01", "brand_revenue": 30},
+      {"brand": "Acme", "order_month": "2026-09-01", "brand_revenue": 85.818182},
+      {"brand": "Acme", "order_month": "2026-10-01", "brand_revenue": 70},
+      {"brand": "Northwind", "order_month": "2026-08-01", "brand_revenue": 30},
+      {"brand": "Northwind", "order_month": "2026-09-01", "brand_revenue": 85.818182},
+      {"brand": "Northwind", "order_month": "2026-10-01", "brand_revenue": 60},
+      {"brand": None, "order_month": "2026-08-01", "brand_revenue": 65},
+      {"brand": None, "order_month": "2026-09-01", "brand_revenue": 40},
+      {"brand": None, "order_month": "2026-10-01", "brand_revenue": 50}]),
+    # Average order value of the orders with a line in Gifts, each order
+    # once, all of its goods: the Mug's orders 101 70 (its tee included),
+    # 109 18 (with its fees), 111 20, 117 50 = 158 over 4; counted once per
+    # category of the line, Gifts or Kitchen & Dining would give 316 over 8.
+    # Clothing, with its subcategories: 101 70, 104 54, 110 31.82, 112 60 =
+    # 215.82 over 4, the same as T-Shirts.
+    (["-m", "orders.average_order_value", "-m", "orders.order_count",
+      "-f", "line_categories.category_path = 'Gifts'"],
+     [{"orders.average_order_value": 158 / 4, "orders.order_count": 4}]),
+    (["-m", "orders.average_order_value", "-m", "orders.order_count",
+      "-f", "line_categories.category_path = 'Clothing'"],
+     [{"orders.average_order_value": 215.82 / 4, "orders.order_count": 4}]),
+    # Catalog: 4 products (11, 12, 15, 16); the Cap is deleted, the Sticker
+    # pack (13) and the Notebook (17) are in the trash, and the variations
+    # 121 and 122, the page and the orders' placeholders are no products.
+    # Active (published) 3, draft 1 (16).
+    (["-m", "products.product_count", "-d", "products.status", "-o", "products.status"],
+     [{"status": "active", "products.product_count": 3},
+      {"status": "draft", "products.product_count": 1}]),
+    # Active by category: Clothing 0 (its products are in its
+    # subcategories), Clothing > Accessories 1 (15), Clothing > T-Shirts 1
+    # (12), Gifts 2 (11, 15), Kitchen & Dining 1 (11), Kitchen & Dining >
+    # Accessories 1 (11); by name, Accessories would have 2.
+    (["-m", "product_categories.product_count", "-d", "product_categories.category_path",
+      "-f", "products.status = 'active'", "-o", "product_categories.category_path"],
+     [{"category_path": "Clothing", "product_categories.product_count": 0},
+      {"category_path": "Clothing > Accessories", "product_categories.product_count": 1},
+      {"category_path": "Clothing > T-Shirts", "product_categories.product_count": 1},
+      {"category_path": "Gifts", "product_categories.product_count": 2},
+      {"category_path": "Kitchen & Dining", "product_categories.product_count": 1},
+      {"category_path": "Kitchen & Dining > Accessories", "product_categories.product_count": 1}]),
+    # With subcategories, the catalog filtered by the category: Clothing 2
+    # (12, 15), Kitchen & Dining 1 (11, in it twice; the Apron, 16, is a
+    # draft).
+    (["-m", "products.product_count", "-f", "products.status = 'active'",
+      "-f", "product_categories.category_path = 'Clothing'"],
+     [{"products.product_count": 2}]),
+    (["-m", "products.product_count", "-f", "products.status = 'active'",
+      "-f", "product_categories.category_path = 'Kitchen & Dining'"],
+     [{"products.product_count": 1}]),
+    # By brand: Acme the Tee and the Tote (the Sticker pack is in the
+    # trash), Northwind the Tee.
+    (["-m", "product_brands.product_count", "-d", "product_brands.brand", "-o", "product_brands.brand"],
+     [{"brand": "Acme", "product_brands.product_count": 2},
+      {"brand": "Northwind", "product_brands.product_count": 1}]),
+    # Last sold, by the order's date: Mug October 9 (117), Tee October 1
+    # (112); never sold: 15, 16. The Sticker pack's October 6 (113) is out
+    # with it, and 114 (trash) and 116 (deleted) do not count.
+    (["-d", "products.product_id", "-d", "products.last_sold_date", "-o", "products.product_id"],
+     [{"product_id": 11, "last_sold_date": "2026-10-09"},
+      {"product_id": 12, "last_sold_date": "2026-10-01"},
+      {"product_id": 15, "last_sold_date": None},
+      {"product_id": 16, "last_sold_date": None}]),
 ]
-
 
 if __name__ == "__main__":
     check(MODEL, CASES)

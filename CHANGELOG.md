@@ -8,6 +8,67 @@ names the Ossie schema version its models carry.
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-26
+
+Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.10.1,
+dbt v2 (`dbt-oss` 2.0.8) and dbt v1 (`dbt-core` 1.11 with
+`dbt-clickhouse` 1.10) on ClickHouse 26.9.
+
+Products for Shopify and WooCommerce: categories, brands and the
+catalog. Both packages read new input tables, and `order_lines` gains
+columns: a deployment loads the new input and runs
+`dbt build --full-refresh`.
+
+### Added
+
+- `commerce.yaml`: `line_categories` and `line_brands`, each order line
+  once per category or brand of its product, with model metrics for
+  units, revenue, returns and net revenue by category (`category_*`)
+  and by brand (`brand_*`). A category is the product type at Shopify
+  and a product category at WooCommerce, where categories nest
+  (`category_path`, `is_direct`); a brand is the vendor at Shopify and a
+  product brand at WooCommerce. Both are the product's current ones, as
+  in the stores' reports. The category metrics count a line in its
+  product's own categories, as WooCommerce Analytics' Categories report
+  does; one category with its subcategories is the order lines' metrics
+  filtered by its path.
+- `commerce.yaml`: `products`, the catalog, sold or not, with its status
+  (active, draft, archived) and the date of the last sale, and
+  `product_categories` and `product_brands`, each with
+  `product_count`. Gift cards, deleted products and WooCommerce's trash
+  are not in the catalog.
+- `order_lines.returned_quantity` and `returned_amount`, what refunds
+  and, at Shopify, cancellations took back, without tax; the model
+  metrics `items_returned`, `line_returned_amount` and
+  `line_net_revenue` count them on the date of the order.
+- Shopify input `products`, a log of versions like `orders`; a deleted
+  product comes as a version with `deleted_at`. `export_shopify.py` in
+  the README exports the products and finds deletions in the store's
+  events.
+- WooCommerce input `wp_posts` (without its text columns), `wp_terms`,
+  `wp_term_taxonomy` and `wp_term_relationships`, in two more PeerDB
+  mirrors (README, Your store, step 3).
+- Hand-written products, categories and brands on the fixtures' lines,
+  and the numbers the model must answer over them: Shopify 31 questions,
+  WooCommerce 35.
+
+### Changed
+
+- The Shopify `order_lines` rereads the orders whose refunds or refund
+  lines were loaded since the last run, for the returned columns.
+- `orders.average_order_value` says that, filtered by a category, it
+  counts each order whole, as WooCommerce Analytics' filter does, while
+  Shopify's report filtered by product type counts only that type's
+  lines.
+- The README's known differences from Shopify's reports and from
+  WooCommerce Analytics cover products, checked on a development store
+  and on a local store: WooCommerce's Categories and Products reports
+  also count unpaid orders on hold.
+- `ROADMAP.md`: Products is done; GA4 items are about what only the
+  site sees.
+- `AGENTS.md`: a source that has less of a field still provides it when
+  the meaning is the same.
+
 ## [0.6.1] - 2026-10-25
 
 Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.10.1,
@@ -578,7 +639,8 @@ ClickHouse 26.9.
 - Hand-written GA4 rows and the numbers the model must answer over them
   (`tests/ga4`), checked in CI on both dbt versions.
 
-[Unreleased]: https://github.com/Dactopus/dactopus-data-models/compare/v0.6.1...HEAD
+[Unreleased]: https://github.com/Dactopus/dactopus-data-models/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/Dactopus/dactopus-data-models/compare/v0.6.1...v0.7.0
 [0.6.1]: https://github.com/Dactopus/dactopus-data-models/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/Dactopus/dactopus-data-models/compare/v0.5.3...v0.6.0
 [0.5.3]: https://github.com/Dactopus/dactopus-data-models/compare/v0.5.2...v0.5.3

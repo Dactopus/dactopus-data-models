@@ -9,8 +9,9 @@ written in the [Apache Ossie](https://github.com/apache/ossie) semantic model
 format, with IoT devices as a reference domain. Two kinds of content:
 
 - **Canonical entities**: sessions, events and purchases from web
-  analytics; orders, their lines, refunds and sales events from the
-  store; devices and their readings, the reference domain `iot`. They
+  analytics; orders, their lines, refunds and sales events, and the
+  catalog's products with their categories and brands, from the store;
+  devices and their readings, the reference domain `iot`. They
   have the same shape whatever the data came from.
 - **Source packages**: each maps one source onto those entities. GA4,
   Shopify, WooCommerce and Sensor.Community are available.
@@ -33,8 +34,8 @@ purchase followed from GA4 to an AI agent's answer.
 | Source | Entities | Status |
 | --- | --- | --- |
 | GA4 (BigQuery export) | `events`, `sessions`, `purchases` | available |
-| Shopify (GraphQL Admin API) | `orders`, `order_lines`, `refunds`, `sales_events` | available |
-| WooCommerce (the store's MySQL tables through CDC) | `orders`, `order_lines`, `refunds`, `sales_events` | available |
+| Shopify (GraphQL Admin API) | `orders`, `order_lines`, `refunds`, `sales_events`, `products`, `line_categories`, `line_brands`, `product_categories`, `product_brands` | available |
+| WooCommerce (the store's MySQL tables through CDC) | the same as Shopify | available |
 | Sensor.Community (the archive's files and the API's snapshots) | `devices`, `readings` | available, reference domain |
 
 Both order sources map onto the same entities. Where they differ, such as
@@ -192,9 +193,10 @@ Tested on ClickHouse 26.9.
 There is no public Shopify export, so try the package on the rows the
 repository tests it with,
 [`tests/shopify/fixture.sql`](tests/shopify/fixture.sql): twelve orders
-of a shop in New York, each a case the package must get right (refunds,
-cancellations, discounts, tax included in prices, a gift card, a tip,
-import duties, repeated deliveries). You need ClickHouse, dbt and
+of a shop in New York and its thirteen products, each a case the package
+must get right (refunds, cancellations, discounts, tax included in
+prices, a gift card, a tip, import duties, repeated deliveries, a
+product's type and vendor changed, a deleted product). You need ClickHouse, dbt and
 dactopus-ossie-clickhouse, as for GA4.
 
 1. **Load** the package's input tables
@@ -218,7 +220,7 @@ dactopus-ossie-clickhouse, as for GA4.
    ```
 
 3. **Validate** the model and **check** its answers: `check_numbers.py`
-   asks 20 questions through dactopus-ossie-clickhouse, in the zone of
+   asks 31 questions through dactopus-ossie-clickhouse, in the zone of
    step 2, and compares the answers with numbers worked out by hand from
    the rows.
 
@@ -230,7 +232,8 @@ dactopus-ossie-clickhouse, as for GA4.
 4. **Ask.** Serve `entities/commerce.yaml` in the zone of step 2, so
    that "today" in a question is the shop's date. Try net revenue,
    refunds by month, average order value and repeat orders, by shipping
-   country and new or returning customer.
+   country and new or returning customer; revenue and returns by product
+   type and by vendor; products not sold since a date.
 
    ```bash
    dactopus-ossie-clickhouse serve entities/commerce.yaml \
@@ -257,17 +260,22 @@ dactopus-ossie-clickhouse, as for GA4.
        --data-urlencode "client_secret=$SHOPIFY_CLIENT_SECRET"
    ```
 
-2. **Export** the orders updated since a time. Save the script below as
-   `export_shopify.py` and run it with the store's subdomain and the
-   token; the first time, from a date before the store's first order:
+2. **Export** the orders and products updated since a time. Save the
+   script below as `export_shopify.py` and run it with the store's
+   subdomain and the token; the first time, from a date before the
+   store's first order:
 
    ```bash
    SHOPIFY_SHOP=<store> SHOPIFY_TOKEN=<token> uv run --with certifi export_shopify.py 2000-01-01T00:00:00Z data/shopify
    ```
 
    It reads the GraphQL Admin API (version 2026-10) 25 orders at a
-   time, each with its lines and refunds, and writes one JSON file per
-   input table, with only the columns `input.sql` declares. It needs
+   time, each with its lines and refunds, then the products, archived
+   ones and drafts included, and writes one JSON file per input table,
+   with only the columns `input.sql` declares. A deleted product is gone
+   from the API: the script finds it in the store's events (`destroy` of
+   a `PRODUCT`) and writes a version of it with only its id and the time
+   of the deletion. It needs
    [uv](https://docs.astral.sh/uv/) for the one package it uses,
    `certifi`: Python from python.org on macOS does not see the system's
    root certificates. A Shopify bulk operation would be faster on a large store, but
@@ -312,11 +320,23 @@ dactopus-ossie-clickhouse, as for GA4.
        }}
      }}
    }}"""
+   PRODUCTS = """query ($cursor: String, $filter: String) {
+     products(first: 100, after: $cursor, query: $filter, sortKey: UPDATED_AT) {
+       pageInfo { hasNextPage endCursor }
+       nodes { legacyResourceId title productType vendor status isGiftCard updatedAt }
+     }
+   }"""
+   DELETED = """query ($cursor: String, $filter: String) {
+     events(first: 100, after: $cursor, query: $filter, sortKey: CREATED_AT) {
+       pageInfo { hasNextPage endCursor }
+       nodes { createdAt ... on BasicEvent { subjectId } }
+     }
+   }"""
 
 
-   def fetch(variables):
+   def fetch(query, field, variables):
        while True:
-           req = urllib.request.Request(API, json.dumps({"query": QUERY, "variables": variables}).encode(),
+           req = urllib.request.Request(API, json.dumps({"query": query, "variables": variables}).encode(),
                                         {"X-Shopify-Access-Token": token, "Content-Type": "application/json"})
            body = json.load(urllib.request.urlopen(req, context=TLS))
            if any(e.get("extensions", {}).get("code") == "THROTTLED" for e in body.get("errors", [])):
@@ -324,7 +344,14 @@ dactopus-ossie-clickhouse, as for GA4.
                continue
            if "errors" in body:
                sys.exit(body["errors"])
-           return body["data"]["orders"]
+           return body["data"][field]
+
+
+   def pages(query, field, filter):
+       page = {"pageInfo": {"hasNextPage": True, "endCursor": None}}
+       while page["pageInfo"]["hasNextPage"]:
+           page = fetch(query, field, {"cursor": page["pageInfo"]["endCursor"], "filter": filter})
+           yield from page["nodes"]
 
 
    def money(v): return str(Decimal(v["shopMoney"]["amount"])) if v else "0"
@@ -337,54 +364,60 @@ dactopus-ossie-clickhouse, as for GA4.
        return conn["nodes"]
 
 
-   tables = {t: [] for t in ("orders", "order_lines", "refunds", "refund_lines")}
-   page = {"pageInfo": {"hasNextPage": True, "endCursor": None}}
-   while page["pageInfo"]["hasNextPage"]:
-       page = fetch({"cursor": page["pageInfo"]["endCursor"], "filter": f"updated_at:>='{since}'"})
-       for o in page["nodes"]:
-           oid, updated, ship = int(o["legacyResourceId"]), ts(o["updatedAt"]), nodes(o["shippingLines"], "shipping lines")
-           addr = o["shippingAddress"] or {}
-           tables["orders"].append({
-               "id": oid, "name": o["name"], "created_at": ts(o["createdAt"]), "processed_at": ts(o["processedAt"]),
-               "updated_at": updated, "cancelled_at": ts(o["cancelledAt"]), "closed_at": ts(o["closedAt"]),
-               "test": o["test"], "customer_id": o["customer"] and int(o["customer"]["legacyResourceId"]),
-               "email": o["email"], "currency_code": o["currencyCode"],
-               "presentment_currency_code": o["presentmentCurrencyCode"],
-               "display_financial_status": o["displayFinancialStatus"],
-               "display_fulfillment_status": o["displayFulfillmentStatus"],
-               "source_name": o["sourceName"], "taxes_included": o["taxesIncluded"],
-               "total_price": money(o["totalPriceSet"]), "shipping_price": total(ship, "discountedPriceSet"),
-               "shipping_tax": total([t for s in ship for t in s["taxLines"]], "priceSet"),
-               "total_tax": money(o["totalTaxSet"]), "total_refunded": money(o["totalRefundedSet"]),
-               "current_total_price": money(o["currentTotalPriceSet"]), "total_tip": money(o["totalTipReceivedSet"]),
-               "total_duties": money(o["originalTotalDutiesSet"]),
-               "total_additional_fees": money(o["originalTotalAdditionalFeesSet"]),
-               "discount_codes": o["discountCodes"], "shipping_country_code": addr.get("countryCodeV2"),
-               "shipping_province_code": addr.get("provinceCode"), "shipping_city": addr.get("city"),
-               "shipping_zip": addr.get("zip")})
-           for l in nodes(o["lineItems"], "line items"):
-               tables["order_lines"].append({
-                   "id": legacy(l["id"]), "order_id": oid, "order_updated_at": updated,
-                   "product_id": l["product"] and int(l["product"]["legacyResourceId"]),
-                   "variant_id": l["variant"] and int(l["variant"]["legacyResourceId"]),
-                   "sku": l["sku"], "title": l["title"], "variant_title": l["variantTitle"],
-                   "quantity": l["quantity"], "current_quantity": l["currentQuantity"],
-                   "original_unit_price": money(l["originalUnitPriceSet"]), "original_total": money(l["originalTotalSet"]),
-                   "discount_allocated": total(l["discountAllocations"], "allocatedAmountSet"),
-                   "total_tax": total(l["taxLines"], "priceSet"),
-                   "tax_rate": str(sum((Decimal(str(t["rate"])) for t in l["taxLines"]), Decimal(0))),
-                   "taxable": l["taxable"], "requires_shipping": l["requiresShipping"], "is_gift_card": l["isGiftCard"]})
-           for r in o["refunds"]:
-               rid, refund_updated = int(r["legacyResourceId"]), ts(r["updatedAt"])
-               tables["refunds"].append({
-                   "id": rid, "order_id": oid, "created_at": ts(r["createdAt"]), "updated_at": refund_updated,
-                   "note": r["note"], "total_refunded": money(r["totalRefundedSet"])})
-               for rl in nodes(r["refundLineItems"], "refund lines"):
-                   tables["refund_lines"].append({
-                       "id": legacy(rl["id"]), "refund_id": rid, "refund_updated_at": refund_updated,
-                       "line_item_id": legacy(rl["lineItem"]["id"]), "quantity": rl["quantity"],
-                       "subtotal": money(rl["subtotalSet"]), "total_tax": money(rl["totalTaxSet"]),
-                       "restock_type": rl["restockType"]})
+   tables = {t: [] for t in ("orders", "order_lines", "refunds", "refund_lines", "products")}
+   for o in pages(QUERY, "orders", f"updated_at:>='{since}'"):
+       oid, updated, ship = int(o["legacyResourceId"]), ts(o["updatedAt"]), nodes(o["shippingLines"], "shipping lines")
+       addr = o["shippingAddress"] or {}
+       tables["orders"].append({
+           "id": oid, "name": o["name"], "created_at": ts(o["createdAt"]), "processed_at": ts(o["processedAt"]),
+           "updated_at": updated, "cancelled_at": ts(o["cancelledAt"]), "closed_at": ts(o["closedAt"]),
+           "test": o["test"], "customer_id": o["customer"] and int(o["customer"]["legacyResourceId"]),
+           "email": o["email"], "currency_code": o["currencyCode"],
+           "presentment_currency_code": o["presentmentCurrencyCode"],
+           "display_financial_status": o["displayFinancialStatus"],
+           "display_fulfillment_status": o["displayFulfillmentStatus"],
+           "source_name": o["sourceName"], "taxes_included": o["taxesIncluded"],
+           "total_price": money(o["totalPriceSet"]), "shipping_price": total(ship, "discountedPriceSet"),
+           "shipping_tax": total([t for s in ship for t in s["taxLines"]], "priceSet"),
+           "total_tax": money(o["totalTaxSet"]), "total_refunded": money(o["totalRefundedSet"]),
+           "current_total_price": money(o["currentTotalPriceSet"]), "total_tip": money(o["totalTipReceivedSet"]),
+           "total_duties": money(o["originalTotalDutiesSet"]),
+           "total_additional_fees": money(o["originalTotalAdditionalFeesSet"]),
+           "discount_codes": o["discountCodes"], "shipping_country_code": addr.get("countryCodeV2"),
+           "shipping_province_code": addr.get("provinceCode"), "shipping_city": addr.get("city"),
+           "shipping_zip": addr.get("zip")})
+       for l in nodes(o["lineItems"], "line items"):
+           tables["order_lines"].append({
+               "id": legacy(l["id"]), "order_id": oid, "order_updated_at": updated,
+               "product_id": l["product"] and int(l["product"]["legacyResourceId"]),
+               "variant_id": l["variant"] and int(l["variant"]["legacyResourceId"]),
+               "sku": l["sku"], "title": l["title"], "variant_title": l["variantTitle"],
+               "quantity": l["quantity"], "current_quantity": l["currentQuantity"],
+               "original_unit_price": money(l["originalUnitPriceSet"]), "original_total": money(l["originalTotalSet"]),
+               "discount_allocated": total(l["discountAllocations"], "allocatedAmountSet"),
+               "total_tax": total(l["taxLines"], "priceSet"),
+               "tax_rate": str(sum((Decimal(str(t["rate"])) for t in l["taxLines"]), Decimal(0))),
+               "taxable": l["taxable"], "requires_shipping": l["requiresShipping"], "is_gift_card": l["isGiftCard"]})
+       for r in o["refunds"]:
+           rid, refund_updated = int(r["legacyResourceId"]), ts(r["updatedAt"])
+           tables["refunds"].append({
+               "id": rid, "order_id": oid, "created_at": ts(r["createdAt"]), "updated_at": refund_updated,
+               "note": r["note"], "total_refunded": money(r["totalRefundedSet"])})
+           for rl in nodes(r["refundLineItems"], "refund lines"):
+               tables["refund_lines"].append({
+                   "id": legacy(rl["id"]), "refund_id": rid, "refund_updated_at": refund_updated,
+                   "line_item_id": legacy(rl["lineItem"]["id"]), "quantity": rl["quantity"],
+                   "subtotal": money(rl["subtotalSet"]), "total_tax": money(rl["totalTaxSet"]),
+                   "restock_type": rl["restockType"]})
+
+   for p in pages(PRODUCTS, "products", f"updated_at:>='{since}'"):
+       tables["products"].append({
+           "id": int(p["legacyResourceId"]), "title": p["title"], "product_type": p["productType"],
+           "vendor": p["vendor"], "status": p["status"], "is_gift_card": p["isGiftCard"],
+           "updated_at": ts(p["updatedAt"])})
+   for e in pages(DELETED, "events", f"subject_type:PRODUCT AND action:destroy AND created_at:>='{since}'"):
+       tables["products"].append({"id": legacy(e["subjectId"]), "updated_at": ts(e["createdAt"]),
+                                  "deleted_at": ts(e["createdAt"])})
 
    out.mkdir(parents=True, exist_ok=True)
    for name, rows in tables.items():
@@ -400,7 +433,7 @@ dactopus-ossie-clickhouse, as for GA4.
 
    ```bash
    clickhouse client --param_db=shopify_raw --multiquery < sources/shopify/input.sql
-   for t in orders order_lines refunds refund_lines; do
+   for t in orders order_lines refunds refund_lines products; do
        if [ -s data/shopify/$t.jsonl ]; then
            clickhouse client --query "INSERT INTO shopify_raw.$t FORMAT JSONEachRow" < data/shopify/$t.jsonl
        fi
@@ -416,6 +449,9 @@ dactopus-ossie-clickhouse, as for GA4.
    loaded, load, and build again: the build is incremental. A refund or a
    cancellation changes an order's `updated_at`, so the export delivers
    the order again, whole; delivering the same version twice is harmless.
+   So does a change of a product, a sale included (Shopify updates its
+   inventory), and its deletion arrives from the events of the same
+   window.
 
    ```bash
    since=$(clickhouse client --query "SELECT formatDateTime(max(updated_at) - INTERVAL 1 HOUR, '%Y-%m-%dT%H:%i:%SZ') FROM shopify_raw.orders")
@@ -433,7 +469,10 @@ orders and four refunds of a store in New York, as change data capture
 (CDC) writes them, each a case the package must get right (refunds with
 and without lines, a cancelled order, cash on delivery, fees, tax included
 in prices, rows updated and then deleted, a deleted product, an order in
-the trash, an order paid in EUR). You need ClickHouse, dbt and
+the trash, an order paid in EUR), with a catalog of seven products in
+nested categories and with brands (a product in two categories, a
+category moved under another, two categories of one name, a product in
+the trash). You need ClickHouse, dbt and
 dactopus-ossie-clickhouse, as for GA4. The package needs ClickHouse 26.7
 or later: its models compute each shared subquery once
 (`WITH ... AS MATERIALIZED`), which fails on earlier versions. CI runs it
@@ -460,7 +499,7 @@ on 26.7 and 26.9.
    ```
 
 3. **Validate** the model and **check** its answers: `check_numbers.py`
-   asks 20 questions, in the zone of step 2, and compares the answers
+   asks 35 questions, in the zone of step 2, and compares the answers
    with numbers worked out by hand from the rows.
 
    ```bash
@@ -471,7 +510,8 @@ on 26.7 and 26.9.
 4. **Ask.** Serve `entities/commerce.yaml` in the zone of step 2, so
    that "today" in a question is the store's date. Try sales by month,
    orders awaiting payment, refunds by month and average order value, by
-   shipping country and new or returning customer.
+   shipping country and new or returning customer; sales by category,
+   with and without its subcategories, and by brand.
 
    ```bash
    dactopus-ossie-clickhouse serve entities/commerce.yaml \
@@ -520,7 +560,8 @@ Cloud's CDC, runs PeerDB but is not checked yet.
    GRANT SELECT, REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO 'peerdb'@'%';
    ```
 
-3. **Mirror** seven tables into ClickHouse. Create the database
+3. **Mirror** eleven tables into ClickHouse: the order tables, and the
+   products and their categories and brands. Create the database
    (`CREATE DATABASE woocommerce_raw`); PeerDB creates the tables in it,
    with every column of the MySQL tables, of which
    [`input.sql`](sources/woocommerce/input.sql) lists those the package
@@ -546,7 +587,23 @@ Cloud's CDC, runs PeerDB but is not checked yet.
      <wordpress>.wp_woocommerce_order_itemmeta:wp_woocommerce_order_itemmeta,
      <wordpress>.wp_wc_product_meta_lookup:wp_wc_product_meta_lookup
    ) WITH (do_initial_copy = true);
+   CREATE MIRROR woo_terms FROM woo_mysql TO woo_ch WITH TABLE MAPPING (
+     <wordpress>.wp_terms:wp_terms,
+     <wordpress>.wp_term_taxonomy:wp_term_taxonomy,
+     <wordpress>.wp_term_relationships:wp_term_relationships
+   ) WITH (do_initial_copy = true);
+   CREATE MIRROR woo_posts FROM woo_mysql TO woo_ch WITH TABLE MAPPING (
+     {from: <wordpress>.wp_posts, to: wp_posts,
+      exclude: [post_content, post_excerpt, post_content_filtered, to_ping, pinged, post_password]}
+   ) WITH (do_initial_copy = true);
    ```
+
+   Categories, brands and tags are terms (`wp_terms`) of a taxonomy
+   (`wp_term_taxonomy`), linked to products in `wp_term_relationships`.
+   `wp_posts` holds products and every page and revision of the site;
+   its mirror leaves out the text columns, which the package does not
+   read. A store whose order tables are mirrored already adds the other
+   two mirrors as they are.
 
    Outside a local network, leave out `disable_tls` and give ClickHouse's
    secure port (9440 by default); that is not checked. The tables keep the
@@ -891,11 +948,11 @@ the model states in its descriptions:
 
 ## What the commerce model answers
 
-[`entities/commerce.yaml`](entities/commerce.yaml) has 19 metrics. A
+[`entities/commerce.yaml`](entities/commerce.yaml) has 35 metrics. A
 metric that counts the rows of one dataset is on that dataset, and a
-question names it as `dataset.metric` (`orders.revenue`). The five that
-read order lines or refunds together with `orders.in_sales_reports` are
-on the model and go by their name alone:
+question names it as `dataset.metric` (`orders.revenue`). The 18 that
+read order lines, their categories and brands, or refunds together with
+`orders.in_sales_reports` are on the model and go by their name alone:
 
 - orders: `order_count`, `all_orders`, `all_orders_total`, `revenue`,
   `refunded_amount`, `refund_rate`, `average_order_value`,
@@ -904,15 +961,38 @@ on the model and go by their name alone:
   date, week and month; payment and fulfillment status, cancelled or
   not, counted in the store's reports or not, channel and currency;
   shipping country, region and city; new or repeat customer.
-- order lines (on the model): `items_sold`, `items_net`, `line_revenue`.
-  They break down by product, variant, SKU and title, and by the order
-  fields above.
+- order lines (on the model): `items_sold`, `items_net`, `line_revenue`,
+  `items_returned`, `line_returned_amount`, `line_net_revenue`. They
+  break down by product, variant, SKU and title, and by the order fields
+  above. Returns count on the date of the order.
+- categories (on the model): `category_items_sold`, `category_revenue`,
+  `category_items_returned`, `category_returned_amount`,
+  `category_net_revenue`. They break down by `line_categories.category`
+  and `category_path`, and by the order fields above.
+- brands (on the model): `brand_items_sold`, `brand_revenue`,
+  `brand_items_returned`, `brand_returned_amount`, `brand_net_revenue`.
+  They break down by `line_brands.brand` and by the order fields above.
 - refunds (on the model): `refund_count`, `refunds_total`. They break
   down by the refund's own date, week and month, and by the order fields
   above.
 - sales events: `net_revenue`. It breaks down by the event's date, week,
   month and kind (an order, a refund, a cancellation), and by the order
   fields above.
+- the catalog: `products.product_count`, by status (active, draft,
+  archived), title and the date of the last sale;
+  `product_categories.product_count` by category and
+  `product_brands.product_count` by brand.
+
+A category is the product type at Shopify and a product category at
+WooCommerce, where categories nest; a brand is the vendor at Shopify and
+a product brand at WooCommerce. Both are the product's current ones: a
+product moved to another category takes its past sales with it, as in
+the stores' reports. A line counts in every category and brand of its
+product, so they overlap and never add up to a total. The category
+metrics count a line in its product's own categories, as WooCommerce
+Analytics' Categories report does; one category with its subcategories
+is the order lines' metrics filtered by `line_categories.category_path`.
+Collections and tags are not modelled.
 
 The numbers follow the store's own sales reports: every metric but
 `orders.all_orders` and `orders.all_orders_total` counts only the orders
@@ -937,9 +1017,12 @@ On the development store the package was checked against,
 `sales_events.net_revenue` equals Shopify's total sales overall, by
 shipping country and by new or returning customer, and, by
 `sales_events.event_date`, for each order on each day;
-`orders.average_order_value` equals the store's. Test orders are left
-out, as in the reports. Other numbers differ by definition, and the
-model's descriptions say how:
+`orders.average_order_value` equals the store's. Units, goods revenue,
+returns and net sales by product type and by vendor equal the reports'
+over all time and by month, and the counts of products by status, type
+and vendor equal the admin's. Test orders are left out, as in the
+reports. Other numbers differ by definition, and the model's
+descriptions say how:
 
 - **Gross and net sales** in Shopify's reports are goods only.
   `orders.revenue` and `sales_events.net_revenue` add shipping, tax and
@@ -964,6 +1047,16 @@ model's descriptions say how:
   refund of goods and counts as a refund
   ([#6](https://github.com/Dactopus/dactopus-data-models/issues/6)).
   Tips and gift cards sold are otherwise not sales, as in the reports.
+- **Gift cards** count in the reports' units sold and returned; here a
+  gift card is no product, so `items_sold` and `items_returned` leave it
+  out.
+- **Returns by product, type or vendor**: the reports date a return on
+  the day of the refund, `items_returned` and `line_returned_amount` on
+  the day of the order. Over all time they are equal.
+- **Average order value by product type**: the reports, filtered by a
+  type, count only that type's lines of each order;
+  `orders.average_order_value` filtered by a category counts each such
+  order whole, as WooCommerce Analytics does.
 
 Known limits of the package: a custom item with no product, no tax and
 nothing to ship that costs exactly the order's tip is taken for the tip;
@@ -1000,10 +1093,12 @@ items, refunds, report date and whether the reports count it matched.
 reports' total sales for every month, and `orders.order_count`,
 `orders.average_order_value`, `orders.items_per_order`,
 `orders.discount_amount`, `items_net`, refunds by month and new or
-returning registered customers equal the reports' numbers. After a
-refund, a deleted order and a new one, an incremental run matched a full
-rebuild and the reports again. Other numbers differ by definition, and
-the model's descriptions say how:
+returning registered customers equal the reports' numbers.
+`orders.average_order_value` filtered by a category equals the Orders
+report filtered by it, subcategories included. After a refund, a deleted
+order and a new one, an incremental run matched a full rebuild and the
+reports again. Other numbers differ by definition, and the model's
+descriptions say how:
 
 - **Net sales** in the reports are goods after refunds, without shipping
   and tax. `sales_events.net_revenue` is the reports' total sales;
@@ -1019,6 +1114,13 @@ the model's descriptions say how:
 - **Test orders** are not marked in WooCommerce and count as orders.
 - **Fulfillment**: WooCommerce (11.2) keeps no shipments of its own by
   default; a completed order is fulfilled and any other unfulfilled.
+- **Categories and products**: the Categories and Products reports also
+  count orders on hold that are not paid yet, which the Revenue and
+  Orders reports and the model leave out under the default date type.
+  Without them, units, revenue and returns by category and product equal
+  the reports'. A parent category with no products of its own has no row
+  in the Categories report and a row of 0 here. Analytics has no report
+  by brand.
 
 Known limits of the package: an order a multi-currency plugin placed in
 another currency is converted to the store's as WooPayments and FOX
@@ -1107,10 +1209,10 @@ WooCommerce, `subdirectory: sources/woocommerce`; for Sensor.Community,
 ```yaml
 packages:
   - git: https://github.com/Dactopus/dactopus-data-models.git
-    revision: v0.6.1
+    revision: v0.7.0
     subdirectory: sources/ga4
   - git: https://github.com/Dactopus/dactopus-data-models.git
-    revision: v0.6.1
+    revision: v0.7.0
     subdirectory: sources/shopify
 ```
 
@@ -1121,9 +1223,10 @@ databases, as for several stores below.
 
 The GA4 package writes `events`, `sessions` and `purchases` to your
 target's database and reads its input from `ga4_raw.events`. The Shopify
-package writes `orders`, `order_lines`, `refunds` and `sales_events` and
-reads its input from the four tables in `shopify_raw`; the WooCommerce
-package writes the same tables from the seven in `woocommerce_raw`. The
+package writes `orders`, `order_lines`, `refunds`, `sales_events`, the
+catalog's `products` and the tables of categories and brands, and reads
+its input from the five tables in `shopify_raw`; the WooCommerce package
+writes the same tables from the eleven in `woocommerce_raw`. The
 Sensor.Community package writes `readings`, `devices_archive` and the
 view `devices` from `locations` and `readings` in
 `sensor_community_raw`. Name

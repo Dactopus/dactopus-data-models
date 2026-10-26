@@ -40,7 +40,7 @@ item_meta AS MATERIALIZED (
     GROUP BY order_item_id
 ),
 refunded AS MATERIALIZED (
-    SELECT m.refunded_item_id AS order_item_id, sum(m.qty) AS qty
+    SELECT m.refunded_item_id AS order_item_id, sum(m.qty) AS qty, sum(m.line_total) AS line_total
     FROM items AS i
     INNER JOIN item_meta AS m ON m.order_item_id = i.order_item_id
     WHERE i.order_id IN (SELECT id FROM refunds)
@@ -75,6 +75,11 @@ SELECT
     {{ woocommerce_convert('m.line_tax', 'r', 8) }} AS line_tax,
     -- Coupons' share of the line, without tax.
     {{ woocommerce_convert('m.line_subtotal - m.line_total', 'r', 8) }} AS discount_total,
+    -- Taken back by the order's refunds: units, and their amount after
+    -- discounts and without tax, as line_total. A refund's lines hold
+    -- them negative. A refund of an amount alone takes back no line.
+    -ifNull(rf.qty, 0) AS returned_quantity,
+    {{ woocommerce_convert('-ifNull(rf.line_total, 0)', 'r', 8) }} AS returned_amount,
     -- When the order's row was synced; the next incremental run starts
     -- from it.
     o.synced_at AS synced_at

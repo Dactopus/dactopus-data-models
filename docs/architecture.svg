@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" class="dm" viewBox="0 0 680 560" width="680" height="560" role="img" aria-labelledby="d-title d-desc">
 <title id="d-title">dactopus-data-models and the outside world</title>
-<desc id="d-desc">The GA4 export, Shopify's orders, a WooCommerce store's order tables and Sensor.Community's sensor readings are loaded into input tables in your ClickHouse. The dbt packages build the canonical tables: events, sessions and purchases; orders, order lines, refunds and sales events; devices and readings. BI tools read them directly; AI agents read them through dactopus-ossie-clickhouse, which uses the Ossie models.</desc>
+<desc id="d-desc">The GA4 export, Shopify's orders, a WooCommerce store's order tables and Sensor.Community's sensor readings are loaded into input tables in your ClickHouse. The dbt packages build the canonical tables: events, sessions and purchases; orders, order lines, refunds and sales events, and products with their categories and brands; devices and readings. BI tools read them directly; AI agents read them through dactopus-ossie-clickhouse, which uses the Ossie models.</desc>
 <style>
 svg.dm {
   --d-bg: #ffffff; --d-muted: #5f5e5a; --d-arrow: #888780; --d-accent: #534ab7;

@@ -231,3 +231,72 @@ INSERT INTO {db:Identifier}.refunds VALUES
 
 INSERT INTO {db:Identifier}.refund_lines VALUES
 (5031, 503, '2026-10-01 02:00:00', 61, 1,  200, 0, 'CANCEL',     '2026-10-04 06:00:03');
+
+-- The refund 501 in a later version, its line the same: the input keeps
+-- every version of a refund. Were the lines of both versions counted,
+-- 1004's T-shirt would be returned twice (items_returned 5, 410).
+INSERT INTO {db:Identifier}.refunds VALUES
+(501, 1004, '2026-10-03 15:00:00', '2026-10-03 16:00:00', '',               45,  '2026-10-04 06:00:02');
+
+INSERT INTO {db:Identifier}.refund_lines VALUES
+(5011, 501, '2026-10-03 16:00:00', 42, 1,  45,  0, 'CANCEL',     '2026-10-04 06:00:03');
+
+-- Products: every product of the store, sold or not, as loads of the
+-- products updated since the last one deliver them. The type (productType)
+-- and the vendor are the owner's, now: a line of an order counts in its
+-- product's latest type and vendor, whatever they were when it sold.
+--   101 T-shirt         Apparel, Acme; was Tops, dactopus-dev until September 20
+--   102 Mug             Kitchen, dactopus-dev: the store's own name as vendor
+--   103 Scarf           Apparel, Acme; never sold
+--   104 Hoodie          Apparel, Northwind; set to Acme, then Northwind, in one second
+--   105 Cap             no type (''), Acme
+--   106 Jacket          Apparel, Northwind; archived on October 2, after its sale
+--   107 Blanket         Home, dactopus-dev; deleted on October 3, after its sale
+--   108 Socks           Apparel, Acme
+--   109 Gift Card       giftcard, dactopus-dev; a gift card, sold only in 1001
+--   110 Cotton T-shirt  Apparel, Acme
+--   111 Teapot          Kitchen, dactopus-dev; a draft, never sold
+--   112 Poster          Home, dactopus-dev; unlisted, never sold
+--   113 Lamp            Home, dactopus-dev; deleted on September 1, never sold
+-- The custom items of 1003 (Field guide) and 1007 (Gift wrap) and 1007's
+-- tip have no product.
+
+-- The load on August 1, the first: 101 and the Blanket as they were then,
+-- and the Lamp.
+INSERT INTO {db:Identifier}.products VALUES
+-- (id, title, product_type, vendor, status, is_gift_card, updated_at, deleted_at, loaded_at)
+(101, 'T-shirt',        'Tops',      'dactopus-dev', 'ACTIVE',   false, '2026-08-01 10:00:00', NULL, '2026-08-01 12:00:00'),
+(107, 'Blanket',        'Home',      'dactopus-dev', 'ACTIVE',   false, '2026-08-01 10:00:00', NULL, '2026-08-01 12:00:00'),
+(113, 'Lamp',           'Home',      'dactopus-dev', 'ACTIVE',   false, '2026-08-01 10:00:00', NULL, '2026-08-01 12:00:00');
+
+-- A load on September 1 read the Hoodie between two changes made in the
+-- same second: vendor Acme, then Northwind. Its updated_at equals the
+-- final version's; only the later loaded_at tells the final version apart.
+-- Were this version read, Acme would have the Hoodie's sales.
+INSERT INTO {db:Identifier}.products VALUES
+(104, 'Hoodie',         'Apparel',   'Acme',         'ACTIVE',   false, '2026-09-01 10:00:00', NULL, '2026-09-01 10:00:00.5');
+
+-- The load on October 4: each product's latest version. The Lamp, deleted
+-- on September 1, and the Blanket, deleted on October 3, come as versions
+-- with deleted_at, from the store's events: the id and the time, nothing
+-- else.
+INSERT INTO {db:Identifier}.products VALUES
+(101, 'T-shirt',        'Apparel',   'Acme',         'ACTIVE',   false, '2026-09-20 10:00:00', NULL, '2026-10-04 00:00:04'),
+(102, 'Mug',            'Kitchen',   'dactopus-dev', 'ACTIVE',   false, '2026-08-01 10:00:00', NULL, '2026-10-04 00:00:04'),
+(103, 'Scarf',          'Apparel',   'Acme',         'ACTIVE',   false, '2026-08-15 10:00:00', NULL, '2026-10-04 00:00:04'),
+(104, 'Hoodie',         'Apparel',   'Northwind',    'ACTIVE',   false, '2026-09-01 10:00:00', NULL, '2026-10-04 00:00:04'),
+(105, 'Cap',            '',          'Acme',         'ACTIVE',   false, '2026-08-01 10:00:00', NULL, '2026-10-04 00:00:04'),
+(106, 'Jacket',         'Apparel',   'Northwind',    'ARCHIVED', false, '2026-10-02 09:00:00', NULL, '2026-10-04 00:00:04'),
+(107, '',               '',          '',             '',         false, '2026-10-03 12:00:00', '2026-10-03 12:00:00', '2026-10-04 00:00:04'),
+(108, 'Socks',          'Apparel',   'Acme',         'ACTIVE',   false, '2026-08-01 10:00:00', NULL, '2026-10-04 00:00:04'),
+(109, 'Gift Card',      'giftcard',  'dactopus-dev', 'ACTIVE',   true,  '2026-08-01 10:00:00', NULL, '2026-10-04 00:00:04'),
+(110, 'Cotton T-shirt', 'Apparel',   'Acme',         'ACTIVE',   false, '2026-09-25 10:00:00', NULL, '2026-10-04 00:00:04'),
+(111, 'Teapot',         'Kitchen',   'dactopus-dev', 'DRAFT',    false, '2026-09-28 10:00:00', NULL, '2026-10-04 00:00:04'),
+(112, 'Poster',         'Home',      'dactopus-dev', 'UNLISTED', false, '2026-09-28 10:00:00', NULL, '2026-10-04 00:00:04'),
+(113, '',               '',          '',             '',         false, '2026-09-01 08:00:00', '2026-09-01 08:00:00', '2026-10-04 00:00:04');
+
+-- The Blanket as of August 1 delivered again after its deletion, as a
+-- loader catching up from an old cursor does: it must not bring the
+-- product back.
+INSERT INTO {db:Identifier}.products VALUES
+(107, 'Blanket',        'Home',      'dactopus-dev', 'ACTIVE',   false, '2026-08-01 10:00:00', NULL, '2026-10-04 06:00:04');

@@ -46,6 +46,51 @@ models:
               arguments:
                 to: ref('orders')
                 field: order_id
+  - name: products
+    columns:
+      - name: product_id
+        data_tests: [unique, not_null]
+      - name: status
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [active, draft, archived]
+  - name: product_categories_all
+    columns:
+      - {name: product_id, data_tests: [not_null]}
+      - {name: category, data_tests: [not_null]}
+      - {name: category_path, data_tests: [not_null]}
+  - name: product_brands_all
+    columns:
+      - {name: product_id, data_tests: [not_null]}
+      - {name: brand, data_tests: [not_null]}
+  - name: product_brands
+    columns:
+      - name: product_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('products')
+                field: product_id
+  - name: line_categories
+    columns:
+      - name: line_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('order_lines')
+                field: line_id
+  - name: line_brands
+    columns:
+      - name: line_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('order_lines')
+                field: line_id
   - name: sales_events
     columns:
       - name: event_id
