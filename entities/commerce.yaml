@@ -928,7 +928,7 @@ datasets:
       product. Use it for the assortment: how many products, which have not
       sold since a date.
     ai_context:
-      synonyms: [catalogue, catalog, assortment, product list, inventory list]
+      synonyms: [catalogue, catalog, assortment, product list]
     fields:
       - name: product_id
         expression: {dialects: [{dialect: ANSI_SQL, expression: product_id}]}
@@ -957,7 +957,7 @@ datasets:
         datatype: String
         dimension: {is_time: false}
         ai_context:
-          synonyms: [product status, published, live, on sale]
+          synonyms: [product status, published, live]
       - name: last_sold_date
         expression: {dialects: [{dialect: ANSI_SQL, expression: last_sold_date}]}
         description: >
@@ -1154,7 +1154,9 @@ metrics:
     description: >
       Units of goods taken back by refunds and, at Shopify, cancellations
       (order_lines.returned_quantity), by the date of the order, whenever
-      taken back.
+      taken back. Units removed by editing the order are not in it, though
+      items_net leaves them out: items_sold less items_returned can be more
+      than items_net.
     datatype: Integer
     ai_context:
       synonyms: [units returned, returned items, returns in units]
@@ -1173,7 +1175,8 @@ metrics:
     description: >
       Revenue of goods less what was taken back: line_revenue less
       line_returned_amount, by the date of the order. At Shopify a
-      cancelled order's goods are taken back whole.
+      cancelled order's goods are taken back whole; units removed by editing
+      the order stay in it unless a refund took them back.
     datatype: Decimal
     ai_context:
       synonyms: [net product revenue, net sales of goods, revenue after returns]
