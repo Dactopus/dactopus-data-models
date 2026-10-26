@@ -1,4 +1,4 @@
--- Input of the Shopify package: four flat tables, filled from the GraphQL
+-- Input of the Shopify package: five flat tables, filled from the GraphQL
 -- Admin API (https://shopify.dev/docs/api/admin-graphql/latest) by any
 -- loader. Only the columns the package reads; the comment on each names the
 -- GraphQL field it comes from. Any transport may deliver more columns; it
@@ -24,7 +24,7 @@
 -- changes made in the same second (a cancel and its refund), the next
 -- reads it again. loaded_at breaks the tie: of two versions with the same
 -- updated_at, the later load wins. ClickHouse fills it at insert time, so
--- a loader that names its columns need not send it; the four tables are
+-- a loader that names its columns need not send it; the tables are
 -- separate inserts, so an order and its lines get different loaded_at.
 -- The package therefore takes the lines with the order's latest
 -- order_updated_at and of each line its latest load, never lines whose
@@ -38,7 +38,8 @@
 -- engine. A deployment may collapse old versions to save space with
 -- ReplacingMergeTree(<version>) ORDER BY <key>: orders (updated_at) by id,
 -- order_lines (order_updated_at) by (order_id, id), refunds (updated_at)
--- by (order_id, id), refund_lines (refund_updated_at) by (refund_id, id).
+-- by (order_id, id), refund_lines (refund_updated_at) by (refund_id, id),
+-- products (updated_at) by id.
 -- Merges run when ClickHouse chooses, so the package still picks the
 -- latest version itself, reading each table in the order of its sorting
 -- key below, as a stream; a table with another sorting key gives the
@@ -178,3 +179,35 @@ CREATE TABLE IF NOT EXISTS {db:Identifier}.refund_lines
 )
 ENGINE = MergeTree
 ORDER BY (refund_id, id, refund_updated_at);
+
+-- https://shopify.dev/docs/api/admin-graphql/latest/objects/Product
+-- Every product of the store, sold or not: archived ones and drafts
+-- included. A load of the products updated since the last one adds each of
+-- them again, as for orders. A deleted product is gone from the API; the
+-- loader learns of it from the store's events (events, action destroy,
+-- subjectType PRODUCT:
+-- https://shopify.dev/docs/api/admin-graphql/latest/queries/events) or by
+-- reloading every product and finding it missing, and adds a version with
+-- deleted_at and updated_at both at the time of the deletion. The package
+-- drops a product whose latest version has deleted_at; it reads nothing
+-- else of that version, so a loader that knows only the id sends the other
+-- columns empty.
+CREATE TABLE IF NOT EXISTS {db:Identifier}.products
+(
+    id UInt64,                                  -- legacyResourceId
+    title String,                               -- title, as it is now
+    -- productType: the owner's own grouping of products, free text; '' when
+    -- not set (the field is a non-null String). Shopify's reports group
+    -- sales by it as the product's "Type (category)".
+    product_type String,
+    -- vendor: "the manufacturer, wholesaler, or other vendor". Half the
+    -- development store's products carry the store's own name.
+    vendor String,
+    status String,                              -- status: ACTIVE, ARCHIVED, DRAFT, UNLISTED
+    is_gift_card Bool,                          -- isGiftCard
+    updated_at DateTime('UTC'),                 -- updatedAt; the time of the deletion for a deleted product
+    deleted_at Nullable(DateTime('UTC')),       -- the event's createdAt; NULL while the product exists
+    loaded_at DateTime64(6, 'UTC') DEFAULT now64(6) -- when the load inserted the row (header)
+)
+ENGINE = MergeTree
+ORDER BY (id, updated_at);

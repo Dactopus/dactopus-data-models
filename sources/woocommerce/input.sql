@@ -156,3 +156,63 @@ CREATE TABLE IF NOT EXISTS {db:Identifier}.wp_wc_product_meta_lookup
 )
 ENGINE = MergeTree
 ORDER BY (product_id, _peerdb_version);
+
+-- Posts of every kind: products (post_type product) and their variations
+-- (product_variation), and also pages, revisions and, with HPOS, a
+-- placeholder of each order (shop_order_placehold). The CDC copy needs none
+-- of the text columns (post_content, post_excerpt, post_content_filtered,
+-- to_ping, pinged, post_password; README). An order line names the product,
+-- not its variation, in _product_id.
+CREATE TABLE IF NOT EXISTS {db:Identifier}.wp_posts
+(
+    ID UInt64,
+    post_title String,   -- the product's name as it is now
+    post_status String,  -- publish, draft, pending, private, future, trash, ...
+    post_type String,
+    _peerdb_synced_at DateTime64(9),
+    _peerdb_is_deleted UInt8,
+    _peerdb_version UInt64
+)
+ENGINE = MergeTree
+ORDER BY (ID, _peerdb_version);
+
+-- Product categories, brands and tags are terms of a taxonomy
+-- (https://developer.wordpress.org/plugins/taxonomies/): the term's name in
+-- wp_terms, its taxonomy in wp_term_taxonomy, the products it is on in
+-- wp_term_relationships. A product is linked to term_taxonomy_id, not to
+-- term_id: the two come from counters of their own and can differ.
+CREATE TABLE IF NOT EXISTS {db:Identifier}.wp_terms
+(
+    term_id UInt64,
+    name String,  -- as the owner typed it; one name can be in several taxonomies (Uncategorized)
+    _peerdb_synced_at DateTime64(9),
+    _peerdb_is_deleted UInt8,
+    _peerdb_version UInt64
+)
+ENGINE = MergeTree
+ORDER BY (term_id, _peerdb_version);
+
+CREATE TABLE IF NOT EXISTS {db:Identifier}.wp_term_taxonomy
+(
+    term_taxonomy_id UInt64,
+    term_id UInt64,
+    taxonomy String,  -- product_cat, product_brand (in the core, checked on 11.2.1), product_tag, ...
+    _peerdb_synced_at DateTime64(9),
+    _peerdb_is_deleted UInt8,
+    _peerdb_version UInt64
+)
+ENGINE = MergeTree
+ORDER BY (term_taxonomy_id, _peerdb_version);
+
+-- One row per term on a post: a product in two categories has two. Keyed
+-- by both columns.
+CREATE TABLE IF NOT EXISTS {db:Identifier}.wp_term_relationships
+(
+    object_id UInt64,         -- the product's ID
+    term_taxonomy_id UInt64,
+    _peerdb_synced_at DateTime64(9),
+    _peerdb_is_deleted UInt8,
+    _peerdb_version UInt64
+)
+ENGINE = MergeTree
+ORDER BY (object_id, term_taxonomy_id, _peerdb_version);

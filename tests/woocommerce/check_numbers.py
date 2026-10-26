@@ -205,6 +205,43 @@ CASES = [
      [{"order_number": "101", "orders.order_count": 1}]),
 ]
 
+# Numbers for the product questions, from the fixture's posts and terms;
+# they become cases once commerce.yaml has the product's category and
+# brand. Lines of the counted orders as in line_revenue above, each in
+# every one of its product's latest categories and brands, as WooCommerce
+# Analytics counts categories; returns are the refunds' lines (904's, of
+# cancelled 107, left out with its order), by the month of the order.
+#   By category: Kitchen & Dining and Gifts both have the Mug, 40 + 20 + 20
+#   + 50 = 130 over 6 items, 111's mug returned (20): net 110 each.
+#   T-Shirts the Tee, 30 + 54 + 31.818182 + 60 = 175.818182 over 6 items,
+#   104's tee returned (27): net 148.818182. Uncategorized the Sticker pack,
+#   113's 10 over 2 items (102 is on hold, not counted). None: the Cap
+#   (deleted, its terms gone with it), 25. Clothing has nothing: T-Shirts
+#   does not roll up into it, and the Cap was deleted. The categories add
+#   up to 470.818182, the Mug's 130 more than line_revenue's 340.818182.
+#   Read with the old name, Kitchen would have the Mug's 130; with the
+#   Sticker's old link, Gifts would have 140 over 8 items; joined on
+#   term_id, no line would have a category.
+#   By brand: Acme the Tee and the Sticker pack, 175.818182 + 10 =
+#   185.818182 over 8 items, 1 returned for 27; Northwind the Tee,
+#   175.818182 over 6, 1 returned for 27; none the Mug and the Cap, 130 +
+#   25 = 155 over 7, 1 returned for 20. Beta, deleted, has nothing; read
+#   with it, it would have the Tee's 175.818182.
+#   September by category: Kitchen & Dining and Gifts 109's 20 + 111's 20
+#   = 40, net 20 each; T-Shirts 104's 54 + 110's 31.818182 = 85.818182,
+#   net 58.818182.
+#   Brand by month: Acme August 30 (101's tee), September 85.818182,
+#   October 60 + 10 = 70; Northwind August 30, September 85.818182,
+#   October 60; none August 40 + 25 = 65, September 40, October 50.
+#   Catalog: 6 products (11, 12, 13, 15, 16, 17); the Cap is deleted, and
+#   the variations 121 and 122, the page and the orders' placeholders are
+#   no products. Published by category: Gifts 2 (11, 15), Kitchen & Dining
+#   1 (11), T-Shirts 1 (12), Uncategorized 1 (13); 16 is a draft (Kitchen &
+#   Dining), 17 in the trash (Gifts). Never sold: 15, 16, 17. Last sold, by
+#   the order's date: Mug October 9 (117), Tee October 1 (112), Sticker
+#   pack October 6 (113, paid on delivery); 114 (trash) and 116 (deleted)
+#   do not count.
+
 
 if __name__ == "__main__":
     check(MODEL, CASES)

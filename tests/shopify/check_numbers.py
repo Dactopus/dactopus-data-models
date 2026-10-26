@@ -248,6 +248,42 @@ CASES = [
       {"sku": "HOODIE", "line_revenue": 181}]),
 ]
 
+# Numbers for the product questions, from the fixture's products; they
+# become cases once commerce.yaml has the product's category and brand.
+# Lines as in line_revenue above (gift card and tip left out), each in its
+# product's latest type and vendor; returns are the refund lines' subtotal,
+# by the month of the order.
+#   By category (product_type, '' as none): Apparel 101 T-shirt 100 + 90,
+#   104 Hoodie 81 + 100, 106 Jacket 200, 108 Socks 40, 110 Cotton T-shirt
+#   190 = 801 over 11 items, 1 T-shirt (45) and the Jacket (200) returned:
+#   2 items, 245, net 556. Kitchen 102 Mug 80 + 45 = 125, 2 items. None:
+#   105 Cap 60 + 60 (both returned: 1005's refund, 1010's cancel), 107
+#   Blanket 90 (deleted), 1003's Field guide 30 and 1007's Gift wrap 20
+#   (no product) = 260 over 5 items, 2 returned for 120. 801 + 125 + 260 =
+#   1186, as line_revenue: a product has one type. Read with 101's earlier
+#   type, Tops would have 190.
+#   By brand (vendor): Acme 101 190, 105 120, 108 40, 110 190 = 540 over 10
+#   items, 3 returned for 165; Northwind 104 181, 106 200 = 381 over 3, 1
+#   returned for 200; dactopus-dev 102 125 over 2; none 107 90, 30, 20 = 140
+#   over 3. Were the Hoodie's version of September 1 read (same updated_at,
+#   earlier load), Acme would have 721 and Northwind 200.
+#   September by category: Apparel 90 + 81 + 200 + 100 = 471 (5 items),
+#   Kitchen 45, none 60 + 60 + 20 + 90 = 230; 746, September's orders less
+#   shipping, tax and the tip.
+#   Brand by month: Acme August 100, September 90 + 60 + 60 = 210, October
+#   40 + 190 = 230; Northwind September 381, October none; dactopus-dev
+#   August 80, September 45; none August 30, September 110.
+#   Catalog: 11 products; the Blanket (107) and the Lamp (113) are deleted,
+#   the Blanket's old version delivered after its deletion included.
+#   Active by category: Apparel 5 (101, 103, 104, 108, 110; the Jacket is
+#   archived), Kitchen 1 (102; 111 is a draft), giftcard 1 (109), none 1
+#   (105); Home has only 112, unlisted. Never sold: 103, 111, 112. Last sold,
+#   by the order's date: 101 September 5 (the test order 1009 of September
+#   20 left out), 102 September 12, 104 September 15, 105 September 25
+#   (1010, cancelled; none without cancelled orders), 106 September 10, 108
+#   October 2, 110 October 3; 109, the gift card, sold in 1001 on August 10,
+#   which is not a sale.
+
 
 if __name__ == "__main__":
     check(MODEL, CASES)
