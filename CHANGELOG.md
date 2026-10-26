@@ -8,6 +8,12 @@ names the Ossie schema version its models carry.
 
 ## [Unreleased]
 
+### Changed
+
+- `ROADMAP.md`: Products (categories, brands and the catalog for Shopify
+  and WooCommerce) is next. GA4 items no longer claim the model cannot
+  answer revenue by product; they are about what only the site sees.
+
 ## [0.6.1] - 2026-10-25
 
 Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.10.1,

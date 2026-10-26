@@ -16,7 +16,24 @@ through pull requests, like the code.
 
 ## Next
 
-Nothing yet.
+### Products: categories, brands and the catalog
+
+The model knows a product only as an order line: revenue and units by
+product, variant or SKU, with nothing to group products by. This item
+adds, for Shopify and WooCommerce:
+
+- **Category**: the grouping the merchant assigns, the product type in
+  Shopify and the product categories in WooCommerce. These are what each
+  platform's own reports group by. A WooCommerce product in two
+  categories counts in both, as WooCommerce Analytics counts it.
+- **Brand**: the vendor in Shopify, the product brand in WooCommerce.
+- **Catalog**: every product, sold or not, with the date of its last
+  sale.
+
+Category and brand are the product's current ones: moving a product to
+another category moves its past sales too, as both platforms' reports
+do. The packages read new input (products from Shopify; the term tables
+and `wp_posts` from WooCommerce), a breaking change.
 
 ## Needs contributors
 
@@ -50,12 +67,15 @@ source. Matching customers across systems stays
 
 ## Exploring
 
-### GA4 items: products and categories
+### GA4 items: product views and the funnel
 
 GA4 e-commerce events carry their items: id, name, up to five category
-levels, price and quantity. An entity with one row per purchased item
-would answer revenue by product or category, which the model cannot
-answer today. It adds a column to the package's input, a breaking change.
+levels, price and quantity. Revenue by product comes from the store
+packages, and by category once Products is done; GA4 items would add
+what only the site sees: product views, additions to the cart and a
+funnel per product. In the public sample export, viewed and purchased
+items carry different ids, so a funnel needs a property that tags them
+alike. It adds a column to the package's input, a breaking change.
 
 ### IoT: local time
 
