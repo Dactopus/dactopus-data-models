@@ -268,8 +268,7 @@ CASES = [
     # has one type. Read with 101's earlier type, Tops would have 190.
     (["-m", "category_items_sold", "-m", "category_revenue", "-m", "category_items_returned",
       "-m", "category_returned_amount", "-m", "category_net_revenue",
-      "-d", "line_categories.category_path", "-f", "line_categories.is_direct = true",
-      "-o", "line_categories.category_path"],
+      "-d", "line_categories.category_path", "-o", "line_categories.category_path"],
      [{"category_path": "Apparel", "category_items_sold": 11, "category_revenue": 801,
        "category_items_returned": 2, "category_returned_amount": 245, "category_net_revenue": 556},
       {"category_path": "Kitchen", "category_items_sold": 2, "category_revenue": 125,
@@ -334,8 +333,7 @@ CASES = [
     # Active by category: Apparel 5 (101, 103, 104, 108, 110), Home 1 (112,
     # unlisted), Kitchen 1 (102); the Cap (105) has no type and no row.
     (["-m", "product_categories.product_count", "-d", "product_categories.category_path",
-      "-f", "products.status = 'active'", "-f", "product_categories.is_direct = true",
-      "-o", "product_categories.category_path"],
+      "-f", "products.status = 'active'", "-o", "product_categories.category_path"],
      [{"category_path": "Apparel", "product_categories.product_count": 5},
       {"category_path": "Home", "product_categories.product_count": 1},
       {"category_path": "Kitchen", "product_categories.product_count": 1}]),

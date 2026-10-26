@@ -49,13 +49,22 @@ ai_context:
     ones: moving a product moves its past sales too, as in the store's
     reports, and a deleted product's sales have none. A category is the
     product type at Shopify and a product category at WooCommerce; a brand
-    is the vendor at Shopify. A line counts in every category of its product
-    and in every category above them, and in every brand of its product:
-    for sales by category, filter line_categories.is_direct = true; for a
-    category the question names, filter line_categories.category_path, or
-    line_categories.category when the question gives the name alone,
-    without is_direct, which counts its subcategories, each line once.
-    Categories and brands overlap: never add them up for a total. Returns
+    is the vendor at Shopify. WooCommerce categories nest: a product in
+    T-Shirts, under Clothing, is in Clothing too. For sales by category, use
+    the category metrics (category_revenue and the others): they count a
+    line in its product's own categories, as the store's category report
+    does, and a parent category whose products all sit in subcategories has
+    0 there. For one category the question names, count it with its
+    subcategories: line_revenue, items_sold, items_returned,
+    line_returned_amount or line_net_revenue filtered by
+    line_categories.category_path, or line_categories.category when the
+    question gives the name alone, each line once; category_revenue with the
+    same filter gives the category without its subcategories. Products the
+    same way: product_categories.product_count by category, and
+    products.product_count filtered by product_categories.category_path for
+    one category with its subcategories. A line counts in every category and
+    every brand of its product: categories and brands overlap, never add
+    them up for a total. Returns
     of goods (items_returned, line_returned_amount and the category and
     brand ones) count by the date of the order, whenever the refund was
     made.
@@ -605,8 +614,11 @@ datasets:
       at WooCommerce a product in the trash keeps its categories, though it
       has left the catalogue. Categories are the product's current ones:
       moving a product to another category moves its past sales too, as in
-      the store's reports. Use it for sales and returns by category; the
-      rows of a line can add up to more than the line.
+      the store's reports. Use it for sales and returns by category: the
+      category metrics count a line in its product's own categories
+      (is_direct), and a filter on a category reaches its subcategories
+      through the rows above them. The rows of a line can add up to more
+      than the line.
     ai_context:
       synonyms: [sales by category, category sales, lines by category, product type sales]
     fields:
@@ -634,9 +646,10 @@ datasets:
         description: >
           The category with every category above it, from the top, as the
           store shows it: Clothing > T-Shirts. Each category has a path of
-          its own: group by it. At Shopify, whose product types have no
-          subcategories, the path is the name. Empty for a line without a
-          category.
+          its own: group by it. A filter on it for a metric of order lines,
+          such as line_revenue, counts the category with its subcategories.
+          At Shopify, whose product types have no subcategories, the path is
+          the name. Empty for a line without a category.
         datatype: String
         dimension: {is_time: false}
         ai_context:
@@ -645,11 +658,12 @@ datasets:
         expression: {dialects: [{dialect: ANSI_SQL, expression: is_direct = 1}]}
         description: >
           Whether the product is in this category itself, not only in a
-          category under it. Filter is_direct = true for sales by category
-          as the store's category report shows them (WooCommerce Analytics'
+          category under it. The category metrics (category_revenue and the
+          others) count only these rows, as WooCommerce Analytics'
           Categories report counts a sale in the product's own categories
-          only). Without the filter, a category counts the sales of its
-          subcategories too, each line once, as WooCommerce Analytics'
+          only. A filter on a category for a metric of order lines, such as
+          line_revenue, reaches the other rows too and counts the category
+          with its subcategories, each line once, as WooCommerce Analytics'
           filter by category does. True for a line without a category, and
           for every row at Shopify.
         datatype: Boolean
@@ -1008,22 +1022,26 @@ datasets:
         expression: {dialects: [{dialect: ANSI_SQL, expression: is_direct = 1}]}
         description: >
           Whether the product is in this category itself, not only in a
-          category under it. Filter is_direct = true for products by
-          category; without it, a category counts the products of its
-          subcategories too.
+          category under it; product_categories.product_count counts only
+          these rows. A filter on a category for products.product_count
+          reaches the other rows too and counts the category with its
+          subcategories.
         datatype: Boolean
         dimension: {is_time: false}
         ai_context:
           synonyms: [own category, direct category]
     metrics:
       - name: product_count
-        expression: {dialects: [{dialect: ANSI_SQL, expression: COUNT(DISTINCT product_id)}]}
+        expression: {dialects: [{dialect: ANSI_SQL, expression: COUNT(DISTINCT CASE WHEN is_direct THEN product_id END)}]}
         description: >
-          Number of products in a category. A product in two categories
+          Number of products in each category, the products in the category
+          itself (product_categories.is_direct): a parent category whose
+          products all sit in subcategories has 0. For one category with its
+          subcategories, ask products.product_count filtered by
+          product_categories.category_path. A product in two categories
           counts in each: the categories add up to more than the catalogue.
-          Filter by product_categories.is_direct = true for products by
-          category, and by products.status = 'active' for the products
-          customers can buy.
+          Filter by products.status = 'active' for the products customers
+          can buy.
         datatype: Integer
         ai_context:
           synonyms: [products in category, number of products by category, category size]
@@ -1126,7 +1144,8 @@ metrics:
       discounts, without shipping and tax, before refunds, cancelled orders
       included where the store's reports count them. Use for revenue by
       product or SKU; by category or brand, use category_revenue or
-      brand_revenue.
+      brand_revenue. Filtered by line_categories.category_path, it is the
+      revenue of that category with its subcategories.
     datatype: Decimal
     ai_context:
       synonyms: [product revenue, sales by product, item revenue, SKU revenue]
@@ -1159,56 +1178,57 @@ metrics:
     ai_context:
       synonyms: [net product revenue, net sales of goods, revenue after returns]
   - name: category_items_sold
-    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN orders.in_sales_reports THEN line_categories.quantity ELSE 0 END)}]}
+    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN orders.in_sales_reports AND line_categories.is_direct THEN line_categories.quantity ELSE 0 END)}]}
     description: >
-      Units of goods ordered in a category (line_categories), as
-      items_sold. A line counts in every category of its product and in
-      every category above them: filter line_categories.is_direct = true
-      for units by category as the store's category report shows them; the
-      categories add up to more than items_sold.
+      Units of goods ordered in each category (line_categories), as
+      items_sold, counted in the product's own categories, as
+      category_revenue. The categories add up to more than items_sold where
+      a product is in several.
     datatype: Integer
     ai_context:
       synonyms: [units sold by category, category units, quantity by category]
   - name: category_revenue
-    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN orders.in_sales_reports THEN line_categories.line_total ELSE 0 END)}]}
+    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN orders.in_sales_reports AND line_categories.is_direct THEN line_categories.line_total ELSE 0 END)}]}
     description: >
-      Revenue of goods in a category (line_categories), as line_revenue:
-      after discounts, without shipping and tax, before refunds, by the
-      date of the order. A line counts in every category of its product and
-      in every category above them: filter line_categories.is_direct = true
-      for revenue by category as the store's category report shows it; for
-      one category with its subcategories, filter its category_path alone.
-      The categories add up to more than line_revenue where a product is in
-      several: never add them up for a total.
+      Revenue of goods in each category, as line_revenue: after discounts,
+      without shipping and tax, before refunds, by the date of the order. A
+      line counts in its product's own categories
+      (line_categories.is_direct), as the store's category report
+      (WooCommerce Analytics' Categories) counts it: a parent category whose
+      products all sit in subcategories has 0. For one category with its
+      subcategories, ask line_revenue filtered by
+      line_categories.category_path or category. The categories add up to
+      more than line_revenue where a product is in several: never add them
+      up for a total.
     datatype: Decimal
     ai_context:
       synonyms: [sales by category, revenue by category, category sales, revenue by product type]
   - name: category_items_returned
-    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN orders.in_sales_reports THEN line_categories.returned_quantity ELSE 0 END)}]}
+    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN orders.in_sales_reports AND line_categories.is_direct THEN line_categories.returned_quantity ELSE 0 END)}]}
     description: >
-      Units taken back in a category, as items_returned: by the date of the
-      order, whenever taken back. Filter line_categories.is_direct = true
-      for returns by category, as category_revenue.
+      Units taken back in each category, as items_returned: by the date of
+      the order, whenever taken back, counted in the product's own
+      categories, as category_revenue. For one category with its
+      subcategories, ask items_returned filtered by
+      line_categories.category_path.
     datatype: Integer
     ai_context:
       synonyms: [returns by category, returned units by category]
   - name: category_returned_amount
-    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN orders.in_sales_reports THEN line_categories.returned_amount ELSE 0 END)}]}
+    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN orders.in_sales_reports AND line_categories.is_direct THEN line_categories.returned_amount ELSE 0 END)}]}
     description: >
-      Goods taken back in a category, as line_returned_amount: after
-      discounts and without tax, by the date of the order. Filter
-      line_categories.is_direct = true for returns by category, as
-      category_revenue.
+      Goods taken back in each category, as line_returned_amount: after
+      discounts and without tax, by the date of the order, counted in the
+      product's own categories, as category_revenue.
     datatype: Decimal
     ai_context:
       synonyms: [returns value by category, returned amount by category]
   - name: category_net_revenue
-    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN orders.in_sales_reports THEN line_categories.line_total - line_categories.returned_amount ELSE 0 END)}]}
+    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN orders.in_sales_reports AND line_categories.is_direct THEN line_categories.line_total - line_categories.returned_amount ELSE 0 END)}]}
     description: >
-      Revenue of goods in a category less what was taken back, as
-      line_net_revenue, by the date of the order. Filter
-      line_categories.is_direct = true for revenue by category, as
-      category_revenue.
+      Revenue of goods in each category less what was taken back, as
+      line_net_revenue, by the date of the order, counted in the product's
+      own categories, as category_revenue.
     datatype: Decimal
     ai_context:
       synonyms: [net sales by category, category revenue after returns]
