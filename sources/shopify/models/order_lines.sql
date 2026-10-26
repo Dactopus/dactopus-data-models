@@ -5,10 +5,13 @@
 -- Keyed by order_id for refreshing: an order's lines are replaced together,
 -- so a line missing from its order's latest version goes too.
 {% if is_incremental() %}
--- Orders loaded since the last run, and orders whose lines were: the
--- lines of a version may come in a later insert than the order.
+-- Orders loaded since the last run, and orders whose lines, refunds or
+-- refund lines were: the lines of a version may come in a later insert
+-- than the order, and a refund's lines than the refund.
 {% set kept_ids = "(SELECT id FROM " ~ source('shopify_raw', 'orders') ~ " WHERE id IN " ~ shopify_loaded_since('orders')
-    ~ " OR id IN " ~ shopify_loaded_since('order_lines', 'order_id') ~ ")" %}
+    ~ " OR id IN " ~ shopify_loaded_since('order_lines', 'order_id')
+    ~ " OR id IN (SELECT order_id FROM " ~ source('shopify_raw', 'refunds') ~ " WHERE id IN " ~ shopify_loaded_since('refunds')
+    ~ " OR id IN " ~ shopify_loaded_since('refund_lines', 'refund_id') ~ "))" %}
 {% set kept = "id IN " ~ kept_ids %}
 {% set kept_by_order = "order_id IN " ~ kept_ids %}
 {% else %}
@@ -20,6 +23,18 @@ orders AS (
     SELECT id, updated_at, processed_at, taxes_included, total_tip
     FROM {{ shopify_latest('orders', 'id', where=kept) }}
     WHERE NOT test
+),
+-- What the orders' refunds took back of each line: the lines of each
+-- refund's latest version. A cancel is a refund too, its lines at the
+-- price sold even when nothing was paid (#1012 on the development store),
+-- as Shopify's reports count returns.
+returned AS (
+    SELECT line_item_id, sum(quantity) AS quantity, sum(subtotal) AS subtotal, sum(total_tax) AS total_tax
+    FROM {{ shopify_latest('refund_lines', 'refund_id, id, refund_updated_at', version='refund_updated_at',
+                           where="refund_id IN (SELECT id FROM " ~ source('shopify_raw', 'refunds') ~ " WHERE " ~ kept_by_order ~ ")") }} AS rl
+    INNER JOIN {{ shopify_latest('refunds', 'order_id, id', where=kept_by_order, select='id, updated_at') }} AS r
+        ON rl.refund_id = r.id AND rl.refund_updated_at = r.updated_at
+    GROUP BY line_item_id
 )
 SELECT
     l.id AS line_id,
@@ -57,6 +72,13 @@ SELECT
     multiIf(l.discount_allocated = 0, toDecimal64(0, 4),
             o.taxes_included, toDecimal64(round(toDecimal128(l.original_total, 6) / (1 + l.tax_rate), 2), 4) - line_total,
             l.discount_allocated) AS discount_total,
+    -- Taken back by refunds and cancels: units, and their amount after
+    -- discounts and without tax, as line_total. A refund line's subtotal is
+    -- net of the line's discounts and has tax inside when prices include
+    -- it: 113 with 13 tax returned 100 in Shopify's reports (#1015 on the
+    -- development store).
+    toInt64(ifNull(rt.quantity, 0)) AS returned_quantity,
+    toDecimal64(ifNull(rt.subtotal, 0) - if(o.taxes_included, ifNull(rt.total_tax, 0), 0), 4) AS returned_amount,
     -- When the line was loaded; the next incremental run starts from it.
     l.loaded_at AS loaded_at
 -- The lines of the kept orders, by id from the input: a CTE runs again at
@@ -64,6 +86,7 @@ SELECT
 -- a second time. Lines of test orders drop out in the join.
 FROM {{ shopify_latest('order_lines', 'order_id, id, order_updated_at', version='order_updated_at', where=kept_by_order) }} AS l
 INNER JOIN orders AS o ON l.order_id = o.id AND l.order_updated_at = o.updated_at
+LEFT JOIN returned AS rt ON rt.line_item_id = l.id
 -- The tip line has no flag of its own. No product, no tax and nothing to
 -- ship alone would take a custom item too, such as a download (#1013 on
 -- the development store), so its amount must also be the order's tip.

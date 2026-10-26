@@ -25,3 +25,11 @@ sources:
         identifier: "{{ var('woocommerce_table_prefix') }}woocommerce_order_itemmeta"
       - name: wc_product_meta_lookup
         identifier: "{{ var('woocommerce_table_prefix') }}wc_product_meta_lookup"
+      - name: posts
+        identifier: "{{ var('woocommerce_table_prefix') }}posts"
+      - name: terms
+        identifier: "{{ var('woocommerce_table_prefix') }}terms"
+      - name: term_taxonomy
+        identifier: "{{ var('woocommerce_table_prefix') }}term_taxonomy"
+      - name: term_relationships
+        identifier: "{{ var('woocommerce_table_prefix') }}term_relationships"

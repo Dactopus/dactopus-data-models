@@ -42,6 +42,51 @@ models:
               arguments:
                 to: ref('orders')
                 field: order_id
+  - name: products
+    columns:
+      - name: product_id
+        data_tests: [unique, not_null]
+      - name: status
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [active, draft, archived]
+  - name: product_categories_all
+    columns:
+      - {name: product_id, data_tests: [not_null]}
+      - {name: category, data_tests: [not_null]}
+      - {name: category_path, data_tests: [not_null]}
+  - name: product_brands_all
+    columns:
+      - {name: product_id, data_tests: [not_null]}
+      - {name: brand, data_tests: [not_null]}
+  - name: product_brands
+    columns:
+      - name: product_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('products')
+                field: product_id
+  - name: line_categories
+    columns:
+      - name: line_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('order_lines')
+                field: line_id
+  - name: line_brands
+    columns:
+      - name: line_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('order_lines')
+                field: line_id
   - name: sales_events
     columns:
       - name: event_id
@@ -64,7 +109,8 @@ models:
 unit_tests:
   # Discounts of lines in a shop whose prices include tax. The fixture's
   # tax-included order has one tax line, so these rows cover the rounding
-  # of several.
+  # of several. The coat is refunded whole: its refund line has the tax
+  # inside, and the return is the line's amount without it.
   - name: order_line_discounts_without_tax
     model: order_lines
     overrides:
@@ -95,10 +141,21 @@ unit_tests:
               -- 10 off, tax on the price before it (a development store).
               (12, 'COAT', '1399.90', '10', '161.05', '0.13')
           ]) AS l)
+      - input: source('shopify_raw', 'refunds')
+        format: sql
+        rows: |
+          SELECT toUInt64(1) AS id, toUInt64(1) AS order_id, toDateTime('2026-09-20 12:00:00', 'UTC') AS updated_at,
+                 toDateTime64('2026-09-20 12:00:01', 6, 'UTC') AS loaded_at
+      - input: source('shopify_raw', 'refund_lines')
+        format: sql
+        rows: |
+          SELECT toUInt64(1) AS id, toUInt64(1) AS refund_id, toDateTime('2026-09-20 12:00:00', 'UTC') AS refund_updated_at,
+                 toUInt64(12) AS line_item_id, toUInt32(1) AS quantity, toDecimal64('1389.90', 4) AS subtotal,
+                 toDecimal64('161.05', 4) AS total_tax, toDateTime64('2026-09-20 12:00:02', 6, 'UTC') AS loaded_at
     expect:
       rows:
-        - {line_id: 11, line_total: 0.9, discount_total: 0}
-        - {line_id: 12, line_total: 1228.85, discount_total: 10}
+        - {line_id: 11, line_total: 0.9, discount_total: 0, returned_quantity: 0, returned_amount: 0}
+        - {line_id: 12, line_total: 1228.85, discount_total: 10, returned_quantity: 1, returned_amount: 1228.85}
   # Two refund lines of the same line item in one refund, as Shopify returns
   # for a line restocked at two locations (suggestedRefund on the
   # development store): each counts. 2 items, then two halves of a 50 gift

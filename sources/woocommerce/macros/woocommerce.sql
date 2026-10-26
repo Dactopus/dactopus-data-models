@@ -64,6 +64,33 @@ transform({{ status }}, {{ woocommerce_strings(statuses.keys()) }}, {{ woocommer
  WHERE o.type = 'shop_order' AND status NOT IN ('trash', 'auto-draft', 'draft', 'checkout-draft'))
 {%- endmacro %}
 
+{# The products among the current rows of posts: post_type product, its
+   variations (product_variation) apart, and nothing a new product's
+   editor has not saved yet (auto-draft). Products in the trash are
+   there: WordPress keeps their terms. #}
+{% macro woocommerce_products() -%}
+(SELECT ID AS product_id, ifNull(post_title, '') AS title, ifNull(post_status, '') AS status
+ FROM {{ woocommerce_current('posts', 'ID', "post_type = 'product'") }}
+ WHERE status != 'auto-draft')
+{%- endmacro %}
+
+{# The terms of a taxonomy on the products (woocommerce_products): one row
+   per product and term, with the term's term_id and its parent's. A
+   product is linked to the term's term_taxonomy_id, which may differ from
+   its term_id; parent holds a term_id. #}
+{% macro woocommerce_product_terms(taxonomy) -%}
+(SELECT l.object_id AS product_id, t.term_id AS term_id, ifNull(t.parent, 0) AS parent
+ FROM {{ woocommerce_current('term_relationships', 'object_id, term_taxonomy_id',
+                             'object_id IN (SELECT product_id FROM ' ~ woocommerce_products() ~ ')') }} AS l
+ INNER JOIN {{ woocommerce_current('term_taxonomy', 'term_taxonomy_id', "taxonomy = '" ~ taxonomy ~ "'") }} AS t
+     ON t.term_taxonomy_id = l.term_taxonomy_id)
+{%- endmacro %}
+
+{# The names of the terms in `term_ids`, a subquery. #}
+{% macro woocommerce_term_names(term_ids) -%}
+(SELECT term_id, ifNull(name, '') AS name FROM {{ woocommerce_current('terms', 'term_id', 'term_id IN ' ~ term_ids) }})
+{%- endmacro %}
+
 {# An exchange rate kept in order meta, as a number; NULL unless positive. #}
 {% macro woocommerce_rate_value(value) -%}
 if(toFloat64OrZero({{ value }}) > 0 AND isFinite(toFloat64OrZero({{ value }})),

@@ -140,7 +140,9 @@ jobs:
       # the refunds' load window past 505, and make 505 a refund of 0; 1008,
       # back-dated, renumbers its customer's 1007. The refund 503, delivered
       # again alone, brings back 1006 and no other order of customer 2; its
-      # number must still count them. 1004 comes first in its version for
+      # number must still count them; the Blanket's old version comes with
+      # it, after the Blanket's deletion is built, and must not bring the
+      # product back. 1004 comes first in its version for
       # customer 2; its latest version, moved to customer 1, comes last,
       # alone, and the earlier version is then deleted, as an input that
       # collapses old versions would: customer 2's orders must still be
@@ -158,7 +160,8 @@ jobs:
           early() { q "INSERT INTO shopify_input.$1 SELECT * FROM shopify_fixture.$1 WHERE NOT ($2)"; }
           late() { q "INSERT INTO shopify_input.$1 SELECT * REPLACE (now64(6) AS loaded_at) FROM shopify_fixture.$1 WHERE $2"; }
           # tables <database>: a checksum of each table
-          tables() { for t in orders order_lines refunds sales_events; do
+          tables() { for t in orders order_lines refunds sales_events products product_categories_all product_brands_all \
+                  product_categories product_brands line_categories line_brands; do
               q "SELECT '$t', count(), groupBitXor(cityHash64(toString(tuple(*)))) FROM $1.$t FORMAT TSV"; done; }
           same() {
               CLICKHOUSE_DATABASE=analytics_full $DBT_BUILD --full-refresh
@@ -174,6 +177,7 @@ jobs:
           early order_lines "order_id IN (1001, 1008, 1012) OR order_id = 1004 AND order_updated_at = '2026-10-03 15:00:00'"
           early refunds "id = 501"
           early refund_lines "refund_id IN (501, 505)"
+          early products "id = 107 AND loaded_at = '2026-10-04 06:00:04'"
           $DBT_BUILD                 # incremental into empty tables
           late order_lines "order_id = 1012"
           late refund_lines "refund_id = 505"
@@ -187,7 +191,8 @@ jobs:
           $DBT_BUILD                 # a back-dated order, a gift card line after its refund
           late refunds "id = 503"
           late refund_lines "refund_id = 503"
-          $DBT_BUILD                 # a refund delivered again, alone
+          late products "id = 107 AND loaded_at = '2026-10-04 06:00:04'"
+          $DBT_BUILD                 # a refund delivered again, alone; a deleted product's old version
           same
           late orders "id = 1004 AND updated_at = '2026-10-03 15:00:00'"
           late order_lines "order_id = 1004 AND order_updated_at = '2026-10-03 15:00:00'"
@@ -217,7 +222,7 @@ jobs:
           uv run tests/check_deployment.py sources/shopify --time-zone America/New_York
           CLICKHOUSE_DATABASE=analytics_full uv run tests/check_deployment.py sources/shopify --time-zone America/New_York
           q "CREATE DATABASE shopify_zones"
-          for t in orders order_lines refunds refund_lines; do
+          for t in orders order_lines refunds refund_lines products; do
               q "CREATE TABLE shopify_zones.$t AS shopify_fixture.$t"
               q "INSERT INTO shopify_zones.$t SELECT * FROM shopify_fixture.$t"
           done
@@ -299,8 +304,9 @@ jobs:
       # delivery (its date moves) and refund 901 of 104, already built;
       # then 109's line removed and 116 deleted, which delete+insert alone
       # would leave in place; then product 14 deleted from the catalogue,
-      # which changes the SKU of 103's line and no row of the order, and a
-      # version of guest 112 delivered again, so that the next window holds
+      # which changes the SKU of 103's line and no row of the order,
+      # product 13 moved to the trash, which leaves the catalog while its
+      # sales keep their category, and a version of guest 112 delivered again, so that the next window holds
       # no order of customer 1; then 114 moved to a guest and to the trash
       # in one window, its version for customer 1 deleted: neither the
       # input nor the order's row, which goes, names customer 1, whose 117
@@ -320,9 +326,11 @@ jobs:
           early() { q "INSERT INTO woocommerce_input.wp_2_$1 SELECT * FROM woocommerce_fixture.wp_2_$1 WHERE NOT ($2)"; }
           late() { q "INSERT INTO woocommerce_input.wp_2_$1 SELECT * REPLACE (now64(9) AS _peerdb_synced_at) FROM woocommerce_fixture.wp_2_$1 WHERE $2"; }
           # tables <database> [columns]: a checksum of each table
-          # sales_events has no sync time of its own: all its columns count.
-          tables() { for t in orders order_lines refunds sales_events; do
-              c=${2:-*}; [ $t = sales_events ] && c='*'
+          # Only orders, order_lines and refunds keep a sync time: all the
+          # other tables' columns count.
+          tables() { for t in orders order_lines refunds sales_events products product_categories_all product_brands_all \
+                  product_categories product_brands line_categories line_brands; do
+              case $t in orders|order_lines|refunds) c=${2:-*} ;; *) c='*' ;; esac
               q "SELECT '$t', count(), groupBitXor(cityHash64(toString(tuple($c)))) FROM $1.$t FORMAT TSV"; done; }
           same() {
               CLICKHOUSE_DATABASE=analytics_full $DBT_BUILD --full-refresh
@@ -350,6 +358,10 @@ jobs:
           early wc_order_addresses false
           early wc_orders_meta false
           early wc_product_meta_lookup "$(v '= 359')"
+          early posts "$(v '= 416')"
+          early terms false
+          early term_taxonomy false
+          early term_relationships false
           $DBT_BUILD                 # incremental into empty tables
           same
           late wc_orders "$(v '= 163')"
@@ -370,7 +382,8 @@ jobs:
           same
           late wc_product_meta_lookup "$(v '= 359')"
           late wc_orders "$(v '= 275')"
-          $DBT_BUILD                 # a product deleted, a version delivered again
+          late posts "$(v '= 416')"
+          $DBT_BUILD                 # a product deleted, one trashed, a version delivered again
           same
           test "$(q "SELECT count() FROM analytics.order_lines WHERE order_id = 103 AND sku IS NULL")" = 1
           late wc_orders "$(v 'IN (295, 306)')"
@@ -400,7 +413,8 @@ jobs:
           e="toDateTime64(0, 6)"
           q "INSERT INTO woocommerce_nullable.wp_2_wc_orders SELECT * REPLACE (if(type = 'shop_order_refund', NULL, customer_id) AS customer_id) FROM woocommerce_fixture.wp_2_wc_orders"
           q "INSERT INTO woocommerce_nullable.wp_2_wc_order_operational_data SELECT * REPLACE (nullIf(date_paid_gmt, $e) AS date_paid_gmt, nullIf(date_completed_gmt, $e) AS date_completed_gmt, nullIf(created_via, '') AS created_via) FROM woocommerce_fixture.wp_2_wc_order_operational_data"
-          for t in wc_order_addresses wc_orders_meta woocommerce_order_items woocommerce_order_itemmeta wc_product_meta_lookup; do
+          for t in wc_order_addresses wc_orders_meta woocommerce_order_items woocommerce_order_itemmeta wc_product_meta_lookup \
+                  posts terms term_taxonomy term_relationships; do
               q "INSERT INTO woocommerce_nullable.wp_2_$t SELECT * FROM woocommerce_fixture.wp_2_$t"; done
           CLICKHOUSE_DATABASE=analytics_nullable ${DBT_BUILD/'"woocommerce_input"'/'"woocommerce_nullable"'}
           # synced_at apart: the late rows above were synced later.
@@ -428,7 +442,8 @@ jobs:
           uv run tests/check_deployment.py sources/woocommerce --time-zone America/New_York
           CLICKHOUSE_DATABASE=analytics_full uv run tests/check_deployment.py sources/woocommerce --time-zone America/New_York
           q "CREATE DATABASE woocommerce_zones"
-          for t in wc_orders wc_order_operational_data wc_order_addresses wc_orders_meta woocommerce_order_items woocommerce_order_itemmeta wc_product_meta_lookup; do
+          for t in wc_orders wc_order_operational_data wc_order_addresses wc_orders_meta woocommerce_order_items woocommerce_order_itemmeta wc_product_meta_lookup \
+                  posts terms term_taxonomy term_relationships; do
               q "CREATE TABLE woocommerce_zones.wp_2_$t AS woocommerce_fixture.wp_2_$t"
               q "INSERT INTO woocommerce_zones.wp_2_$t SELECT * FROM woocommerce_fixture.wp_2_$t"
           done
