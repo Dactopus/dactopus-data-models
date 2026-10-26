@@ -22,7 +22,7 @@ names AS MATERIALIZED (
 ),
 -- Each category and every category above it, itself at depth 0.
 -- WordPress keeps the tree without cycles; the depth bounds it anyway.
-ancestors AS (
+ancestors AS MATERIALIZED (
     WITH RECURSIVE up AS (
         SELECT term_id, term_id AS ancestor_id, parent AS next_id, 0 AS depth FROM tree
         UNION ALL
