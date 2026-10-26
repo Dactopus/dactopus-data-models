@@ -274,19 +274,19 @@ CASES = [
 #   40 + 190 = 230; Northwind September 381, October none; dactopus-dev
 #   August 80, September 45; none August 30, September 110.
 #   Average order value of the orders with an Apparel line, each order
-#   once, all of its goods: 1001 100, 1004 171 (a Hoodie and a T-shirt),
-#   1006 200, 1007 120 (the Gift wrap included), 1011 40, 1012 190 = 821
-#   over 6. Counting an order once per matching line would give 992 over 7.
+#   once, all of its goods: 1001 100, 1004 171 (a Hoodie and two
+#   T-shirts), 1006 200, 1007 120 (the Gift wrap included), 1011 40, 1012
+#   190 = 821 over 6. Counting an order once per matching line would give 992 over 7.
 #   Catalog: 11 products; the Blanket (107) and the Lamp (113) are deleted,
 #   the Blanket's old version delivered after its deletion included.
 #   Active by category: Apparel 5 (101, 103, 104, 108, 110; the Jacket is
 #   archived), Kitchen 1 (102; 111 is a draft), giftcard 1 (109), none 1
-#   (105); Home has only 112, unlisted. Never sold: 103, 111, 112. Last sold,
-#   by the order's date: 101 September 5 (the test order 1009 of September
-#   20 left out), 102 September 12, 104 September 15, 105 September 25
-#   (1010, cancelled; none without cancelled orders), 106 September 10, 108
-#   October 2, 110 October 3; 109, the gift card, sold in 1001 on August 10,
-#   which is not a sale.
+#   (105); Home has only 112, unlisted. Never sold: 103, 109, 111, 112; 109,
+#   the gift card, sold in 1001 on August 10, which is not a sale. Last
+#   sold, by the order's date: 101 September 5 (the test order 1009 of
+#   September 20 left out), 102 September 12, 104 September 15, 105
+#   September 25 (1010, cancelled; none without cancelled orders), 106
+#   September 10, 108 October 2, 110 October 3.
 
 
 if __name__ == "__main__":

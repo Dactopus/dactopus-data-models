@@ -394,7 +394,7 @@ jobs:
           OSSIE_CLICKHOUSE_URL=http://127.0.0.1:8123/analytics_full python3 tests/woocommerce/check_numbers.py
           # Nullable columns but the keys and CDC's own; empty times, the
           # refunds' customer and the channel of refunds as NULL.
-          sed -E '/^ +(id|order_id|order_item_id|meta_id|product_id|_peerdb_[a-z_]+) /!s/^( +[a-z_]+) (String|Decimal\(26, 8\)|DateTime64\(6\)|UInt64|Bool|Int64)/\1 Nullable(\2)/' \
+          sed -E '/^ +(id|order_id|order_item_id|meta_id|product_id|term_id|term_taxonomy_id|object_id|_peerdb_[a-z_]+) /!s/^( +[a-z_]+) (String|Decimal\(26, 8\)|DateTime64\(6\)|UInt64|Bool|Int64)/\1 Nullable(\2)/' \
               sources/woocommerce/input.sql > input_nullable.sql
           load input_nullable.sql woocommerce_nullable
           e="toDateTime64(0, 6)"
