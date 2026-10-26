@@ -8,15 +8,26 @@ names the Ossie schema version its models carry.
 
 ## [Unreleased]
 
+### Added
+
+- `commerce.yaml`: order lines reach the catalogue
+  (`order_lines_to_products`), so sales break down by the product's
+  current status, such as the sales of products archived since
+  ([#43](https://github.com/Dactopus/dactopus-data-models/issues/43)).
+  A line of a product no longer in the catalogue (deleted, or in the
+  trash at WooCommerce) has an empty status. Sales by category and brand
+  still come from `line_categories` and `line_brands` alone:
+  `product_categories` and `product_brands` declare no key, so
+  dactopus-ossie-clickhouse refuses a filter on them for a metric of
+  order lines, which would leave out products in the trash and differ
+  from the store's category report.
+
 ### Changed
 
 - dactopus-ossie-clickhouse 0.11.0 instead of 0.10.1 in CI, the README
   and CONTRIBUTING. The models load and answer as before: none repeats a
   key, which 0.11.0 refuses, and none writes `SPLIT_PART`, which it now
-  returns as NULL for a NULL string. Its new filter through a dataset
-  both sides reach is not used yet: `commerce.yaml` declares no
-  relationship from `order_lines` to `products`
-  ([#43](https://github.com/Dactopus/dactopus-data-models/issues/43)).
+  returns as NULL for a NULL string.
 
 ## [0.7.0] - 2026-10-26
 

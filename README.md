@@ -963,8 +963,10 @@ read order lines, their categories and brands, or refunds together with
   shipping country, region and city; new or repeat customer.
 - order lines (on the model): `items_sold`, `items_net`, `line_revenue`,
   `items_returned`, `line_returned_amount`, `line_net_revenue`. They
-  break down by product, variant, SKU and title, and by the order fields
-  above. Returns count on the date of the order.
+  break down by product, variant, SKU and title, by the order fields
+  above, and by the catalog's fields below, such as the product's status
+  now; a line of a product no longer in the catalog has none. Returns
+  count on the date of the order.
 - categories (on the model): `category_items_sold`, `category_revenue`,
   `category_items_returned`, `category_returned_amount`,
   `category_net_revenue`. They break down by `line_categories.category`

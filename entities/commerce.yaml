@@ -64,7 +64,9 @@ ai_context:
     products.product_count filtered by product_categories.category_path for
     one category with its subcategories. A line counts in every category and
     every brand of its product: categories and brands overlap, never add
-    them up for a total. Returns
+    them up for a total. Sales by category or brand come from
+    line_categories and line_brands only; product_categories and
+    product_brands describe the catalogue. Returns
     of goods (items_returned, line_returned_amount and the category and
     brand ones) count by the date of the order, whenever the refund was
     made.
@@ -525,9 +527,9 @@ datasets:
       - name: product_id
         expression: {dialects: [{dialect: ANSI_SQL, expression: product_id}]}
         description: >
-          The store's product. Empty for an item added by hand that is not a
-          product in the catalogue. At WooCommerce a product deleted later
-          keeps its id here.
+          The store's product (products.product_id). Empty for an item added
+          by hand that is not a product in the catalogue. At WooCommerce a
+          product deleted later keeps its id here.
         datatype: Integer
         dimension: {is_time: false}
         ai_context:
@@ -932,7 +934,11 @@ datasets:
       out, and at WooCommerce products in the trash too. Gift cards are not
       products here. A variant, such as a size or colour, is part of its
       product. Use it for the assortment: how many products, which have not
-      sold since a date.
+      sold since a date. Lines of goods (order_lines) can be grouped or
+      filtered by its fields, the product as it is now: sales by status.
+      A line of a product no longer in the catalogue (deleted, and at
+      WooCommerce in the trash) or of an item added by hand has no product
+      here, and its sales go under an empty status.
     ai_context:
       synonyms: [catalogue, catalog, assortment, product list]
     fields:
@@ -974,7 +980,10 @@ datasets:
           date or empty: products.last_sold_date IS NULL OR
           products.last_sold_date < CURRENT_DATE - INTERVAL '29' DAY for the
           last 30 days. It tells only the latest sale: whether a product
-          sold in a past period that ended before today is not known.
+          sold in a past period that ended before today is not known. For
+          products sold or never sold, use last_sold_date, not a filter on
+          order_lines: order_lines also holds the lines of cancelled orders
+          and of orders the reports leave out.
         datatype: Date
         dimension: {is_time: true}
         ai_context:
@@ -989,6 +998,10 @@ datasets:
         ai_context:
           synonyms: [products, number of products, assortment size]
 
+  # No key, on purpose: with one, a filter on product_categories would reach
+  # order_lines through products, a second way to sales by category that
+  # leaves out the products no longer in the catalogue (#43). The same for
+  # product_brands.
   - name: product_categories
     source: product_categories
     description: >
@@ -1119,6 +1132,13 @@ relationships:
     to_columns: [line_id]
     ai_context:
       synonyms: [brands by month, orders with a brand]
+  - name: order_lines_to_products
+    from: order_lines
+    to: products
+    from_columns: [product_id]
+    to_columns: [product_id]
+    ai_context:
+      synonyms: [sales by product status, sales of archived products, sales of draft products]
   - name: product_categories_to_products
     from: product_categories
     to: products
