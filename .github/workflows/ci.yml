@@ -46,7 +46,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
       - name: Install dactopus-ossie-clickhouse
-        run: uv tool install "dactopus-ossie-clickhouse @ git+https://github.com/Dactopus/dactopus-ossie-clickhouse@v0.10.1"
+        run: uv tool install "dactopus-ossie-clickhouse @ git+https://github.com/Dactopus/dactopus-ossie-clickhouse@v0.11.0"
       # A deployment with several packages serves their models as one, and
       # the executor refuses a name defined in two files. No server needed.
       - name: Validate every Ossie model together
@@ -128,7 +128,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
       - name: Install dactopus-ossie-clickhouse
-        run: uv tool install "dactopus-ossie-clickhouse @ git+https://github.com/Dactopus/dactopus-ossie-clickhouse@v0.10.1"
+        run: uv tool install "dactopus-ossie-clickhouse @ git+https://github.com/Dactopus/dactopus-ossie-clickhouse@v0.11.0"
       # Hand-written rows (tests/shopify/fixture.sql) and the model's answers
       # over them, checked against numbers derived by hand; the first build
       # runs on an empty input. The fixture goes into a database of its own
@@ -289,7 +289,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
       - name: Install dactopus-ossie-clickhouse
-        run: uv tool install "dactopus-ossie-clickhouse @ git+https://github.com/Dactopus/dactopus-ossie-clickhouse@v0.10.1"
+        run: uv tool install "dactopus-ossie-clickhouse @ git+https://github.com/Dactopus/dactopus-ossie-clickhouse@v0.11.0"
       # Hand-written CDC rows (tests/woocommerce/fixture.sql); the first
       # build runs on an empty input. The fixture goes into a database of
       # its own and reaches the input in syncs, each followed by an
@@ -500,7 +500,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
       - name: Install dactopus-ossie-clickhouse
-        run: uv tool install "dactopus-ossie-clickhouse @ git+https://github.com/Dactopus/dactopus-ossie-clickhouse@v0.10.1"
+        run: uv tool install "dactopus-ossie-clickhouse @ git+https://github.com/Dactopus/dactopus-ossie-clickhouse@v0.11.0"
       # Hand-written rows (tests/sensor_community/fixture.sql) reach the input
       # in the loads they record, each followed by an incremental run; the
       # first build runs on an empty input. The higher of the two copies of

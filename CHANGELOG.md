@@ -8,6 +8,16 @@ names the Ossie schema version its models carry.
 
 ## [Unreleased]
 
+### Changed
+
+- dactopus-ossie-clickhouse 0.11.0 instead of 0.10.1 in CI, the README
+  and CONTRIBUTING. The models load and answer as before: none repeats a
+  key, which 0.11.0 refuses, and none writes `SPLIT_PART`, which it now
+  returns as NULL for a NULL string. Its new filter through a dataset
+  both sides reach is not used yet: `commerce.yaml` declares no
+  relationship from `order_lines` to `products`
+  ([#43](https://github.com/Dactopus/dactopus-data-models/issues/43)).
+
 ## [0.7.0] - 2026-10-26
 
 Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.10.1,
