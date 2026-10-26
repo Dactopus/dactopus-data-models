@@ -16,8 +16,8 @@
 -- String. The schema of each table:
 -- https://github.com/woocommerce/woocommerce/blob/trunk/plugins/woocommerce/src/Internal/DataStores/Orders/OrdersTableDataStore.php
 -- (get_database_schema) and
--- https://github.com/woocommerce/woocommerce/blob/trunk/plugins/woocommerce/includes/class-wc-install.php;
--- WordPress's own tables:
+-- https://github.com/woocommerce/woocommerce/blob/trunk/plugins/woocommerce/includes/class-wc-install.php,
+-- and of WordPress's own tables:
 -- https://github.com/WordPress/wordpress-develop/blob/trunk/src/wp-admin/includes/schema.php
 -- (wp_get_db_schema).
 --
