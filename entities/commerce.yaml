@@ -443,7 +443,12 @@ datasets:
           neither. This is how both Shopify and WooCommerce Analytics define
           it, so it matches the store's dashboard. It is not orders.revenue
           over orders.order_count, which would add shipping and tax. Filter by
-          orders.is_cancelled = false to leave cancelled orders out.
+          orders.is_cancelled = false to leave cancelled orders out. Filtered
+          by a category (line_categories), it is the average of the orders
+          with a line in it, each order once with all its goods. Shopify's
+          sales report filtered by product type counts only the lines of
+          that type in those orders, so its number is lower wherever an order
+          holds other goods too.
         datatype: Float
         ai_context:
           synonyms: [AOV, average order, average check, average basket value, average transaction value]
