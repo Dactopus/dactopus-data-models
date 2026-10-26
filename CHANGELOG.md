@@ -28,6 +28,12 @@ names the Ossie schema version its models carry.
   and CONTRIBUTING. The models load and answer as before: none repeats a
   key, which 0.11.0 refuses, and none writes `SPLIT_PART`, which it now
   returns as NULL for a NULL string.
+- WooCommerce: `products` joins the orders by merge instead of a hash
+  table to find each product's last sale. On 4 million orders the run's
+  peak falls from 250 to 380 MB to 60 to 70 MB, in the same time, and
+  the numbers do not change
+  ([#42](https://github.com/Dactopus/dactopus-data-models/issues/42)).
+  No rebuild is needed.
 
 ## [0.7.0] - 2026-10-26
 
