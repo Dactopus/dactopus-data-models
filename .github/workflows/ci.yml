@@ -306,7 +306,8 @@ jobs:
       # would leave in place; then product 14 deleted from the catalogue,
       # which changes the SKU of 103's line and no row of the order,
       # product 13 moved to the trash, which leaves the catalog while its
-      # sales keep their category, and a version of guest 112 delivered again, so that the next window holds
+      # sales keep their category, and a version of guest 112 delivered
+      # again, so that the next window holds
       # no order of customer 1; then 114 moved to a guest and to the trash
       # in one window, its version for customer 1 deleted: neither the
       # input nor the order's row, which goes, names customer 1, whose 117

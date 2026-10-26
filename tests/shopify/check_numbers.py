@@ -276,7 +276,8 @@ CASES = [
 #   Average order value of the orders with an Apparel line, each order
 #   once, all of its goods: 1001 100, 1004 171 (a Hoodie and two
 #   T-shirts), 1006 200, 1007 120 (the Gift wrap included), 1011 40, 1012
-#   190 = 821 over 6. Counting an order once per matching line would give 992 over 7.
+#   190 = 821 over 6. Counting an order once per matching line would give
+#   992 over 7.
 #   Catalog: 10 products; the Blanket (107) and the Lamp (113) are
 #   deleted, the Blanket's old version delivered after its deletion
 #   included, and the Gift Card (109) is no goods. Active (ACTIVE, and

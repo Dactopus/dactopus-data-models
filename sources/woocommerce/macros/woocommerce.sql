@@ -75,11 +75,10 @@ transform({{ status }}, {{ woocommerce_strings(statuses.keys()) }}, {{ woocommer
 {%- endmacro %}
 
 {# The terms of a taxonomy on the products (woocommerce_products): one row
-   per product and term, with the term's term_id and its parent's. A
-   product is linked to the term's term_taxonomy_id, which may differ from
-   its term_id; parent holds a term_id. #}
+   per product and term, with the term's term_id. A product is linked to
+   the term's term_taxonomy_id, which may differ from its term_id. #}
 {% macro woocommerce_product_terms(taxonomy) -%}
-(SELECT l.object_id AS product_id, t.term_id AS term_id, ifNull(t.parent, 0) AS parent
+(SELECT l.object_id AS product_id, t.term_id AS term_id
  FROM {{ woocommerce_current('term_relationships', 'object_id, term_taxonomy_id',
                              'object_id IN (SELECT product_id FROM ' ~ woocommerce_products() ~ ')') }} AS l
  INNER JOIN {{ woocommerce_current('term_taxonomy', 'term_taxonomy_id', "taxonomy = '" ~ taxonomy ~ "'") }} AS t
