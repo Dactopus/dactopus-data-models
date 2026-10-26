@@ -208,33 +208,39 @@ CASES = [
 # Numbers for the product questions, from the fixture's posts and terms;
 # they become cases once commerce.yaml has the product's category and
 # brand. Lines of the counted orders as in line_revenue above, each in
-# every one of its product's latest categories and brands, as WooCommerce
-# Analytics' Categories report counts categories; returns are the refunds' lines (904's, of
-# cancelled 107, left out with its order), by the month of the order.
-#   By category: Kitchen & Dining and Gifts both have the Mug, 40 + 20 + 20
-#   + 50 = 130 over 6 items, 111's mug returned (20): net 110 each.
-#   T-Shirts the Tee, 30 + 54 + 31.818182 + 60 = 175.818182 over 6 items,
-#   104's tee returned (27): net 148.818182. Uncategorized the Sticker pack,
-#   113's 10 over 2 items (102 is on hold, not counted). None: the Cap
-#   (deleted, its terms gone with it), 25. Clothing has nothing: T-Shirts
-#   does not roll up into it, and the Cap was deleted. The categories add
-#   up to 470.818182, the Mug's 130 more than line_revenue's 340.818182.
+# every one of its product's latest categories and brands; returns are the
+# refunds' lines (904's, of cancelled 107, left out with its order), by the
+# month of the order. A category is told apart by its path: two are named
+# Accessories.
+#   By category, the product's own ones, as Analytics' Categories report
+#   counts them: Gifts, Kitchen & Dining and Kitchen & Dining > Accessories
+#   all have the Mug, 40 + 20 + 20 + 50 = 130 over 6 items, 111's mug
+#   returned (20): net 110 each. Clothing > T-Shirts the Tee, 30 + 54 +
+#   31.818182 + 60 = 175.818182 over 6 items, 104's tee returned (27): net
+#   148.818182. Uncategorized the Sticker pack, 113's 10 over 2 items (102
+#   is on hold, not counted); it is in the trash now and keeps its terms.
+#   None: the Cap (deleted, its terms gone with it), 25. Clothing and
+#   Clothing > Accessories have nothing: the Tote never sold. The
+#   categories add up to 600.818182, the Mug's 130 twice more than
+#   line_revenue's 340.818182.
 #   Read with the old name, Kitchen would have the Mug's 130; with the
 #   Sticker's old link, Gifts would have 140 over 8 items; joined on
-#   term_id, no line would have a category.
-#   Clothing with its subcategories, as Analytics' filter by category
-#   takes it: the Tee through T-Shirts, 175.818182 over 6 items, net
-#   148.818182. Read with T-Shirts' parent before September 10 (none), or
-#   with the parent matched to term_taxonomy_id, Clothing would have
-#   nothing.
+#   term_id, the Sticker pack's 10 would be in Accessories and no other
+#   line would have a category.
+#   With subcategories, as Analytics' filter by category takes them, each
+#   line once: Clothing the Tee through T-Shirts, 175.818182 over 6 items,
+#   net 148.818182; Kitchen & Dining the Mug, 130 over 6, net 110, not 260
+#   over 12 for its two categories there. Read with T-Shirts' parent before
+#   September 10 (none), or with the parent matched to term_taxonomy_id,
+#   Clothing would have nothing.
 #   By brand: Acme the Tee and the Sticker pack, 175.818182 + 10 =
 #   185.818182 over 8 items, 1 returned for 27; Northwind the Tee,
 #   175.818182 over 6, 1 returned for 27; none the Mug and the Cap, 130 +
 #   25 = 155 over 7, 1 returned for 20. Beta, deleted, has nothing; read
 #   with it, it would have the Tee's 175.818182.
-#   September by category: Kitchen & Dining and Gifts 109's 20 + 111's 20
-#   = 40, net 20 each; T-Shirts 104's 54 + 110's 31.818182 = 85.818182,
-#   net 58.818182.
+#   September by category: Gifts, Kitchen & Dining and its Accessories
+#   109's 20 + 111's 20 = 40, net 20 each; T-Shirts 104's 54 + 110's
+#   31.818182 = 85.818182, net 58.818182.
 #   Brand by month: Acme August 30 (101's tee), September 85.818182,
 #   October 60 + 10 = 70; Northwind August 30, September 85.818182,
 #   October 60; none August 40 + 25 = 65, September 40, October 50.
@@ -244,16 +250,17 @@ CASES = [
 #   Dining; counted once per category of the line, Gifts or Kitchen &
 #   Dining would give 316 over 8. T-Shirts: 101 70, 104 54, 110 31.82, 112
 #   60 = 215.82 over 4, the same for Clothing with its subcategories.
-#   Catalog: 6 products (11, 12, 13, 15, 16, 17); the Cap is deleted, and
-#   the variations 121 and 122, the page and the orders' placeholders are
-#   no products. Published by category: Gifts 2 (11, 15), Kitchen & Dining
-#   1 (11), T-Shirts 1 (12), Uncategorized 1 (13); 16 is a draft (Kitchen &
-#   Dining), 17 in the trash (Gifts). Clothing with its subcategories 1
-#   (12). Never sold: 15, 16, 17. Last sold, by
-#   the order's date: Mug October 9 (117), Tee October 1 (112), Sticker
-#   pack October 6 (113, paid on delivery); 114 (trash) and 116 (deleted)
-#   do not count.
-
+#   Catalog: 4 products (11, 12, 15, 16); the Cap is deleted, the Sticker
+#   pack (13) and the Notebook (17) are in the trash, and the variations
+#   121 and 122, the page and the orders' placeholders are no products.
+#   Active (published) 3, draft 1 (16). Active by category: Gifts 2 (11,
+#   15), Kitchen & Dining 1 (11), Kitchen & Dining > Accessories 1 (11),
+#   Clothing > T-Shirts 1 (12), Clothing > Accessories 1 (15); by name,
+#   Accessories would have 2. With subcategories: Clothing 2 (12, 15),
+#   Kitchen & Dining 1 (11, in it twice; the Apron, 16, is a draft). Never
+#   sold: 15, 16. Last sold, by the order's date: Mug October 9 (117), Tee
+#   October 1 (112); the Sticker pack's October 6 (113) is out with it,
+#   and 114 (trash) and 116 (deleted) do not count.
 
 if __name__ == "__main__":
     check(MODEL, CASES)

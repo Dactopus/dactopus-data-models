@@ -455,19 +455,24 @@ INSERT INTO {db:Identifier}.wp_wc_product_meta_lookup
 -- brands are on the product, not on its variations (121, 122): WooCommerce
 -- puts only shipping class and visibility terms on a variation, and its
 -- lines name the product (12).
---   11  Mug       Kitchen and Gifts; no brand
+--   11  Mug       Kitchen, Gifts and Kitchen > Accessories; no brand
 --   12  Tee       T-Shirts (under Clothing); two brands, Acme and Northwind,
 --                 a third, Beta, put on and then deleted
 --   13  Sticker   renamed Sticker pack; Uncategorized, moved there from
---                 Gifts; Acme
+--                 Gifts; Acme; moved to the trash on October 20, after its
+--                 sale: its terms stay
 --   14  Cap       Clothing, Northwind; deleted on October 10, after its sale
---   15  Tote      Gifts, Acme; never sold
+--   15  Tote      Gifts and Clothing > Accessories, Acme; never sold
 --   16  Apron     Kitchen; a draft, never sold
 --   17  Notebook  Gifts; in the trash, never sold
 -- Kitchen was renamed Kitchen & Dining. A product is linked to the term's
 -- term_taxonomy_id, here term_id + 10, so a join on term_id finds nothing.
 -- T-Shirts was at the top until September 10, then moved under Clothing:
 -- its parent is Clothing's term_id, 16, which no term_taxonomy_id has.
+-- Two categories are named Accessories, one under Clothing (term 24), one
+-- under Kitchen (term 25, whose number is also Uncategorized's
+-- term_taxonomy_id): WordPress refuses a name twice under one parent
+-- only. The Mug is in Kitchen and in the Accessories under it.
 -- Two terms are named Uncategorized: 1 in the posts' category, 15 in
 -- product_cat. Each product also has its product_type term (simple,
 -- variable), which is no category. Posts other than products are there as
@@ -490,7 +495,8 @@ INSERT INTO {db:Identifier}.wp_posts
 (112, 'Order', 'draft', 'shop_order_placehold', '2026-10-01 13:00:05', 0, 412),
 (13, 'Sticker pack', 'publish', 'product', '2026-09-20 10:00:05', 0, 413),
 (17, 'Notebook', 'trash', 'product', '2026-09-25 10:00:05', 0, 414),
-(14, 'Cap', 'publish', 'product', '2026-10-10 10:00:05', 1, 415);
+(14, 'Cap', 'publish', 'product', '2026-10-10 10:00:05', 1, 415),
+(13, 'Sticker pack', 'trash', 'product', '2026-10-20 10:00:05', 0, 416);
 
 INSERT INTO {db:Identifier}.wp_terms
     (term_id, name, _peerdb_synced_at, _peerdb_is_deleted, _peerdb_version) SETTINGS session_timezone = 'UTC' VALUES
@@ -507,7 +513,9 @@ INSERT INTO {db:Identifier}.wp_terms
 (22, 'gift', '2026-08-01 00:00:05', 0, 431),
 (23, 'Beta', '2026-09-05 10:00:05', 0, 432),
 (18, 'Kitchen & Dining', '2026-09-15 10:00:05', 0, 433),
-(23, 'Beta', '2026-09-06 10:00:05', 1, 434);
+(23, 'Beta', '2026-09-06 10:00:05', 1, 434),
+(24, 'Accessories', '2026-09-10 10:00:05', 0, 435),
+(25, 'Accessories', '2026-09-10 10:00:05', 0, 436);
 
 INSERT INTO {db:Identifier}.wp_term_taxonomy
     (term_taxonomy_id, term_id, taxonomy, parent, _peerdb_synced_at, _peerdb_is_deleted, _peerdb_version) SETTINGS session_timezone = 'UTC' VALUES
@@ -524,7 +532,9 @@ INSERT INTO {db:Identifier}.wp_term_taxonomy
 (32, 22, 'product_tag', 0, '2026-08-01 00:00:05', 0, 451),
 (33, 23, 'product_brand', 0, '2026-09-05 10:00:05', 0, 452),
 (33, 23, 'product_brand', 0, '2026-09-06 10:00:05', 1, 453),
-(27, 17, 'product_cat', 16, '2026-09-10 10:00:05', 0, 454);
+(27, 17, 'product_cat', 16, '2026-09-10 10:00:05', 0, 454),
+(34, 24, 'product_cat', 16, '2026-09-10 10:00:05', 0, 455),
+(35, 25, 'product_cat', 18, '2026-09-10 10:00:05', 0, 456);
 
 INSERT INTO {db:Identifier}.wp_term_relationships
     (object_id, term_taxonomy_id, _peerdb_synced_at, _peerdb_is_deleted, _peerdb_version) SETTINGS session_timezone = 'UTC' VALUES
@@ -555,4 +565,6 @@ INSERT INTO {db:Identifier}.wp_term_relationships
 (13, 25, '2026-09-20 10:00:05', 0, 485),
 (14, 2, '2026-10-10 10:00:05', 1, 486),
 (14, 26, '2026-10-10 10:00:05', 1, 487),
-(14, 31, '2026-10-10 10:00:05', 1, 488);
+(14, 31, '2026-10-10 10:00:05', 1, 488),
+(15, 34, '2026-09-10 10:00:05', 0, 489),
+(11, 35, '2026-09-10 10:00:05', 0, 490);

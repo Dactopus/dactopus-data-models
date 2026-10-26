@@ -277,17 +277,22 @@ CASES = [
 #   once, all of its goods: 1001 100, 1004 171 (a Hoodie and two
 #   T-shirts), 1006 200, 1007 120 (the Gift wrap included), 1011 40, 1012
 #   190 = 821 over 6. Counting an order once per matching line would give 992 over 7.
-#   Catalog: 11 products; the Blanket (107) and the Lamp (113) are deleted,
-#   the Blanket's old version delivered after its deletion included.
-#   Active by category: Apparel 5 (101, 103, 104, 108, 110; the Jacket is
-#   archived), Kitchen 1 (102; 111 is a draft), giftcard 1 (109), none 1
-#   (105); Home has only 112, unlisted. Never sold: 103, 109, 111, 112; 109,
-#   the gift card, sold in 1001 on August 10, which is not a sale. Last
-#   sold, by the order's date: 101 September 5 (the test order 1009 of
-#   September 20 left out), 102 September 12, 104 September 15, 105
-#   September 25 (1010, cancelled; none without cancelled orders), 106
-#   September 10, 108 October 2, 110 October 3.
-
+#   Catalog: 10 products; the Blanket (107) and the Lamp (113) are
+#   deleted, the Blanket's old version delivered after its deletion
+#   included, and the Gift Card (109) is no goods. Active (ACTIVE, and
+#   UNLISTED, sold through a link) 8, draft 1 (111), archived 1 (the
+#   Jacket, 106). Active by category: Apparel 5 (101, 103, 104, 108, 110),
+#   Kitchen 1 (102), Home 1 (112, unlisted), none 1 (105). A type has no
+#   subcategories: with them, the numbers are the same. Last sold, by the
+#   order's date, cancelled orders left out: 101 September 5 (the test
+#   order 1009 of September 20 left out too), 102 September 12, 104
+#   September 15, 106 September 10 (refunded, not cancelled), 108 October
+#   2, 110 October 3. Never sold: 103, 111, 112, and 105, sold only in the
+#   cancelled 1005 and 1010.
+#   Returns are without tax, as line_revenue: a refund line's subtotal
+#   less its tax where prices include tax, as Shopify's returns count it
+#   (113 with 13 tax returned 100 on the development store, #1015); no
+#   refund in the fixture has tax inside.
 
 if __name__ == "__main__":
     check(MODEL, CASES)
