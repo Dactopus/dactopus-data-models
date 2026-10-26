@@ -30,7 +30,8 @@ tip: both are inside the order's total_price and neither is a sale. Cancelled: 1
 1007. Customer 2: 1003, 1005 (cancelled), 1006, 1011. The input also holds
 1004's version before its refund, placed for customer 2, 1005's version between its cancel and
 refund with the same updated_at but an earlier load, and second copies of
-1011 and 1006's refund; the numbers are those of the latest versions only.
+1011 and 1006's refund, and a later version of 1004's refund with the same
+line; the numbers are those of the latest versions only.
 """
 import pathlib
 import sys
@@ -246,54 +247,128 @@ CASES = [
       {"sku": "TEE-COTTON", "line_revenue": 190},
       {"sku": "TEE-M", "line_revenue": 190},
       {"sku": "HOODIE", "line_revenue": 181}]),
+    # Products. Lines as in line_revenue above, each in its product's latest
+    # type and vendor; a product type has no subcategories, so every
+    # category is direct. Returns are the refund lines' subtotal, by the
+    # month of the order, and without tax, as line_revenue: where prices
+    # include tax, the subtotal less its tax, as Shopify's returns count it
+    # (113 with 13 tax returned 100 on the development store, #1015; the
+    # package's unit test covers it, no refund here has tax inside).
+    # Returned: 1004's T-shirt 45, 1005's Cap 60 (refund) and 1010's Cap 60
+    # (cancel), 1006's Jacket 200: 4 items, 365; net 1186 - 365 = 821.
+    (["-m", "items_returned", "-m", "line_returned_amount", "-m", "line_net_revenue"],
+     [{"items_returned": 4, "line_returned_amount": 365, "line_net_revenue": 821}]),
+    # By category (product_type): Apparel 101 T-shirt 100 + 90, 104 Hoodie
+    # 81 + 100, 106 Jacket 200, 108 Socks 40, 110 Cotton T-shirt 190 = 801
+    # over 11 items, 1 T-shirt (45) and the Jacket (200) returned: 2 items,
+    # 245, net 556. Kitchen 102 Mug 80 + 45 = 125, 2 items. None: 105 Cap
+    # 60 + 60 (both returned), 107 Blanket 90 (deleted), 1003's Field guide
+    # 30 and 1007's Gift wrap 20 (no product) = 260 over 5 items, 2
+    # returned for 120. 801 + 125 + 260 = 1186, as line_revenue: a product
+    # has one type. Read with 101's earlier type, Tops would have 190.
+    (["-m", "category_items_sold", "-m", "category_revenue", "-m", "category_items_returned",
+      "-m", "category_returned_amount", "-m", "category_net_revenue",
+      "-d", "line_categories.category_path", "-f", "line_categories.is_direct = true",
+      "-o", "line_categories.category_path"],
+     [{"category_path": "Apparel", "category_items_sold": 11, "category_revenue": 801,
+       "category_items_returned": 2, "category_returned_amount": 245, "category_net_revenue": 556},
+      {"category_path": "Kitchen", "category_items_sold": 2, "category_revenue": 125,
+       "category_items_returned": 0, "category_returned_amount": 0, "category_net_revenue": 125},
+      {"category_path": None, "category_items_sold": 5, "category_revenue": 260,
+       "category_items_returned": 2, "category_returned_amount": 120, "category_net_revenue": 140}]),
+    # September by category: Apparel 90 + 81 + 200 + 100 = 471 (5 items),
+    # Kitchen 45, none 60 + 60 + 20 + 90 = 230; 746, September's orders less
+    # shipping, tax and the tip.
+    (["-m", "category_revenue", "-m", "category_items_sold", "-d", "line_categories.category_path",
+      "-f", "orders.order_month = DATE '2026-09-01'", "-o", "line_categories.category_path"],
+     [{"category_path": "Apparel", "category_revenue": 471, "category_items_sold": 5},
+      {"category_path": "Kitchen", "category_revenue": 45, "category_items_sold": 1},
+      {"category_path": None, "category_revenue": 230, "category_items_sold": 4}]),
+    # By brand (vendor): Acme 101 190, 105 120, 108 40, 110 190 = 540 over
+    # 10 items, 3 returned for 165; Northwind 104 181, 106 200 = 381 over 3,
+    # 1 returned for 200; dactopus-dev, the store's own name, 102 125 over 2;
+    # none 107 90, 30, 20 = 140 over 3. Were the Hoodie's version of
+    # September 1 read (same updated_at, earlier load), Acme would have 721
+    # and Northwind 200.
+    (["-m", "brand_items_sold", "-m", "brand_revenue", "-m", "brand_items_returned",
+      "-m", "brand_returned_amount", "-m", "brand_net_revenue", "-d", "line_brands.brand",
+      "-o", "line_brands.brand"],
+     [{"brand": "Acme", "brand_items_sold": 10, "brand_revenue": 540, "brand_items_returned": 3,
+       "brand_returned_amount": 165, "brand_net_revenue": 375},
+      {"brand": "Northwind", "brand_items_sold": 3, "brand_revenue": 381, "brand_items_returned": 1,
+       "brand_returned_amount": 200, "brand_net_revenue": 181},
+      {"brand": "dactopus-dev", "brand_items_sold": 2, "brand_revenue": 125,
+       "brand_items_returned": 0, "brand_returned_amount": 0, "brand_net_revenue": 125},
+      {"brand": None, "brand_items_sold": 3, "brand_revenue": 140, "brand_items_returned": 0,
+       "brand_returned_amount": 0, "brand_net_revenue": 140}]),
+    # Brand by month: Acme August 100, September 90 + 60 + 60 = 210,
+    # October 40 + 190 = 230; Northwind September 381, October none;
+    # dactopus-dev August 80, September 45; none August 30, September 110.
+    (["-m", "brand_revenue", "-d", "line_brands.brand", "-d", "orders.order_month",
+      "-o", "line_brands.brand", "-o", "orders.order_month"],
+     [{"brand": "Acme", "order_month": "2026-08-01", "brand_revenue": 100},
+      {"brand": "Acme", "order_month": "2026-09-01", "brand_revenue": 210},
+      {"brand": "Acme", "order_month": "2026-10-01", "brand_revenue": 230},
+      {"brand": "Northwind", "order_month": "2026-09-01", "brand_revenue": 381},
+      {"brand": "dactopus-dev", "order_month": "2026-08-01", "brand_revenue": 80},
+      {"brand": "dactopus-dev", "order_month": "2026-09-01", "brand_revenue": 45},
+      {"brand": None, "order_month": "2026-08-01", "brand_revenue": 30},
+      {"brand": None, "order_month": "2026-09-01", "brand_revenue": 110}]),
+    # Average order value of the orders with an Apparel line, each order
+    # once, all of its goods: 1001 100, 1004 171 (a Hoodie and two
+    # T-shirts), 1006 200, 1007 120 (the Gift wrap included), 1011 40, 1012
+    # 190 = 821 over 6. Counting an order once per matching line would give
+    # 992 over 7.
+    (["-m", "orders.average_order_value", "-m", "orders.order_count",
+      "-f", "line_categories.category_path = 'Apparel'"],
+     [{"orders.average_order_value": 821 / 6, "orders.order_count": 6}]),
+    # Catalog: 10 products; the Blanket (107) and the Lamp (113) are
+    # deleted, the Blanket's old version delivered after its deletion
+    # included, and the Gift Card (109) is no goods. Active (ACTIVE, and
+    # UNLISTED, sold through a link) 8, draft 1 (111), archived 1 (the
+    # Jacket, 106).
+    (["-m", "products.product_count", "-d", "products.status", "-o", "products.status"],
+     [{"status": "active", "products.product_count": 8},
+      {"status": "archived", "products.product_count": 1},
+      {"status": "draft", "products.product_count": 1}]),
+    # Active by category: Apparel 5 (101, 103, 104, 108, 110), Home 1 (112,
+    # unlisted), Kitchen 1 (102); the Cap (105) has no type and no row.
+    (["-m", "product_categories.product_count", "-d", "product_categories.category_path",
+      "-f", "products.status = 'active'", "-f", "product_categories.is_direct = true",
+      "-o", "product_categories.category_path"],
+     [{"category_path": "Apparel", "product_categories.product_count": 5},
+      {"category_path": "Home", "product_categories.product_count": 1},
+      {"category_path": "Kitchen", "product_categories.product_count": 1}]),
+    # By brand: Acme 101, 103, 105, 108, 110; Northwind 104, 106;
+    # dactopus-dev 102, 111, 112 (the Gift Card left out).
+    (["-m", "product_brands.product_count", "-d", "product_brands.brand", "-o", "product_brands.brand"],
+     [{"brand": "Acme", "product_brands.product_count": 5},
+      {"brand": "Northwind", "product_brands.product_count": 2},
+      {"brand": "dactopus-dev", "product_brands.product_count": 3}]),
+    # Last sold, by the order's date, cancelled orders left out: 101
+    # September 5 (the test order 1009 of September 20 left out too), 102
+    # September 12, 104 September 15, 106 September 10 (refunded, not
+    # cancelled), 108 October 2, 110 October 3. Never sold: 103, 111, 112,
+    # and 105, sold only in the cancelled 1005 and 1010.
+    (["-d", "products.product_id", "-d", "products.last_sold_date", "-o", "products.product_id"],
+     [{"product_id": 101, "last_sold_date": "2026-09-05"},
+      {"product_id": 102, "last_sold_date": "2026-09-12"},
+      {"product_id": 103, "last_sold_date": None},
+      {"product_id": 104, "last_sold_date": "2026-09-15"},
+      {"product_id": 105, "last_sold_date": None},
+      {"product_id": 106, "last_sold_date": "2026-09-10"},
+      {"product_id": 108, "last_sold_date": "2026-10-02"},
+      {"product_id": 110, "last_sold_date": "2026-10-03"},
+      {"product_id": 111, "last_sold_date": None},
+      {"product_id": 112, "last_sold_date": None}]),
+    # Active products not sold since October 1: the T-shirt, Mug and Hoodie
+    # last sold in September, and the Scarf, Cap and Poster never.
+    (["-d", "products.title", "-f", "products.status = 'active'",
+      "-f", "products.last_sold_date IS NULL OR products.last_sold_date < DATE '2026-10-01'",
+      "-o", "products.title"],
+     [{"title": "Cap"}, {"title": "Hoodie"}, {"title": "Mug"}, {"title": "Poster"},
+      {"title": "Scarf"}, {"title": "T-shirt"}]),
 ]
-
-# Numbers for the product questions, from the fixture's products; they
-# become cases once commerce.yaml has the product's category and brand.
-# Lines as in line_revenue above (gift card and tip left out), each in its
-# product's latest type and vendor; returns are the refund lines' subtotal,
-# by the month of the order.
-#   By category (product_type, '' as none): Apparel 101 T-shirt 100 + 90,
-#   104 Hoodie 81 + 100, 106 Jacket 200, 108 Socks 40, 110 Cotton T-shirt
-#   190 = 801 over 11 items, 1 T-shirt (45) and the Jacket (200) returned:
-#   2 items, 245, net 556. Kitchen 102 Mug 80 + 45 = 125, 2 items. None:
-#   105 Cap 60 + 60 (both returned: 1005's refund, 1010's cancel), 107
-#   Blanket 90 (deleted), 1003's Field guide 30 and 1007's Gift wrap 20
-#   (no product) = 260 over 5 items, 2 returned for 120. 801 + 125 + 260 =
-#   1186, as line_revenue: a product has one type. Read with 101's earlier
-#   type, Tops would have 190.
-#   By brand (vendor): Acme 101 190, 105 120, 108 40, 110 190 = 540 over 10
-#   items, 3 returned for 165; Northwind 104 181, 106 200 = 381 over 3, 1
-#   returned for 200; dactopus-dev 102 125 over 2; none 107 90, 30, 20 = 140
-#   over 3. Were the Hoodie's version of September 1 read (same updated_at,
-#   earlier load), Acme would have 721 and Northwind 200.
-#   September by category: Apparel 90 + 81 + 200 + 100 = 471 (5 items),
-#   Kitchen 45, none 60 + 60 + 20 + 90 = 230; 746, September's orders less
-#   shipping, tax and the tip.
-#   Brand by month: Acme August 100, September 90 + 60 + 60 = 210, October
-#   40 + 190 = 230; Northwind September 381, October none; dactopus-dev
-#   August 80, September 45; none August 30, September 110.
-#   Average order value of the orders with an Apparel line, each order
-#   once, all of its goods: 1001 100, 1004 171 (a Hoodie and two
-#   T-shirts), 1006 200, 1007 120 (the Gift wrap included), 1011 40, 1012
-#   190 = 821 over 6. Counting an order once per matching line would give
-#   992 over 7.
-#   Catalog: 10 products; the Blanket (107) and the Lamp (113) are
-#   deleted, the Blanket's old version delivered after its deletion
-#   included, and the Gift Card (109) is no goods. Active (ACTIVE, and
-#   UNLISTED, sold through a link) 8, draft 1 (111), archived 1 (the
-#   Jacket, 106). Active by category: Apparel 5 (101, 103, 104, 108, 110),
-#   Kitchen 1 (102), Home 1 (112, unlisted), none 1 (105). A type has no
-#   subcategories: with them, the numbers are the same. Last sold, by the
-#   order's date, cancelled orders left out: 101 September 5 (the test
-#   order 1009 of September 20 left out too), 102 September 12, 104
-#   September 15, 106 September 10 (refunded, not cancelled), 108 October
-#   2, 110 October 3. Never sold: 103, 111, 112, and 105, sold only in the
-#   cancelled 1005 and 1010.
-#   Returns are without tax, as line_revenue: a refund line's subtotal
-#   less its tax where prices include tax, as Shopify's returns count it
-#   (113 with 13 tax returned 100 on the development store, #1015); no
-#   refund in the fixture has tax inside.
 
 if __name__ == "__main__":
     check(MODEL, CASES)

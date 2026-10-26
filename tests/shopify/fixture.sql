@@ -232,6 +232,15 @@ INSERT INTO {db:Identifier}.refunds VALUES
 INSERT INTO {db:Identifier}.refund_lines VALUES
 (5031, 503, '2026-10-01 02:00:00', 61, 1,  200, 0, 'CANCEL',     '2026-10-04 06:00:03');
 
+-- The refund 501 in a later version, its line the same: the input keeps
+-- every version of a refund. Were the lines of both versions counted,
+-- 1004's T-shirt would be returned twice (items_returned 5, 410).
+INSERT INTO {db:Identifier}.refunds VALUES
+(501, 1004, '2026-10-03 15:00:00', '2026-10-03 16:00:00', '',               45,  '2026-10-04 06:00:02');
+
+INSERT INTO {db:Identifier}.refund_lines VALUES
+(5011, 501, '2026-10-03 16:00:00', 42, 1,  45,  0, 'CANCEL',     '2026-10-04 06:00:03');
+
 -- Products: every product of the store, sold or not, as loads of the
 -- products updated since the last one deliver them. The type (productType)
 -- and the vendor are the owner's, now: a line of an order counts in its
