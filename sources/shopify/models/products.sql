@@ -10,12 +10,15 @@ latest AS (
     FROM {{ shopify_latest('products', 'id', select='id, title, status, is_gift_card, deleted_at, updated_at, loaded_at') }}
 ),
 -- The latest day each product sold on, in the shop's time zone: lines of
--- orders not cancelled. A refunded order still sold.
+-- orders not cancelled. A refunded order still sold. A line carries its
+-- order's date, and orders and order_lines hold the same orders, so only
+-- the few orders left out are looked up: a join with every order would
+-- hold all of them in memory at every run, 200 to 340 MB for 4 million.
 sold AS (
-    SELECT l.product_id AS product_id, toNullable(max(o.order_date)) AS last_sold_date
-    FROM {{ ref('order_lines') }} AS l
-    INNER JOIN {{ ref('orders') }} AS o ON o.order_id = l.order_id
-    WHERE o.in_sales_reports AND NOT o.is_cancelled AND l.product_id IS NOT NULL
+    SELECT product_id, toNullable(max(order_date)) AS last_sold_date
+    FROM {{ ref('order_lines') }}
+    WHERE product_id IS NOT NULL
+      AND order_id NOT IN (SELECT order_id FROM {{ ref('orders') }} WHERE NOT in_sales_reports OR is_cancelled)
     GROUP BY product_id
 )
 SELECT
