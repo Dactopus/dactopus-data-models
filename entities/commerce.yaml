@@ -445,7 +445,8 @@ datasets:
           over orders.order_count, which would add shipping and tax. Filter by
           orders.is_cancelled = false to leave cancelled orders out. Filtered
           by a category (line_categories), it is the average of the orders
-          with a line in it, each order once with all its goods. Shopify's
+          with a line in it, each order once with all its goods, as
+          WooCommerce Analytics' Orders report filtered by a category. Shopify's
           sales report filtered by product type counts only the lines of
           that type in those orders, so its number is lower wherever an order
           holds other goods too.
@@ -1207,7 +1208,10 @@ metrics:
       subcategories, ask line_revenue filtered by
       line_categories.category_path or category. The categories add up to
       more than line_revenue where a product is in several: never add them
-      up for a total.
+      up for a total. WooCommerce Analytics' Categories and Products reports
+      also count orders on hold that are not paid yet, which its Revenue and
+      Orders reports and these metrics leave out: there the reports can
+      show more.
     datatype: Decimal
     ai_context:
       synonyms: [sales by category, revenue by category, category sales, revenue by product type]
