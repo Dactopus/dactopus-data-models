@@ -466,6 +466,8 @@ INSERT INTO {db:Identifier}.wp_wc_product_meta_lookup
 --   17  Notebook  Gifts; in the trash, never sold
 -- Kitchen was renamed Kitchen & Dining. A product is linked to the term's
 -- term_taxonomy_id, here term_id + 10, so a join on term_id finds nothing.
+-- T-Shirts was at the top until September 10, then moved under Clothing:
+-- its parent is Clothing's term_id, 16, which no term_taxonomy_id has.
 -- Two terms are named Uncategorized: 1 in the posts' category, 15 in
 -- product_cat. Each product also has its product_type term (simple,
 -- variable), which is no category. Posts other than products are there as
@@ -508,20 +510,21 @@ INSERT INTO {db:Identifier}.wp_terms
 (23, 'Beta', '2026-09-06 10:00:05', 1, 434);
 
 INSERT INTO {db:Identifier}.wp_term_taxonomy
-    (term_taxonomy_id, term_id, taxonomy, _peerdb_synced_at, _peerdb_is_deleted, _peerdb_version) SETTINGS session_timezone = 'UTC' VALUES
-(1, 1, 'category', '2026-08-01 00:00:05', 0, 441),
-(2, 2, 'product_type', '2026-08-01 00:00:05', 0, 442),
-(4, 4, 'product_type', '2026-08-01 00:00:05', 0, 443),
-(25, 15, 'product_cat', '2026-08-01 00:00:05', 0, 444),
-(26, 16, 'product_cat', '2026-08-01 00:00:05', 0, 445),
-(27, 17, 'product_cat', '2026-08-01 00:00:05', 0, 446),
-(28, 18, 'product_cat', '2026-08-01 00:00:05', 0, 447),
-(29, 19, 'product_cat', '2026-08-01 00:00:05', 0, 448),
-(30, 20, 'product_brand', '2026-08-01 00:00:05', 0, 449),
-(31, 21, 'product_brand', '2026-08-01 00:00:05', 0, 450),
-(32, 22, 'product_tag', '2026-08-01 00:00:05', 0, 451),
-(33, 23, 'product_brand', '2026-09-05 10:00:05', 0, 452),
-(33, 23, 'product_brand', '2026-09-06 10:00:05', 1, 453);
+    (term_taxonomy_id, term_id, taxonomy, parent, _peerdb_synced_at, _peerdb_is_deleted, _peerdb_version) SETTINGS session_timezone = 'UTC' VALUES
+(1, 1, 'category', 0, '2026-08-01 00:00:05', 0, 441),
+(2, 2, 'product_type', 0, '2026-08-01 00:00:05', 0, 442),
+(4, 4, 'product_type', 0, '2026-08-01 00:00:05', 0, 443),
+(25, 15, 'product_cat', 0, '2026-08-01 00:00:05', 0, 444),
+(26, 16, 'product_cat', 0, '2026-08-01 00:00:05', 0, 445),
+(27, 17, 'product_cat', 0, '2026-08-01 00:00:05', 0, 446),
+(28, 18, 'product_cat', 0, '2026-08-01 00:00:05', 0, 447),
+(29, 19, 'product_cat', 0, '2026-08-01 00:00:05', 0, 448),
+(30, 20, 'product_brand', 0, '2026-08-01 00:00:05', 0, 449),
+(31, 21, 'product_brand', 0, '2026-08-01 00:00:05', 0, 450),
+(32, 22, 'product_tag', 0, '2026-08-01 00:00:05', 0, 451),
+(33, 23, 'product_brand', 0, '2026-09-05 10:00:05', 0, 452),
+(33, 23, 'product_brand', 0, '2026-09-06 10:00:05', 1, 453),
+(27, 17, 'product_cat', 16, '2026-09-10 10:00:05', 0, 454);
 
 INSERT INTO {db:Identifier}.wp_term_relationships
     (object_id, term_taxonomy_id, _peerdb_synced_at, _peerdb_is_deleted, _peerdb_version) SETTINGS session_timezone = 'UTC' VALUES

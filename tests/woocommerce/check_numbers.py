@@ -209,7 +209,7 @@ CASES = [
 # they become cases once commerce.yaml has the product's category and
 # brand. Lines of the counted orders as in line_revenue above, each in
 # every one of its product's latest categories and brands, as WooCommerce
-# Analytics counts categories; returns are the refunds' lines (904's, of
+# Analytics' Categories report counts categories; returns are the refunds' lines (904's, of
 # cancelled 107, left out with its order), by the month of the order.
 #   By category: Kitchen & Dining and Gifts both have the Mug, 40 + 20 + 20
 #   + 50 = 130 over 6 items, 111's mug returned (20): net 110 each.
@@ -222,6 +222,11 @@ CASES = [
 #   Read with the old name, Kitchen would have the Mug's 130; with the
 #   Sticker's old link, Gifts would have 140 over 8 items; joined on
 #   term_id, no line would have a category.
+#   Clothing with its subcategories, as Analytics' filter by category
+#   takes it: the Tee through T-Shirts, 175.818182 over 6 items, net
+#   148.818182. Read with T-Shirts' parent before September 10 (none), or
+#   with the parent matched to term_taxonomy_id, Clothing would have
+#   nothing.
 #   By brand: Acme the Tee and the Sticker pack, 175.818182 + 10 =
 #   185.818182 over 8 items, 1 returned for 27; Northwind the Tee,
 #   175.818182 over 6, 1 returned for 27; none the Mug and the Cap, 130 +
@@ -238,12 +243,13 @@ CASES = [
 #   18 (with its fees), 111 20, 117 50 = 158 over 4, the same for Kitchen &
 #   Dining; counted once per category of the line, Gifts or Kitchen &
 #   Dining would give 316 over 8. T-Shirts: 101 70, 104 54, 110 31.82, 112
-#   60 = 215.82 over 4.
+#   60 = 215.82 over 4, the same for Clothing with its subcategories.
 #   Catalog: 6 products (11, 12, 13, 15, 16, 17); the Cap is deleted, and
 #   the variations 121 and 122, the page and the orders' placeholders are
 #   no products. Published by category: Gifts 2 (11, 15), Kitchen & Dining
 #   1 (11), T-Shirts 1 (12), Uncategorized 1 (13); 16 is a draft (Kitchen &
-#   Dining), 17 in the trash (Gifts). Never sold: 15, 16, 17. Last sold, by
+#   Dining), 17 in the trash (Gifts). Clothing with its subcategories 1
+#   (12). Never sold: 15, 16, 17. Last sold, by
 #   the order's date: Mug October 9 (117), Tee October 1 (112), Sticker
 #   pack October 6 (113, paid on delivery); 114 (trash) and 116 (deleted)
 #   do not count.

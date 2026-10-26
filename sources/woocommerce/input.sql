@@ -193,11 +193,20 @@ CREATE TABLE IF NOT EXISTS {db:Identifier}.wp_terms
 ENGINE = MergeTree
 ORDER BY (term_id, _peerdb_version);
 
+-- Categories nest: parent names the parent category. WooCommerce
+-- Analytics (checked on 11.2.1) counts a sale in the categories its product
+-- is in, not in their parents: the Categories report groups by the
+-- product's own terms (Admin/API/Reports/Categories/DataStore.php). Its
+-- filter by category, in the Products, Orders and Revenue reports, also
+-- takes the products of the subcategories: it finds them with
+-- wc_get_products, whose tax query includes child terms by default
+-- (Admin/API/Reports/DataStore.php, get_products_by_cat_ids).
 CREATE TABLE IF NOT EXISTS {db:Identifier}.wp_term_taxonomy
 (
     term_taxonomy_id UInt64,
     term_id UInt64,
     taxonomy String,  -- product_cat, product_brand (in the core, checked on 11.2.1), product_tag, ...
+    parent UInt64,    -- the parent's term_id, not its term_taxonomy_id; 0 at the top
     _peerdb_synced_at DateTime64(9),
     _peerdb_is_deleted UInt8,
     _peerdb_version UInt64
