@@ -200,8 +200,8 @@ CREATE TABLE IF NOT EXISTS {db:Identifier}.products
     -- not set (the field is a non-null String). Shopify's reports group
     -- sales by it as the product's "Type (category)".
     product_type String,
-    -- vendor: "the manufacturer, wholesaler, or other vendor". Half the
-    -- development store's products carry the store's own name.
+    -- vendor: "the manufacturer, wholesaler, or other vendor". It can be
+    -- the store's own name: 9 of the development store's 18 products had it.
     vendor String,
     status String,                              -- status: ACTIVE, ARCHIVED, DRAFT, UNLISTED
     is_gift_card Bool,                          -- isGiftCard

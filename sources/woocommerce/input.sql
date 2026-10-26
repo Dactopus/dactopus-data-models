@@ -161,8 +161,9 @@ ORDER BY (product_id, _peerdb_version);
 -- (product_variation), and also pages, revisions and, with HPOS, a
 -- placeholder of each order (shop_order_placehold). The CDC copy needs none
 -- of the text columns (post_content, post_excerpt, post_content_filtered,
--- to_ping, pinged, post_password; README). An order line names the product,
--- not its variation, in _product_id.
+-- to_ping, pinged, post_password). An order line names the product in
+-- _product_id and its variation in _variation_id
+-- (WC_Order_Item_Product::set_product).
 CREATE TABLE IF NOT EXISTS {db:Identifier}.wp_posts
 (
     ID UInt64,

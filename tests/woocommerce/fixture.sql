@@ -451,8 +451,10 @@ INSERT INTO {db:Identifier}.wp_wc_product_meta_lookup
 
 -- Products, their categories and brands. Categories (product_cat) and
 -- brands (product_brand) are the owner's, now: a line counts in its
--- product's latest terms, whatever they were when it sold. A product's
--- variations (121, 122) carry no terms; their lines name the product (12).
+-- product's latest terms, whatever they were when it sold. Categories and
+-- brands are on the product, not on its variations (121, 122): WooCommerce
+-- puts only shipping class and visibility terms on a variation, and its
+-- lines name the product (12).
 --   11  Mug       Kitchen and Gifts; no brand
 --   12  Tee       T-Shirts (under Clothing); two brands, Acme and Northwind,
 --                 a third, Beta, put on and then deleted
