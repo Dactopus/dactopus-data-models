@@ -55,9 +55,10 @@ source. Matching customers across systems stays
 GA4 e-commerce events carry their items: id, name, up to five category
 levels, price and quantity. Revenue by product and category comes from
 the store packages; GA4 items would add what only the site sees: product
-views, additions to the cart and a funnel per product. In the public sample export, viewed and purchased
-items carry different ids, so a funnel needs a property that tags them
-alike. It adds a column to the package's input, a breaking change.
+views, additions to the cart and a funnel per product. In the public
+sample export, viewed and purchased items carry different ids, so a
+funnel needs a property that tags them alike. It adds a column to the
+package's input, a breaking change.
 
 ### IoT: local time
 

@@ -1,5 +1,7 @@
--- Input of the WooCommerce package: the store's own order tables, copied
--- from its MySQL database into ClickHouse by change data capture (CDC).
+-- Input of the WooCommerce package: the store's own order tables, and
+-- WordPress's tables of its products and their categories and brands,
+-- copied from its MySQL database into ClickHouse by change data capture
+-- (CDC).
 -- WooCommerce 8.2 and later keeps orders in these tables (High-Performance
 -- Order Storage, HPOS:
 -- https://developer.woocommerce.com/docs/features/high-performance-order-storage/).
@@ -14,7 +16,10 @@
 -- String. The schema of each table:
 -- https://github.com/woocommerce/woocommerce/blob/trunk/plugins/woocommerce/src/Internal/DataStores/Orders/OrdersTableDataStore.php
 -- (get_database_schema) and
--- https://github.com/woocommerce/woocommerce/blob/trunk/plugins/woocommerce/includes/class-wc-install.php.
+-- https://github.com/woocommerce/woocommerce/blob/trunk/plugins/woocommerce/includes/class-wc-install.php;
+-- WordPress's own tables:
+-- https://github.com/WordPress/wordpress-develop/blob/trunk/src/wp-admin/includes/schema.php
+-- (wp_get_db_schema).
 --
 -- Each table is a log of versions. CDC appends a row for every insert,
 -- update and delete in MySQL, with
