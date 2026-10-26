@@ -233,6 +233,12 @@ CASES = [
 #   Brand by month: Acme August 30 (101's tee), September 85.818182,
 #   October 60 + 10 = 70; Northwind August 30, September 85.818182,
 #   October 60; none August 40 + 25 = 65, September 40, October 50.
+#   Average order value of the orders with a line in Gifts, each order
+#   once, all of its goods: the Mug's orders 101 70 (its tee included), 109
+#   18 (with its fees), 111 20, 117 50 = 158 over 4, the same for Kitchen &
+#   Dining; counted once per category of the line, Gifts or Kitchen &
+#   Dining would give 316 over 8. T-Shirts: 101 70, 104 54, 110 31.82, 112
+#   60 = 215.82 over 4.
 #   Catalog: 6 products (11, 12, 13, 15, 16, 17); the Cap is deleted, and
 #   the variations 121 and 122, the page and the orders' placeholders are
 #   no products. Published by category: Gifts 2 (11, 15), Kitchen & Dining
