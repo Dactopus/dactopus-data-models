@@ -374,7 +374,8 @@ jobs:
           $DBT_BUILD                 # incremental into empty tables
           # customer <order id>: the customer orders names for it
           customer() { q "SELECT customer_id FROM analytics.orders WHERE order_id = $1"; }
-          test "$(customer 102)" = -102 && test "$(customer 118)" = -118
+          test "$(customer 102)" = -102
+          test "$(customer 118)" = -118
           same
           late wc_orders "$(v 'IN (75, 91, 140, 211, 277)')"
           q "INSERT INTO woocommerce_input.wp_2_wc_orders SELECT * REPLACE ('BOB@example.com' AS billing_email, now64(9) AS _peerdb_synced_at, 0 AS _peerdb_version)

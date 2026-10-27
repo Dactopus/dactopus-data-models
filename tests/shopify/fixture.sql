@@ -155,7 +155,7 @@ INSERT INTO {db:Identifier}.orders VALUES
  1, 'alice@example.com', 'USD', 'USD', 'PAID', 'UNFULFILLED', 'web', false,
  40, 0, 0, 0, 0, 40, 0, 0, 0, [], 'US', 'NY', 'New York', '10001', '2026-10-04 00:00:00'),
 
--- 1011: customer 2's third order (1005 was cancelled), the only one in
+-- 1011: customer 2's fourth order (after cancelled 1005), the only one in
 -- October; fulfillment on hold. FREESHIP takes the 10 shipping off, so
 -- shipping_price is 0, as on the development store (#1014).
 (1011, '#1011', '2026-10-02 15:00:00', '2026-10-02 15:00:00', '2026-10-02 15:00:00', NULL, NULL, false,

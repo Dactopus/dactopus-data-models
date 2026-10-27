@@ -12,7 +12,7 @@
 -- Orders loaded since the last run, orders whose lines were (their counts
 -- and discounts come from the lines) or whose refunds or refund lines were
 -- (gift cards refunded), and every order of their customers, under any
--- version: a cancel or a back-dated order renumbers the others. An order
+-- version: a back-dated order renumbers the others. An order
 -- moved to another customer, by orderCustomerSet or a customer merge
 -- (both change updated_at, the merge of every order of both customers;
 -- seen on the development store), renumbers both: the previous customer
@@ -158,18 +158,15 @@ INNER JOIN
     SELECT
         id,
         if(customer_id IS NULL, NULL,
-           row_number() OVER (PARTITION BY customer_id ORDER BY processed_at, id)) AS customer_order_number,
+           row_number() OVER w) AS customer_order_number,
         toDate(processed_at, '{{ var("shopify_timezone") }}') AS day,
-        if(customer_order_number > 1,
-           dateDiff('day', lagInFrame(toNullable(day)) OVER (PARTITION BY customer_id ORDER BY processed_at, id
-                                                              ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW), day),
-           NULL) AS days_since_previous_order,
-        if(customer_order_number > 1,
-           dateDiff('month', first_value(day) OVER (PARTITION BY customer_id ORDER BY processed_at, id
-                                                    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW), day),
+        if(customer_order_number > 1, dateDiff('day', lagInFrame(toNullable(day)) OVER w, day), NULL)
+            AS days_since_previous_order,
+        if(customer_order_number > 1, dateDiff('month', first_value(day) OVER w, day),
            if(customer_order_number = 1, -1, NULL)) AS months_since_first_order
     FROM {{ shopify_latest('orders', 'id', select='id, customer_id, processed_at, test') }}
     WHERE NOT test AND ({{ numbered }})
+    WINDOW w AS (PARTITION BY customer_id ORDER BY processed_at, id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
 ) AS n ON n.id = o.id
 LEFT JOIN
 (
