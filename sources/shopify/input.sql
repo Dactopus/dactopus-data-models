@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS {db:Identifier}.orders
 (
     id UInt64,                                  -- legacyResourceId
     name String,                                -- '#1001', what the customer sees
-    created_at DateTime('UTC'),                 -- createdAt
+    created_at DateTime('UTC'),                 -- createdAt, when the order was recorded
     -- processedAt: "the date that appears on your orders and that's used in
     -- the analytic reports"; an import may set it in the past
     -- (https://shopify.dev/docs/api/admin-graphql/latest/input-objects/OrderCreateOrderInput).
