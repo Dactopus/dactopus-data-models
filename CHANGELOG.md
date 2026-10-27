@@ -17,11 +17,11 @@ is needed.
 
 ### Added
 
-- `commerce.yaml`: order lines reach the catalogue
+- `commerce.yaml`: order lines reach the catalog
   (`order_lines_to_products`), so sales break down by the product's
   current status, such as the sales of products archived since
   ([#43](https://github.com/Dactopus/dactopus-data-models/issues/43)).
-  A line of a product no longer in the catalogue (deleted, or in the
+  A line of a product no longer in the catalog (deleted, or in the
   trash at WooCommerce) has an empty status. Sales by category and brand
   still come from `line_categories` and `line_brands` alone:
   `product_categories` and `product_brands` declare no key, so
@@ -30,7 +30,7 @@ is needed.
   from the store's category report. The model's instructions send
   products that sold to `products.last_sold_date` and sales by product
   to `order_lines.title`: products filtered by order lines would count
-  cancelled orders, and a product no longer in the catalogue has no
+  cancelled orders, and a product no longer in the catalog has no
   title in `products`.
 
 ### Changed
@@ -41,8 +41,8 @@ is needed.
   returns as NULL for a NULL string.
 - WooCommerce: `products` joins the orders by merge instead of a hash
   table to find each product's last sale. On 4 million orders the run's
-  peak falls from 250 to 380 MB to 60 to 70 MB, in the same time, and
-  the numbers do not change
+  peak falls from between 250 and 380 MB to between 60 and 70 MB, in
+  the same time, and the numbers do not change
   ([#42](https://github.com/Dactopus/dactopus-data-models/issues/42)).
   No rebuild is needed.
 
