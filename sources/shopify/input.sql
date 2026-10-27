@@ -1,8 +1,10 @@
 -- Input of the Shopify package: five flat tables, filled from the GraphQL
 -- Admin API (https://shopify.dev/docs/api/admin-graphql/latest) by any
--- loader. Only the columns the package reads; the comment on each names the
--- GraphQL field it comes from. Any transport may deliver more columns; it
--- must deliver these.
+-- loader. The columns the package reads, and the time each order and refund
+-- was recorded (created_at), which the package does not read: next to the
+-- date the reports use, it tells an imported row from one made in the
+-- store. The comment on each names the GraphQL field it comes from. Any
+-- transport may deliver more columns; it must deliver these.
 --
 -- Checked on API version 2026-10; earlier versions differ only in
 -- display_fulfillment_status (below).

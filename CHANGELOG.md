@@ -33,6 +33,16 @@ names the Ossie schema version its models carry.
   `processedAt`. Last, `dbt build --full-refresh --select refunds+`
   rebuilds `refunds` and `sales_events`: an incremental run keeps the
   old dates of the refunds it does not reread, with no error.
+- The descriptions of `refunds.refund_date` and `refund_time` say which
+  date they hold: the date the store's reports date the refund by, at
+  Shopify the date it was processed, for an imported refund its past
+  date and not the day it was recorded, as `order_date` says for orders.
+- The Shopify and WooCommerce packages set `join_use_nulls = 0` in their
+  queries. Their LEFT JOINs count on a missing match giving 0 (an order
+  without gift cards, a refund without lines); a server or profile that
+  sets it to 1 gave NULL totals and the build failed on
+  `sales_events.amount`. `tests/profiles.yml` sets 1, so CI builds
+  against the setting the packages must not depend on.
 
 ## [0.7.1] - 2026-10-27
 
