@@ -8,6 +8,11 @@ names the Ossie schema version its models carry.
 
 ## [Unreleased]
 
+### Changed
+
+- `ROADMAP.md`: Customers is next. Discount codes, which code brought
+  the revenue, is planned after it.
+
 ## [0.7.1] - 2026-10-27
 
 Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.12.0,
