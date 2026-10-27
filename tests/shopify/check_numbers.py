@@ -74,11 +74,11 @@ CASES = [
     (["-m", "orders.order_count", "-m", "orders.revenue", "-m", "orders.refunded_amount",
       "-m", "sales_events.net_revenue", "-m", "orders.refund_rate",
       "-m", "orders.average_order_value", "-m", "orders.discount_amount",
-      "-m", "orders.shipping_amount", "-m", "orders.tax_amount", "-m", "orders.customers"],
+      "-m", "orders.shipping_amount", "-m", "orders.tax_amount", "-m", "orders.buyer_count"],
      [{"orders.order_count": 11, "orders.revenue": 1360, "orders.refunded_amount": 331.95,
        "sales_events.net_revenue": 958.05, "orders.refund_rate": 331.95 / 1360,
        "orders.average_order_value": 1186 / 11, "orders.discount_amount": 44,
-       "orders.shipping_amount": 76.95, "orders.tax_amount": 62.85, "orders.customers": 3}]),
+       "orders.shipping_amount": 76.95, "orders.tax_amount": 62.85, "orders.buyer_count": 3}]),
     # By month of processed_at in New York. 1003 is August (September in
     # UTC); 1008 is September (created in October). September net:
     # (181 - 45) + (210 - 210) + 137 + (169.50 - 16.95) = 425.55. August
@@ -390,51 +390,87 @@ CASES = [
       "-o", "products.title"],
      [{"title": "Cap"}, {"title": "Hoodie"}, {"title": "Mug"}, {"title": "Poster"},
       {"title": "Scarf"}, {"title": "T-shirt"}]),
+    # Customers are the ones Shopify's report of new and returning
+    # customers counts: every order but test ones, cancelled ones included
+    # (#1012 on the development store is New, and #1021 after it
+    # Returning), in sequence of processed_at; dates and months are New
+    # York's. Customers 1, 2 and 3; customer 4 has only a test order and no
+    # row, and were cancelled orders left out, customer 3 would have none
+    # either.
+    #   1  first order 1001, August 10: cohort August. Last 1007, September
+    #      15 (by created_at 1008, October 2; test order 1013, September 25,
+    #      left out). 4 orders, net 110 + (181 - 45) + (169.50 - 16.95)
+    #      + 137 = 535.55.
+    #   2  first order 1003, 22:00 on August 31: cohort August (September in
+    #      UTC). Last 1011, October 2. 4 orders, net 30 + 0 (1005, cancelled
+    #      and refunded) + 0 (1006, refunded whole) + 40 = 70.
+    #   3  first and last order 1010, September 25: cohort September. 1
+    #      order, net 0.
+    # The customers' net and the guests' 352.50 make 958.05, net_revenue.
+    # By cohort: August 2 customers, 605.55, 302.775 each; September 1, 0.
+    (["-m", "customers.customer_count", "-m", "customers.net_amount", "-m", "customers.average_customer_value",
+      "-d", "customers.first_order_month", "-o", "customers.first_order_month"],
+     [{"first_order_month": "2026-08-01", "customers.customer_count": 2, "customers.net_amount": 605.55,
+       "customers.average_customer_value": 302.775},
+      {"first_order_month": "2026-09-01", "customers.customer_count": 1, "customers.net_amount": 0,
+       "customers.average_customer_value": 0}]),
+    (["-m", "customers.net_amount", "-d", "customers.customer_id", "-d", "customers.first_order_date",
+      "-d", "customers.last_order_date", "-d", "customers.number_of_orders", "-o", "customers.customer_id"],
+     [{"customer_id": 1, "first_order_date": "2026-08-10", "last_order_date": "2026-09-15",
+       "number_of_orders": 4, "customers.net_amount": 535.55},
+      {"customer_id": 2, "first_order_date": "2026-08-31", "last_order_date": "2026-10-02",
+       "number_of_orders": 4, "customers.net_amount": 70},
+      {"customer_id": 3, "first_order_date": "2026-09-25", "last_order_date": "2026-09-25",
+       "number_of_orders": 1, "customers.net_amount": 0}]),
+    # Bought once: customer 3. Last order before September 20: customer 1.
+    (["-m", "customers.customer_count", "-f", "customers.number_of_orders = 1"],
+     [{"customers.customer_count": 1}]),
+    (["-m", "customers.customer_count", "-f", "customers.last_order_date < '2026-09-20'"],
+     [{"customers.customer_count": 1}]),
+    # Buyers and customers: the same 3, every customer has an order the
+    # reports count.
+    (["-m", "orders.buyer_count", "-m", "customers.customer_count"],
+     [{"orders.buyer_count": 3, "customers.customer_count": 3}]),
+    # Days since the customer's previous order, between New York dates:
+    # 1004 26 (August 10 to September 5), 1008 7, 1007 3; 1005 8 (August 31
+    # to September 8; 7 between UTC dates), 1006 2 (from cancelled 1005; 10
+    # from 1003), 1011 22; none on first orders. All repeat orders (26 + 7 +
+    # 3 + 8 + 2 + 22) / 6 = 68 / 6; second orders 26 and 8, 17.
+    (["-m", "orders.average_days_between_orders"],
+     [{"orders.average_days_between_orders": 68 / 6}]),
+    (["-m", "orders.average_days_between_orders", "-f", "orders.customer_order_number = 2"],
+     [{"orders.average_days_between_orders": 17}]),
+    # Months since the first order, as Shopify's months_since_first_purchase
+    # (-1 on the first order, then calendar months between the orders'
+    # months; on the development store a customer's orders of September 12
+    # and October 5 are 1 apart): 1001, 1003, 1010 -1; 1004, 1008, 1007 1;
+    # 1005 1, 1006 1, 1011 2. In UTC 1003 is September: 1005 and 1006 0,
+    # 1011 1. The guests' orders have none and no buyer.
+    (["-m", "orders.buyer_count", "-d", "orders.months_since_first_order", "-o", "orders.months_since_first_order"],
+     [{"months_since_first_order": -1, "orders.buyer_count": 3},
+      {"months_since_first_order": 1, "orders.buyer_count": 2},
+      {"months_since_first_order": 2, "orders.buyer_count": 1},
+      {"months_since_first_order": None, "orders.buyer_count": 0}]),
+    # Buyers by cohort and month of order: August cohort August 2 (1001,
+    # 1003), September 2, October 1 (1011); September cohort September 1.
+    # The guests' orders (1002 in August, 1012 in October) have no cohort.
+    (["-m", "orders.buyer_count", "-d", "customers.first_order_month", "-d", "orders.order_month",
+      "-o", "customers.first_order_month", "-o", "orders.order_month"],
+     [{"first_order_month": "2026-08-01", "order_month": "2026-08-01", "orders.buyer_count": 2},
+      {"first_order_month": "2026-08-01", "order_month": "2026-09-01", "orders.buyer_count": 2},
+      {"first_order_month": "2026-08-01", "order_month": "2026-10-01", "orders.buyer_count": 1},
+      {"first_order_month": "2026-09-01", "order_month": "2026-09-01", "orders.buyer_count": 1},
+      {"first_order_month": None, "order_month": "2026-08-01", "orders.buyer_count": 0},
+      {"first_order_month": None, "order_month": "2026-10-01", "orders.buyer_count": 0}]),
 ]
 
-# Numbers for the customer questions, from the fixture's orders; they
-# become cases once the model has customers (the packages build them). A
-# customer's orders are the ones Shopify's report of new and returning customers counts: every
-# order but test ones, cancelled ones included (#1012 on the development
-# store is New, and #1021 after it Returning), in sequence of processed_at.
-# Dates and months are New York's.
-#   Customers: 1, 2 and 3. Customer 4 has only a test order and no row;
-#   were cancelled orders left out, customer 3 would have none either.
-#     1  first order 1001, August 10: cohort August. Last 1007, September
-#        15 (by created_at 1008, October 2; test order 1013, September 25,
-#        left out). 4 orders, net 110 + (181 - 45) + (169.50 - 16.95)
-#        + 137 = 535.55.
-#     2  first order 1003, 22:00 on August 31: cohort August (September
-#        in UTC). Last 1011, October 2. 4 orders, net 30 + 0 (1005,
-#        cancelled and refunded) + 0 (1006, refunded whole) + 40 = 70.
-#     3  first and last order 1010, September 25: cohort September. 1
-#        order, net 0.
-#   The customers' net and the guests' 352.50 make 958.05, net_revenue.
-#   New customers by cohort: August 2, September 1. Bought once: customer
-#   3. Net per customer by cohort: August (535.55 + 70) / 2 = 302.775,
-#   September 0. By net: 1 535.55, 2 70, 3 0.
-#   Days since the customer's previous order, between New York dates: 1004
-#   26 (August 10 to September 5), 1008 7, 1007 3; 1005 8 (August 31 to
-#   September 8; 7 between UTC dates), 1006 2 (from cancelled 1005; 10
-#   from 1003), 1011 22; none on first orders. Second orders: 26 and 8
-#   days, 17 on average; all repeat orders (26 + 7 + 3 + 8 + 2 + 22) / 6 =
-#   68 / 6.
-#   Months since the first order, as Shopify's months_since_first_purchase
-#   (-1 on the first order, then calendar months between the orders'
-#   months; on the development store a customer's orders of September 12
-#   and October 5 are 1 apart): 1001, 1003, 1010 -1; 1004, 1008, 1007 1; 1005 1,
-#   1006 1, 1011 2. In UTC 1003 is September: 1005 and 1006 0, 1011 1.
-#   Buyers by cohort and month of order: August cohort August 2 (1001,
-#   1003), September 2, October 1 (1011); September cohort September 1.
-#   Second order within N days, counted where the window is over: its
-#   last day ended before the last load of orders, October 4 (06:00 in
-#   UTC, 02:00 in New York; 1008's refund came with it). Customer 1 took 26 days, customer 2 8 (to a
-#   cancelled order, as the report counts it), customer 3 has none. N =
-#   30: customers 1 and 2 (first order before September 4), both yes, 2
-#   of 2; customer 3's window ends October 25, empty. N = 60: no window
-#   is over.
-#   Last order before September 20 (no order in the last two weeks to
-#   October 4): customer 1.
+# Second order within N days, for the retention windows the model does not
+# have yet, counted where the window is over: its last day ended before the
+# last load of orders, October 4 (06:00 in UTC, 02:00 in New York; 1008's
+# refund came with it). Customer 1 took 26 days, customer 2 8 (to a
+# cancelled order, as the report counts it), customer 3 has none. N = 30:
+# customers 1 and 2 (first order before September 4), both yes, 2 of 2;
+# customer 3's window ends October 25, empty. N = 60: no window is over.
 
 if __name__ == "__main__":
     check(MODEL, CASES)

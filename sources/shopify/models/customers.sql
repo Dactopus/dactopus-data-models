@@ -15,7 +15,7 @@ SELECT
     assumeNotNull(customer_id) AS customer_id,
     toDate(min(order_time), '{{ var("shopify_timezone") }}') AS first_order_date,
     toDate(max(order_time), '{{ var("shopify_timezone") }}') AS last_order_date,
-    count() AS order_count,
+    count() AS number_of_orders,
     sum(net_total) AS net_total
 FROM {{ ref('orders') }}
 WHERE customer_order_number IS NOT NULL

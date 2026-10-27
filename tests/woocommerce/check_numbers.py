@@ -63,11 +63,11 @@ CASES = [
     (["-m", "orders.order_count", "-m", "orders.revenue", "-m", "orders.refunded_amount",
       "-m", "sales_events.net_revenue", "-m", "orders.refund_rate",
       "-m", "orders.average_order_value", "-m", "orders.discount_amount",
-      "-m", "orders.shipping_amount", "-m", "orders.tax_amount", "-m", "orders.customers"],
+      "-m", "orders.shipping_amount", "-m", "orders.tax_amount", "-m", "orders.buyer_count"],
      [{"orders.order_count": 9, "orders.revenue": 449.7, "orders.refunded_amount": 67.7,
        "sales_events.net_revenue": 382, "orders.refund_rate": 67.7 / 449.7,
        "orders.average_order_value": 338.82 / 9, "orders.discount_amount": 6,
-       "orders.shipping_amount": 70, "orders.tax_amount": 40.88, "orders.customers": 3}]),
+       "orders.shipping_amount": 70, "orders.tax_amount": 40.88, "orders.buyer_count": 3}]),
     # Every row of orders, counted or not: the 9 above and 102 (16.50), 106
     # (22), 107 (44), 108 (33), 118 (22), 119 (22): 15 orders, 609.20. Not
     # 18: the trash, the checkout draft and the deleted order are not
@@ -376,66 +376,102 @@ CASES = [
       {"product_id": 12, "last_sold_date": "2026-10-01"},
       {"product_id": 15, "last_sold_date": None},
       {"product_id": 16, "last_sold_date": None}]),
+    # A customer is one as WooCommerce Analytics counts them: the account
+    # of a registered order; for a guest's, the billing email in any case,
+    # joined to the account that has an order with that email; a guest's
+    # order without an email is a customer of its own, as Analytics makes it
+    # (local test store). A guest's number is the smallest id of their
+    # orders, negative: -112 for guest4, whose first order is 118. A
+    # customer's orders are the ones the report of new and returning
+    # customers counts: every status but the excluded ones (on hold
+    # included, paid or not), by date placed. Dates and months are New
+    # York's, of the date placed.
+    #   1     first order 101, August 10: cohort August. Last 117, October
+    #         9. 5 orders, net 88 + (70.40 - 29.70) + 30.80 + (33 - 33) + 66
+    #         = 225.50.
+    #   2     first order 102, August 20, on hold, before customer 2's first
+    #         order as a customer: cohort August. Analytics joins it to the
+    #         account the same way if the account was made on the order
+    #         confirmation page; after a sign-up anywhere else it keeps 102
+    #         as a guest of its own (local test store), and customer 2
+    #         would start with 103. Last 113, placed October 3 (paid
+    #         October 6). 4 orders, net 16.50 + 33 + 46 + 16.50 = 112
+    #         (cancelled 107 and its refund left out).
+    #   -112  guest4: first order 118, September 28, on hold: cohort
+    #         September. Last 112, October 1. 2 orders, net 22 + (66 - 5) =
+    #         83.
+    #   -119  119, without an email: first and last order September 30, on
+    #         hold: cohort September. 1 order, net 22.
+    # No customer for 106 (pending) and 108 (failed): no order counted. Net
+    # includes the orders on hold, as the Customers report's total spend:
+    # with 102, 118 and 119 the customers make 442.50 against
+    # net_revenue's 382. By cohort: August (225.50 + 112) / 2 = 168.75,
+    # September (83 + 22) / 2 = 52.50.
+    (["-m", "customers.customer_count", "-m", "customers.net_amount", "-m", "customers.average_customer_value",
+      "-d", "customers.first_order_month", "-o", "customers.first_order_month"],
+     [{"first_order_month": "2026-08-01", "customers.customer_count": 2, "customers.net_amount": 337.5,
+       "customers.average_customer_value": 168.75},
+      {"first_order_month": "2026-09-01", "customers.customer_count": 2, "customers.net_amount": 105,
+       "customers.average_customer_value": 52.5}]),
+    (["-m", "customers.net_amount", "-d", "customers.customer_id", "-d", "customers.first_order_date",
+      "-d", "customers.last_order_date", "-d", "customers.number_of_orders", "-o", "customers.customer_id"],
+     [{"customer_id": -119, "first_order_date": "2026-09-30", "last_order_date": "2026-09-30",
+       "number_of_orders": 1, "customers.net_amount": 22},
+      {"customer_id": -112, "first_order_date": "2026-09-28", "last_order_date": "2026-10-01",
+       "number_of_orders": 2, "customers.net_amount": 83},
+      {"customer_id": 1, "first_order_date": "2026-08-10", "last_order_date": "2026-10-09",
+       "number_of_orders": 5, "customers.net_amount": 225.5},
+      {"customer_id": 2, "first_order_date": "2026-08-20", "last_order_date": "2026-10-03",
+       "number_of_orders": 4, "customers.net_amount": 112}]),
+    # Bought once: -119.
+    (["-m", "customers.customer_count", "-f", "customers.number_of_orders = 1"],
+     [{"customers.customer_count": 1}]),
+    # Buyers 3 (1, 2 and -112), customers 4: -119's only order is on hold,
+    # which the reports leave out.
+    (["-m", "orders.buyer_count", "-m", "customers.customer_count"],
+     [{"orders.buyer_count": 3, "customers.customer_count": 4}]),
+    # Days since the customer's previous order: 104 20 (August 10 to 30),
+    # 109 13, 111 8, 117 19; 103 11 (August 20 to 31; 12 to September 1 in
+    # UTC), 110 15, 113 18; 112 3. All repeat orders 107 / 8; second orders
+    # 20, 11 and 3 days, 34 / 3.
+    (["-m", "orders.average_days_between_orders"],
+     [{"orders.average_days_between_orders": 107 / 8}]),
+    (["-m", "orders.average_days_between_orders", "-f", "orders.customer_order_number = 2"],
+     [{"orders.average_days_between_orders": 34 / 3}]),
+    # Months since the first order (-1 on the first, then calendar months,
+    # as Shopify's): 101 -1, 104 0, 109 1, 111 1, 117 2; 102 -1, 103 0 (1 in
+    # UTC), 110 1, 113 2; 118 -1, 112 1; 119 -1. Buyers among the counted
+    # orders: -1 customer 1 alone (102, 118 and 119 are on hold), 0
+    # customers 1 and 2, 1 customers 1, 2 and -112, 2 customers 1 and 2.
+    # The excluded orders (106, 107, 108) have none.
+    (["-m", "orders.buyer_count", "-d", "orders.months_since_first_order", "-o", "orders.months_since_first_order"],
+     [{"months_since_first_order": -1, "orders.buyer_count": 1},
+      {"months_since_first_order": 0, "orders.buyer_count": 2},
+      {"months_since_first_order": 1, "orders.buyer_count": 3},
+      {"months_since_first_order": 2, "orders.buyer_count": 2},
+      {"months_since_first_order": None, "orders.buyer_count": 0}]),
+    # Buyers by cohort and the model's month of order (of payment, counted
+    # orders): August cohort August 2 (101, 103), September 2 (104, 109,
+    # 111; 110), October 2 (117; 113); September cohort September none (118
+    # and 119 on hold, dated by the date placed), October 1 (112). 106 and
+    # 108, guests' orders the reports leave out, have no cohort.
+    (["-m", "orders.buyer_count", "-d", "customers.first_order_month", "-d", "orders.order_month",
+      "-o", "customers.first_order_month", "-o", "orders.order_month"],
+     [{"first_order_month": "2026-08-01", "order_month": "2026-08-01", "orders.buyer_count": 2},
+      {"first_order_month": "2026-08-01", "order_month": "2026-09-01", "orders.buyer_count": 2},
+      {"first_order_month": "2026-08-01", "order_month": "2026-10-01", "orders.buyer_count": 2},
+      {"first_order_month": "2026-09-01", "order_month": "2026-09-01", "orders.buyer_count": 0},
+      {"first_order_month": "2026-09-01", "order_month": "2026-10-01", "orders.buyer_count": 1},
+      {"first_order_month": None, "order_month": "2026-09-01", "orders.buyer_count": 0}]),
 ]
 
-# Numbers for the customer questions, from the fixture's orders; they
-# become cases once the model has customers (the packages build them). A
-# customer is one as
-# WooCommerce Analytics counts them: the account of a registered order;
-# for a guest's, the billing email in any case, joined to the account
-# that has an order with that email; a guest's order without an email is a
-# customer of its own, as Analytics makes it (local test store). A guest's
-# number is the smallest id of their orders, negative: -112 for guest4,
-# whose first order is 118. A customer's orders are the ones the
-# report of new and returning customers counts: every status but the
-# excluded ones (on hold included, paid or not), by date placed. Dates and
-# months are New York's, of the date placed.
-#   Customers:
-#     1       first order 101, August 10: cohort August. Last 117, October
-#             9. 5 orders, net 88 + (70.40 - 29.70) + 30.80 + (33 - 33) +
-#             66 = 225.50.
-#     2       first order 102, August 20, on hold, before customer 2's
-#             first order as a customer: cohort August. Analytics joins it
-#             to the account the same way if the account was made on the
-#             order confirmation page; after a sign-up anywhere else it
-#             keeps 102 as a guest of its own (local test store). Last
-#             113, placed October 3 (paid October 6). 4 orders, net 16.50
-#             + 33 + 46 + 16.50 = 112 (cancelled 107 and its refund left
-#             out).
-#     -112    guest4: first order 118, September 28, on hold: cohort
-#             September. Last 112, October 1. 2 orders, net 22 + (66 - 5)
-#             = 83.
-#     -119    119, without an email: first and last order September 30,
-#             on hold: cohort September. 1 order, net 22.
-#   No customer for 106 (pending) and 108 (failed): no order counted.
-#   Net includes the orders on hold, as the Customers report's total
-#   spend: with 102, 118 and 119 the customers make 442.50 against
-#   net_revenue's 382.
-#   New customers by cohort: August 2, September 2. Bought once: -119.
-#   Net per customer by cohort: August (225.50 + 112) / 2 = 168.75,
-#   September (83 + 22) / 2 = 52.50. By net: 1 225.50, 2 112, -112 83,
-#   -119 22.
-#   Days since the customer's previous order: 104 20 (August 10 to 30),
-#   109 13, 111 8, 117 19; 103 11 (August 20 to 31; 12 to September 1 in
-#   UTC), 110 15, 113 18; 112 3. Second orders 20, 11 and 3 days, 34 / 3
-#   on average; all repeat orders 107 / 8.
-#   Months since the first order (-1 on the first, then calendar months,
-#   as Shopify's): 101 -1, 104 0, 109 1, 111 1, 117 2; 102 -1, 103 0 (1
-#   in UTC), 110 1, 113 2; 118 -1, 112 1; 119 -1.
-#   Buyers by cohort and the model's month of order (of payment, counted
-#   orders): August cohort August 2 (101, 103), September 2 (104, 109,
-#   111; 110), October 2 (117; 113); September cohort October 1 (112;
-#   -119 has no counted order).
-#   Second order within N days, where the window's last day ended before
-#   the last load of orders, October 9 (10:00 UTC): customer 1 20 days,
-#   customer 2 11, -112 3, -119 none. N = 30: customers 1 and 2 (first
-#   order before September 9), 2 of 2; the windows of -112 and -119 end
-#   October 28 and 30, empty. N = 60:
-#   customer 1's window ends October 9, the day of the last load, not over:
-#   empty, as is everyone's.
-#   Were 102 kept apart, as Analytics does after a sign-up elsewhere,
-#   customer 2 would start with 103 and -102 would be a customer of its
-#   own.
+# Second order within N days, for the retention windows the model does not
+# have yet, where the window's last day ended before the last load of
+# orders, October 9 (10:00 UTC): customer 1 20 days, customer 2 11, -112 3,
+# -119 none. N = 30: customers 1 and 2 (first order before September 9), 2
+# of 2; the windows of -112 and -119 end October 28 and 30, empty. N = 60:
+# customer 1's window ends October 9, the day of the last load, not over:
+# empty, as is everyone's.
 
 if __name__ == "__main__":
     check(MODEL, CASES)

@@ -18,7 +18,7 @@ SELECT
     assumeNotNull(customer_id) AS customer_id,
     toDate(min(placed_time), '{{ var("woocommerce_timezone") }}') AS first_order_date,
     toDate(max(placed_time), '{{ var("woocommerce_timezone") }}') AS last_order_date,
-    count() AS order_count,
+    count() AS number_of_orders,
     sum(net_total) AS net_total
 FROM {{ ref('orders') }}
 WHERE customer_order_number IS NOT NULL
