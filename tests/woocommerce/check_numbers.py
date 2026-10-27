@@ -24,7 +24,7 @@ of the fixture (fixture.sql lists them):
                  113 (16.50), 117 (66 USD, 59.40 EUR): 9 orders, 449.70
     not counted  102 on hold (no payment date), 106 pending, 107 cancelled
                  (refund 904 of 22 on September 10 left out with it), 108
-                 failed: rows of orders all the same
+                 failed, 118 and 119 on hold: rows of orders all the same
     not orders   114 in the trash, 115 a checkout draft, 116 deleted
 By month of payment in New York: August 101, 103 (paid at 22:10 on August
 31, September 1 in UTC); September 104 (placed August 30), 109, 110, 111;
@@ -32,7 +32,8 @@ October 112, 113 (paid on delivery October 6, placed October 3), 117.
 Refunds of counted orders: 902 (111, 33) September 22, 903 (112, 5) October
 2, 901 (104, 29.70) October 5.
 Customer 1 by date placed: 101, 104, 109, 111, 117. Customer 2: 103, 107
-(cancelled, not numbered), 110, 113.
+(cancelled, not numbered), 110, 113. Guests: 102 with customer 2's email,
+118 and 112 with one email, 119 without one; 106 and 108 not counted.
 """
 import pathlib
 import sys
@@ -66,18 +67,20 @@ CASES = [
        "orders.average_order_value": 338.82 / 9, "orders.discount_amount": 6,
        "orders.shipping_amount": 70, "orders.tax_amount": 40.88, "orders.customers": 2}]),
     # Every row of orders, counted or not: the 9 above and 102 (16.50), 106
-    # (22), 107 (44), 108 (33): 13 orders, 565.20. Not 16: the trash, the
-    # checkout draft and the deleted order are not orders.
+    # (22), 107 (44), 108 (33), 118 (22), 119 (22): 15 orders, 609.20. Not
+    # 18: the trash, the checkout draft and the deleted order are not
+    # orders.
     (["-m", "orders.all_orders", "-m", "orders.all_orders_total"],
-     [{"orders.all_orders": 13, "orders.all_orders_total": 565.2}]),
-    # Orders waiting for payment: 102 on hold (16.50) and 106 pending (22).
-    # The counted metrics have none: orders would answer 0.
+     [{"orders.all_orders": 15, "orders.all_orders_total": 609.2}]),
+    # Orders waiting for payment: 102, 118 and 119 on hold (16.50, 22, 22)
+    # and 106 pending (22). The counted metrics have none: orders would
+    # answer 0.
     (["-m", "orders.all_orders", "-m", "orders.all_orders_total",
       "-f", "orders.financial_status = 'unpaid'"],
-     [{"orders.all_orders": 2, "orders.all_orders_total": 38.5}]),
+     [{"orders.all_orders": 4, "orders.all_orders_total": 82.5}]),
     # Which rows the reports count.
     (["-m", "orders.all_orders", "-d", "orders.in_sales_reports", "-o", "orders.in_sales_reports"],
-     [{"in_sales_reports": False, "orders.all_orders": 4},
+     [{"in_sales_reports": False, "orders.all_orders": 6},
       {"in_sales_reports": True, "orders.all_orders": 9}]),
     # By month of payment in New York. August: 101 88, 103 33 (September in
     # UTC). September: 104 70.40 (August by date placed), 109 30.80, 110 46,
@@ -135,24 +138,27 @@ CASES = [
     # Payment state of every row. Paid: 101, 103, 109, 110, 113 (its
     # earlier version, processing without a payment date, would be unpaid),
     # 117. Partially refunded: 104, 112, and 107, paid before it was
-    # cancelled and refunded in part after. Refunded: 111. Unpaid: 102 on hold, 106 pending. Voided: 108,
+    # cancelled and refunded in part after. Refunded: 111. Unpaid: 102, 118
+    # and 119 on hold, 106 pending. Voided: 108,
     # its payment failed.
     (["-m", "orders.all_orders", "-d", "orders.financial_status", "-o", "orders.financial_status"],
      [{"financial_status": "paid", "orders.all_orders": 6},
       {"financial_status": "partially_refunded", "orders.all_orders": 3},
       {"financial_status": "refunded", "orders.all_orders": 1},
-      {"financial_status": "unpaid", "orders.all_orders": 2},
+      {"financial_status": "unpaid", "orders.all_orders": 4},
       {"financial_status": "voided", "orders.all_orders": 1}]),
     # Completed orders are fulfilled: 101, 104, 109, 112, 113. The rest are
-    # not, processing 103, 110 and 117 and refunded 111 among them.
+    # not, processing 103, 110 and 117, refunded 111 and the orders on hold
+    # among them.
     (["-m", "orders.all_orders", "-d", "orders.fulfillment_status",
       "-o", "orders.fulfillment_status"],
      [{"fulfillment_status": "fulfilled", "orders.all_orders": 5},
-      {"fulfillment_status": "unfulfilled", "orders.all_orders": 8}]),
+      {"fulfillment_status": "unfulfilled", "orders.all_orders": 10}]),
     # The customer's orders by date placed, as Analytics ranks them, orders
     # of excluded statuses skipped: customer 1's 101, 104, 109, 111, 117;
     # customer 2's 103, 110, 113 (cancelled 107 skipped; counting it, 110
-    # and 113 would be 3 and 4). Guest 112 has no number.
+    # and 113 would be 3 and 4). Guests have no number: 112 here, and 102,
+    # 118 and 119, on hold, are not counted.
     (["-m", "orders.order_count", "-m", "orders.revenue", "-d", "orders.customer_order_number",
       "-o", "orders.customer_order_number"],
      [{"customer_order_number": 1, "orders.order_count": 2, "orders.revenue": 121},
@@ -363,6 +369,64 @@ CASES = [
       {"product_id": 15, "last_sold_date": None},
       {"product_id": 16, "last_sold_date": None}]),
 ]
+
+# Numbers for the customer questions, from the fixture's orders; they
+# become cases once the packages build customers. A customer is one as
+# WooCommerce Analytics counts them: the account of a registered order;
+# for a guest's, the billing email in any case, joined to the account
+# that has an order with that email. A customer's orders are the ones the
+# report of new and returning customers counts: every status but the
+# excluded ones (on hold included, paid or not), by date placed. Dates and
+# months are New York's, of the date placed.
+#   Order numbers, replacing the cases above: 102 (Bob@Example.com) is
+#   customer 2's first order, so 103, 110 and 113 move down one; 118 is
+#   guest4's first, 112 their second. Over the counted orders: number 1
+#   101 88 = 1 order; 2 104 70.40, 103 33, 112 66 = 3, 169.40; 3 109
+#   30.80, 110 46 = 2, 76.80; 4 111 33, 113 16.50 = 2, 49.50; 5 117 66 =
+#   1; none 0. New 101, 1 order, 88; repeat the other 8, 361.70. Repeat
+#   share 8 / 9. orders.customers 3: customers 1 and 2 and guest4.
+#   Customers (on 119 without an email, see the last paragraph):
+#     1       first order 101, August 10: cohort August. Last 117, October
+#             9. 5 orders, net 88 + (70.40 - 29.70) + 30.80 + (33 - 33) +
+#             66 = 225.50.
+#     2       first order 102, August 20, on hold, before customer 2's
+#             first order as a customer: cohort August. Analytics joins it
+#             to the account the same way if the account was made on the
+#             order confirmation page; after a sign-up anywhere else it
+#             keeps 102 as a guest of its own (local test store). Last
+#             113, placed October 3 (paid October 6). 4 orders, net 16.50
+#             + 33 + 46 + 16.50 = 112 (cancelled 107 and its refund left
+#             out).
+#     guest4  first order 118, September 28, on hold: cohort September.
+#             Last 112, October 1. 2 orders, net 22 + (66 - 5) = 83.
+#   No customer for 106 (pending) and 108 (failed): no order counted.
+#   Net includes the orders on hold, as the Customers report's total
+#   spend: with 102 and 118 the customers make 420.50 against
+#   net_revenue's 382.
+#   Net per customer by cohort: August (225.50 + 112) / 2 = 168.75,
+#   September 83. By net: 1 225.50, 2 112, guest4 83.
+#   Days since the customer's previous order: 104 20 (August 10 to 30),
+#   109 13, 111 8, 117 19; 103 11 (August 20 to 31; 12 to September 1 in
+#   UTC), 110 15, 113 18; 112 3. Second orders 20, 11 and 3 days, 34 / 3
+#   on average; all repeat orders 107 / 8.
+#   Months since the first order (-1 on the first, then calendar months,
+#   as Shopify's): 101 -1, 104 0, 109 1, 111 1, 117 2; 102 -1, 103 0 (1
+#   in UTC), 110 1, 113 2; 118 -1, 112 1.
+#   Buyers by cohort and the model's month of order (of payment, counted
+#   orders): August cohort August 2 (101, 103), September 2 (104, 109,
+#   111; 110), October 2 (117; 113); September cohort October 1 (112).
+#   Second order within N days, where the window's last day ended before
+#   the last load of orders, October 9 (10:00 UTC): customer 1 20 days,
+#   customer 2 11, guest4 3. N = 30: customers 1 and 2 (first order before
+#   September 9), 2 of 2; guest4's window ends October 28, empty. N = 60:
+#   customer 1's window ends October 9, the day of the last load, not over:
+#   empty, as is everyone's.
+#   119, a guest without an email: Analytics makes each such order a
+#   customer of its own (local test store). Counted so, it is
+#   one more customer, cohort September (September 30), 1 order, net 22:
+#   cohort September 2 customers, net (83 + 22) / 2 = 52.50, bought once
+#   1 (119), 442.50 in all. Left without a customer, as Shopify leaves
+#   orders without an email, it has no number and no customer row.
 
 if __name__ == "__main__":
     check(MODEL, CASES)

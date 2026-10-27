@@ -4,7 +4,10 @@
 -- The input database is the query parameter db, as in input.sql.
 --
 -- The shop is in America/New_York (UTC-4 from August to October) and sells
--- in USD. Customers 1 and 2 order more than once; guests have no customer.
+-- in USD. Customers 1 and 2 order more than once; customer 3's only order
+-- is cancelled (1010) and customer 4's is a test order (1009). Guests have
+-- no customer: on the development store an order with an email always gets
+-- one, so the guests here have no email.
 -- The shapes follow orders placed on a development store: a line's
 -- discount_allocated includes its share of order-level discounts, a refund
 -- line's subtotal is net of that share, and with taxes included the line's
@@ -123,22 +126,32 @@ INSERT INTO {db:Identifier}.orders VALUES
  1, 'alice@example.com', 'USD', 'CAD', 'PAID', 'UNFULFILLED', 'dactopus-import', true,
  169.50, 16.95, 1.95, 19.50, 0, 169.50, 0, 0, 0, ['SEPT10'], 'CA', 'ON', 'Toronto', 'M5V 2T6', '2026-10-04 00:00:00'),
 
--- 1009: a test order (Bogus Gateway), refunded the next day. Neither the
--- order, its line nor its refund count anywhere. Its 10 T-shirts would
--- top the SKU ranking if they did.
+-- 1009: a test order (Bogus Gateway), refunded the next day, customer 4's
+-- only order. Neither the order, its line nor its refund count anywhere,
+-- and customer 4 is no customer of the store's reports. Its 10 T-shirts
+-- would top the SKU ranking if they did.
 (1009, '#1009', '2026-09-20 15:00:00', '2026-09-20 15:00:00', '2026-09-21 15:00:00', NULL, '2026-09-21 15:00:00', true,
- 1, 'alice@example.com', 'USD', 'USD', 'REFUNDED', 'UNFULFILLED', 'web', false,
+ 4, 'dave@example.com', 'USD', 'USD', 'REFUNDED', 'UNFULFILLED', 'web', false,
  500, 0, 0, 0, 500, 0, 0, 0, 0, [], 'US', 'NY', 'New York', '10001', '2026-10-04 00:00:00'),
 
--- 1010: a guest's unpaid order, cancelled before payment on October 2,
--- a week after it was placed: the authorization is voided and nothing is
--- refunded. Placed (revenue) but not sold (net revenue); the store's
--- reports count it in September and take it back in October.
+-- 1010: customer 3's only order, unpaid, cancelled before payment on
+-- October 2, a week after it was placed: the authorization is voided and
+-- nothing is refunded. Placed (revenue) but not sold (net revenue); the
+-- store's reports count it in September and take it back in October.
+-- Their new and returning customers count it as customer 3's first order,
+-- as #1012 on the development store.
 -- current_quantity and current_total_price 0 after the cancel are not yet
 -- seen on the store.
 (1010, '#1010', '2026-09-25 15:00:00', '2026-09-25 15:00:00', '2026-10-02 14:00:00', '2026-10-02 14:00:00', '2026-10-02 14:00:00', false,
- NULL, NULL, 'USD', 'USD', 'VOIDED', 'UNFULFILLED', 'web', false,
+ 3, 'carol@example.com', 'USD', 'USD', 'VOIDED', 'UNFULFILLED', 'web', false,
  70, 10, 0, 0, 0, 0, 0, 0, 0, [], 'US', 'CA', 'San Francisco', '94103', '2026-10-04 00:00:00'),
+
+-- 1013: a test order of customer 1, ten days after their last order
+-- (1007): it changes none of customer 1's numbers, their last order
+-- among them. The Scarf would have a last sale if it counted.
+(1013, '#1013', '2026-09-25 16:00:00', '2026-09-25 16:00:00', '2026-09-25 16:00:00', NULL, NULL, true,
+ 1, 'alice@example.com', 'USD', 'USD', 'PAID', 'UNFULFILLED', 'web', false,
+ 40, 0, 0, 0, 0, 40, 0, 0, 0, [], 'US', 'NY', 'New York', '10001', '2026-10-04 00:00:00'),
 
 -- 1011: customer 2's third order (1005 was cancelled), the only one in
 -- October; fulfillment on hold. FREESHIP takes the 10 shipping off, so
@@ -175,6 +188,7 @@ INSERT INTO {db:Identifier}.order_lines VALUES
 (91,  1009, '2026-09-21 15:00:00', 101, 1011, 'TEE-M',   'T-shirt',     'M',   10, 0,  50,    500,   0,     0,     0,     true,  true,  false, '2026-10-04 00:00:01'),
 (101, 1010, '2026-10-02 14:00:00', 105, 1051, 'CAP',     'Cap',         NULL,  1,  0,  60,    60,    0,     0,     0,     true,  true,  false, '2026-10-04 00:00:01'),
 (111, 1011, '2026-10-02 15:00:00', 108, 1081, 'SOCKS',   'Socks',       NULL,  2,  2,  20,    40,    0,     0,     0,     true,  true,  false, '2026-10-04 00:00:01'),
+(131, 1013, '2026-09-25 16:00:00', 103, 1031, 'SCARF',   'Scarf',       NULL,  1,  1,  40,    40,    0,     0,     0,     true,  true,  false, '2026-10-04 00:00:01'),
 (121, 1012, '2026-10-03 16:00:00', 110, 1101, 'TEE-COTTON', 'Cotton T-shirt', NULL, 2, 2, 95,  190,   0,     24.70, 0.13,  true,  true,  false, '2026-10-04 00:00:01');
 
 INSERT INTO {db:Identifier}.refunds VALUES

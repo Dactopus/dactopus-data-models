@@ -15,19 +15,21 @@ $OSSIE_CLICKHOUSE_URL is the ClickHouse URL with the package's target
 database, e.g. http://127.0.0.1:8123/dactopus. The model is asked in the
 zone it was built in, $OSSIE_CLICKHOUSE_TIME_ZONE.
 
-Orders in the fixture, test order 1009 left out (sales, refunded):
+Orders in the fixture, test orders left out: 1009 (sales, refunded; customer
+4's only order) and 1013 (customer 1's, after their last order):
     August     1001 (110), 1002 (80, guest), 1003 (30, 22:00 on August 31
                in New York, September 1 in UTC)
     September  1004 (181, refunded 45 on October 3), 1005 (60, cancelled and
                refunded 60), 1006 (210, refunded 210 at 22:00 on September
                30 in New York, October 1 in UTC), 1007 (137), 1008 (169.50,
                processed September 12, created October 2), 1010 (70,
-               guest, cancelled unpaid on October 2)
+               customer 3's only order, cancelled unpaid on October 2)
     October    1011 (40, free shipping), 1012 (272.50, guest, import duties
                34.20 and their tax 4.45 inside)
 1001 also sold a 25 gift card, refunded on August 20, and 1007 took a 12
 tip: both are inside the order's total_price and neither is a sale. Cancelled: 1005 and 1010. Customer 1 by processed_at: 1001, 1004, 1008,
-1007. Customer 2: 1003, 1005 (cancelled), 1006, 1011. The input also holds
+1007. Customer 2: 1003, 1005 (cancelled), 1006, 1011. Customer 3: 1010
+(cancelled). Guests: 1002, 1012. The input also holds
 1004's version before its refund, placed for customer 2, 1005's version between its cancel and
 refund with the same updated_at but an earlier load, and second copies of
 1011 and 1006's refund, and a later version of 1004's refund with the same
@@ -63,8 +65,9 @@ CASES = [
     # 16.95 with tax); 1011's free shipping is not there. Shipping after its discounts and without tax: 10 + 10 +
     # 10 + 5 + 15 (1008's 16.95 less 1.95 tax) + 10 + 0 (1011) + 16.95
     # (1012) = 76.95. Tax 12 (1007) + 17.55 + 1.95 (1008) + 31.35 (1012's
-    # lines, shipping and duties) = 62.85. Customers 1 and 2; guests do not
-    # count.
+    # lines, shipping and duties) = 62.85. Customers 1, 2 and 3 (1010,
+    # cancelled, is in the reports); guests do not count, nor customer 4,
+    # whose only order is a test order.
     (["-m", "orders.order_count", "-m", "orders.revenue", "-m", "orders.refunded_amount",
       "-m", "sales_events.net_revenue", "-m", "orders.refund_rate",
       "-m", "orders.average_order_value", "-m", "orders.discount_amount",
@@ -72,7 +75,7 @@ CASES = [
      [{"orders.order_count": 11, "orders.revenue": 1360, "orders.refunded_amount": 315,
        "sales_events.net_revenue": 975, "orders.refund_rate": 315 / 1360,
        "orders.average_order_value": 1186 / 11, "orders.discount_amount": 44,
-       "orders.shipping_amount": 76.95, "orders.tax_amount": 62.85, "orders.customers": 2}]),
+       "orders.shipping_amount": 76.95, "orders.tax_amount": 62.85, "orders.customers": 3}]),
     # By month of processed_at in New York. 1003 is August (September in
     # UTC); 1008 is September (created in October). September net:
     # (181 - 45) + (210 - 210) + 137 + 169.50 = 442.50. August net: 110
@@ -197,8 +200,8 @@ CASES = [
     # skipped: 1001 110 and 1003 30 are first; 1004 181 and 1006 210
     # second (1006 would be third if cancelled 1005 counted); 1008 169.50
     # and 1011 40 third; 1007 137 fourth. In sequence of created_at, 1007
-    # would be third (187) and 1008 fourth (169.50). Guests and cancelled
-    # orders have no number: 1002 80, 1005 60, 1010 70, 1012 272.50.
+    # would be third (187) and 1008 fourth (169.50). Guests (1002 80, 1012
+    # 272.50) and cancelled orders (1005 60, 1010 70) have no number.
     (["-m", "orders.order_count", "-m", "orders.revenue", "-d", "orders.customer_order_number",
       "-o", "orders.customer_order_number"],
      [{"customer_order_number": 1, "orders.order_count": 2, "orders.revenue": 140},
@@ -218,9 +221,9 @@ CASES = [
       {"new_vs_repeat": None, "orders.order_count": 4, "orders.revenue": 482.5,
        "sales_events.net_revenue": 352.5}]),
     # Repeat orders over the orders that have a customer and are not
-    # cancelled, the ones numbered in sequence: 5 / 7. Guests (1002, 1010,
-    # 1012) and cancelled 1005 are not counted; over all orders it would be
-    # 5 / 11.
+    # cancelled, the ones numbered in sequence: 5 / 7. Guests (1002, 1012)
+    # and cancelled 1005 and 1010 are not counted; over all orders it would
+    # be 5 / 11.
     (["-m", "orders.repeat_order_share"],
      [{"orders.repeat_order_share": 5 / 7}]),
     # Lines of the 11 orders: 18 items ordered, 14 left after refunds and
@@ -378,6 +381,58 @@ CASES = [
      [{"title": "Cap"}, {"title": "Hoodie"}, {"title": "Mug"}, {"title": "Poster"},
       {"title": "Scarf"}, {"title": "T-shirt"}]),
 ]
+
+# Numbers for the customer questions, from the fixture's orders; they
+# become cases once the packages build customers. A customer's orders are
+# the ones Shopify's report of new and returning customers counts: every
+# order but test ones, cancelled ones included (#1012 on the development
+# store is New, and #1021 after it Returning), in sequence of processed_at.
+# Dates and months are New York's.
+#   Order numbers, replacing the cases above: cancelled 1005 is customer
+#   2's second order and 1010 customer 3's first. Number 1: 1001 110, 1003
+#   30, 1010 70 = 3 orders, 210; 2: 1004 181, 1005 60 = 2, 241; 3: 1008
+#   169.50, 1006 210 = 2, 379.50; 4: 1007 137, 1011 40 = 2, 177; none, the
+#   guests 1002 80 and 1012 272.50 = 2, 352.50. New: 1001, 1003, 1010, 3
+#   orders, 210, net 110 + 30 + 0 = 140. Repeat: 1004, 1005, 1006, 1007,
+#   1008, 1011, 6 orders, 797.50, net 136 + 0 + 0 + 137 + 169.50 + 40 =
+#   482.50. None: 2, 352.50, net 352.50. Repeat share 6 / 9.
+#   Customers: 1, 2 and 3. Customer 4 has only a test order and no row;
+#   were cancelled orders left out, customer 3 would have none either.
+#     1  first order 1001, August 10: cohort August. Last 1007, September
+#        15 (by created_at 1008, October 2; test order 1013, September 25,
+#        left out). 4 orders, net 110 + (181 - 45) + 169.50 + 137 =
+#        552.50.
+#     2  first order 1003, 22:00 on August 31: cohort August (September
+#        in UTC). Last 1011, October 2. 4 orders, net 30 + 0 (1005,
+#        cancelled and refunded) + 0 (1006, refunded whole) + 40 = 70.
+#     3  first and last order 1010, September 25: cohort September. 1
+#        order, net 0.
+#   The customers' net and the guests' 352.50 make 975, net_revenue.
+#   New customers by cohort: August 2, September 1. Bought once: customer
+#   3. Net per customer by cohort: August (552.50 + 70) / 2 = 311.25,
+#   September 0. By net: 1 552.50, 2 70, 3 0.
+#   Days since the customer's previous order, between New York dates: 1004
+#   26 (August 10 to September 5), 1008 7, 1007 3; 1005 8 (August 31 to
+#   September 8; 7 between UTC dates), 1006 2 (from cancelled 1005; 10
+#   from 1003), 1011 22; none on first orders. Second orders: 26 and 8
+#   days, 17 on average; all repeat orders (26 + 7 + 3 + 8 + 2 + 22) / 6 =
+#   68 / 6.
+#   Months since the first order, as Shopify's months_since_first_purchase
+#   (-1 on the first order, then calendar months between the orders'
+#   months; on the development store a customer's orders of September 12
+#   and October 5 are 1 apart): 1001, 1003, 1010 -1; 1004, 1008, 1007 1; 1005 1,
+#   1006 1, 1011 2. In UTC 1003 is September: 1005 and 1006 0, 1011 1.
+#   Buyers by cohort and month of order: August cohort August 2 (1001,
+#   1003), September 2, October 1 (1011); September cohort September 1.
+#   Second order within N days, counted where the window is over: its
+#   last day ended before the last load of orders, October 4 (06:00 in
+#   UTC, 02:00 in New York). Customer 1 took 26 days, customer 2 8 (to a
+#   cancelled order, as the report counts it), customer 3 has none. N =
+#   30: customers 1 and 2 (first order before September 4), both yes, 2
+#   of 2; customer 3's window ends October 25, empty. N = 60: no window
+#   is over.
+#   Last order before September 20 (no order in the last two weeks to
+#   October 4): customer 1.
 
 if __name__ == "__main__":
     check(MODEL, CASES)
