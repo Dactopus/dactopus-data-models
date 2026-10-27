@@ -58,12 +58,14 @@ ai_context:
     orders.months_since_first_order); the model has no metric for their
     share of the cohort in each month. The share of customers who ordered
     a second time within 30, 60, 90 or 365 days of their first order is
-    customers.second_order_rate_30_days (_60_days, _90_days, _365_days),
-    by customers.first_order_month for each cohort; it counts only
+    customers.second_order_rate_30_days, second_order_rate_60_days,
+    second_order_rate_90_days or second_order_rate_365_days, by
+    customers.first_order_month for each cohort; it counts only
     customers whose window is over, so name the window in the answer.
-    orders.repeat_order_share is a share of orders, not of customers. channel holds the source's own values, which
-    differ between sources. Categories and brands are the product's current
-    ones: moving a product moves its past sales too, as in the store's
+    orders.repeat_order_share is a share of orders, not of customers.
+    channel holds the source's own values, which differ between sources.
+    Categories and brands are the product's current ones: moving a
+    product moves its past sales too, as in the store's
     reports, and a deleted product's sales have none. A category is the
     product type at Shopify and a product category at WooCommerce; a brand
     is the vendor at Shopify. WooCommerce categories nest: a product in
