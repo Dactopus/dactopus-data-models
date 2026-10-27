@@ -374,7 +374,10 @@ CASES = [
 # become cases once the packages build customers. A customer is one as
 # WooCommerce Analytics counts them: the account of a registered order;
 # for a guest's, the billing email in any case, joined to the account
-# that has an order with that email. A customer's orders are the ones the
+# that has an order with that email; a guest's order without an email is a
+# customer of its own, as Analytics makes it (local test store). A guest's
+# number is the smallest id of their orders, negative: -112 for guest4,
+# whose first order is 118. A customer's orders are the ones the
 # report of new and returning customers counts: every status but the
 # excluded ones (on hold included, paid or not), by date placed. Dates and
 # months are New York's, of the date placed.
@@ -384,8 +387,8 @@ CASES = [
 #   101 88 = 1 order; 2 104 70.40, 103 33, 112 66 = 3, 169.40; 3 109
 #   30.80, 110 46 = 2, 76.80; 4 111 33, 113 16.50 = 2, 49.50; 5 117 66 =
 #   1; none 0. New 101, 1 order, 88; repeat the other 8, 361.70. Repeat
-#   share 8 / 9. orders.customers 3: customers 1 and 2 and guest4.
-#   Customers (on 119 without an email, see the last paragraph):
+#   share 8 / 9. orders.customers 3: customers 1, 2 and -112.
+#   Customers:
 #     1       first order 101, August 10: cohort August. Last 117, October
 #             9. 5 orders, net 88 + (70.40 - 29.70) + 30.80 + (33 - 33) +
 #             66 = 225.50.
@@ -397,36 +400,40 @@ CASES = [
 #             113, placed October 3 (paid October 6). 4 orders, net 16.50
 #             + 33 + 46 + 16.50 = 112 (cancelled 107 and its refund left
 #             out).
-#     guest4  first order 118, September 28, on hold: cohort September.
-#             Last 112, October 1. 2 orders, net 22 + (66 - 5) = 83.
+#     -112    guest4: first order 118, September 28, on hold: cohort
+#             September. Last 112, October 1. 2 orders, net 22 + (66 - 5)
+#             = 83.
+#     -119    119, without an email: first and last order September 30,
+#             on hold: cohort September. 1 order, net 22.
 #   No customer for 106 (pending) and 108 (failed): no order counted.
 #   Net includes the orders on hold, as the Customers report's total
-#   spend: with 102 and 118 the customers make 420.50 against
+#   spend: with 102, 118 and 119 the customers make 442.50 against
 #   net_revenue's 382.
+#   New customers by cohort: August 2, September 2. Bought once: -119.
 #   Net per customer by cohort: August (225.50 + 112) / 2 = 168.75,
-#   September 83. By net: 1 225.50, 2 112, guest4 83.
+#   September (83 + 22) / 2 = 52.50. By net: 1 225.50, 2 112, -112 83,
+#   -119 22.
 #   Days since the customer's previous order: 104 20 (August 10 to 30),
 #   109 13, 111 8, 117 19; 103 11 (August 20 to 31; 12 to September 1 in
 #   UTC), 110 15, 113 18; 112 3. Second orders 20, 11 and 3 days, 34 / 3
 #   on average; all repeat orders 107 / 8.
 #   Months since the first order (-1 on the first, then calendar months,
 #   as Shopify's): 101 -1, 104 0, 109 1, 111 1, 117 2; 102 -1, 103 0 (1
-#   in UTC), 110 1, 113 2; 118 -1, 112 1.
+#   in UTC), 110 1, 113 2; 118 -1, 112 1; 119 -1.
 #   Buyers by cohort and the model's month of order (of payment, counted
 #   orders): August cohort August 2 (101, 103), September 2 (104, 109,
-#   111; 110), October 2 (117; 113); September cohort October 1 (112).
+#   111; 110), October 2 (117; 113); September cohort October 1 (112;
+#   -119 has no counted order).
 #   Second order within N days, where the window's last day ended before
 #   the last load of orders, October 9 (10:00 UTC): customer 1 20 days,
-#   customer 2 11, guest4 3. N = 30: customers 1 and 2 (first order before
-#   September 9), 2 of 2; guest4's window ends October 28, empty. N = 60:
+#   customer 2 11, -112 3, -119 none. N = 30: customers 1 and 2 (first
+#   order before September 9), 2 of 2; the windows of -112 and -119 end
+#   October 28 and 30, empty. N = 60:
 #   customer 1's window ends October 9, the day of the last load, not over:
 #   empty, as is everyone's.
-#   119, a guest without an email: Analytics makes each such order a
-#   customer of its own (local test store). Counted so, it is
-#   one more customer, cohort September (September 30), 1 order, net 22:
-#   cohort September 2 customers, net (83 + 22) / 2 = 52.50, bought once
-#   1 (119), 442.50 in all. Left without a customer, as Shopify leaves
-#   orders without an email, it has no number and no customer row.
+#   Were 102 kept apart, as Analytics does after a sign-up elsewhere,
+#   customer 2 would start with 103 and -102 would be a customer of its
+#   own.
 
 if __name__ == "__main__":
     check(MODEL, CASES)
