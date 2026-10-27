@@ -1,7 +1,7 @@
 {{ config(materialized='table', order_by='(event_date, event_id)') }}
 -- One row per sales event, as Shopify's sales reports count sales over time
 -- (https://shopify.dev/changelog/posts/shopifyql-returns-fields-deprecated-and-replaced-with-sales-reversals-fields):
--- an order at processedAt, each refund at the time it was made, and the
+-- an order at processedAt, each refund at its processedAt, and the
 -- cancellation of an order at cancelledAt for what its refunds did not
 -- take back. Shopify records a cancellation as a refund, of 0 money when
 -- nothing was paid, which reverses the rest of the order; on the

@@ -148,7 +148,14 @@ CREATE TABLE IF NOT EXISTS {db:Identifier}.refunds
 (
     id UInt64,                                  -- legacyResourceId
     order_id UInt64,
-    created_at DateTime('UTC'),                 -- createdAt, the date of the refund
+    created_at DateTime('UTC'),                 -- createdAt, when the refund was recorded
+    -- processedAt, "when the refund was processed": the date Shopify's
+    -- sales reports count it on. Equal to createdAt for a refund made in the
+    -- admin; an import sets it in the past (RefundInput.processedAt,
+    -- https://shopify.dev/docs/api/admin-graphql/latest/input-objects/RefundInput),
+    -- and createdAt is then the day of the import (#45, seen on a
+    -- development store).
+    processed_at DateTime('UTC'),
     updated_at DateTime('UTC'),                 -- updatedAt
     note Nullable(String),                      -- note
     -- totalRefundedSet: lines, shipping, duties and adjustments, with their

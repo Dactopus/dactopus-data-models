@@ -170,6 +170,7 @@ unit_tests:
         format: sql
         rows: |
           SELECT toUInt64(1) AS id, toUInt64(1) AS order_id, toDateTime('2026-09-15 12:00:00', 'UTC') AS created_at,
+                 toDateTime('2026-09-15 12:00:00', 'UTC') AS processed_at,
                  toDateTime('2026-09-15 12:00:00', 'UTC') AS updated_at, toDecimal64(150, 4) AS total_refunded,
                  toDateTime64('2026-09-15 12:00:01', 6, 'UTC') AS loaded_at
       - input: source('shopify_raw', 'refund_lines')

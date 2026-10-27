@@ -8,6 +8,32 @@ names the Ossie schema version its models carry.
 
 ## [Unreleased]
 
+### Fixed
+
+- Shopify: a refund is dated by its `processedAt`, the date Shopify's
+  sales reports count it on, instead of its `createdAt`
+  ([#45](https://github.com/Dactopus/dactopus-data-models/issues/45)).
+  The two are equal for a refund made in the admin. A refund imported
+  with a past `processedAt`, as a store that moves its history to
+  Shopify records its returns, counted on the day of the import in
+  `refunds.refund_date` and `sales_events.event_date`, and its month's
+  net sales were too high. The `refunds` input table has a new column,
+  `processed_at`, which a loader must deliver; the README's export
+  query reads it. A deployment adds it to the input, giving the refunds
+  already loaded their `created_at`:
+
+  ```sql
+  ALTER TABLE shopify_raw.refunds ADD COLUMN processed_at DateTime('UTC') DEFAULT created_at AFTER created_at;
+  ALTER TABLE shopify_raw.refunds MATERIALIZE COLUMN processed_at SETTINGS mutations_sync = 1;
+  ALTER TABLE shopify_raw.refunds MODIFY COLUMN processed_at REMOVE DEFAULT;
+  ```
+
+  A store with imported refunds then exports its orders again from
+  before the first import, so that those refunds arrive with their
+  `processedAt`. Last, `dbt build --full-refresh --select refunds+`
+  rebuilds `refunds` and `sales_events`: an incremental run keeps the
+  old dates of the refunds it does not reread, with no error.
+
 ## [0.7.1] - 2026-10-27
 
 Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.12.0,
