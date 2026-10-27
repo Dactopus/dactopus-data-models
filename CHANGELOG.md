@@ -20,7 +20,11 @@ names the Ossie schema version its models carry.
   `product_categories` and `product_brands` declare no key, so
   dactopus-ossie-clickhouse refuses a filter on them for a metric of
   order lines, which would leave out products in the trash and differ
-  from the store's category report.
+  from the store's category report. The model's instructions send
+  products that sold to `products.last_sold_date` and sales by product
+  to `order_lines.title`: products filtered by order lines would count
+  cancelled orders, and a product no longer in the catalogue has no
+  title in `products`.
 
 ### Changed
 

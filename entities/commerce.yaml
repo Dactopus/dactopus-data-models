@@ -66,7 +66,13 @@ ai_context:
     every brand of its product: categories and brands overlap, never add
     them up for a total. Sales by category or brand come from
     line_categories and line_brands only; product_categories and
-    product_brands describe the catalogue. Returns
+    product_brands describe the catalogue. Whether a product sold, and
+    when it last did, is products.last_sold_date: products filtered by
+    order_lines, line_categories or line_brands would count the lines of
+    cancelled orders and of orders the reports leave out. For sales by
+    product, group the order lines' metrics by order_lines.product_id and
+    order_lines.title, not by a field of products: a product no longer in
+    the catalogue has none. Returns
     of goods (items_returned, line_returned_amount and the category and
     brand ones) count by the date of the order, whenever the refund was
     made.
@@ -952,7 +958,8 @@ datasets:
         expression: {dialects: [{dialect: ANSI_SQL, expression: title}]}
         description: >
           Name of the product as it is now; order_lines.title keeps the name
-          it sold under.
+          it sold under. For sales by product, group by order_lines.title: a
+          line of a product no longer in the catalogue has no title here.
         datatype: String
         dimension: {is_time: false}
         ai_context:
@@ -993,7 +1000,9 @@ datasets:
         expression: {dialects: [{dialect: ANSI_SQL, expression: COUNT(*)}]}
         description: >
           Number of products in the catalogue. Filter by products.status =
-          'active' for the products customers can buy.
+          'active' for the products customers can buy, and by
+          products.last_sold_date, not by order_lines, for the products
+          that sold.
         datatype: Integer
         ai_context:
           synonyms: [products, number of products, assortment size]

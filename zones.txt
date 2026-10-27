@@ -1,3 +1,3 @@
-analytics_zones.orders: 1 of 13 rows have a order_date that is not the day of order_time in UTC
-analytics_zones.refunds: 0 of 4 rows have a refund_date that is not the day of refund_time in UTC
+analytics_zones.orders: 1 of 11 rows have a order_date that is not the day of order_time in UTC
+analytics_zones.refunds: 0 of 5 rows have a refund_date that is not the day of refund_time in UTC
 FAIL orders was not built in UTC, or not whole: run dbt build --full-refresh
