@@ -87,9 +87,9 @@ Try the GA4 package on Google's public sample
 [ClickHouse](https://clickhouse.com/docs/install), the
 [gcloud CLI](https://cloud.google.com/sdk/docs/install),
 [uv](https://docs.astral.sh/uv/), dbt v2 (`pip install dbt-oss`) and
-[dactopus-ossie-clickhouse](https://github.com/Dactopus/dactopus-ossie-clickhouse) 0.10.1 or
+[dactopus-ossie-clickhouse](https://github.com/Dactopus/dactopus-ossie-clickhouse) 0.12.0 or
 later with its MCP server
-(`pip install "dactopus-ossie-clickhouse[mcp] @ git+https://github.com/Dactopus/dactopus-ossie-clickhouse@v0.10.1"`).
+(`pip install "dactopus-ossie-clickhouse[mcp] @ git+https://github.com/Dactopus/dactopus-ossie-clickhouse@v0.12.0"`).
 Tested on ClickHouse 26.9.
 
 1. **Export.** A Google Cloud project in the
@@ -963,8 +963,10 @@ read order lines, their categories and brands, or refunds together with
   shipping country, region and city; new or repeat customer.
 - order lines (on the model): `items_sold`, `items_net`, `line_revenue`,
   `items_returned`, `line_returned_amount`, `line_net_revenue`. They
-  break down by product, variant, SKU and title, and by the order fields
-  above. Returns count on the date of the order.
+  break down by product, variant, SKU and title, by the order fields
+  above, and by the catalog's fields below, such as the product's status
+  now; a line of a product no longer in the catalog has none. Returns
+  count on the date of the order.
 - categories (on the model): `category_items_sold`, `category_revenue`,
   `category_items_returned`, `category_returned_amount`,
   `category_net_revenue`. They break down by `line_categories.category`
@@ -1209,10 +1211,10 @@ WooCommerce, `subdirectory: sources/woocommerce`; for Sensor.Community,
 ```yaml
 packages:
   - git: https://github.com/Dactopus/dactopus-data-models.git
-    revision: v0.7.0
+    revision: v0.7.1
     subdirectory: sources/ga4
   - git: https://github.com/Dactopus/dactopus-data-models.git
-    revision: v0.7.0
+    revision: v0.7.1
     subdirectory: sources/shopify
 ```
 

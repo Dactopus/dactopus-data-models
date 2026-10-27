@@ -8,6 +8,46 @@ names the Ossie schema version its models carry.
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-10-27
+
+Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.12.0,
+dbt v2 (`dbt-oss` 2.0.8) and dbt v1 (`dbt-core` 1.11 with
+`dbt-clickhouse` 1.10) on ClickHouse 26.9. No table changes, no rebuild
+is needed.
+
+### Added
+
+- `commerce.yaml`: order lines reach the catalog
+  (`order_lines_to_products`), so sales break down by the product's
+  current status, such as the sales of products archived since
+  ([#43](https://github.com/Dactopus/dactopus-data-models/issues/43)).
+  A line of a product no longer in the catalog (deleted, or in the
+  trash at WooCommerce) has an empty status. Sales by category and brand
+  still come from `line_categories` and `line_brands` alone:
+  `product_categories` and `product_brands` declare no key, so
+  dactopus-ossie-clickhouse refuses a filter on them for a metric of
+  order lines, which would leave out products in the trash and differ
+  from the store's category report. The model's instructions send
+  products that sold to `products.last_sold_date` and sales by product
+  to `order_lines.title`: products filtered by order lines would count
+  cancelled orders, and a product no longer in the catalog has no
+  title in `products`.
+
+### Changed
+
+- dactopus-ossie-clickhouse 0.12.0 instead of 0.10.1 in CI, the README
+  and CONTRIBUTING. The models load and answer as before: none repeats a
+  key, which 0.11.0 refuses; none writes `SPLIT_PART`, which 0.11.0
+  returns as NULL for a NULL string; none writes `CONTAINS` or
+  `EXTRACT(MILLISECOND ...)`, which 0.12.0 sends to ClickHouse in another
+  form.
+- WooCommerce: `products` joins the orders by merge instead of a hash
+  table to find each product's last sale. On 4 million orders the run's
+  peak falls from between 250 and 380 MB to between 60 and 70 MB, in
+  the same time, and the numbers do not change
+  ([#42](https://github.com/Dactopus/dactopus-data-models/issues/42)).
+  No rebuild is needed.
+
 ## [0.7.0] - 2026-10-26
 
 Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.10.1,
@@ -639,7 +679,8 @@ ClickHouse 26.9.
 - Hand-written GA4 rows and the numbers the model must answer over them
   (`tests/ga4`), checked in CI on both dbt versions.
 
-[Unreleased]: https://github.com/Dactopus/dactopus-data-models/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/Dactopus/dactopus-data-models/compare/v0.7.1...HEAD
+[0.7.1]: https://github.com/Dactopus/dactopus-data-models/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/Dactopus/dactopus-data-models/compare/v0.6.1...v0.7.0
 [0.6.1]: https://github.com/Dactopus/dactopus-data-models/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/Dactopus/dactopus-data-models/compare/v0.5.3...v0.6.0

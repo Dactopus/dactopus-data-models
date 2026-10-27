@@ -320,6 +320,14 @@ CASES = [
     (["-m", "products.product_count", "-d", "products.status", "-o", "products.status"],
      [{"status": "active", "products.product_count": 3},
       {"status": "draft", "products.product_count": 1}]),
+    # Lines by the product's status now, as in line_revenue above: active
+    # the Tee 175.818182 and the Mug 130 = 305.818182 over 12 items; empty
+    # the Sticker pack 10 over 2 (in the trash, so out of the catalog,
+    # though line_categories keeps it in Uncategorized) and the Cap 25
+    # over 1 (deleted) = 35 over 3. 340.818182 in all, as line_revenue.
+    (["-m", "line_revenue", "-m", "items_sold", "-d", "products.status", "-o", "products.status"],
+     [{"status": "active", "line_revenue": 305.818182, "items_sold": 12},
+      {"status": None, "line_revenue": 35, "items_sold": 3}]),
     # Active by category: Clothing 0 (its products are in its
     # subcategories), Clothing > Accessories 1 (15), Clothing > T-Shirts 1
     # (12), Gifts 2 (11, 15), Kitchen & Dining 1 (11), Kitchen & Dining >

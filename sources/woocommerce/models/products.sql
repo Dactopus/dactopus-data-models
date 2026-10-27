@@ -9,7 +9,10 @@ WITH
 -- The latest day each product sold on, in the store's time zone: lines
 -- of orders the reports count, not cancelled (the reports leave cancelled
 -- orders out by default). A refunded order still sold. A line names its
--- product, not the variation (_product_id).
+-- product, not the variation (_product_id). A line has no date of its
+-- own, so every counted order is joined: a hash join holds them all in
+-- memory, 250 to 380 MB for 4 million orders; partial_merge, set below,
+-- 60 to 70 MB in the same time (#42).
 sold AS MATERIALIZED (
     SELECT l.product_id AS product_id, toNullable(max(o.order_date)) AS last_sold_date
     FROM {{ ref('order_lines') }} AS l
@@ -31,4 +34,4 @@ SELECT
 FROM {{ woocommerce_products() }} AS p
 LEFT JOIN sold AS s ON s.product_id = p.product_id
 WHERE p.status != 'trash'
-{{ woocommerce_query_settings() }}
+{{ woocommerce_query_settings() }}, join_algorithm = 'partial_merge'

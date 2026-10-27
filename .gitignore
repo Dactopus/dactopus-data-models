@@ -7,3 +7,11 @@ logs/
 dbt_packages/
 .user.yml
 __pycache__/
+# What the CI jobs write into the repository root when their steps are run
+# locally (.github/workflows/ci.yml)
+/full.tsv
+/incremental.tsv
+/nullable.tsv
+/unmerged.tsv
+/zones.txt
+/input_nullable.sql

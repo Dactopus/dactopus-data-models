@@ -330,6 +330,17 @@ CASES = [
      [{"status": "active", "products.product_count": 8},
       {"status": "archived", "products.product_count": 1},
       {"status": "draft", "products.product_count": 1}]),
+    # Lines by the product's status now, as in line_revenue above: active
+    # 101 T-shirt 190, 102 Mug 125, 104 Hoodie 181, 105 Cap 120 (sold
+    # only in cancelled orders, counted as the reports count them), 108
+    # Socks 40, 110 Cotton T-shirt 190 = 846 over 14 items; archived 106
+    # Jacket 200 over 1; empty 107 Blanket 90 (deleted), 1003's Field
+    # guide 30 and 1007's Gift wrap 20 (no product) = 140 over 3. 1186 in
+    # all, as line_revenue: no line is lost or counted twice.
+    (["-m", "line_revenue", "-m", "items_sold", "-d", "products.status", "-o", "products.status"],
+     [{"status": "active", "line_revenue": 846, "items_sold": 14},
+      {"status": "archived", "line_revenue": 200, "items_sold": 1},
+      {"status": None, "line_revenue": 140, "items_sold": 3}]),
     # Active by category: Apparel 5 (101, 103, 104, 108, 110), Home 1 (112,
     # unlisted), Kitchen 1 (102); the Cap (105) has no type and no row.
     (["-m", "product_categories.product_count", "-d", "product_categories.category_path",
