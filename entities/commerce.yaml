@@ -56,7 +56,12 @@ ai_context:
     Buyers of a cohort in each later month are orders.buyer_count by
     customers.first_order_month and orders.order_month (or
     orders.months_since_first_order); the model has no metric for their
-    share of the cohort. channel holds the source's own values, which
+    share of the cohort in each month. The share of customers who ordered
+    a second time within 30, 60, 90 or 365 days of their first order is
+    customers.second_order_rate_30_days (_60_days, _90_days, _365_days),
+    by customers.first_order_month for each cohort; it counts only
+    customers whose window is over, so name the window in the answer.
+    orders.repeat_order_share is a share of orders, not of customers. channel holds the source's own values, which
     differ between sources. Categories and brands are the product's current
     ones: moving a product moves its past sales too, as in the store's
     reports, and a deleted product's sales have none. A category is the
@@ -561,10 +566,12 @@ datasets:
         description: >
           Share of orders that were a customer's second or later, from 0 to 1,
           among orders with a customer and a place in its sequence
-          (orders.customer_order_number).
+          (orders.customer_order_number). A share of orders: the share of
+          customers who ordered again is customers.second_order_rate_30_days
+          and the other windows.
         datatype: Float
         ai_context:
-          synonyms: [repeat purchase rate, returning customer orders, repeat rate]
+          synonyms: [repeat order rate, share of repeat orders, returning customer orders]
       - name: average_days_between_orders
         expression: {dialects: [{dialect: ANSI_SQL, expression: AVG(CASE WHEN in_sales_reports THEN days_since_previous_order END)}]}
         description: >
@@ -661,6 +668,66 @@ datasets:
         datatype: Decimal
         ai_context:
           synonyms: [lifetime value, customer value, total spend, LTV, CLV, customer revenue]
+      - name: second_order_within_30_days
+        expression: {dialects: [{dialect: ANSI_SQL, expression: second_order_within_30_days = 1}]}
+        description: >
+          Whether the customer's second order came within 30 days of the
+          first, counting days between the orders' dates
+          (orders.days_since_previous_order of the second order). Empty
+          while the 30 days are not over: they are over once their last day
+          is before the day of the latest load of orders, so the window
+          moves when new data arrives, not with the calendar. False for a
+          customer whose 30 days are over without a second order.
+          customers.second_order_rate_30_days is the share of true.
+        datatype: Boolean
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [ordered again within 30 days, came back within 30 days, repeat buyer within 30 days]
+      - name: second_order_within_60_days
+        expression: {dialects: [{dialect: ANSI_SQL, expression: second_order_within_60_days = 1}]}
+        description: >
+          Whether the customer's second order came within 60 days of the
+          first, counting days between the orders' dates
+          (orders.days_since_previous_order of the second order). Empty
+          while the 60 days are not over: they are over once their last day
+          is before the day of the latest load of orders, so the window
+          moves when new data arrives, not with the calendar. False for a
+          customer whose 60 days are over without a second order.
+          customers.second_order_rate_60_days is the share of true.
+        datatype: Boolean
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [ordered again within 60 days, came back within 60 days, repeat buyer within 60 days]
+      - name: second_order_within_90_days
+        expression: {dialects: [{dialect: ANSI_SQL, expression: second_order_within_90_days = 1}]}
+        description: >
+          Whether the customer's second order came within 90 days of the
+          first, counting days between the orders' dates
+          (orders.days_since_previous_order of the second order). Empty
+          while the 90 days are not over: they are over once their last day
+          is before the day of the latest load of orders, so the window
+          moves when new data arrives, not with the calendar. False for a
+          customer whose 90 days are over without a second order.
+          customers.second_order_rate_90_days is the share of true.
+        datatype: Boolean
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [ordered again within 90 days, came back within 90 days, repeat buyer within 90 days]
+      - name: second_order_within_365_days
+        expression: {dialects: [{dialect: ANSI_SQL, expression: second_order_within_365_days = 1}]}
+        description: >
+          Whether the customer's second order came within 365 days of the
+          first, counting days between the orders' dates
+          (orders.days_since_previous_order of the second order). Empty
+          while the 365 days are not over: they are over once their last day
+          is before the day of the latest load of orders, so the window
+          moves when new data arrives, not with the calendar. False for a
+          customer whose 365 days are over without a second order.
+          customers.second_order_rate_365_days is the share of true.
+        datatype: Boolean
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [ordered again within 365 days, came back within 365 days, repeat buyer within 365 days]
     metrics:
       - name: customer_count
         expression: {dialects: [{dialect: ANSI_SQL, expression: COUNT(*)}]}
@@ -687,6 +754,62 @@ datasets:
         datatype: Float
         ai_context:
           synonyms: [average lifetime value, average LTV, revenue per customer, average customer spend]
+      - name: second_order_rate_30_days
+        expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(CASE WHEN second_order_within_30_days = 1 THEN 1 END) * 1.0 / NULLIF(COUNT(second_order_within_30_days), 0)"}]}
+        description: >
+          Share of customers whose second order came within 30 days of their
+          first, from 0 to 1, among the customers whose 30 days are over
+          (customers.second_order_within_30_days not empty). A customer
+          still inside the window counts in neither part, so a recent
+          cohort does not look worse than an old one. Empty where no
+          customer's window is over. By customers.first_order_month, the
+          rate of each cohort. A share of customers; orders.repeat_order_share
+          is a share of orders.
+        datatype: Float
+        ai_context:
+          synonyms: [30-day repeat purchase rate, 30-day repeat customer rate, 30-day retention, 30-day repurchase rate, share of customers who ordered again within 30 days]
+      - name: second_order_rate_60_days
+        expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(CASE WHEN second_order_within_60_days = 1 THEN 1 END) * 1.0 / NULLIF(COUNT(second_order_within_60_days), 0)"}]}
+        description: >
+          Share of customers whose second order came within 60 days of their
+          first, from 0 to 1, among the customers whose 60 days are over
+          (customers.second_order_within_60_days not empty). A customer
+          still inside the window counts in neither part, so a recent
+          cohort does not look worse than an old one. Empty where no
+          customer's window is over. By customers.first_order_month, the
+          rate of each cohort. A share of customers; orders.repeat_order_share
+          is a share of orders.
+        datatype: Float
+        ai_context:
+          synonyms: [60-day repeat purchase rate, 60-day repeat customer rate, 60-day retention, 60-day repurchase rate, share of customers who ordered again within 60 days]
+      - name: second_order_rate_90_days
+        expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(CASE WHEN second_order_within_90_days = 1 THEN 1 END) * 1.0 / NULLIF(COUNT(second_order_within_90_days), 0)"}]}
+        description: >
+          Share of customers whose second order came within 90 days of their
+          first, from 0 to 1, among the customers whose 90 days are over
+          (customers.second_order_within_90_days not empty). A customer
+          still inside the window counts in neither part, so a recent
+          cohort does not look worse than an old one. Empty where no
+          customer's window is over. By customers.first_order_month, the
+          rate of each cohort. A share of customers; orders.repeat_order_share
+          is a share of orders.
+        datatype: Float
+        ai_context:
+          synonyms: [90-day repeat purchase rate, 90-day repeat customer rate, 90-day retention, 90-day repurchase rate, share of customers who ordered again within 90 days]
+      - name: second_order_rate_365_days
+        expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(CASE WHEN second_order_within_365_days = 1 THEN 1 END) * 1.0 / NULLIF(COUNT(second_order_within_365_days), 0)"}]}
+        description: >
+          Share of customers whose second order came within 365 days of their
+          first, from 0 to 1, among the customers whose 365 days are over
+          (customers.second_order_within_365_days not empty). A customer
+          still inside the window counts in neither part, so a recent
+          cohort does not look worse than an old one. Empty where no
+          customer's window is over. By customers.first_order_month, the
+          rate of each cohort. A share of customers; orders.repeat_order_share
+          is a share of orders.
+        datatype: Float
+        ai_context:
+          synonyms: [365-day repeat purchase rate, 365-day repeat customer rate, 365-day retention, 365-day repurchase rate, share of customers who ordered again within 365 days]
 
   - name: order_lines
     source: order_lines

@@ -15,6 +15,11 @@ $OSSIE_CLICKHOUSE_URL is the ClickHouse URL with the package's target
 database, e.g. http://127.0.0.1:8123/dactopus. The model is asked in the
 zone it was built in, $OSSIE_CLICKHOUSE_TIME_ZONE.
 
+With --windows it asks about the retention windows instead
+(WINDOW_CASES), over tests/woocommerce/fixture.sql and
+tests/woocommerce/windows.sql synced into a database of their own, with no
+row synced later.
+
 The numbers are those of the store's reports with WooCommerce's default
 settings: an order is dated by its payment and counted unless it is
 pending, cancelled or failed; an order not yet paid is not counted. Orders
@@ -465,13 +470,63 @@ CASES = [
       {"first_order_month": None, "order_month": "2026-09-01", "orders.buyer_count": 0}]),
 ]
 
-# Second order within N days, for the retention windows the model does not
-# have yet, where the window's last day ended before the last load of
-# orders, October 9 (10:00 UTC): customer 1 20 days, customer 2 11, -112 3,
-# -119 none. N = 30: customers 1 and 2 (first order before September 9), 2
-# of 2; the windows of -112 and -119 end October 28 and 30, empty. N = 60:
-# customer 1's window ends October 9, the day of the last load, not over:
-# empty, as is everyone's.
+# Retention windows, asked with --windows over a database of their own:
+# the fixture and tests/woocommerce/windows.sql synced at once, with no
+# row synced now. A window is over when its last day, the first order's
+# date + N, ended before the day of the last sync of orders: 2010's at
+# 23:00 on October 9 in New York (03:00 on October 10 in UTC). The second
+# order counts by the days between the dates placed in New York
+# (orders.days_since_previous_order), up to N included; a failed or
+# pending order is none.
+#   -2011  first March 2, 2026, second 18 days later, the email in other
+#          case: 30, 60, 90 yes; 365 ends March 2, 2027, empty
+#   -119   first September 30, alone; -112 first September 28, second 3
+#          days later: all empty (30 ends October 30 and 28)
+#   1      first August 10, second 20 days later: 30 over (September 9),
+#          yes; 60 ends October 9, the day of the last sync, empty
+#   2      first August 20 (102, a guest's), second 11 days later: 30 yes;
+#          60 ends October 19, empty
+#   11     first September 1, 2025, second 334 days later: 30, 60, 90 no;
+#          365 over (September 1, 2026), yes
+#   12     first October 8, 2025, alone: all four over, no (365 ended
+#          October 8, the day before the last sync)
+#   13     first October 9, 2025, alone: 30, 60, 90 no; 365 ends October
+#          9, empty (over, and no, by a UTC clock)
+#   14     first May 1, 2026, second 90 days later (failed 2006 between is
+#          none): 30, 60 no; 90 over (July 30), yes; 365 empty
+#   15     first June 1, 2026, second 44 days later (pending 2009 between
+#          is none): 30 no; 60 and 90 yes; 365 empty
+# Rates among the customers whose window is over: 30 days 3 of 8 (-2011,
+# 1, 2 of those and 11 to 15), 60 days 2 of 6 (-2011, 15), 90 days 3 of 6
+# (-2011, 14, 15), 365 days 1 of 2 (11 of 11, 12). By cohort, 30 days:
+# March and August 1, September none over, empty; the rest 0.
+W = "customers.second_order_within_"
+WINDOW_CASES = [
+    (["-m", "customers.customer_count", "-d", "customers.customer_id", "-d", W + "30_days", "-d", W + "60_days",
+      "-d", W + "90_days", "-d", W + "365_days", "-o", "customers.customer_id"],
+     [{"customer_id": c, "second_order_within_30_days": d30, "second_order_within_60_days": d60,
+       "second_order_within_90_days": d90, "second_order_within_365_days": d365, "customers.customer_count": 1}
+      for c, d30, d60, d90, d365 in [
+          (-2011, 1, 1, 1, None), (-119, None, None, None, None), (-112, None, None, None, None),
+          (1, 1, None, None, None), (2, 1, None, None, None),
+          (11, 0, 0, 0, 1), (12, 0, 0, 0, 0), (13, 0, 0, 0, None), (14, 0, 0, 1, None), (15, 0, 1, 1, None)]]),
+    (["-m", "customers.second_order_rate_30_days", "-m", "customers.second_order_rate_60_days",
+      "-m", "customers.second_order_rate_90_days", "-m", "customers.second_order_rate_365_days"],
+     [{"customers.second_order_rate_30_days": 3 / 8, "customers.second_order_rate_60_days": 2 / 6,
+       "customers.second_order_rate_90_days": 3 / 6, "customers.second_order_rate_365_days": 1 / 2}]),
+    (["-m", "customers.second_order_rate_30_days", "-d", "customers.first_order_month",
+      "-o", "customers.first_order_month"],
+     [{"first_order_month": "2025-09-01", "customers.second_order_rate_30_days": 0},
+      {"first_order_month": "2025-10-01", "customers.second_order_rate_30_days": 0},
+      {"first_order_month": "2026-03-01", "customers.second_order_rate_30_days": 1},
+      {"first_order_month": "2026-05-01", "customers.second_order_rate_30_days": 0},
+      {"first_order_month": "2026-06-01", "customers.second_order_rate_30_days": 0},
+      {"first_order_month": "2026-08-01", "customers.second_order_rate_30_days": 1},
+      {"first_order_month": "2026-09-01", "customers.second_order_rate_30_days": None}]),
+    # Customers whose 90 days are over without a second order: 11, 12, 13.
+    (["-m", "customers.customer_count", "-f", W + "90_days = false"],
+     [{"customers.customer_count": 3}]),
+]
 
 if __name__ == "__main__":
-    check(MODEL, CASES)
+    check(MODEL, WINDOW_CASES if sys.argv[1:] == ["--windows"] else CASES)
