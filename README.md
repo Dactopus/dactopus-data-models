@@ -314,7 +314,7 @@ dactopus-ossie-clickhouse, as for GA4.
            discountAllocations {{ allocatedAmountSet {MONEY} }}
            taxLines {{ rate priceSet {MONEY} }} taxable requiresShipping isGiftCard }} }}
          refunds {{
-           legacyResourceId createdAt updatedAt note totalRefundedSet {MONEY}
+           legacyResourceId createdAt processedAt updatedAt note totalRefundedSet {MONEY}
            refundLineItems(first: 50) {{ pageInfo {{ hasNextPage }} nodes {{
              id lineItem {{ id }} quantity restockType subtotalSet {MONEY} totalTaxSet {MONEY} }} }} }}
        }}
@@ -401,7 +401,8 @@ dactopus-ossie-clickhouse, as for GA4.
        for r in o["refunds"]:
            rid, refund_updated = int(r["legacyResourceId"]), ts(r["updatedAt"])
            tables["refunds"].append({
-               "id": rid, "order_id": oid, "created_at": ts(r["createdAt"]), "updated_at": refund_updated,
+               "id": rid, "order_id": oid, "created_at": ts(r["createdAt"]),
+               "processed_at": ts(r["processedAt"]), "updated_at": refund_updated,
                "note": r["note"], "total_refunded": money(r["totalRefundedSet"])})
            for rl in nodes(r["refundLineItems"], "refund lines"):
                tables["refund_lines"].append({
@@ -1211,10 +1212,10 @@ WooCommerce, `subdirectory: sources/woocommerce`; for Sensor.Community,
 ```yaml
 packages:
   - git: https://github.com/Dactopus/dactopus-data-models.git
-    revision: v0.7.1
+    revision: v0.7.2
     subdirectory: sources/ga4
   - git: https://github.com/Dactopus/dactopus-data-models.git
-    revision: v0.7.1
+    revision: v0.7.2
     subdirectory: sources/shopify
 ```
 

@@ -15,3 +15,7 @@ dactopus:
         # The dbt v2 ClickHouse adapter (beta) decompresses LZ4 only, while
         # ClickHouse 26.x compresses HTTP responses with ZSTD by default.
         network_compression_method: LZ4
+        # The opposite of ClickHouse's default: a LEFT JOIN without a match
+        # gives NULL, not 0. The order packages set 0 in their own queries
+        # and must build the same under either.
+        join_use_nulls: 1

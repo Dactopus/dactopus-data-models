@@ -134,6 +134,11 @@ profile and the sample data. CI builds into other databases to keep it so.
   columns holds the whole table in memory. `shopify_latest` picks the
   latest version this way; a new input table's sorting key starts with
   the key the models dedupe by.
+- A `LEFT JOIN` without a match fills a non-Nullable column with its
+  type's default (0 for an amount) only while `join_use_nulls` is 0; a
+  server or profile may set 1. The Shopify and WooCommerce settings
+  macros set 0, so every model that ends with them builds the same under
+  either; `tests/profiles.yml` sets 1 to prove it.
 - An `INSERT ... SELECT` buffers rows per insert thread, up to
   `min_insert_block_size_bytes` each, before it writes a part: 2 GB on 8
   cores with the defaults. The Shopify models end with

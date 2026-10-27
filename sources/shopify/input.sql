@@ -1,8 +1,10 @@
 -- Input of the Shopify package: five flat tables, filled from the GraphQL
 -- Admin API (https://shopify.dev/docs/api/admin-graphql/latest) by any
--- loader. Only the columns the package reads; the comment on each names the
--- GraphQL field it comes from. Any transport may deliver more columns; it
--- must deliver these.
+-- loader. The columns the package reads, and the time each order and refund
+-- was recorded (created_at), which the package does not read: next to the
+-- date the reports use, it tells an imported row from one made in the
+-- store. The comment on each names the GraphQL field it comes from. Any
+-- transport may deliver more columns; it must deliver these.
 --
 -- Checked on API version 2026-10; earlier versions differ only in
 -- display_fulfillment_status (below).
@@ -54,7 +56,7 @@ CREATE TABLE IF NOT EXISTS {db:Identifier}.orders
 (
     id UInt64,                                  -- legacyResourceId
     name String,                                -- '#1001', what the customer sees
-    created_at DateTime('UTC'),                 -- createdAt
+    created_at DateTime('UTC'),                 -- createdAt, when the order was recorded
     -- processedAt: "the date that appears on your orders and that's used in
     -- the analytic reports"; an import may set it in the past
     -- (https://shopify.dev/docs/api/admin-graphql/latest/input-objects/OrderCreateOrderInput).
@@ -148,7 +150,14 @@ CREATE TABLE IF NOT EXISTS {db:Identifier}.refunds
 (
     id UInt64,                                  -- legacyResourceId
     order_id UInt64,
-    created_at DateTime('UTC'),                 -- createdAt, the date of the refund
+    created_at DateTime('UTC'),                 -- createdAt, when the refund was recorded
+    -- processedAt, "when the refund was processed": the date Shopify's
+    -- sales reports count it on. Equal to createdAt for a refund made in the
+    -- admin; an import sets it in the past (RefundInput.processedAt,
+    -- https://shopify.dev/docs/api/admin-graphql/latest/input-objects/RefundInput),
+    -- and createdAt is then the day of the import (#45, seen on a
+    -- development store).
+    processed_at DateTime('UTC'),
     updated_at DateTime('UTC'),                 -- updatedAt
     note Nullable(String),                      -- note
     -- totalRefundedSet: lines, shipping, duties and adjustments, with their

@@ -11,9 +11,11 @@
 SELECT
     r.id AS refund_id,
     r.order_id AS order_id,
-    -- Date of the refund in the shop's time zone.
-    toDate(r.created_at, '{{ var("shopify_timezone") }}') AS refund_date,
-    r.created_at AS refund_time,
+    -- processedAt in the shop's time zone, the date Shopify's sales reports
+    -- count the refund on; a refund imported with a past processedAt was
+    -- created on the day of the import (input.sql).
+    toDate(r.processed_at, '{{ var("shopify_timezone") }}') AS refund_date,
+    r.processed_at AS refund_time,
     r.updated_at AS updated_at,
     r.total_refunded - rl.gift_card_amount AS refunded_amount,
     rl.gift_card_amount AS gift_card_amount,
