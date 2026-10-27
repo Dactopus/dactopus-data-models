@@ -138,11 +138,12 @@ jobs:
       # 505 change orders that nothing else rereads; 1001's lines, its gift
       # card among them, come after 505's and after the refund 501 has moved
       # the refunds' load window past 505, and make 505 a refund of 0; 1008,
-      # back-dated, renumbers its customer's 1007. The refund 503, delivered
-      # again alone, brings back 1006 and no other order of customer 2; its
-      # number must still count them; the Blanket's old version comes with
-      # it, after the Blanket's deletion is built, and must not bring the
-      # product back. 1004 comes first in its version for
+      # back-dated, renumbers its customer's 1007, and brings in its refund
+      # 507, loaded before the order and left out until it came. The refund
+      # 503, delivered again alone, brings back 1006 and no other order of
+      # customer 2; its number must still count them; the Blanket's old
+      # version comes with it, after the Blanket's deletion is built, and
+      # must not bring the product back. 1004 comes first in its version for
       # customer 2; its latest version, moved to customer 1, comes last,
       # alone, and the earlier version is then deleted, as an input that
       # collapses old versions would: customer 2's orders must still be

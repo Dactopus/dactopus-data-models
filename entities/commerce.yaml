@@ -797,7 +797,11 @@ datasets:
           synonyms: [order]
       - name: refund_date
         expression: {dialects: [{dialect: ANSI_SQL, expression: refund_date}]}
-        description: Date the refund was made, in the store's time zone.
+        description: >
+          Date the refund was made, in the store's time zone: the date the
+          store's reports date it by. Shopify: the date it was processed;
+          for a refund imported with a past date, that date, not the day
+          it was recorded. WooCommerce: the date it was created.
         datatype: Date
         dimension: {is_time: true}
         ai_context:
@@ -818,7 +822,9 @@ datasets:
           synonyms: [month]
       - name: refund_time
         expression: {dialects: [{dialect: ANSI_SQL, expression: refund_time}]}
-        description: Time the refund was made, UTC.
+        description: >
+          Time of refund_date, UTC: when the refund was processed (Shopify)
+          or created (WooCommerce).
         datatype: DateTimeTz
         ai_context:
           synonyms: [refund timestamp]

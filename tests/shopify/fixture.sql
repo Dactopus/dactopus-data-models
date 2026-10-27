@@ -21,8 +21,9 @@
 -- A load inserts orders, lines, refunds and refund lines one table after
 -- another, so their loaded_at differ by a second or so within one load.
 -- First comes a load between 1005's cancel and its refund, then the load
--- on October 4 that delivered each order's latest version, then earlier
--- and repeated loads: no number may depend on the order rows arrive in.
+-- at midnight on October 4 that delivered each order as it was then, then
+-- earlier and repeated loads, and the load at 06:00 with 1008's refund: no
+-- number may depend on the order rows arrive in.
 
 -- 1005 as a load read it a second after 18:00:00, between the cancel and
 -- the refund made in the same second: cancelled, still paid, the cap not
@@ -38,7 +39,8 @@ INSERT INTO {db:Identifier}.orders VALUES
 INSERT INTO {db:Identifier}.order_lines VALUES
 (51,  1005, '2026-09-08 18:00:00', 105, 1051, 'CAP',     'Cap',         NULL,  1,  1,  60,    60,    0,     0,     0,     true,  true,  false, '2026-09-08 18:00:02');
 
--- The load on October 4: each order's latest version.
+-- The load at midnight on October 4: each order as it was then, the latest
+-- version of all but 1008 (refunded after it, below).
 INSERT INTO {db:Identifier}.orders VALUES
 -- (id, name, created_at, processed_at, updated_at, cancelled_at, closed_at, test,
 --  customer_id, email, currency_code, presentment_currency_code,
@@ -178,15 +180,16 @@ INSERT INTO {db:Identifier}.order_lines VALUES
 (121, 1012, '2026-10-03 16:00:00', 110, 1101, 'TEE-COTTON', 'Cotton T-shirt', NULL, 2, 2, 95,  190,   0,     24.70, 0.13,  true,  true,  false, '2026-10-04 00:00:01');
 
 INSERT INTO {db:Identifier}.refunds VALUES
--- (id, order_id, created_at, updated_at, note, total_refunded, loaded_at)
-(505, 1001, '2026-08-20 15:00:00', '2026-08-20 15:00:00', '',               25,  '2026-10-04 00:00:02'),
-(501, 1004, '2026-10-03 15:00:00', '2026-10-03 15:00:00', '',               45,  '2026-10-04 00:00:02'),
-(502, 1005, '2026-09-08 18:00:00', '2026-09-08 18:00:00', 'Order canceled', 60,  '2026-10-04 00:00:02'),
-(503, 1006, '2026-10-01 02:00:00', '2026-10-01 02:00:00', '',               210, '2026-10-04 00:00:02'),
-(504, 1009, '2026-09-21 15:00:00', '2026-09-21 15:00:00', '',               500, '2026-10-04 00:00:02'),
+-- (id, order_id, created_at, processed_at, updated_at, note, total_refunded, loaded_at)
+-- processed_at is created_at for a refund made in the admin, as on the store.
+(505, 1001, '2026-08-20 15:00:00', '2026-08-20 15:00:00', '2026-08-20 15:00:00', '',               25,  '2026-10-04 00:00:02'),
+(501, 1004, '2026-10-03 15:00:00', '2026-10-03 15:00:00', '2026-10-03 15:00:00', '',               45,  '2026-10-04 00:00:02'),
+(502, 1005, '2026-09-08 18:00:00', '2026-09-08 18:00:00', '2026-09-08 18:00:00', 'Order canceled', 60,  '2026-10-04 00:00:02'),
+(503, 1006, '2026-10-01 02:00:00', '2026-10-01 02:00:00', '2026-10-01 02:00:00', '',               210, '2026-10-04 00:00:02'),
+(504, 1009, '2026-09-21 15:00:00', '2026-09-21 15:00:00', '2026-09-21 15:00:00', '',               500, '2026-10-04 00:00:02'),
 -- The cancel of unpaid 1010 is a refund of no money, its line at the price
 -- sold, as on the development store (#1012).
-(506, 1010, '2026-10-02 14:00:00', '2026-10-02 14:00:00', 'Order canceled', 0,   '2026-10-04 00:00:02');
+(506, 1010, '2026-10-02 14:00:00', '2026-10-02 14:00:00', '2026-10-02 14:00:00', 'Order canceled', 0,   '2026-10-04 00:00:02');
 
 INSERT INTO {db:Identifier}.refund_lines VALUES
 -- (id, refund_id, refund_updated_at, line_item_id, quantity, subtotal, total_tax, restock_type, loaded_at)
@@ -227,7 +230,7 @@ INSERT INTO {db:Identifier}.order_lines VALUES
 (111, 1011, '2026-10-02 15:00:00', 108, 1081, 'SOCKS',   'Socks',       NULL,  2,  2,  20,    40,    0,     0,     0,     true,  true,  false, '2026-10-04 06:00:01');
 
 INSERT INTO {db:Identifier}.refunds VALUES
-(503, 1006, '2026-10-01 02:00:00', '2026-10-01 02:00:00', '',               210, '2026-10-04 06:00:02');
+(503, 1006, '2026-10-01 02:00:00', '2026-10-01 02:00:00', '2026-10-01 02:00:00', '',               210, '2026-10-04 06:00:02');
 
 INSERT INTO {db:Identifier}.refund_lines VALUES
 (5031, 503, '2026-10-01 02:00:00', 61, 1,  200, 0, 'CANCEL',     '2026-10-04 06:00:03');
@@ -236,10 +239,31 @@ INSERT INTO {db:Identifier}.refund_lines VALUES
 -- every version of a refund. Were the lines of both versions counted,
 -- 1004's T-shirt would be returned twice (items_returned 5, 410).
 INSERT INTO {db:Identifier}.refunds VALUES
-(501, 1004, '2026-10-03 15:00:00', '2026-10-03 16:00:00', '',               45,  '2026-10-04 06:00:02');
+(501, 1004, '2026-10-03 15:00:00', '2026-10-03 15:00:00', '2026-10-03 16:00:00', '',               45,  '2026-10-04 06:00:02');
 
 INSERT INTO {db:Identifier}.refund_lines VALUES
 (5011, 501, '2026-10-03 16:00:00', 42, 1,  45,  0, 'CANCEL',     '2026-10-04 06:00:03');
+
+-- The shipping of 1008, an imported order, refunded by the same import on
+-- October 4 after the load at midnight, with processed_at September 20, as
+-- on the development store (#45: #1022's refund, created with refundCreate
+-- and a past processedAt, is on that past day in the store's reports). A
+-- September refund, of 16.95 with its 1.95 tax inside; by created_at it
+-- would be October's. The refund changes 1008's updated_at, so the load at
+-- 06:00 delivers the order again, its lines unchanged. A refund of
+-- shipping alone has no lines; the shape (shipping alone, its tax inside
+-- the 16.95 of a taxes-included order) is not yet seen on the store.
+INSERT INTO {db:Identifier}.orders VALUES
+(1008, '#1008', '2026-10-02 10:00:00', '2026-09-12 15:00:00', '2026-10-04 05:00:00', NULL, NULL, false,
+ 1, 'alice@example.com', 'USD', 'CAD', 'PARTIALLY_REFUNDED', 'UNFULFILLED', 'dactopus-import', true,
+ 169.50, 16.95, 1.95, 19.50, 16.95, 152.55, 0, 0, 0, ['SEPT10'], 'CA', 'ON', 'Toronto', 'M5V 2T6', '2026-10-04 06:00:00');
+
+INSERT INTO {db:Identifier}.order_lines VALUES
+(81,  1008, '2026-10-04 05:00:00', 107, 1071, 'BLANKET', 'Blanket',     NULL,  1,  1,  113,   113,   11.30, 11.70, 0.13,  true,  true,  false, '2026-10-04 06:00:01'),
+(82,  1008, '2026-10-04 05:00:00', 102, 1021, 'MUG',     'Mug',         NULL,  1,  1,  56.50, 56.50, 5.65,  5.85,  0.13,  true,  true,  false, '2026-10-04 06:00:01');
+
+INSERT INTO {db:Identifier}.refunds VALUES
+(507, 1008, '2026-10-04 05:00:00', '2026-09-20 15:00:00', '2026-10-04 05:00:00', '',               16.95, '2026-10-04 06:00:02');
 
 -- Products: every product of the store, sold or not, as loads of the
 -- products updated since the last one deliver them. The type (productType)

@@ -23,9 +23,13 @@
    memory, and the models' own work comes on top (#8: the full build of
    orders for 4 million orders peaked at 2.9 GB, 1.5 GB with these settings;
    with one insert thread the build is about twice as slow). An incremental
-   run inserts few rows and is not affected. #}
+   run inserts few rows and is not affected.
+   join_use_nulls = 0: a LEFT JOIN without a match fills the joined
+   columns with their type's default, 0 for an amount, which the models
+   count on (an order without gift cards, a refund without lines); a
+   server or profile that sets 1 would make them NULL. #}
 {% macro shopify_query_settings() -%}
-SETTINGS max_insert_threads = 1, min_insert_block_size_rows = 262144, min_insert_block_size_bytes = 67108864
+SETTINGS max_insert_threads = 1, min_insert_block_size_rows = 262144, min_insert_block_size_bytes = 67108864, join_use_nulls = 0
 {%- endmacro %}
 
 {# A refund line refunds a gift card sold: its line item is a gift card in

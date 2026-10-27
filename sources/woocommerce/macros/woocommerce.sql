@@ -321,7 +321,11 @@ DROP TABLE IF EXISTS {{ woocommerce_changed_table() }}
    several CTEs, made order_lines read 123 million rows for a window of
    two orders out of 320,000 (#18). Needs ClickHouse 26.7 or later:
    26.3, where MATERIALIZED came in, to 26.6 fail on these models with
-   errors of their own. #}
+   errors of their own.
+   join_use_nulls = 0: a LEFT JOIN without a match fills the joined
+   columns with their type's default, 0 for an amount, which the models
+   count on (an order without a refund or a shipping line); a server or
+   profile that sets 1 would make them NULL. #}
 {% macro woocommerce_query_settings() -%}
-SETTINGS enable_materialized_cte = 1
+SETTINGS enable_materialized_cte = 1, join_use_nulls = 0
 {%- endmacro %}
