@@ -203,36 +203,39 @@ CASES = [
      [{"fulfillment_status": "fulfilled", "orders.order_count": 1},
       {"fulfillment_status": "partially_fulfilled", "orders.order_count": 1},
       {"fulfillment_status": "unfulfilled", "orders.order_count": 9}]),
-    # The customer's orders in sequence of processed_at, cancelled ones
-    # skipped: 1001 110 and 1003 30 are first; 1004 181 and 1006 210
-    # second (1006 would be third if cancelled 1005 counted); 1008 169.50
-    # and 1011 40 third; 1007 137 fourth. In sequence of created_at, 1007
-    # would be third (187) and 1008 fourth (169.50). Guests (1002 80, 1012
-    # 272.50) and cancelled orders (1005 60, 1010 70) have no number.
+    # The customer's orders in sequence of processed_at, as Shopify's
+    # report of new and returning customers counts them: cancelled ones too
+    # (#1012 on the development store, a customer's only order and
+    # cancelled, is New, and #1021 after it Returning). First: 1001 110,
+    # 1003 30 and 1010 70, customer 3's only order, cancelled. Second: 1004
+    # 181 and cancelled 1005 60. Third: 1008 169.50 and 1006 210 (second
+    # were cancelled 1005 skipped). Fourth: 1007 137 and 1011 40. In
+    # sequence of created_at, 1007 would be third and 1008 fourth. Guests
+    # (1002 80, 1012 272.50) have no number.
     (["-m", "orders.order_count", "-m", "orders.revenue", "-d", "orders.customer_order_number",
       "-o", "orders.customer_order_number"],
-     [{"customer_order_number": 1, "orders.order_count": 2, "orders.revenue": 140},
-      {"customer_order_number": 2, "orders.order_count": 2, "orders.revenue": 391},
-      {"customer_order_number": 3, "orders.order_count": 2, "orders.revenue": 209.5},
-      {"customer_order_number": 4, "orders.order_count": 1, "orders.revenue": 137},
-      {"customer_order_number": None, "orders.order_count": 4, "orders.revenue": 482.5}]),
-    # New: 1001 110 + 1003 30. Repeat: 1004 181 (net 136), 1006 210 (net
-    # 0), 1007 137, 1008 169.50 (net 152.55), 1011 40. None: 1002 80, 1005
-    # 60, 1010 70, 1012 272.50.
+     [{"customer_order_number": 1, "orders.order_count": 3, "orders.revenue": 210},
+      {"customer_order_number": 2, "orders.order_count": 2, "orders.revenue": 241},
+      {"customer_order_number": 3, "orders.order_count": 2, "orders.revenue": 379.5},
+      {"customer_order_number": 4, "orders.order_count": 2, "orders.revenue": 177},
+      {"customer_order_number": None, "orders.order_count": 2, "orders.revenue": 352.5}]),
+    # New: 1001 110, 1003 30, 1010 70 (net 0, cancelled). Repeat: 1004 181
+    # (net 136), 1005 60 (net 0, cancelled and refunded), 1006 210 (net 0),
+    # 1007 137, 1008 169.50 (net 152.55), 1011 40. None: the guests, 1002 80
+    # and 1012 272.50.
     (["-m", "orders.order_count", "-m", "orders.revenue", "-m", "sales_events.net_revenue",
       "-d", "orders.new_vs_repeat", "-o", "orders.new_vs_repeat"],
-     [{"new_vs_repeat": "new", "orders.order_count": 2, "orders.revenue": 140,
+     [{"new_vs_repeat": "new", "orders.order_count": 3, "orders.revenue": 210,
        "sales_events.net_revenue": 140},
-      {"new_vs_repeat": "repeat", "orders.order_count": 5, "orders.revenue": 737.5,
+      {"new_vs_repeat": "repeat", "orders.order_count": 6, "orders.revenue": 797.5,
        "sales_events.net_revenue": 465.55},
-      {"new_vs_repeat": None, "orders.order_count": 4, "orders.revenue": 482.5,
+      {"new_vs_repeat": None, "orders.order_count": 2, "orders.revenue": 352.5,
        "sales_events.net_revenue": 352.5}]),
-    # Repeat orders over the orders that have a customer and are not
-    # cancelled, the ones numbered in sequence: 5 / 7. Guests (1002, 1012)
-    # and cancelled 1005 and 1010 are not counted; over all orders it would
-    # be 5 / 11.
+    # Repeat orders over the orders that have a customer, the ones numbered
+    # in sequence, cancelled ones included: 6 / 9. The guests (1002, 1012)
+    # are not counted; over all orders it would be 6 / 11.
     (["-m", "orders.repeat_order_share"],
-     [{"orders.repeat_order_share": 5 / 7}]),
+     [{"orders.repeat_order_share": 6 / 9}]),
     # Lines of the 11 orders: 18 items ordered, 14 left after refunds and
     # cancels (1004 -1, 1005 -1, 1006 -1, 1010 -1; 15 if 1005's earlier
     # version were read). line_revenue is after discounts and without tax:
@@ -390,19 +393,11 @@ CASES = [
 ]
 
 # Numbers for the customer questions, from the fixture's orders; they
-# become cases once the packages build customers. A customer's orders are
-# the ones Shopify's report of new and returning customers counts: every
+# become cases once the model has customers (the packages build them). A
+# customer's orders are the ones Shopify's report of new and returning customers counts: every
 # order but test ones, cancelled ones included (#1012 on the development
 # store is New, and #1021 after it Returning), in sequence of processed_at.
 # Dates and months are New York's.
-#   Order numbers, replacing the cases above: cancelled 1005 is customer
-#   2's second order and 1010 customer 3's first. Number 1: 1001 110, 1003
-#   30, 1010 70 = 3 orders, 210; 2: 1004 181, 1005 60 = 2, 241; 3: 1008
-#   169.50, 1006 210 = 2, 379.50; 4: 1007 137, 1011 40 = 2, 177; none, the
-#   guests 1002 80 and 1012 272.50 = 2, 352.50. New: 1001, 1003, 1010, 3
-#   orders, 210, net 110 + 30 + 0 = 140. Repeat: 1004, 1005, 1006, 1007,
-#   1008, 1011, 6 orders, 797.50, net 136 + 0 + 0 + 137 + 152.55 + 40 =
-#   465.55. None: 2, 352.50, net 352.50. Repeat share 6 / 9.
 #   Customers: 1, 2 and 3. Customer 4 has only a test order and no row;
 #   were cancelled orders left out, customer 3 would have none either.
 #     1  first order 1001, August 10: cohort August. Last 1007, September

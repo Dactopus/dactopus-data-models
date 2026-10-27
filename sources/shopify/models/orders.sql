@@ -7,7 +7,7 @@
 -- models/graphql/shopify_gql__orders.sql (https://github.com/fivetran/dbt_shopify,
 -- Apache License 2.0, Copyright © 2025 Fivetran Inc.). Changed here: statuses
 -- are mapped to the canonical values, and the sequence follows processed_at
--- and skips guests and cancelled orders.
+-- and skips guests.
 {% if is_incremental() %}
 -- Orders loaded since the last run, orders whose lines were (their counts
 -- and discounts come from the lines) or whose refunds or refund lines were
@@ -133,22 +133,42 @@ SELECT
     l.item_quantity AS item_quantity,
     n.customer_order_number AS customer_order_number,
     multiIf(customer_order_number = 1, 'new', customer_order_number > 1, 'repeat', NULL) AS new_vs_repeat,
+    n.days_since_previous_order AS days_since_previous_order,
+    n.months_since_first_order AS months_since_first_order,
     -- When the version was loaded; the next incremental run starts from it.
     o.loaded_at AS loaded_at
 FROM {{ shopify_latest('orders', 'id', where=kept) }} AS o
 INNER JOIN
 (
     -- The customer's orders numbered by processed_at, over every order of
-    -- the customer in its latest version; cancelled orders and guests have
-    -- no number. Five columns of every order a full build numbers: they sort
-    -- in memory, and that is a few hundred MB for two million orders where
-    -- all the columns were over a GB (#8). The filter comes after the
-    -- latest version is picked and keeps a customer's orders whole.
+    -- the customer in its latest version, as Shopify's report of new and
+    -- returning customers counts them: cancelled orders too (on the
+    -- development store #1012, a customer's only order, cancelled, is New,
+    -- and #1021 after it Returning); guests have no number. Days and months
+    -- are between the dates of the numbered orders in the shop's time zone:
+    -- days since the customer's previous order, and calendar months since
+    -- their first, -1 on the first itself, as Shopify's
+    -- months_since_first_purchase (on the development store a customer's
+    -- orders of September 12 and October 5 are 1 apart, a repeat order in
+    -- the month of the first 0). Five columns of every order a full build
+    -- numbers: they sort in memory, and that is a few hundred MB for two
+    -- million orders where all the columns were over a GB (#8). The filter
+    -- comes after the latest version is picked and keeps a customer's
+    -- orders whole.
     SELECT
         id,
-        if(customer_id IS NULL OR cancelled_at IS NOT NULL, NULL,
-           row_number() OVER (PARTITION BY customer_id, cancelled_at IS NOT NULL ORDER BY processed_at, id)) AS customer_order_number
-    FROM {{ shopify_latest('orders', 'id', select='id, customer_id, processed_at, cancelled_at, test') }}
+        if(customer_id IS NULL, NULL,
+           row_number() OVER (PARTITION BY customer_id ORDER BY processed_at, id)) AS customer_order_number,
+        toDate(processed_at, '{{ var("shopify_timezone") }}') AS day,
+        if(customer_order_number > 1,
+           dateDiff('day', lagInFrame(toNullable(day)) OVER (PARTITION BY customer_id ORDER BY processed_at, id
+                                                              ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW), day),
+           NULL) AS days_since_previous_order,
+        if(customer_order_number > 1,
+           dateDiff('month', first_value(day) OVER (PARTITION BY customer_id ORDER BY processed_at, id
+                                                    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW), day),
+           if(customer_order_number = 1, -1, NULL)) AS months_since_first_order
+    FROM {{ shopify_latest('orders', 'id', select='id, customer_id, processed_at, test') }}
     WHERE NOT test AND ({{ numbered }})
 ) AS n ON n.id = o.id
 LEFT JOIN

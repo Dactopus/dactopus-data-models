@@ -18,32 +18,83 @@
 {% set number_key = var('woocommerce_order_number_meta_key') %}
 {% set core_statuses = "('pending', 'on-hold', 'processing', 'completed', 'cancelled', 'refunded', 'failed')" %}
 WITH
--- Every order, for the customer's order sequence. Analytics numbers a
--- customer's orders by date placed, ties by id, and skips the statuses it
--- excludes (is_returning_customer), whether or not the order has its
--- report date yet; guests have no number here.
+-- Every order, for its customer and the customer's order sequence. The
+-- customer is the one WooCommerce Analytics counts
+-- (src/Admin/API/Reports/Customers/DataStore.php, get_existing_customer_id_from_order,
+-- get_customer_id_by_email, get_or_create_customer_from_order): the
+-- account of a registered order; for a guest's, the account that has an
+-- order billed to the same email, in any case, the smallest such account
+-- where there are several; else the guest, one per email, numbered by the
+-- smallest id of their orders, negative so as not to meet an account; and
+-- a guest's order without an email is a customer of its own, as Analytics
+-- makes it. Analytics keeps its own table of customers; the package reads
+-- only the orders (no account's own email, and a guest is joined to an
+-- account whatever the order of the two), so the README lists where the
+-- two differ.
+identified AS MATERIALIZED (
+    SELECT
+        * REPLACE (coalesce(toInt64(customer_id),
+                            if(email_key = '', -toInt64(id), coalesce(toInt64(account_id), -toInt64(guest_id)))) AS customer_id),
+        has({{ excluded }}, status) AS excluded
+    FROM
+    (
+        SELECT
+            *,
+            lowerUTF8(trimBoth(ifNull(customer_email, ''))) AS email_key,
+            min(customer_id) OVER (PARTITION BY email_key) AS account_id,
+            minIf(id, customer_id IS NULL) OVER (PARTITION BY email_key) AS guest_id
+        FROM {{ woocommerce_orders() }}
+    )
+),
+-- Analytics numbers a customer's orders by date placed, ties by id, and
+-- skips the statuses it excludes (is_returning_customer), whether or not
+-- the order has its report date yet. Days and months are between the
+-- dates placed in the store's time zone, as the numbering goes: days
+-- since the customer's previous order, and calendar months since their
+-- first, -1 on the first itself, as Shopify's months_since_first_purchase.
 headers AS MATERIALIZED (
     SELECT
         *,
-        if(customer_id IS NULL OR has({{ excluded }}, status), NULL,
-           row_number() OVER (PARTITION BY customer_id, has({{ excluded }}, status) ORDER BY placed_time, id)) AS customer_order_number
-    FROM {{ woocommerce_orders() }}
+        if(excluded, NULL, row_number() OVER w) AS customer_order_number,
+        toDate(placed_time, '{{ var("woocommerce_timezone") }}') AS placed_date,
+        if(customer_order_number > 1, dateDiff('day', lagInFrame(toNullable(placed_date)) OVER w, placed_date), NULL)
+            AS days_since_previous_order,
+        if(customer_order_number > 1, dateDiff('month', first_value(placed_date) OVER w, placed_date),
+           if(customer_order_number = 1, -1, NULL)) AS months_since_first_order
+    FROM identified
+    WINDOW w AS (PARTITION BY customer_id, excluded ORDER BY placed_time, id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
 ),
 {% if is_incremental() %}
 -- Orders changed since the last run (woocommerce_keep_changed), and every
--- order of their customers, under any version: a new or cancelled order
--- renumbers the others. The previous customer of an order moved to
--- another is the one this table's row of it names, kept before the
--- pre-hook deletes the rows of orders that are gone, as an input that
--- collapses old versions may have lost it.
+-- order of their customers, now and before: a new or cancelled order
+-- renumbers the others, and a change of an order's email or account moves
+-- other orders between customers. The customer an order had before is the
+-- one this table's row of it names; for an order that is gone, the one
+-- kept before the pre-hook deleted its row, as an input that collapses old
+-- versions may have lost it. An order that moves goes from or to the
+-- customer of a changed order; the second round brings in the other
+-- customer, whose orders renumber too (a guest joined to an account with
+-- a smaller id leaves the one they were joined to).
 changed AS MATERIALIZED (SELECT order_id FROM {{ woocommerce_changed_table() }}),
 customers AS MATERIALIZED (
-    SELECT customer_id FROM {{ source('woocommerce_raw', 'wc_orders') }} WHERE id IN changed
+    SELECT customer_id FROM headers WHERE id IN changed
     UNION ALL
     SELECT previous_customer_id FROM {{ woocommerce_changed_table() }}
 ),
-ids AS MATERIALIZED (
+moved AS MATERIALIZED (
     SELECT id FROM headers WHERE id IN changed OR customer_id IN customers
+    UNION ALL
+    SELECT order_id FROM {{ this }} WHERE customer_id IN customers
+),
+customers_moved AS MATERIALIZED (
+    SELECT customer_id FROM headers WHERE id IN moved
+    UNION ALL
+    SELECT customer_id FROM {{ this }} WHERE order_id IN moved
+),
+ids AS MATERIALIZED (
+    SELECT id FROM headers WHERE id IN changed OR customer_id IN customers_moved
+    UNION ALL
+    SELECT order_id FROM {{ this }} WHERE customer_id IN customers_moved
 ),
 {% else %}
 ids AS MATERIALIZED (
@@ -191,6 +242,8 @@ SELECT
     l.item_quantity AS item_quantity,
     o.customer_order_number AS customer_order_number,
     multiIf(customer_order_number = 1, 'new', customer_order_number > 1, 'repeat', NULL) AS new_vs_repeat,
+    o.days_since_previous_order AS days_since_previous_order,
+    o.months_since_first_order AS months_since_first_order,
     -- When the order's row was synced; the next incremental run starts
     -- from it.
     o.synced_at AS synced_at

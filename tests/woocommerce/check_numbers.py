@@ -31,9 +31,10 @@ By month of payment in New York: August 101, 103 (paid at 22:10 on August
 October 112, 113 (paid on delivery October 6, placed October 3), 117.
 Refunds of counted orders: 902 (111, 33) September 22, 903 (112, 5) October
 2, 901 (104, 29.70) October 5.
-Customer 1 by date placed: 101, 104, 109, 111, 117. Customer 2: 103, 107
-(cancelled, not numbered), 110, 113. Guests: 102 with customer 2's email,
-118 and 112 with one email, 119 without one; 106 and 108 not counted.
+Customer 1 by date placed: 101, 104, 109, 111, 117. Customer 2: 102 (a
+guest's, billed to customer 2's email), 103, 107 (cancelled, not
+numbered), 110, 113. Guest4, customer -112: 118, 112. Customer -119: 119, a
+guest's without an email. 106 and 108, guests' too, are not counted.
 """
 import pathlib
 import sys
@@ -57,7 +58,8 @@ CASES = [
     # coupon, 6 without tax. Shipping without tax: 10 + 5 + 10 + 10 + 10 +
     # 10 + 0 + 5 + 10 (117's 9 EUR) = 70. Tax on goods and shipping: 8 + 3
     # + 6.40 + 2.80 + 4.18 + 3 + 6 + 1.50 + 6 = 40.88 (33.88 if tax_amount,
-    # which leaves shipping tax out, were taken alone). Customers 1 and 2.
+    # which leaves shipping tax out, were taken alone). Customers 1, 2 and
+    # -112, guest4 (112); 2 if guests were not counted.
     (["-m", "orders.order_count", "-m", "orders.revenue", "-m", "orders.refunded_amount",
       "-m", "sales_events.net_revenue", "-m", "orders.refund_rate",
       "-m", "orders.average_order_value", "-m", "orders.discount_amount",
@@ -65,7 +67,7 @@ CASES = [
      [{"orders.order_count": 9, "orders.revenue": 449.7, "orders.refunded_amount": 67.7,
        "sales_events.net_revenue": 382, "orders.refund_rate": 67.7 / 449.7,
        "orders.average_order_value": 338.82 / 9, "orders.discount_amount": 6,
-       "orders.shipping_amount": 70, "orders.tax_amount": 40.88, "orders.customers": 2}]),
+       "orders.shipping_amount": 70, "orders.tax_amount": 40.88, "orders.customers": 3}]),
     # Every row of orders, counted or not: the 9 above and 102 (16.50), 106
     # (22), 107 (44), 108 (33), 118 (22), 119 (22): 15 orders, 609.20. Not
     # 18: the trash, the checkout draft and the deleted order are not
@@ -155,28 +157,34 @@ CASES = [
      [{"fulfillment_status": "fulfilled", "orders.all_orders": 5},
       {"fulfillment_status": "unfulfilled", "orders.all_orders": 10}]),
     # The customer's orders by date placed, as Analytics ranks them, orders
-    # of excluded statuses skipped: customer 1's 101, 104, 109, 111, 117;
-    # customer 2's 103, 110, 113 (cancelled 107 skipped; counting it, 110
-    # and 113 would be 3 and 4). Guests have no number: 112 here, and 102,
-    # 118 and 119, on hold, are not counted.
+    # of excluded statuses skipped and orders on hold numbered, the
+    # counted orders shown: customer 1's 101, 104, 109, 111, 117; customer
+    # 2's 102 (a guest's on hold, billed to customer 2's email), 103, 110,
+    # 113 (cancelled 107 skipped; counting it, 110 and 113 would be 4 and
+    # 5); guest4's 118 (on hold) and 112. Number 1: 101 88 (102 and 118 are
+    # on hold, not counted); 2: 104 70.40, 103 33, 112 66; 3: 109 30.80, 110
+    # 46; 4: 111 33, 113 16.50; 5: 117 66. Every counted order has a
+    # customer: the empty row has none, only 106, 107 and 108, which the
+    # reports leave out. Were guests left out, 112 would have no number and
+    # 103, 110 and 113 would be 1, 2 and 3.
     (["-m", "orders.order_count", "-m", "orders.revenue", "-d", "orders.customer_order_number",
       "-o", "orders.customer_order_number"],
-     [{"customer_order_number": 1, "orders.order_count": 2, "orders.revenue": 121},
-      {"customer_order_number": 2, "orders.order_count": 2, "orders.revenue": 116.4},
-      {"customer_order_number": 3, "orders.order_count": 2, "orders.revenue": 47.3},
-      {"customer_order_number": 4, "orders.order_count": 1, "orders.revenue": 33},
+     [{"customer_order_number": 1, "orders.order_count": 1, "orders.revenue": 88},
+      {"customer_order_number": 2, "orders.order_count": 3, "orders.revenue": 169.4},
+      {"customer_order_number": 3, "orders.order_count": 2, "orders.revenue": 76.8},
+      {"customer_order_number": 4, "orders.order_count": 2, "orders.revenue": 49.5},
       {"customer_order_number": 5, "orders.order_count": 1, "orders.revenue": 66},
-      {"customer_order_number": None, "orders.order_count": 1, "orders.revenue": 66}]),
-    # New: 101 and 103. Repeat: 104 70.40, 109 30.80, 110 46, 111 33, 113
-    # 16.50, 117 66 = 262.70. None: guest 112.
+      {"customer_order_number": None, "orders.order_count": 0, "orders.revenue": 0}]),
+    # New: 101. Repeat: 104 70.40, 103 33, 112 66, 109 30.80, 110 46, 111
+    # 33, 113 16.50, 117 66 = 361.70. None: no counted order.
     (["-m", "orders.order_count", "-m", "orders.revenue", "-d", "orders.new_vs_repeat",
       "-o", "orders.new_vs_repeat"],
-     [{"new_vs_repeat": "new", "orders.order_count": 2, "orders.revenue": 121},
-      {"new_vs_repeat": "repeat", "orders.order_count": 6, "orders.revenue": 262.7},
-      {"new_vs_repeat": None, "orders.order_count": 1, "orders.revenue": 66}]),
-    # Repeat orders over the counted orders with a customer: 6 / 8.
+     [{"new_vs_repeat": "new", "orders.order_count": 1, "orders.revenue": 88},
+      {"new_vs_repeat": "repeat", "orders.order_count": 8, "orders.revenue": 361.7},
+      {"new_vs_repeat": None, "orders.order_count": 0, "orders.revenue": 0}]),
+    # Repeat orders over the counted orders with a customer: 8 / 9.
     (["-m", "orders.repeat_order_share"],
-     [{"orders.repeat_order_share": 6 / 8}]),
+     [{"orders.repeat_order_share": 8 / 9}]),
     # Lines of the counted orders: 101 2 mugs (1 before its edit) + 1 tee,
     # 103 1, 104 2, 109 1 (its removed sticker line gone), 110 1, 111 1, 112
     # 2, 113 2, 117 2 = 15 items; 13 left after 104's refunded tee and 111's
@@ -371,7 +379,8 @@ CASES = [
 ]
 
 # Numbers for the customer questions, from the fixture's orders; they
-# become cases once the packages build customers. A customer is one as
+# become cases once the model has customers (the packages build them). A
+# customer is one as
 # WooCommerce Analytics counts them: the account of a registered order;
 # for a guest's, the billing email in any case, joined to the account
 # that has an order with that email; a guest's order without an email is a
@@ -381,13 +390,6 @@ CASES = [
 # report of new and returning customers counts: every status but the
 # excluded ones (on hold included, paid or not), by date placed. Dates and
 # months are New York's, of the date placed.
-#   Order numbers, replacing the cases above: 102 (Bob@Example.com) is
-#   customer 2's first order, so 103, 110 and 113 move down one; 118 is
-#   guest4's first, 112 their second. Over the counted orders: number 1
-#   101 88 = 1 order; 2 104 70.40, 103 33, 112 66 = 3, 169.40; 3 109
-#   30.80, 110 46 = 2, 76.80; 4 111 33, 113 16.50 = 2, 49.50; 5 117 66 =
-#   1; none 0. New 101, 1 order, 88; repeat the other 8, 361.70. Repeat
-#   share 8 / 9. orders.customers 3: customers 1, 2 and -112.
 #   Customers:
 #     1       first order 101, August 10: cohort August. Last 117, October
 #             9. 5 orders, net 88 + (70.40 - 29.70) + 30.80 + (33 - 33) +
