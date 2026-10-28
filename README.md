@@ -958,7 +958,7 @@ read order lines, their categories and brands, or refunds together with
 - orders: `order_count`, `all_orders`, `all_orders_total`, `revenue`,
   `refunded_amount`, `refund_rate`, `average_order_value`,
   `items_per_order`, `discount_amount`, `shipping_amount`, `tax_amount`,
-  `customers`, `repeat_order_share`. They break down by the order's
+  `buyer_count`, `repeat_order_share`. They break down by the order's
   date, week and month; payment and fulfillment status, cancelled or
   not, counted in the store's reports or not, channel and currency;
   shipping country, region and city; new or repeat customer.
@@ -1038,10 +1038,6 @@ descriptions say how:
   was cancelled, as the reports do, through a cancellation event.
 - **Taxes** in the reports are net of refunded tax; `orders.tax_amount`
   is the tax on the order as placed.
-- **New or returning**: the reports keep a cancelled order in its
-  customer's sequence (a cancelled first order shows as new). The model
-  gives a cancelled order no place in the sequence, so a customer's
-  first order after a cancelled one is new.
 - **Discounts** can differ on an order created through the API with its
   tax lines set on the price before the discount (10.00 against the
   report's 8.84 on the development store); on orders from the storefront
@@ -1109,9 +1105,12 @@ descriptions say how:
 - **Shipping and tax** in the reports are net of what was refunded, in
   the month of the refund; `orders.shipping_amount` and
   `orders.tax_amount` are as on the order.
-- **New or returning**: the reports count a guest as a customer by email.
-  The model gives guest orders no place in a customer's sequence, as at
-  Shopify; registered customers match.
+- **New or returning**: the reports count a guest as a customer by email,
+  and so does the model: a guest's orders go to an account that has an
+  order billed to the same email, else to the guest by email. Analytics
+  keeps its own table of customers; the model reads only the orders, so
+  it does not see an account's own email, and it joins a guest to an
+  account whichever of the two ordered first.
 - **SKU**: WooCommerce keeps none on the order, so `order_lines.sku` is
   the product's current SKU, and empty once the product is deleted.
 - **Test orders** are not marked in WooCommerce and count as orders.
