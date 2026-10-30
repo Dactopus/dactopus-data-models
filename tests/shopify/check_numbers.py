@@ -15,7 +15,12 @@ $OSSIE_CLICKHOUSE_URL is the ClickHouse URL with the package's target
 database, e.g. http://127.0.0.1:8123/dactopus. The model is asked in the
 zone it was built in, $OSSIE_CLICKHOUSE_TIME_ZONE.
 
-Orders in the fixture, test order 1009 left out (sales, refunded):
+With --windows it asks about the retention windows instead
+(WINDOW_CASES), over tests/shopify/fixture.sql and tests/shopify/windows.sql
+loaded into a database of their own, with no row loaded later.
+
+Orders in the fixture, test orders left out: 1009 (sales, refunded; customer
+4's only order) and 1013 (customer 1's, after their last order):
     August     1001 (110), 1002 (80, guest), 1003 (30, 22:00 on August 31
                in New York, September 1 in UTC)
     September  1004 (181, refunded 45 on October 3), 1005 (60, cancelled and
@@ -23,13 +28,14 @@ Orders in the fixture, test order 1009 left out (sales, refunded):
                30 in New York, October 1 in UTC), 1007 (137), 1008 (169.50,
                processed September 12, created October 2; its shipping
                16.95 refunded by an import on October 4 with processed_at
-               September 20), 1010 (70,
-               guest, cancelled unpaid on October 2)
+               September 20), 1010 (70, customer 3's only order, cancelled
+               unpaid on October 2)
     October    1011 (40, free shipping), 1012 (272.50, guest, import duties
                34.20 and their tax 4.45 inside)
 1001 also sold a 25 gift card, refunded on August 20, and 1007 took a 12
 tip: both are inside the order's total_price and neither is a sale. Cancelled: 1005 and 1010. Customer 1 by processed_at: 1001, 1004, 1008,
-1007. Customer 2: 1003, 1005 (cancelled), 1006, 1011. The input also holds
+1007. Customer 2: 1003, 1005 (cancelled), 1006, 1011. Customer 3: 1010
+(cancelled). Guests: 1002, 1012. The input also holds
 1004's version before its refund, placed for customer 2, 1008's version
 before its shipping was refunded, 1005's version between its cancel and
 refund with the same updated_at but an earlier load, and second copies of
@@ -66,16 +72,17 @@ CASES = [
     # 16.95 with tax); 1011's free shipping is not there. Shipping after its discounts and without tax: 10 + 10 +
     # 10 + 5 + 15 (1008's 16.95 less 1.95 tax) + 10 + 0 (1011) + 16.95
     # (1012) = 76.95. Tax 12 (1007) + 17.55 + 1.95 (1008) + 31.35 (1012's
-    # lines, shipping and duties) = 62.85. Customers 1 and 2; guests do not
-    # count.
+    # lines, shipping and duties) = 62.85. Customers 1, 2 and 3 (1010,
+    # cancelled, is in the reports); guests do not count, nor customer 4,
+    # whose only order is a test order.
     (["-m", "orders.order_count", "-m", "orders.revenue", "-m", "orders.refunded_amount",
       "-m", "sales_events.net_revenue", "-m", "orders.refund_rate",
       "-m", "orders.average_order_value", "-m", "orders.discount_amount",
-      "-m", "orders.shipping_amount", "-m", "orders.tax_amount", "-m", "orders.customers"],
+      "-m", "orders.shipping_amount", "-m", "orders.tax_amount", "-m", "orders.buyer_count"],
      [{"orders.order_count": 11, "orders.revenue": 1360, "orders.refunded_amount": 331.95,
        "sales_events.net_revenue": 958.05, "orders.refund_rate": 331.95 / 1360,
        "orders.average_order_value": 1186 / 11, "orders.discount_amount": 44,
-       "orders.shipping_amount": 76.95, "orders.tax_amount": 62.85, "orders.customers": 2}]),
+       "orders.shipping_amount": 76.95, "orders.tax_amount": 62.85, "orders.buyer_count": 3}]),
     # By month of processed_at in New York. 1003 is August (September in
     # UTC); 1008 is September (created in October). September net:
     # (181 - 45) + (210 - 210) + 137 + (169.50 - 16.95) = 425.55. August
@@ -200,36 +207,39 @@ CASES = [
      [{"fulfillment_status": "fulfilled", "orders.order_count": 1},
       {"fulfillment_status": "partially_fulfilled", "orders.order_count": 1},
       {"fulfillment_status": "unfulfilled", "orders.order_count": 9}]),
-    # The customer's orders in sequence of processed_at, cancelled ones
-    # skipped: 1001 110 and 1003 30 are first; 1004 181 and 1006 210
-    # second (1006 would be third if cancelled 1005 counted); 1008 169.50
-    # and 1011 40 third; 1007 137 fourth. In sequence of created_at, 1007
-    # would be third (187) and 1008 fourth (169.50). Guests and cancelled
-    # orders have no number: 1002 80, 1005 60, 1010 70, 1012 272.50.
+    # The customer's orders in sequence of processed_at, as Shopify's
+    # report of new and returning customers counts them: cancelled ones too
+    # (#1012 on the development store, a customer's only order and
+    # cancelled, is New, and #1021 after it Returning). First: 1001 110,
+    # 1003 30 and 1010 70, customer 3's only order, cancelled. Second: 1004
+    # 181 and cancelled 1005 60. Third: 1008 169.50 and 1006 210 (second
+    # were cancelled 1005 skipped). Fourth: 1007 137 and 1011 40. In
+    # sequence of created_at, 1007 would be third and 1008 fourth. Guests
+    # (1002 80, 1012 272.50) have no number.
     (["-m", "orders.order_count", "-m", "orders.revenue", "-d", "orders.customer_order_number",
       "-o", "orders.customer_order_number"],
-     [{"customer_order_number": 1, "orders.order_count": 2, "orders.revenue": 140},
-      {"customer_order_number": 2, "orders.order_count": 2, "orders.revenue": 391},
-      {"customer_order_number": 3, "orders.order_count": 2, "orders.revenue": 209.5},
-      {"customer_order_number": 4, "orders.order_count": 1, "orders.revenue": 137},
-      {"customer_order_number": None, "orders.order_count": 4, "orders.revenue": 482.5}]),
-    # New: 1001 110 + 1003 30. Repeat: 1004 181 (net 136), 1006 210 (net
-    # 0), 1007 137, 1008 169.50 (net 152.55), 1011 40. None: 1002 80, 1005
-    # 60, 1010 70, 1012 272.50.
+     [{"customer_order_number": 1, "orders.order_count": 3, "orders.revenue": 210},
+      {"customer_order_number": 2, "orders.order_count": 2, "orders.revenue": 241},
+      {"customer_order_number": 3, "orders.order_count": 2, "orders.revenue": 379.5},
+      {"customer_order_number": 4, "orders.order_count": 2, "orders.revenue": 177},
+      {"customer_order_number": None, "orders.order_count": 2, "orders.revenue": 352.5}]),
+    # New: 1001 110, 1003 30, 1010 70 (net 0, cancelled). Repeat: 1004 181
+    # (net 136), 1005 60 (net 0, cancelled and refunded), 1006 210 (net 0),
+    # 1007 137, 1008 169.50 (net 152.55), 1011 40. None: the guests, 1002 80
+    # and 1012 272.50.
     (["-m", "orders.order_count", "-m", "orders.revenue", "-m", "sales_events.net_revenue",
       "-d", "orders.new_vs_repeat", "-o", "orders.new_vs_repeat"],
-     [{"new_vs_repeat": "new", "orders.order_count": 2, "orders.revenue": 140,
+     [{"new_vs_repeat": "new", "orders.order_count": 3, "orders.revenue": 210,
        "sales_events.net_revenue": 140},
-      {"new_vs_repeat": "repeat", "orders.order_count": 5, "orders.revenue": 737.5,
+      {"new_vs_repeat": "repeat", "orders.order_count": 6, "orders.revenue": 797.5,
        "sales_events.net_revenue": 465.55},
-      {"new_vs_repeat": None, "orders.order_count": 4, "orders.revenue": 482.5,
+      {"new_vs_repeat": None, "orders.order_count": 2, "orders.revenue": 352.5,
        "sales_events.net_revenue": 352.5}]),
-    # Repeat orders over the orders that have a customer and are not
-    # cancelled, the ones numbered in sequence: 5 / 7. Guests (1002, 1010,
-    # 1012) and cancelled 1005 are not counted; over all orders it would be
-    # 5 / 11.
+    # Repeat orders over the orders that have a customer, the ones numbered
+    # in sequence, cancelled ones included: 6 / 9. The guests (1002, 1012)
+    # are not counted; over all orders it would be 6 / 11.
     (["-m", "orders.repeat_order_share"],
-     [{"orders.repeat_order_share": 5 / 7}]),
+     [{"orders.repeat_order_share": 6 / 9}]),
     # Lines of the 11 orders: 18 items ordered, 14 left after refunds and
     # cancels (1004 -1, 1005 -1, 1006 -1, 1010 -1; 15 if 1005's earlier
     # version were read). line_revenue is after discounts and without tax:
@@ -384,7 +394,131 @@ CASES = [
       "-o", "products.title"],
      [{"title": "Cap"}, {"title": "Hoodie"}, {"title": "Mug"}, {"title": "Poster"},
       {"title": "Scarf"}, {"title": "T-shirt"}]),
+    # Customers are the ones Shopify's report of new and returning
+    # customers counts: every order but test ones, cancelled ones included
+    # (#1012 on the development store is New, and #1021 after it
+    # Returning), in sequence of processed_at; dates and months are New
+    # York's. Customers 1, 2 and 3; customer 4 has only a test order and no
+    # row, and were cancelled orders left out, customer 3 would have none
+    # either.
+    #   1  first order 1001, August 10: cohort August. Last 1007, September
+    #      15 (by created_at 1008, October 2; test order 1013, September 25,
+    #      left out). 4 orders, net 110 + (181 - 45) + (169.50 - 16.95)
+    #      + 137 = 535.55.
+    #   2  first order 1003, 22:00 on August 31: cohort August (September in
+    #      UTC). Last 1011, October 2. 4 orders, net 30 + 0 (1005, cancelled
+    #      and refunded) + 0 (1006, refunded whole) + 40 = 70.
+    #   3  first and last order 1010, September 25: cohort September. 1
+    #      order, net 0.
+    # The customers' net and the guests' 352.50 make 958.05, net_revenue.
+    # By cohort: August 2 customers, 605.55, 302.775 each; September 1, 0.
+    (["-m", "customers.customer_count", "-m", "customers.net_amount", "-m", "customers.average_customer_value",
+      "-d", "customers.first_order_month", "-o", "customers.first_order_month"],
+     [{"first_order_month": "2026-08-01", "customers.customer_count": 2, "customers.net_amount": 605.55,
+       "customers.average_customer_value": 302.775},
+      {"first_order_month": "2026-09-01", "customers.customer_count": 1, "customers.net_amount": 0,
+       "customers.average_customer_value": 0}]),
+    (["-m", "customers.net_amount", "-d", "customers.customer_id", "-d", "customers.first_order_date",
+      "-d", "customers.last_order_date", "-d", "customers.number_of_orders", "-o", "customers.customer_id"],
+     [{"customer_id": 1, "first_order_date": "2026-08-10", "last_order_date": "2026-09-15",
+       "number_of_orders": 4, "customers.net_amount": 535.55},
+      {"customer_id": 2, "first_order_date": "2026-08-31", "last_order_date": "2026-10-02",
+       "number_of_orders": 4, "customers.net_amount": 70},
+      {"customer_id": 3, "first_order_date": "2026-09-25", "last_order_date": "2026-09-25",
+       "number_of_orders": 1, "customers.net_amount": 0}]),
+    # Bought once: customer 3. Last order before September 20: customer 1.
+    (["-m", "customers.customer_count", "-f", "customers.number_of_orders = 1"],
+     [{"customers.customer_count": 1}]),
+    (["-m", "customers.customer_count", "-f", "customers.last_order_date < '2026-09-20'"],
+     [{"customers.customer_count": 1}]),
+    # Buyers and customers: the same 3, every customer has an order the
+    # reports count.
+    (["-m", "orders.buyer_count", "-m", "customers.customer_count"],
+     [{"orders.buyer_count": 3, "customers.customer_count": 3}]),
+    # Days since the customer's previous order, between New York dates:
+    # 1004 26 (August 10 to September 5), 1008 7, 1007 3; 1005 8 (August 31
+    # to September 8; 7 between UTC dates), 1006 2 (from cancelled 1005; 10
+    # from 1003), 1011 22; none on first orders. All repeat orders (26 + 7 +
+    # 3 + 8 + 2 + 22) / 6 = 68 / 6; second orders 26 and 8, 17.
+    (["-m", "orders.average_days_between_orders"],
+     [{"orders.average_days_between_orders": 68 / 6}]),
+    (["-m", "orders.average_days_between_orders", "-f", "orders.customer_order_number = 2"],
+     [{"orders.average_days_between_orders": 17}]),
+    # Months since the first order, as Shopify's months_since_first_purchase
+    # (-1 on the first order, then calendar months between the orders'
+    # months; on the development store a customer's orders of September 12
+    # and October 5 are 1 apart): 1001, 1003, 1010 -1; 1004, 1008, 1007 1;
+    # 1005 1, 1006 1, 1011 2. In UTC 1003 is September: 1005 and 1006 0,
+    # 1011 1. The guests' orders have none and no buyer.
+    (["-m", "orders.buyer_count", "-d", "orders.months_since_first_order", "-o", "orders.months_since_first_order"],
+     [{"months_since_first_order": -1, "orders.buyer_count": 3},
+      {"months_since_first_order": 1, "orders.buyer_count": 2},
+      {"months_since_first_order": 2, "orders.buyer_count": 1},
+      {"months_since_first_order": None, "orders.buyer_count": 0}]),
+    # Buyers by cohort and month of order: August cohort August 2 (1001,
+    # 1003), September 2, October 1 (1011); September cohort September 1.
+    # The guests' orders (1002 in August, 1012 in October) have no cohort.
+    (["-m", "orders.buyer_count", "-d", "customers.first_order_month", "-d", "orders.order_month",
+      "-o", "customers.first_order_month", "-o", "orders.order_month"],
+     [{"first_order_month": "2026-08-01", "order_month": "2026-08-01", "orders.buyer_count": 2},
+      {"first_order_month": "2026-08-01", "order_month": "2026-09-01", "orders.buyer_count": 2},
+      {"first_order_month": "2026-08-01", "order_month": "2026-10-01", "orders.buyer_count": 1},
+      {"first_order_month": "2026-09-01", "order_month": "2026-09-01", "orders.buyer_count": 1},
+      {"first_order_month": None, "order_month": "2026-08-01", "orders.buyer_count": 0},
+      {"first_order_month": None, "order_month": "2026-10-01", "orders.buyer_count": 0}]),
+]
+
+# Retention windows, asked with --windows over a database of their own:
+# the fixture and tests/shopify/windows.sql loaded at once, with no row
+# loaded now. A window is over when its last day, the first order's date
+# + N, ended before the day of the last load of orders: 2009's at 22:00 on
+# October 4 in New York (02:00 on October 5 in UTC). The second order
+# counts by the days between the orders' New York dates
+# (orders.days_since_previous_order), up to N included.
+#   1   first August 10, second 26 days later: 30 over (September 9), yes;
+#       60 ends October 9, empty
+#   2   first August 31, second 8 days later, to cancelled 1005, as the
+#       report counts it: 30 over (September 30), yes; 60 empty
+#   3   first September 25, alone: 30 ends October 25, empty
+#   11  first September 1, 2025, second 334 days later: 30, 60, 90 no; 365
+#       over (September 1, 2026), yes
+#   12  first October 3, 2025, alone: all four over, no (365 ended October
+#       3, the day before the last load)
+#   13  first October 4, 2025, alone: 30, 60, 90 no; 365 ends October 4,
+#       the day of the last load, empty (over, and no, by a UTC clock)
+#   14  first May 1, 2026, second 90 days later (test order 2006 between is
+#       none): 30, 60 no; 90 over (July 30), yes; 365 empty
+#   15  first June 1, 2026, second 44 days later: 30 no; 60 (July 31) and 90
+#       (August 30) yes; 365 empty
+# Rates among the customers whose window is over: 30 days 2 of 7 (1, 2 of
+# 1, 2, 11 to 15), 60 days 1 of 5 (15 of 11 to 15), 90 days 2 of 5 (14,
+# 15), 365 days 1 of 2 (11 of 11, 12). By cohort, 30 days: August 2 of 2,
+# September none over, empty; the 2025 and 2026 spring cohorts 0.
+W = "customers.second_order_within_"
+WINDOW_CASES = [
+    (["-m", "customers.customer_count", "-d", "customers.customer_id", "-d", W + "30_days", "-d", W + "60_days",
+      "-d", W + "90_days", "-d", W + "365_days", "-o", "customers.customer_id"],
+     [{"customer_id": c, "second_order_within_30_days": d30, "second_order_within_60_days": d60,
+       "second_order_within_90_days": d90, "second_order_within_365_days": d365, "customers.customer_count": 1}
+      for c, d30, d60, d90, d365 in [
+          (1, 1, None, None, None), (2, 1, None, None, None), (3, None, None, None, None),
+          (11, 0, 0, 0, 1), (12, 0, 0, 0, 0), (13, 0, 0, 0, None), (14, 0, 0, 1, None), (15, 0, 1, 1, None)]]),
+    (["-m", "customers.second_order_rate_30_days", "-m", "customers.second_order_rate_60_days",
+      "-m", "customers.second_order_rate_90_days", "-m", "customers.second_order_rate_365_days"],
+     [{"customers.second_order_rate_30_days": 2 / 7, "customers.second_order_rate_60_days": 1 / 5,
+       "customers.second_order_rate_90_days": 2 / 5, "customers.second_order_rate_365_days": 1 / 2}]),
+    (["-m", "customers.second_order_rate_30_days", "-d", "customers.first_order_month",
+      "-o", "customers.first_order_month"],
+     [{"first_order_month": "2025-09-01", "customers.second_order_rate_30_days": 0},
+      {"first_order_month": "2025-10-01", "customers.second_order_rate_30_days": 0},
+      {"first_order_month": "2026-05-01", "customers.second_order_rate_30_days": 0},
+      {"first_order_month": "2026-06-01", "customers.second_order_rate_30_days": 0},
+      {"first_order_month": "2026-08-01", "customers.second_order_rate_30_days": 1},
+      {"first_order_month": "2026-09-01", "customers.second_order_rate_30_days": None}]),
+    # Customers whose 90 days are over without a second order: 11, 12, 13.
+    (["-m", "customers.customer_count", "-f", W + "90_days = false"],
+     [{"customers.customer_count": 3}]),
 ]
 
 if __name__ == "__main__":
-    check(MODEL, CASES)
+    check(MODEL, WINDOW_CASES if sys.argv[1:] == ["--windows"] else CASES)

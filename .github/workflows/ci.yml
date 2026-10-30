@@ -162,7 +162,7 @@ jobs:
           late() { q "INSERT INTO shopify_input.$1 SELECT * REPLACE (now64(6) AS loaded_at) FROM shopify_fixture.$1 WHERE $2"; }
           # tables <database>: a checksum of each table
           tables() { for t in orders order_lines refunds sales_events products product_categories_all product_brands_all \
-                  product_categories product_brands line_categories line_brands; do
+                  product_categories product_brands line_categories line_brands customers; do
               q "SELECT '$t', count(), groupBitXor(cityHash64(toString(tuple(*)))) FROM $1.$t FORMAT TSV"; done; }
           same() {
               CLICKHOUSE_DATABASE=analytics_full $DBT_BUILD --full-refresh
@@ -205,6 +205,23 @@ jobs:
           python3 tests/shopify/check_numbers.py
           same
           OSSIE_CLICKHOUSE_URL=http://127.0.0.1:8123/analytics_full python3 tests/shopify/check_numbers.py
+      # The retention windows close by the last load of orders
+      # (customers.sql), which the late loads above set to now. Over the
+      # fixture and the windows' first orders a year back
+      # (tests/shopify/windows.sql), loaded at once, the last load is
+      # theirs and the windows' numbers hold.
+      - name: Check retention windows
+        run: |
+          load() { python3 -c "
+          import pathlib, sys, urllib.request
+          for s in pathlib.Path(sys.argv[1]).read_text().split(';\n'):
+              if s.strip():
+                  urllib.request.urlopen('http://127.0.0.1:8123/?param_db=' + sys.argv[2], s.encode())" "$1" "$2"; }
+          load sources/shopify/input.sql shopify_windows
+          load tests/shopify/fixture.sql shopify_windows
+          load tests/shopify/windows.sql shopify_windows
+          CLICKHOUSE_DATABASE=analytics_windows ${DBT_BUILD/'"shopify_input"'/'"shopify_windows"'}
+          OSSIE_CLICKHOUSE_URL=http://127.0.0.1:8123/analytics_windows python3 tests/shopify/check_numbers.py --windows
       # deployment.yml names what a deployment sets and reads; the check
       # holds it to the package and the built tables, and counts the rows
       # whose date is not the day of their time in the build's zone: none
@@ -296,7 +313,14 @@ jobs:
       # its own and reaches the input in syncs, each followed by an
       # incremental run that must match a full refresh of the same input
       # row for row: first all but the later changes of a few orders, with
-      # 109 placed for customer 2 and 114 for customer 1; then 109 moved to
+      # 109 placed for customer 2 and 114 for customer 1, and without
+      # customer 2's orders, guest4's 112 and 117, so that guest 102, billed
+      # to customer 2's email in other case, and guest4's 118 are customers
+      # of their own; then customer 2's orders and a version of 117 billed
+      # to that email too, and 102 joins customer 1, the smaller account;
+      # then 117's own version, and 102 moves to customer 2, whose orders,
+      # which nothing else rereads, must be renumbered; then 112, and 118
+      # takes guest4's number from it, the smaller id; then 109 moved to
       # customer 1, its earlier version deleted, as an input that collapses
       # old versions would: customer 2's 110 and 113, which nothing else
       # rereads, must still be renumbered; then
@@ -327,12 +351,13 @@ jobs:
           # early <table> <rows held back>; late <table> <rows>, synced now
           early() { q "INSERT INTO woocommerce_input.wp_2_$1 SELECT * FROM woocommerce_fixture.wp_2_$1 WHERE NOT ($2)"; }
           late() { q "INSERT INTO woocommerce_input.wp_2_$1 SELECT * REPLACE (now64(9) AS _peerdb_synced_at) FROM woocommerce_fixture.wp_2_$1 WHERE $2"; }
-          # tables <database> [columns]: a checksum of each table
-          # Only orders, order_lines and refunds keep a sync time: all the
-          # other tables' columns count.
+          # tables <database> [columns] [customer columns]: a checksum of
+          # each table. Only orders, order_lines and refunds keep a sync
+          # time, and customers' retention windows close by the last one:
+          # all the other tables' columns count.
           tables() { for t in orders order_lines refunds sales_events products product_categories_all product_brands_all \
-                  product_categories product_brands line_categories line_brands; do
-              case $t in orders|order_lines|refunds) c=${2:-*} ;; *) c='*' ;; esac
+                  product_categories product_brands line_categories line_brands customers; do
+              case $t in orders|order_lines|refunds) c=${2:-*} ;; customers) c=${3:-*} ;; *) c='*' ;; esac
               q "SELECT '$t', count(), groupBitXor(cityHash64(toString(tuple($c)))) FROM $1.$t FORMAT TSV"; done; }
           same() {
               CLICKHOUSE_DATABASE=analytics_full $DBT_BUILD --full-refresh
@@ -345,7 +370,7 @@ jobs:
           load tests/woocommerce/fixture.sql woocommerce_fixture
           $DBT_BUILD
           v() { echo "_peerdb_version $1"; }
-          early wc_orders "$(v 'IN (163, 116, 128, 151, 293, 207, 209, 295, 306, 330, 360, 372)')"
+          early wc_orders "$(v 'IN (163, 116, 128, 151, 293, 207, 209, 295, 306, 330, 360, 372, 75, 91, 140, 211, 277, 261, 273, 275, 341)')"
           # 109 first for customer 2, on hold (numbered, unlike pending), and
           # 114 first for customer 1, in versions before any of the
           # fixture's (filtered inside: a replaced column would shadow it in
@@ -365,6 +390,24 @@ jobs:
           early term_taxonomy false
           early term_relationships false
           $DBT_BUILD                 # incremental into empty tables
+          # customer <order id>: the customer orders names for it
+          customer() { q "SELECT customer_id FROM analytics.orders WHERE order_id = $1"; }
+          test "$(customer 102)" = -102
+          test "$(customer 118)" = -118
+          same
+          late wc_orders "$(v 'IN (75, 91, 140, 211, 277)')"
+          q "INSERT INTO woocommerce_input.wp_2_wc_orders SELECT * REPLACE ('BOB@example.com' AS billing_email, now64(9) AS _peerdb_synced_at, 0 AS _peerdb_version)
+             FROM (SELECT * FROM woocommerce_fixture.wp_2_wc_orders WHERE $(v '= 341'))"
+          $DBT_BUILD                 # a guest joined to an account
+          test "$(customer 102)" = 1
+          same
+          late wc_orders "$(v '= 341')"
+          $DBT_BUILD                 # a guest moved to another account
+          test "$(customer 102)" = 2
+          same
+          late wc_orders "$(v 'IN (261, 273, 275)')"
+          $DBT_BUILD                 # a guest's order with a smaller id
+          test "$(customer 118)" = -112
           same
           late wc_orders "$(v '= 163')"
           q "DELETE FROM woocommerce_input.wp_2_wc_orders WHERE id = 109 AND $(v '= 0')"
@@ -419,15 +462,33 @@ jobs:
                   posts terms term_taxonomy term_relationships; do
               q "INSERT INTO woocommerce_nullable.wp_2_$t SELECT * FROM woocommerce_fixture.wp_2_$t"; done
           CLICKHOUSE_DATABASE=analytics_nullable ${DBT_BUILD/'"woocommerce_input"'/'"woocommerce_nullable"'}
-          # synced_at apart: the late rows above were synced later.
-          tables analytics_nullable "* EXCEPT synced_at" > nullable.tsv
-          tables analytics_full "* EXCEPT synced_at" > full.tsv
+          # synced_at and the retention windows apart: the late rows above
+          # were synced later.
+          tables analytics_nullable "* EXCEPT synced_at" "* EXCEPT ('^second_order_within_')" > nullable.tsv
+          tables analytics_full "* EXCEPT synced_at" "* EXCEPT ('^second_order_within_')" > full.tsv
           diff nullable.tsv full.tsv
           # A store whose reports count cancelled orders: 107, paid, cancelled
           # and refunded 22 of 44, is a sale, and its net_total is what its
           # events add up to (sales_events_make_net_total): 22, not 0.
           CLICKHOUSE_DATABASE=analytics_cancelled ${DBT_BUILD/'"woocommerce_lookback_days":0'/'"woocommerce_lookback_days":0,"woocommerce_excluded_statuses":["pending","failed"]'}
           test "$(q "SELECT in_sales_reports AND net_total = 22 FROM analytics_cancelled.orders WHERE order_id = 107")" = 1
+      # The retention windows close by the last sync of orders
+      # (customers.sql), which the late rows above set to now. Over the
+      # fixture and the windows' first orders a year back
+      # (tests/woocommerce/windows.sql), synced at once, the last sync is
+      # theirs and the windows' numbers hold.
+      - name: Check retention windows
+        run: |
+          load() { sed 's/wp_/wp_2_/g' "$1" | python3 -c "
+          import sys, urllib.request
+          for s in sys.stdin.read().split(';\n'):
+              if s.strip():
+                  urllib.request.urlopen('http://127.0.0.1:8123/?param_db=' + sys.argv[1], s.encode())" "$2"; }
+          load sources/woocommerce/input.sql woocommerce_windows
+          load tests/woocommerce/fixture.sql woocommerce_windows
+          load tests/woocommerce/windows.sql woocommerce_windows
+          CLICKHOUSE_DATABASE=analytics_windows ${DBT_BUILD/'"woocommerce_input"'/'"woocommerce_windows"'}
+          OSSIE_CLICKHOUSE_URL=http://127.0.0.1:8123/analytics_windows python3 tests/woocommerce/check_numbers.py --windows
       # deployment.yml names what a deployment sets and reads; the check
       # holds it to the package and the built tables, and counts the rows
       # whose date is not the day of their time in the build's zone: none

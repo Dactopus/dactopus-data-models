@@ -21,6 +21,13 @@ models:
           - accepted_values:
               arguments:
                 values: [unfulfilled, partially_fulfilled, fulfilled]
+  - name: customers
+    columns:
+      - name: customer_id
+        data_tests: [unique, not_null]
+      - {name: first_order_date, data_tests: [not_null]}
+      - {name: last_order_date, data_tests: [not_null]}
+      - {name: net_total, data_tests: [not_null]}
   - name: order_lines
     columns:
       - name: line_id

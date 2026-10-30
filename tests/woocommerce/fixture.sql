@@ -11,7 +11,9 @@
 --
 -- The store is in America/New_York (UTC-4 from August to October), sells in
 -- USD and charges 10 % tax. Customers 1 and 2 order more than once; guests
--- have customer 0. Store reports date an order by payment and leave out
+-- have customer 0 and are told apart by their billing email, in any case:
+-- 102 is customer 2's, guest4 orders twice (118, 112), and 119 has no
+-- email. Store reports date an order by payment and leave out
 -- pending, cancelled and failed orders, as WooCommerce Analytics does by
 -- default. Products: 11 mug (MUG), 12 tee with variations 121 (TEE-M) and
 -- 122 (TEE-L), 13 sticker without a SKU, 14 cap (CAP), deleted from the
@@ -23,8 +25,10 @@
 --        payment (new versions of its meta rows) and the tax item was
 --        recreated (4 deleted, 5 new). A plugin's order number 1 is in
 --        the order meta.
---   102  guest: 3 stickers; 16.50, on hold (bank transfer awaited), no
---        payment date: not in the reports.
+--   102  guest with customer 2's email in other case (Bob@Example.com),
+--        before customer 2's first order as a customer: 3 stickers,
+--        16.50, on hold (bank transfer awaited), no payment date: not in
+--        the reports.
 --   103  customer 2: a cap, shipping 5; 33, paid at 22:10 on August 31
 --        (September 1 in UTC). The cap is deleted later: no SKU.
 --   104  customer 1: 2 TEE-L with a 10 % coupon, shipping 10; 70.40,
@@ -52,6 +56,9 @@
 --   114  guest: paid October 4, then moved to the trash.
 --   115  a checkout draft, never placed.
 --   116  guest: paid and completed October 8, then deleted for good.
+--   118  guest4, before their 112: a mug; 22, on hold, never paid.
+--   119  guest without an email, placed in the admin: a mug; 22, on hold,
+--        never paid.
 --   117  customer 1, paid in EUR through WooPayments on October 9: 2 mugs
 --        45, tax 4.50, shipping 9 and its tax 0.90; 59.40 EUR. The
 --        order's rate is 0.9 EUR per USD: 66 USD.
@@ -61,7 +68,7 @@ INSERT INTO {db:Identifier}.wp_wc_orders
 (101, 'wc-pending', 'USD', 'shop_order', 5, 66, 1, 'alice@example.com', '2026-08-10 14:00:00', 0, '2026-08-10 14:00:05', 0, 7),
 (101, 'wc-processing', 'USD', 'shop_order', 7, 88, 1, 'alice@example.com', '2026-08-10 14:00:00', 0, '2026-08-10 14:05:05', 0, 54),
 (101, 'wc-completed', 'USD', 'shop_order', 7, 88, 1, 'alice@example.com', '2026-08-10 14:00:00', 0, '2026-08-12 09:00:05', 0, 56),
-(102, 'wc-on-hold', 'USD', 'shop_order', 1.5, 16.5, 0, 'guest1@example.com', '2026-08-20 15:00:00', 0, '2026-08-20 15:00:05', 0, 58),
+(102, 'wc-on-hold', 'USD', 'shop_order', 1.5, 16.5, 0, 'Bob@Example.com', '2026-08-20 15:00:00', 0, '2026-08-20 15:00:05', 0, 58),
 (103, 'wc-pending', 'USD', 'shop_order', 2.5, 33, 2, 'bob@example.com', '2026-09-01 02:00:00', 0, '2026-09-01 02:00:05', 0, 75),
 (103, 'wc-processing', 'USD', 'shop_order', 2.5, 33, 2, 'bob@example.com', '2026-09-01 02:00:00', 0, '2026-09-01 02:10:05', 0, 91),
 (104, 'wc-on-hold', 'USD', 'shop_order', 5.4, 70.4, 1, 'alice@example.com', '2026-08-30 12:00:00', 0, '2026-08-30 12:00:05', 0, 93),
@@ -94,7 +101,9 @@ INSERT INTO {db:Identifier}.wp_wc_orders
 (116, 'wc-completed', 'USD', 'shop_order', 2, 22, 0, 'guest6@example.com', '2026-10-08 10:00:00', 0, '2026-10-08 13:00:05', 1, 330),
 (117, 'wc-processing', 'EUR', 'shop_order', 4.5, 59.4, 1, 'alice@example.com', '2026-10-09 10:00:00', 0, '2026-10-09 10:00:05', 0, 341),
 (904, 'wc-completed', 'USD', 'shop_order_refund', -2, -22, 0, '', '2026-09-10 10:00:00', 107, '2026-09-10 10:00:05', 0, 360),
-(107, 'wc-cancelled', 'USD', 'shop_order', 4, 44, 2, 'bob@example.com', '2026-09-08 13:00:00', 0, '2026-09-10 10:00:05', 0, 372);
+(107, 'wc-cancelled', 'USD', 'shop_order', 4, 44, 2, 'bob@example.com', '2026-09-08 13:00:00', 0, '2026-09-10 10:00:05', 0, 372),
+(118, 'wc-on-hold', 'USD', 'shop_order', 2, 22, 0, 'guest4@example.com', '2026-09-28 14:00:00', 0, '2026-09-28 14:00:05', 0, 491),
+(119, 'wc-on-hold', 'USD', 'shop_order', 2, 22, 0, '', '2026-09-30 14:00:00', 0, '2026-09-30 14:00:05', 0, 492);
 
 INSERT INTO {db:Identifier}.wp_wc_order_operational_data
     (id, order_id, created_via, prices_include_tax, date_paid_gmt, date_completed_gmt, shipping_total_amount, shipping_tax_amount, discount_total_amount, discount_tax_amount, _peerdb_synced_at, _peerdb_is_deleted, _peerdb_version) SETTINGS session_timezone = 'UTC' VALUES
@@ -126,7 +135,9 @@ INSERT INTO {db:Identifier}.wp_wc_order_operational_data
 (18, 116, 'checkout', false, '2026-10-08 10:00:00', '1970-01-01 00:00:00', 0, 0, 0, 0, '2026-10-08 10:00:05', 0, 319),
 (18, 116, 'checkout', false, '2026-10-08 10:00:00', '1970-01-01 00:00:00', 0, 0, 0, 0, '2026-10-08 13:00:05', 1, 331),
 (19, 117, 'checkout', false, '2026-10-09 10:00:00', '1970-01-01 00:00:00', 9, 0.9, 0, 0, '2026-10-09 10:00:05', 0, 342),
-(20, 904, '', false, '1970-01-01 00:00:00', '1970-01-01 00:00:00', 0, 0, 0, 0, '2026-09-10 10:00:05', 0, 361);
+(20, 904, '', false, '1970-01-01 00:00:00', '1970-01-01 00:00:00', 0, 0, 0, 0, '2026-09-10 10:00:05', 0, 361),
+(21, 118, 'checkout', false, '1970-01-01 00:00:00', '1970-01-01 00:00:00', 0, 0, 0, 0, '2026-09-28 14:00:05', 0, 493),
+(22, 119, 'admin', false, '1970-01-01 00:00:00', '1970-01-01 00:00:00', 0, 0, 0, 0, '2026-09-30 14:00:05', 0, 494);
 
 INSERT INTO {db:Identifier}.wp_wc_order_addresses
     (id, order_id, address_type, city, state, postcode, country, _peerdb_synced_at, _peerdb_is_deleted, _peerdb_version) SETTINGS session_timezone = 'UTC' VALUES
@@ -188,7 +199,9 @@ INSERT INTO {db:Identifier}.wp_woocommerce_order_items
 (33, 'Mug', 'line_item', 116, '2026-10-08 13:00:05', 1, 332),
 (34, 'Mug', 'line_item', 117, '2026-10-09 10:00:05', 0, 346),
 (35, 'Flat rate', 'shipping', 117, '2026-10-09 10:00:05', 0, 355),
-(36, 'Mug', 'line_item', 904, '2026-09-10 10:00:05', 0, 362);
+(36, 'Mug', 'line_item', 904, '2026-09-10 10:00:05', 0, 362),
+(37, 'Mug', 'line_item', 118, '2026-09-28 14:00:05', 0, 495),
+(38, 'Mug', 'line_item', 119, '2026-09-30 14:00:05', 0, 504);
 
 INSERT INTO {db:Identifier}.wp_woocommerce_order_itemmeta
     (meta_id, order_item_id, meta_key, meta_value, _peerdb_synced_at, _peerdb_is_deleted, _peerdb_version) SETTINGS session_timezone = 'UTC' VALUES
@@ -437,7 +450,23 @@ INSERT INTO {db:Identifier}.wp_woocommerce_order_itemmeta
 (218, 36, '_line_subtotal_tax', '-2', '2026-09-10 10:00:05', 0, 368),
 (219, 36, '_line_total', '-20', '2026-09-10 10:00:05', 0, 369),
 (220, 36, '_line_tax', '-2', '2026-09-10 10:00:05', 0, 370),
-(221, 36, '_refunded_item_id', '15', '2026-09-10 10:00:05', 0, 371);
+(221, 36, '_refunded_item_id', '15', '2026-09-10 10:00:05', 0, 371),
+(222, 37, '_product_id', '11', '2026-09-28 14:00:05', 0, 496),
+(223, 37, '_variation_id', '0', '2026-09-28 14:00:05', 0, 497),
+(224, 37, '_qty', '1', '2026-09-28 14:00:05', 0, 498),
+(225, 37, '_tax_class', '', '2026-09-28 14:00:05', 0, 499),
+(226, 37, '_line_subtotal', '20', '2026-09-28 14:00:05', 0, 500),
+(227, 37, '_line_subtotal_tax', '2', '2026-09-28 14:00:05', 0, 501),
+(228, 37, '_line_total', '20', '2026-09-28 14:00:05', 0, 502),
+(229, 37, '_line_tax', '2', '2026-09-28 14:00:05', 0, 503),
+(230, 38, '_product_id', '11', '2026-09-30 14:00:05', 0, 505),
+(231, 38, '_variation_id', '0', '2026-09-30 14:00:05', 0, 506),
+(232, 38, '_qty', '1', '2026-09-30 14:00:05', 0, 507),
+(233, 38, '_tax_class', '', '2026-09-30 14:00:05', 0, 508),
+(234, 38, '_line_subtotal', '20', '2026-09-30 14:00:05', 0, 509),
+(235, 38, '_line_subtotal_tax', '2', '2026-09-30 14:00:05', 0, 510),
+(236, 38, '_line_total', '20', '2026-09-30 14:00:05', 0, 511),
+(237, 38, '_line_tax', '2', '2026-09-30 14:00:05', 0, 512);
 
 INSERT INTO {db:Identifier}.wp_wc_product_meta_lookup
     (product_id, sku, _peerdb_synced_at, _peerdb_is_deleted, _peerdb_version) SETTINGS session_timezone = 'UTC' VALUES

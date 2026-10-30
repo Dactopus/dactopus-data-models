@@ -28,6 +28,13 @@ hand-written rows, and properties outside UTC are not tested at all.
 
 ## Later
 
+### Discount codes
+
+Which code brought the revenue: each order with each discount code it
+used. Today `orders` has the number of codes and the discount amount
+only. The Shopify input already reads the order's codes; WooCommerce
+keeps coupons as items of the order.
+
 ### Advertising: Google Ads and Meta Ads
 
 Spend, impressions and clicks by date and campaign. With two sources from
@@ -37,16 +44,6 @@ shows a common schema across eleven ad platforms. A brand buys ads on
 several platforms at once, so one deployment will need more than one
 package writing the same entity. That changes a layout rule in the
 README, which now has a deployment pick one package per entity.
-
-### Customers
-
-A `customers` entity: one row per customer of the store, with their first
-and latest order, order count and spend. Today customer counts and new or
-repeat orders come from `orders`. The question to settle first is what
-identifies a customer: Shopify creates a customer record for a guest
-checkout, WooCommerce does not, so the same buyers count differently by
-source. Matching customers across systems stays
-[out of scope](README.md#out-of-scope).
 
 ## Exploring
 

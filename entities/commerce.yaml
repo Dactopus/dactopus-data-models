@@ -3,8 +3,9 @@ version: "0.2.0.dev0"
 name: commerce
 description: >
   Orders of an online store as the store recorded them: orders, their lines
-  of goods, refunds, and sales events, the store's sales over time; and the
-  store's catalogue of products, with their categories and brands. Built
+  of goods, refunds, and sales events, the store's sales over time; the
+  store's customers, with their first and last orders; and the store's
+  catalogue of products, with their categories and brands. Built
   from the store's own data by a source package (sources/shopify,
   sources/woocommerce).
 ai_context:
@@ -43,10 +44,28 @@ ai_context:
     cards alone, and the refund Shopify records when it cancels an unpaid
     order, has an amount of 0; this is not an error. Where the source cannot
     tell a refunded tip from a refund of goods (Shopify), the tip counts as a
-    refund. Customers are the store's customer records: guest checkouts have
-    none and are not counted. channel holds the source's own values, which
-    differ between sources. Categories and brands are the product's current
-    ones: moving a product moves its past sales too, as in the store's
+    refund. A customer is one the store's report of new and returning
+    customers counts: at Shopify the store's customer record, which an order
+    with an email gets even without an account; at WooCommerce an account,
+    or a guest by billing email. Customers are not matched across sources.
+    For buyers in a period, use orders.buyer_count by the order date. For
+    anything about customers over all their orders, use customers: new
+    customers by the month of their first order (customers.customer_count
+    by customers.first_order_month, the cohort), customers who bought once,
+    revenue per customer, customers who have not bought since a date.
+    Buyers of a cohort in each later month are orders.buyer_count by
+    customers.first_order_month and orders.order_month (or
+    orders.months_since_first_order); the model has no metric for their
+    share of the cohort in each month. The share of customers who ordered
+    a second time within 30, 60, 90 or 365 days of their first order is
+    customers.second_order_rate_30_days, second_order_rate_60_days,
+    second_order_rate_90_days or second_order_rate_365_days, by
+    customers.first_order_month for each cohort; it counts only
+    customers whose window is over, so name the window in the answer.
+    orders.repeat_order_share is a share of orders, not of customers.
+    channel holds the source's own values, which differ between sources.
+    Categories and brands are the product's current ones: moving a
+    product moves its past sales too, as in the store's
     reports, and a deleted product's sales have none. A category is the
     product type at Shopify and a product category at WooCommerce; a brand
     is the vendor at Shopify. WooCommerce categories nest: a product in
@@ -256,9 +275,17 @@ datasets:
       - name: customer_id
         expression: {dialects: [{dialect: ANSI_SQL, expression: customer_id}]}
         description: >
-          The store's customer record that placed the order. Empty for a
-          guest checkout. A person who checks out once as a guest and once
-          with an account is not recognised as one customer.
+          The customer who placed the order (customers.customer_id), as the
+          store's report of new and returning customers counts them.
+          Shopify: the store's customer record, which an order with an
+          email gets even without an account; empty for an order without an
+          email. WooCommerce: the account of a registered order; for a
+          guest's, the account that has an order billed to the same email,
+          in any letter case (the smallest such account where there are
+          several), else the guest, one per email, numbered by the smallest
+          id of their orders with a minus sign (-112); a guest's order
+          without an email is a customer of its own. It identifies the
+          customer and is not an order number.
         datatype: Integer
         dimension: {is_time: false}
         ai_context:
@@ -267,12 +294,13 @@ datasets:
         expression: {dialects: [{dialect: ANSI_SQL, expression: customer_order_number}]}
         description: >
           Place of the order among its customer's orders by the time they
-          were placed: 1 for the first. Guest orders have none, and neither
-          do orders the store's reports leave out by status: cancelled
-          orders (Shopify), or orders in the statuses the report settings
-          exclude, cancelled, pending and failed by default (WooCommerce).
-          Those do not shift the others. A WooCommerce order on hold,
-          awaiting payment, has its number.
+          were placed, 1 for the first, as the store's report of new and
+          returning customers counts them. Shopify numbers every order of
+          the customer, cancelled ones too. WooCommerce numbers every status
+          but those its report settings exclude, cancelled, pending and
+          failed by default: an order on hold, awaiting payment, has its
+          number, and an excluded one has none and does not shift the
+          others. Empty for an order without a customer.
         datatype: Integer
         dimension: {is_time: false}
         ai_context:
@@ -286,6 +314,38 @@ datasets:
         dimension: {is_time: false}
         ai_context:
           synonyms: [new or returning, first or repeat purchase, customer type]
+      - name: days_since_previous_order
+        expression: {dialects: [{dialect: ANSI_SQL, expression: days_since_previous_order}]}
+        description: >
+          Days from the customer's previous order to this one, between their
+          dates placed in the store's time zone: an order the next day is 1,
+          however few hours apart. Counted between the orders
+          customer_order_number numbers, so at Shopify from a cancelled
+          order too, and at WooCommerce by the date placed, not paid. Empty
+          on a customer's first order and where customer_order_number is.
+          For the time to a second order, filter by
+          orders.customer_order_number = 2.
+        datatype: Integer
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [days between orders, purchase interval, days to next order, reorder gap]
+      - name: months_since_first_order
+        expression: {dialects: [{dialect: ANSI_SQL, expression: months_since_first_order}]}
+        description: >
+          Calendar months from the month of the customer's first order to
+          the month of this one, as Shopify's months_since_first_purchase:
+          -1 on the first order itself, 0 on a repeat order in the same
+          month, 1 in the next month however few days apart. By the date
+          placed, as customer_order_number goes: at WooCommerce the month
+          placed can differ from orders.order_month, the month paid. Empty
+          where customer_order_number is. For a cohort table, group
+          orders.buyer_count by customers.first_order_month and this field;
+          the cohort's size is customers.customer_count by
+          customers.first_order_month.
+        datatype: Integer
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [month number, cohort month index, months since first purchase, customer age in months]
       - name: item_quantity
         expression: {dialects: [{dialect: ANSI_SQL, expression: item_quantity}]}
         description: >
@@ -490,23 +550,268 @@ datasets:
         datatype: Decimal
         ai_context:
           synonyms: [tax, taxes, tax total, VAT, sales tax]
-      - name: customers
+      - name: buyer_count
         expression: {dialects: [{dialect: ANSI_SQL, expression: COUNT(DISTINCT CASE WHEN in_sales_reports THEN customer_id END)}]}
         description: >
-          Number of distinct customers who placed orders. Guest checkouts are
-          not counted.
+          Number of distinct customers (orders.customer_id) among the
+          orders the store's reports count: the customers who bought in a
+          period, by order date. A Shopify order without an email has no
+          customer and is not counted. For new customers by the month of
+          their first order, or every customer the store has, use
+          customers.customer_count: at WooCommerce it also counts customers
+          whose orders all await payment, which the reports leave out.
         datatype: Integer
         ai_context:
-          synonyms: [buyers, number of customers, unique customers, purchasers]
+          synonyms: [buyers, purchasers, active customers, customers who bought, customers who ordered, shoppers in a period]
       - name: repeat_order_share
         expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(CASE WHEN in_sales_reports AND new_vs_repeat = 'repeat' THEN 1 END) * 1.0 / COUNT(CASE WHEN in_sales_reports THEN customer_order_number END)"}]}
         description: >
           Share of orders that were a customer's second or later, from 0 to 1,
           among orders with a customer and a place in its sequence
-          (orders.customer_order_number).
+          (orders.customer_order_number). A share of orders: the share of
+          customers who ordered again is customers.second_order_rate_30_days
+          and the other windows.
         datatype: Float
         ai_context:
-          synonyms: [repeat purchase rate, returning customer orders, repeat rate]
+          synonyms: [repeat order rate, share of repeat orders, returning customer orders]
+      - name: average_days_between_orders
+        expression: {dialects: [{dialect: ANSI_SQL, expression: AVG(CASE WHEN in_sales_reports THEN days_since_previous_order END)}]}
+        description: >
+          Average of orders.days_since_previous_order over the repeat orders
+          the store's reports count: days from a customer's previous order.
+          Filter by orders.customer_order_number = 2 for the time to a
+          second order, and group by customers.first_order_month for it by
+          cohort.
+        datatype: Float
+        ai_context:
+          synonyms: [time between orders, average purchase interval, days to second order, time to repeat purchase]
+
+  - name: customers
+    source: customers
+    primary_key: [customer_id]
+    description: >
+      One row per customer with an order the store's report of new and
+      returning customers counts (orders.customer_order_number): at Shopify
+      any order but a test one, cancelled ones included; at WooCommerce any
+      status but those the report settings exclude, orders on hold
+      included, paid or not. A customer record without such an order, a
+      newsletter subscriber or an account that never ordered, has no row.
+      Dates are those of these orders, by the date placed in the store's
+      time zone. Orders (orders.customer_id) can be grouped or filtered by
+      the fields here: orders by cohort.
+    ai_context:
+      synonyms: [clients, customer list, customer base, customer records]
+    fields:
+      - name: customer_id
+        expression: {dialects: [{dialect: ANSI_SQL, expression: customer_id}]}
+        description: >
+          The customer, as orders.customer_id names them: a Shopify customer
+          record, a WooCommerce account, or a WooCommerce guest by email,
+          with a minus sign. It identifies the customer; the model holds no
+          name or email.
+        datatype: Integer
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [customer, customer number, client]
+      - name: first_order_date
+        expression: {dialects: [{dialect: ANSI_SQL, expression: first_order_date}]}
+        description: >
+          Date of the customer's first order (orders.customer_order_number =
+          1), placed, in the store's time zone. At WooCommerce the date
+          placed, not paid: it can come before that order's
+          orders.order_date.
+        datatype: Date
+        dimension: {is_time: true}
+        ai_context:
+          synonyms: [first purchase date, acquisition date, customer since]
+      - name: first_order_month
+        expression: {dialects: [{dialect: ANSI_SQL, expression: "DATE_TRUNC('month', first_order_date)"}]}
+        description: >
+          First day of the month of first_order_date: the customer's
+          cohort. customers.customer_count by it gives the new customers of
+          each month.
+        datatype: Date
+        dimension: {is_time: true}
+        ai_context:
+          synonyms: [cohort, cohort month, acquisition month, first purchase month, month acquired]
+      - name: last_order_date
+        expression: {dialects: [{dialect: ANSI_SQL, expression: last_order_date}]}
+        description: >
+          Date of the customer's latest order of those counted here,
+          placed, in the store's time zone. For customers who have not
+          bought since a date, filter by customers.last_order_date before
+          it.
+        datatype: Date
+        dimension: {is_time: true}
+        ai_context:
+          synonyms: [last purchase date, most recent order, last seen, recency]
+      - name: number_of_orders
+        expression: {dialects: [{dialect: ANSI_SQL, expression: number_of_orders}]}
+        description: >
+          The customer's orders counted here: the place of the last
+          (orders.customer_order_number), cancelled orders included at
+          Shopify, orders on hold at WooCommerce. Filter by
+          customers.number_of_orders = 1 for customers who bought once.
+        datatype: Integer
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [purchases per customer, purchase frequency, times bought]
+      - name: net_total
+        expression: {dialects: [{dialect: ANSI_SQL, expression: net_total}]}
+        description: >
+          What the customer's orders earned after refunds and cancellations,
+          with shipping and tax: orders.net_total of the orders counted here
+          added up, as Shopify's sales report by customer (total sales) and
+          WooCommerce Analytics' Customers report (total spend) count it.
+          Not Shopify's amount spent on the customer's page, which counts
+          the orders as placed. At WooCommerce an order on hold counts, as
+          in the Customers report, though sales_events.net_revenue leaves it
+          out: the customers' net_total can add up to more than net revenue.
+        datatype: Decimal
+        ai_context:
+          synonyms: [lifetime value, customer value, total spend, LTV, CLV, customer revenue]
+      - name: second_order_within_30_days
+        expression: {dialects: [{dialect: ANSI_SQL, expression: second_order_within_30_days = 1}]}
+        description: >
+          Whether the customer's second order came within 30 days of the
+          first, counting days between the orders' dates
+          (orders.days_since_previous_order of the second order). Empty
+          while the 30 days are not over: they are over once their last day
+          is before the day of the latest load of orders, so the window
+          moves when new data arrives, not with the calendar. False for a
+          customer whose 30 days are over without a second order.
+          customers.second_order_rate_30_days is the share of true.
+        datatype: Boolean
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [ordered again within 30 days, came back within 30 days, repeat buyer within 30 days]
+      - name: second_order_within_60_days
+        expression: {dialects: [{dialect: ANSI_SQL, expression: second_order_within_60_days = 1}]}
+        description: >
+          Whether the customer's second order came within 60 days of the
+          first, counting days between the orders' dates
+          (orders.days_since_previous_order of the second order). Empty
+          while the 60 days are not over: they are over once their last day
+          is before the day of the latest load of orders, so the window
+          moves when new data arrives, not with the calendar. False for a
+          customer whose 60 days are over without a second order.
+          customers.second_order_rate_60_days is the share of true.
+        datatype: Boolean
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [ordered again within 60 days, came back within 60 days, repeat buyer within 60 days]
+      - name: second_order_within_90_days
+        expression: {dialects: [{dialect: ANSI_SQL, expression: second_order_within_90_days = 1}]}
+        description: >
+          Whether the customer's second order came within 90 days of the
+          first, counting days between the orders' dates
+          (orders.days_since_previous_order of the second order). Empty
+          while the 90 days are not over: they are over once their last day
+          is before the day of the latest load of orders, so the window
+          moves when new data arrives, not with the calendar. False for a
+          customer whose 90 days are over without a second order.
+          customers.second_order_rate_90_days is the share of true.
+        datatype: Boolean
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [ordered again within 90 days, came back within 90 days, repeat buyer within 90 days]
+      - name: second_order_within_365_days
+        expression: {dialects: [{dialect: ANSI_SQL, expression: second_order_within_365_days = 1}]}
+        description: >
+          Whether the customer's second order came within 365 days of the
+          first, counting days between the orders' dates
+          (orders.days_since_previous_order of the second order). Empty
+          while the 365 days are not over: they are over once their last day
+          is before the day of the latest load of orders, so the window
+          moves when new data arrives, not with the calendar. False for a
+          customer whose 365 days are over without a second order.
+          customers.second_order_rate_365_days is the share of true.
+        datatype: Boolean
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [ordered again within 365 days, came back within 365 days, repeat buyer within 365 days]
+    metrics:
+      - name: customer_count
+        expression: {dialects: [{dialect: ANSI_SQL, expression: COUNT(*)}]}
+        description: >
+          Number of customers. By customers.first_order_month, the new
+          customers of each month. Buyers in a period are orders.buyer_count.
+        datatype: Integer
+        ai_context:
+          synonyms: [number of customers, new customers, cohort size, customer base size, unique customers]
+      - name: net_amount
+        expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(net_total)}]}
+        description: >
+          What the customers' orders earned after refunds and cancellations
+          (customers.net_total), over all their orders whenever placed.
+        datatype: Decimal
+        ai_context:
+          synonyms: [customer revenue, cohort revenue, lifetime revenue]
+      - name: average_customer_value
+        expression: {dialects: [{dialect: ANSI_SQL, expression: CAST(SUM(net_total) AS DOUBLE) / COUNT(*)}]}
+        description: >
+          Net per customer over all their orders: customers.net_amount over
+          customers.customer_count. By customers.first_order_month, revenue
+          per customer by cohort.
+        datatype: Float
+        ai_context:
+          synonyms: [average lifetime value, average LTV, revenue per customer, average customer spend]
+      - name: second_order_rate_30_days
+        expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(CASE WHEN second_order_within_30_days = 1 THEN 1 END) * 1.0 / NULLIF(COUNT(second_order_within_30_days), 0)"}]}
+        description: >
+          Share of customers whose second order came within 30 days of their
+          first, from 0 to 1, among the customers whose 30 days are over
+          (customers.second_order_within_30_days not empty). A customer
+          still inside the window counts in neither part, so a recent
+          cohort does not look worse than an old one. Empty where no
+          customer's window is over. By customers.first_order_month, the
+          rate of each cohort. A share of customers; orders.repeat_order_share
+          is a share of orders.
+        datatype: Float
+        ai_context:
+          synonyms: [30-day repeat purchase rate, 30-day repeat customer rate, 30-day retention, 30-day repurchase rate, share of customers who ordered again within 30 days]
+      - name: second_order_rate_60_days
+        expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(CASE WHEN second_order_within_60_days = 1 THEN 1 END) * 1.0 / NULLIF(COUNT(second_order_within_60_days), 0)"}]}
+        description: >
+          Share of customers whose second order came within 60 days of their
+          first, from 0 to 1, among the customers whose 60 days are over
+          (customers.second_order_within_60_days not empty). A customer
+          still inside the window counts in neither part, so a recent
+          cohort does not look worse than an old one. Empty where no
+          customer's window is over. By customers.first_order_month, the
+          rate of each cohort. A share of customers; orders.repeat_order_share
+          is a share of orders.
+        datatype: Float
+        ai_context:
+          synonyms: [60-day repeat purchase rate, 60-day repeat customer rate, 60-day retention, 60-day repurchase rate, share of customers who ordered again within 60 days]
+      - name: second_order_rate_90_days
+        expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(CASE WHEN second_order_within_90_days = 1 THEN 1 END) * 1.0 / NULLIF(COUNT(second_order_within_90_days), 0)"}]}
+        description: >
+          Share of customers whose second order came within 90 days of their
+          first, from 0 to 1, among the customers whose 90 days are over
+          (customers.second_order_within_90_days not empty). A customer
+          still inside the window counts in neither part, so a recent
+          cohort does not look worse than an old one. Empty where no
+          customer's window is over. By customers.first_order_month, the
+          rate of each cohort. A share of customers; orders.repeat_order_share
+          is a share of orders.
+        datatype: Float
+        ai_context:
+          synonyms: [90-day repeat purchase rate, 90-day repeat customer rate, 90-day retention, 90-day repurchase rate, share of customers who ordered again within 90 days]
+      - name: second_order_rate_365_days
+        expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(CASE WHEN second_order_within_365_days = 1 THEN 1 END) * 1.0 / NULLIF(COUNT(second_order_within_365_days), 0)"}]}
+        description: >
+          Share of customers whose second order came within 365 days of their
+          first, from 0 to 1, among the customers whose 365 days are over
+          (customers.second_order_within_365_days not empty). A customer
+          still inside the window counts in neither part, so a recent
+          cohort does not look worse than an old one. Empty where no
+          customer's window is over. By customers.first_order_month, the
+          rate of each cohort. A share of customers; orders.repeat_order_share
+          is a share of orders.
+        datatype: Float
+        ai_context:
+          synonyms: [365-day repeat purchase rate, 365-day repeat customer rate, 365-day retention, 365-day repurchase rate, share of customers who ordered again within 365 days]
 
   - name: order_lines
     source: order_lines
@@ -1116,6 +1421,11 @@ datasets:
           synonyms: [products of brand, number of products by brand]
 
 relationships:
+  - name: orders_to_customers
+    from: orders
+    to: customers
+    from_columns: [customer_id]
+    to_columns: [customer_id]
   - name: order_lines_to_orders
     from: order_lines
     to: orders

@@ -8,6 +8,83 @@ names the Ossie schema version its models carry.
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-30
+
+Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.12.0,
+dbt v2 (`dbt-oss` 2.0.8) and dbt v1 (`dbt-core` 1.11 with
+`dbt-clickhouse` 1.10) on ClickHouse 26.9. Customers for Shopify and
+WooCommerce. `orders` gains columns, and the WooCommerce
+`orders.customer_id` changes type: an incremental run stops on the
+changed schema, and a deployment runs `dbt build --full-refresh`. No
+input table changes.
+
+### Added
+
+- `commerce.yaml`: `customers`, one row per customer with an order the
+  store's report of new and returning customers counts, with
+  `first_order_date`, `first_order_month` (the cohort),
+  `last_order_date`, `number_of_orders` and `net_total`, what the
+  orders earned after refunds and cancellations (at WooCommerce, orders
+  on hold included, as the Customers report's total spend). Metrics
+  `customer_count`, `net_amount` and `average_customer_value`. `orders`
+  joins it on `customer_id`, so orders break down by cohort. A customer
+  record without such an order has no row, and the table holds no
+  email, name or address. Both packages build it from `orders` on every
+  run.
+- Retention windows: `customers.second_order_within_30_days`,
+  `_60_days`, `_90_days` and `_365_days`, whether the second order came
+  within that many days of the first, and the metrics
+  `second_order_rate_30_days` to `second_order_rate_365_days`, the
+  share among customers whose window is over. A window stays empty
+  until its last day is before the day of the last load of orders
+  (`loaded_at` at Shopify, `synced_at` at WooCommerce, in the store's
+  time zone): it moves only when orders are loaded, so an
+  incremental run over unchanged input changes nothing.
+- `orders.days_since_previous_order` and `months_since_first_order`
+  (-1 on the first order, then calendar months, as Shopify's
+  `months_since_first_purchase`), between the dates the customer's
+  sequence goes by: `processed_at` at Shopify, the date placed at
+  WooCommerce, in the store's time zone. The metric
+  `orders.average_days_between_orders` averages the first.
+- Singular test `orders_numbered_in_sequence` in both packages: each
+  customer's orders are numbered 1 to n.
+- Fixture cases for the customers and the windows
+  (`tests/<source>/windows.sql`, `check_numbers.py --windows`), and CI
+  steps that feed WooCommerce guest orders in parts and compare
+  `customers` with a full refresh.
+
+### Changed
+
+- Shopify: cancelled orders take their place in the customer's sequence
+  (`customer_order_number`, `new_vs_repeat`), as Shopify's report of new
+  and returning customers counts them: on the development store a
+  customer's only order, cancelled, is New, and the next one Returning.
+  Over the fixture `orders.repeat_order_share` goes from 5/7 to 6/9.
+- WooCommerce: every order has a `customer_id`, the customer WooCommerce
+  Analytics counts. A guest's order belongs to the account that has an
+  order billed to the same email, in any letter case (the smallest such
+  account where there are several); else to the guest, one per email,
+  numbered by the smallest id of their orders with a minus sign
+  (`-112`); a guest's order without an email is a customer of its own.
+  Guests are counted and numbered.
+- `orders.customers` is renamed `orders.buyer_count`, no longer named
+  like a dataset. This breaks saved questions and dashboards that ask
+  for the old name.
+- `orders.repeat_order_share`, a share of orders, gives up the synonyms
+  "repeat purchase rate" and "repeat rate": they usually ask about
+  customers and go to the windows' rates. An agent asked for a repeat
+  purchase rate now answers with a window and names it.
+- The README's known differences from Shopify's reports and from
+  WooCommerce Analytics follow the new numbering. On the development
+  store Shopify's customers, new and returning by month, each customer's
+  total sales and orders, and orders by `months_since_first_purchase`
+  equal the reports'. At WooCommerce the customers differ from Analytics
+  where an account's order is billed to another email: the model joins
+  that email's guest orders to the account. The README's commerce
+  section lists the customers' metrics.
+- `ROADMAP.md`: Customers is done and leaves Next. Discount codes, which
+  code brought the revenue, is planned after it, under Later.
+
 ## [0.7.2] - 2026-10-27
 
 Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.12.0,
@@ -723,7 +800,8 @@ ClickHouse 26.9.
 - Hand-written GA4 rows and the numbers the model must answer over them
   (`tests/ga4`), checked in CI on both dbt versions.
 
-[Unreleased]: https://github.com/Dactopus/dactopus-data-models/compare/v0.7.2...HEAD
+[Unreleased]: https://github.com/Dactopus/dactopus-data-models/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/Dactopus/dactopus-data-models/compare/v0.7.2...v0.8.0
 [0.7.2]: https://github.com/Dactopus/dactopus-data-models/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/Dactopus/dactopus-data-models/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/Dactopus/dactopus-data-models/compare/v0.6.1...v0.7.0
