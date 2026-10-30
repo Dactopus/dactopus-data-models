@@ -8,10 +8,15 @@ names the Ossie schema version its models carry.
 
 ## [Unreleased]
 
-Customers for Shopify and WooCommerce. `orders` gains columns, and the
-WooCommerce `orders.customer_id` changes type: an incremental run stops
-on the changed schema, and a deployment runs `dbt build --full-refresh`.
-No input table changes.
+## [0.8.0] - 2026-10-30
+
+Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.12.0,
+dbt v2 (`dbt-oss` 2.0.8) and dbt v1 (`dbt-core` 1.11 with
+`dbt-clickhouse` 1.10) on ClickHouse 26.9. Customers for Shopify and
+WooCommerce. `orders` gains columns, and the WooCommerce
+`orders.customer_id` changes type: an incremental run stops on the
+changed schema, and a deployment runs `dbt build --full-refresh`. No
+input table changes.
 
 ### Added
 
@@ -795,7 +800,8 @@ ClickHouse 26.9.
 - Hand-written GA4 rows and the numbers the model must answer over them
   (`tests/ga4`), checked in CI on both dbt versions.
 
-[Unreleased]: https://github.com/Dactopus/dactopus-data-models/compare/v0.7.2...HEAD
+[Unreleased]: https://github.com/Dactopus/dactopus-data-models/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/Dactopus/dactopus-data-models/compare/v0.7.2...v0.8.0
 [0.7.2]: https://github.com/Dactopus/dactopus-data-models/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/Dactopus/dactopus-data-models/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/Dactopus/dactopus-data-models/compare/v0.6.1...v0.7.0
