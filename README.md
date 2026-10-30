@@ -1023,8 +1023,11 @@ shipping country and by new or returning customer, and, by
 `orders.average_order_value` equals the store's. Units, goods revenue,
 returns and net sales by product type and by vendor equal the reports'
 over all time and by month, and the counts of products by status, type
-and vendor equal the admin's. Test orders are left out, as in the
-reports. Other numbers differ by definition, and the model's
+and vendor equal the admin's. Over 464 orders of 228 customers, the
+customers, new customers and returning customers of each month, each
+customer's total sales and orders, and orders and customers by month and
+`months_since_first_purchase` equal the reports'. Test orders are left
+out, as in the reports. Other numbers differ by definition, and the model's
 descriptions say how:
 
 - **Gross and net sales** in Shopify's reports are goods only.
@@ -1091,8 +1094,8 @@ items, refunds, report date and whether the reports count it matched.
 `sales_events.net_revenue` by `sales_events.event_month` equals the
 reports' total sales for every month, and `orders.order_count`,
 `orders.average_order_value`, `orders.items_per_order`,
-`orders.discount_amount`, `items_net`, refunds by month and new or
-returning registered customers equal the reports' numbers.
+`orders.discount_amount`, `items_net`, refunds by month, each order's new
+or returning and the customers' total spend equal the reports' numbers.
 `orders.average_order_value` filtered by a category equals the Orders
 report filtered by it, subcategories included. After a refund, a deleted
 order and a new one, an incremental run matched a full rebuild and the
@@ -1105,12 +1108,19 @@ descriptions say how:
 - **Shipping and tax** in the reports are net of what was refunded, in
   the month of the refund; `orders.shipping_amount` and
   `orders.tax_amount` are as on the order.
-- **New or returning**: the reports count a guest as a customer by email,
-  and so does the model: a guest's orders go to an account that has an
-  order billed to the same email, else to the guest by email. Analytics
-  keeps its own table of customers; the model reads only the orders, so
-  it does not see an account's own email, and it joins a guest to an
-  account whichever of the two ordered first.
+- **Customers**: the reports count a guest as a customer by email, and
+  so does the model. Analytics keeps its own table of customers, where an
+  account has the account's own email; the model reads only the orders
+  and joins a guest's orders to an account that has an order billed to
+  the same email, whichever of the two ordered first. The two differ in
+  rare cases. An account's order billed to another email: the model
+  joins that email's guest orders to the account, Analytics keeps the
+  guest a customer of their own (on the test store, 4 customers with
+  orders against the Customers report's 5, with the same total spend and
+  the same new and returning orders). A guest who orders with an
+  account's own email, which none of the account's orders carries: the
+  model keeps the guest a customer of their own, Analytics joins them to
+  the account when it registered first.
 - **SKU**: WooCommerce keeps none on the order, so `order_lines.sku` is
   the product's current SKU, and empty once the product is deleted.
 - **Test orders** are not marked in WooCommerce and count as orders.
