@@ -33,7 +33,7 @@ No input table changes.
   share among customers whose window is over. A window stays empty
   until its last day is before the day of the last load of orders
   (`loaded_at` at Shopify, `synced_at` at WooCommerce, in the store's
-  time zone): it moves with new data, not with the calendar, so an
+  time zone): it moves only when orders are loaded, so an
   incremental run over unchanged input changes nothing.
 - `orders.days_since_previous_order` and `months_since_first_order`
   (-1 on the first order, then calendar months, as Shopify's
