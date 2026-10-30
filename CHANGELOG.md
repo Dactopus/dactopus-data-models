@@ -70,9 +70,15 @@ No input table changes.
   customers and go to the windows' rates. An agent asked for a repeat
   purchase rate now answers with a window and names it.
 - The README's known differences from Shopify's reports and from
-  WooCommerce Analytics follow the new numbering.
-- `ROADMAP.md`: Customers is next. Discount codes, which code brought
-  the revenue, is planned after it.
+  WooCommerce Analytics follow the new numbering. On the development
+  store Shopify's customers, new and returning by month, each customer's
+  total sales and orders, and orders by `months_since_first_purchase`
+  equal the reports'. At WooCommerce the customers differ from Analytics
+  where an account's order is billed to another email: the model joins
+  that email's guest orders to the account. The README's commerce
+  section lists the customers' metrics.
+- `ROADMAP.md`: Customers is done and leaves Next. Discount codes, which
+  code brought the revenue, is planned after it, under Later.
 
 ## [0.7.2] - 2026-10-27
 

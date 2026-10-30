@@ -16,18 +16,7 @@ through pull requests, like the code.
 
 ## Next
 
-### Customers
-
-A `customers` entity for Shopify and WooCommerce: one row per customer of
-the store, with their first and latest order, order count and spend.
-Today customer counts and new or repeat orders come from `orders`; the
-entity adds what a question about orders cannot answer: cohorts by the
-month of the first order, retention, revenue per customer over all
-their orders and the time between orders. The question to settle first
-is what identifies a customer and where guest checkouts count: the two
-platforms record a guest differently, so the same buyers can count
-differently by source. Matching customers across systems stays
-[out of scope](README.md#out-of-scope).
+Nothing yet.
 
 ## Needs contributors
 

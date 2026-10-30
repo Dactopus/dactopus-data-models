@@ -220,7 +220,7 @@ dactopus-ossie-clickhouse, as for GA4.
    ```
 
 3. **Validate** the model and **check** its answers: `check_numbers.py`
-   asks 31 questions through dactopus-ossie-clickhouse, in the zone of
+   asks 41 questions through dactopus-ossie-clickhouse, in the zone of
    step 2, and compares the answers with numbers worked out by hand from
    the rows.
 
@@ -500,7 +500,7 @@ on 26.7 and 26.9.
    ```
 
 3. **Validate** the model and **check** its answers: `check_numbers.py`
-   asks 35 questions, in the zone of step 2, and compares the answers
+   asks 44 questions, in the zone of step 2, and compares the answers
    with numbers worked out by hand from the rows.
 
    ```bash
@@ -949,7 +949,7 @@ the model states in its descriptions:
 
 ## What the commerce model answers
 
-[`entities/commerce.yaml`](entities/commerce.yaml) has 35 metrics. A
+[`entities/commerce.yaml`](entities/commerce.yaml) has 43 metrics. A
 metric that counts the rows of one dataset is on that dataset, and a
 question names it as `dataset.metric` (`orders.revenue`). The 18 that
 read order lines, their categories and brands, or refunds together with
@@ -958,10 +958,23 @@ read order lines, their categories and brands, or refunds together with
 - orders: `order_count`, `all_orders`, `all_orders_total`, `revenue`,
   `refunded_amount`, `refund_rate`, `average_order_value`,
   `items_per_order`, `discount_amount`, `shipping_amount`, `tax_amount`,
-  `buyer_count`, `repeat_order_share`. They break down by the order's
-  date, week and month; payment and fulfillment status, cancelled or
-  not, counted in the store's reports or not, channel and currency;
-  shipping country, region and city; new or repeat customer.
+  `buyer_count`, `repeat_order_share`, `average_days_between_orders`.
+  They break down by the order's date, week and month; payment and
+  fulfillment status, cancelled or not, counted in the store's reports
+  or not, channel and currency; shipping country, region and city; new
+  or repeat customer, the order's place among its customer's orders,
+  days since the customer's previous order and months since their
+  first; and by the customer's fields below, such as the month of their
+  first order (the cohort).
+- customers: `customers.customer_count`, `net_amount`,
+  `average_customer_value`, and the share of customers who ordered a
+  second time within 30, 60, 90 or 365 days of their first order,
+  `second_order_rate_30_days` to `second_order_rate_365_days`, counted
+  among the customers whose window is over. They break down by the
+  customer's first and last order date, cohort month and number of
+  orders. A customer is one the store's report of new and returning
+  customers counts: at Shopify the store's customer record, at
+  WooCommerce an account or a guest by billing email.
 - order lines (on the model): `items_sold`, `items_net`, `line_revenue`,
   `items_returned`, `line_returned_amount`, `line_net_revenue`. They
   break down by product, variant, SKU and title, by the order fields
