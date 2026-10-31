@@ -1134,6 +1134,11 @@ descriptions say how:
   account's own email, which none of the account's orders carries: the
   model keeps the guest a customer of their own, Analytics joins them to
   the account when it registered first.
+- **Buyers in a month**: `total_customers` in the Revenue and Orders
+  reports also counts a customer whose only row in the month is a refund
+  of an earlier month's order; `orders.buyer_count` counts customers with
+  an order dated in the month (on the test store, 3 of 7 months differ by
+  1 or 2 customers).
 - **SKU**: WooCommerce keeps none on the order, so `order_lines.sku` is
   the product's current SKU, and empty once the product is deleted.
 - **Test orders** are not marked in WooCommerce and count as orders.

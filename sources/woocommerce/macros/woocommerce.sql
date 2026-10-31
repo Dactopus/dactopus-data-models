@@ -85,9 +85,12 @@ transform({{ status }}, {{ woocommerce_strings(statuses.keys()) }}, {{ woocommer
      ON t.term_taxonomy_id = l.term_taxonomy_id)
 {%- endmacro %}
 
-{# The names of the terms in `term_ids`, a subquery. #}
+{# The names of the terms in `term_ids`, a subquery, as the store shows
+   them. WordPress keeps a term's name HTML-escaped (wp_insert_term runs
+   it through _wp_specialchars): a category named "Home & Garden" is
+   "Home &amp; Garden" in terms. #}
 {% macro woocommerce_term_names(term_ids) -%}
-(SELECT term_id, ifNull(name, '') AS name FROM {{ woocommerce_current('terms', 'term_id', 'term_id IN ' ~ term_ids) }})
+(SELECT term_id, decodeHTMLComponent(ifNull(name, '')) AS name FROM {{ woocommerce_current('terms', 'term_id', 'term_id IN ' ~ term_ids) }})
 {%- endmacro %}
 
 {# An exchange rate kept in order meta, as a number; NULL unless positive. #}

@@ -8,6 +8,20 @@ names the Ossie schema version its models carry.
 
 ## [Unreleased]
 
+### Fixed
+
+- WooCommerce: category and brand names (`line_categories.category`,
+  `category_path`, `line_brands.brand` and the same fields of
+  `product_categories` and `product_brands`) are decoded from the HTML
+  escaping WordPress stores them with: `Home & Garden`, not
+  `Home &amp; Garden`. No table changes: the next run rebuilds the
+  category and brand tables whole.
+
+### Changed
+
+- README, Known differences from WooCommerce Analytics: buyers in a
+  month, where the reports also count a customer with only a refund.
+
 ## [0.8.0] - 2026-10-30
 
 Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.12.0,
