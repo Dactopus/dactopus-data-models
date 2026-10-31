@@ -494,7 +494,8 @@ INSERT INTO {db:Identifier}.wp_wc_product_meta_lookup
 --   15  Tote      Gifts and Clothing > Accessories, Acme; never sold
 --   16  Apron     Kitchen; a draft, never sold
 --   17  Notebook  Gifts; in the trash, never sold
--- Kitchen was renamed Kitchen & Dining. A product is linked to the term's
+-- Kitchen was renamed Kitchen & Dining, which WordPress keeps HTML-escaped,
+-- as Kitchen &amp; Dining. A product is linked to the term's
 -- term_taxonomy_id, here term_id + 10, so a join on term_id finds nothing.
 -- T-Shirts was at the top until September 10, then moved under Clothing:
 -- its parent is Clothing's term_id, 16, which no term_taxonomy_id has.
@@ -541,7 +542,7 @@ INSERT INTO {db:Identifier}.wp_terms
 (21, 'Northwind', '2026-08-01 00:00:05', 0, 430),
 (22, 'gift', '2026-08-01 00:00:05', 0, 431),
 (23, 'Beta', '2026-09-05 10:00:05', 0, 432),
-(18, 'Kitchen & Dining', '2026-09-15 10:00:05', 0, 433),
+(18, 'Kitchen &amp; Dining', '2026-09-15 10:00:05', 0, 433),
 (23, 'Beta', '2026-09-06 10:00:05', 1, 434),
 (24, 'Accessories', '2026-09-10 10:00:05', 0, 435),
 (25, 'Accessories', '2026-09-10 10:00:05', 0, 436);
