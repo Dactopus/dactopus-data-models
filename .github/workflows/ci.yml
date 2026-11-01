@@ -14,10 +14,11 @@ concurrency:
 
 jobs:
   # Which jobs the changed files reach. A job runs when a file it reads
-  # changed: its package, its entity, its tests, or what every job reads
-  # (common). Documentation reaches none. The unions job builds every
-  # package, so every package reaches it. A pull request is compared with
-  # its base branch, a push to main with the commit before it.
+  # changed: its package, its entity, its tests and the module they share
+  # (tests/ask_model.py), or what every job reads (common). Documentation
+  # reaches none. The unions job builds every package, so every package
+  # reaches it. A pull request is compared with its base branch, a push to
+  # main with the commit before it.
   changes:
     runs-on: ubuntu-latest
     permissions:
@@ -54,24 +55,28 @@ jobs:
               - '!sources/ga4/README.md'
               - entities/web_analytics.yaml
               - tests/ga4/**
+              - tests/ask_model.py
             shopify:
               - *common
               - sources/shopify/**
               - '!sources/shopify/README.md'
               - entities/commerce.yaml
               - tests/shopify/**
+              - tests/ask_model.py
             woocommerce:
               - *common
               - sources/woocommerce/**
               - '!sources/woocommerce/README.md'
               - entities/commerce.yaml
               - tests/woocommerce/**
+              - tests/ask_model.py
             sensor_community:
               - *common
               - sources/sensor_community/**
               - '!sources/sensor_community/README.md'
               - entities/iot.yaml
               - tests/sensor_community/**
+              - tests/ask_model.py
             unions:
               - *common
               - unions/**

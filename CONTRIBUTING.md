@@ -252,12 +252,16 @@ zones; the WooCommerce job runs on ClickHouse 26.7 and 26.9. The unions
 job builds every package into databases of its own, builds the three
 unions over them and compares each label's answers with its database's
 (`tests/check_union.py`). The fixtures are small, so they do not replace
-the check on real data.
+the check on real data. A job of its own validates the Ossie models of
+every domain together, with no server: a deployment with several
+packages serves them as one, and the executor refuses a name defined in
+two files.
 
 A job runs when a file it reads changed: its package, its entity, its
-`tests/<source>/`, or what every job reads (`ci.yml`, `tests/profiles.yml`,
-the `check_*.py` scripts); the filters are in `ci.yml`. The unions job
-runs on a change to any package. Documentation reaches no job. The
+`tests/<source>/` and `tests/ask_model.py`, or what every job reads
+(`ci.yml`, `tests/profiles.yml`, the `check_*.py` scripts); the filters
+are in `ci.yml`. The unions job runs on a change to any package, the
+validate job on a change to any entity. Documentation reaches no job. The
 check `main` requires is `CI passed`, which fails when a job failed or
 was cancelled and passes otherwise, also when every job was skipped.
 
