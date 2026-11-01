@@ -67,6 +67,12 @@ names the Ossie schema version its models carry.
 
 ### Changed
 
+- CI runs a job only when a file it reads changed (the filters in
+  `ci.yml`): a pull request that changes only documentation runs none,
+  one that changes one package runs that package's jobs and the unions
+  job. The Ossie models are validated together in a job of their own.
+  The one check `main` requires is `CI passed`, which fails when a job
+  failed or was cancelled; a skipped job does not block a merge.
 - AGENTS.md keeps what an agent applies while writing and is not in
   CONTRIBUTING.md: the rules of `source_id`, contracts and unions, the
   model format, ClickHouse traits, which page a change ships with, and

@@ -254,6 +254,13 @@ unions over them and compares each label's answers with its database's
 (`tests/check_union.py`). The fixtures are small, so they do not replace
 the check on real data.
 
+A job runs when a file it reads changed: its package, its entity, its
+`tests/<source>/`, or what every job reads (`ci.yml`, `tests/profiles.yml`,
+the `check_*.py` scripts); the filters are in `ci.yml`. The unions job
+runs on a change to any package. Documentation reaches no job. The
+check `main` requires is `CI passed`, which fails when a job failed or
+was cancelled and passes otherwise, also when every job was skipped.
+
 ## Adding a source package
 
 [ROADMAP.md](ROADMAP.md) lists what is planned. Open an issue before you
