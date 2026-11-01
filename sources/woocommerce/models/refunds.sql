@@ -52,8 +52,8 @@ rates AS MATERIALIZED (
 )
 SELECT
     f.id AS refund_id,
-    -- Every refund has its order; a NULL from a Nullable input fails the
-    -- build.
+    -- Never NULL: the refunds read are those of the orders read. The cast
+    -- keeps the key's type when the input's column is Nullable.
     CAST(f.parent_order_id AS UInt64) AS order_id,
     -- Date of the refund in the store's time zone.
     toDate(f.refund_time, '{{ var("woocommerce_timezone") }}') AS refund_date,

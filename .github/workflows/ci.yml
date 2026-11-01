@@ -480,6 +480,28 @@ jobs:
           # events add up to (sales_events_make_net_total): 22, not 0.
           CLICKHOUSE_DATABASE=analytics_cancelled ${DBT_BUILD/'"woocommerce_lookback_days":0'/'"woocommerce_lookback_days":0,"woocommerce_excluded_statuses":["pending","failed"]'}
           test "$(q "SELECT in_sales_reports AND net_total = 22 FROM analytics_cancelled.orders WHERE order_id = 107")" = 1
+          # A table whose columns a release changed, here one type: the next
+          # incremental run stops before its pre-hooks delete a row
+          # (woocommerce_check_columns). dbt's own check comes after them,
+          # and refunds would be left empty.
+          q "ALTER TABLE analytics_cancelled.refunds MODIFY COLUMN refunded_quantity Int32"
+          refunds=$(q "SELECT count() FROM analytics_cancelled.refunds")
+          if CLICKHOUSE_DATABASE=analytics_cancelled ${DBT_BUILD/'"woocommerce_lookback_days":0'/'"woocommerce_lookback_days":0,"woocommerce_excluded_statuses":["pending","failed"]'} > columns.txt
+          then cat columns.txt; exit 1; fi
+          grep -q 'has other columns than this release builds' columns.txt
+          test "$(q "SELECT count() FROM analytics_cancelled.refunds")" = "$refunds"
+          # An order in another currency that no plugin's rate converts fails
+          # the build with woocommerce_amount's message; its amounts are
+          # never 0.
+          load sources/woocommerce/input.sql woocommerce_norate
+          for t in wc_orders wc_order_operational_data wc_order_addresses wc_orders_meta woocommerce_order_items \
+                  woocommerce_order_itemmeta wc_product_meta_lookup posts terms term_taxonomy term_relationships; do
+              q "INSERT INTO woocommerce_norate.wp_2_$t SELECT * FROM woocommerce_fixture.wp_2_$t"; done
+          q "INSERT INTO woocommerce_norate.wp_2_wc_orders SELECT * REPLACE (9901 AS id, 'JPY' AS currency)
+             FROM (SELECT * FROM woocommerce_fixture.wp_2_wc_orders WHERE id = 101 AND status = 'wc-processing')"
+          if CLICKHOUSE_DATABASE=analytics_norate ${DBT_BUILD/'"woocommerce_input"'/'"woocommerce_norate"'} > norate.txt
+          then cat norate.txt; exit 1; fi
+          grep -q 'An amount in another currency has no exchange rate the package knows' norate.txt
       # The retention windows close by the last sync of orders
       # (customers.sql), which the late rows above set to now. Over the
       # fixture and the windows' first orders a year back

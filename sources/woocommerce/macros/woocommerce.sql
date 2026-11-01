@@ -218,7 +218,29 @@ if({{ rate }}.rate_fox, {{ woocommerce_convert(total, rate) }},
 {{- return(r.columns[0].values()[0] if r.columns[0].values() else '') -}}
 {%- endmacro %}
 
+{# Stops an incremental run whose table has other columns than the model's
+   contract, as a release that changes them leaves it, before a pre-hook
+   deletes rows or rewrites the comment: dbt checks the columns only after
+   the hooks, and its on_schema_change failure would leave the table
+   without the rows they deleted. #}
+{% macro woocommerce_check_columns() -%}
+{%- if execute and is_incremental() -%}
+{%- set built = [] -%}
+{%- for c in adapter.get_columns_in_relation(this) -%}
+{%- do built.append(c.name ~ ' ' ~ c.data_type | replace(' ', '')) -%}
+{%- endfor -%}
+{%- set declared = [] -%}
+{%- for c in model.columns.values() -%}
+{%- do declared.append(c['name'] ~ ' ' ~ c['data_type'] | replace(' ', '')) -%}
+{%- endfor -%}
+{%- if built | sort != declared | sort -%}
+{{ exceptions.raise_compiler_error(this ~ " has other columns than this release builds: run dbt build --full-refresh once (CHANGELOG)") }}
+{%- endif -%}
+{%- endif -%}
+{%- endmacro %}
+
 {% macro woocommerce_reading() -%}
+{{- woocommerce_check_columns() -}}
 {%- if execute and is_incremental() -%}
 {%- set through = woocommerce_comment_position('read') -%}
 {%- set latest = run_query("SELECT toString(toTimeZone(max(_peerdb_synced_at), 'UTC')) FROM "
@@ -267,6 +289,7 @@ SELECT 1
    refunds is not in the new rows, and delete+insert replaces only the
    orders that are. #}
 {% macro woocommerce_delete_changed(products=false, in_comment=false) -%}
+{{- woocommerce_check_columns() -}}
 {%- if is_incremental() -%}
 DELETE FROM {{ this }} WHERE order_id IN {{ woocommerce_changed_orders(products, in_comment) }}
 {%- else -%}
@@ -292,6 +315,7 @@ SELECT 1
 {%- endmacro %}
 
 {% macro woocommerce_keep_changed() -%}
+{{- woocommerce_check_columns() -}}
 {%- if is_incremental() -%}
 {%- set left = execute and run_query("EXISTS TABLE " ~ woocommerce_changed_table()).columns[0].values()[0] -%}
 CREATE OR REPLACE TABLE {{ woocommerce_changed_table() }} ENGINE = MergeTree ORDER BY tuple() AS
@@ -314,6 +338,7 @@ SELECT 1
    orders that are no longer orders (woocommerce_delete_changed). The
    others stay: delete+insert replaces them. #}
 {% macro woocommerce_delete_removed() -%}
+{{- woocommerce_check_columns() -}}
 {%- if is_incremental() -%}
 {%- set changed = "(SELECT order_id FROM " ~ woocommerce_changed_table() ~ ")" -%}
 DELETE FROM {{ this }} WHERE order_id IN {{ changed }}

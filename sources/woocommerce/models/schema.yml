@@ -207,7 +207,8 @@ unit_tests:
   # rate and rounds the parts: 3.33 * 3 = 9.99. A refund without rates of
   # its own takes its order's. (An order whose WooPayments meta names
   # another store currency, with no other rate, has no amount and fails
-  # the build in woocommerce_amount, which a unit test cannot show.) The
+  # the build in woocommerce_amount: a unit test cannot show a failure,
+  # so CI builds such an order apart.) The
   # test is on refunds: dbt v2 cannot compare the rows of orders, whose
   # discount_codes is an array.
   - name: refunds_converted_by_plugin

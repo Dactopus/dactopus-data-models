@@ -88,7 +88,7 @@ profile and the sample data. CI builds into other databases to keep it so.
   model's last `SELECT` casts to it. The columns the Ossie model reads
   come first, in the order it first reads them, with one type in every
   package of the domain; `tests/check_contracts.py` checks both. The
-  common types: amounts `Decimal(38, 8)`, not Nullable (WooCommerce
+  common types of `commerce`: amounts `Decimal(38, 8)`, not Nullable (WooCommerce
   keeps `decimal(26,8)`, and line totals at up to 6 decimals); the
   customer key `Int64` (WooCommerce's guests are negative), cast from
   Shopify's unsigned ids with `accurateCast`, which fails where a plain

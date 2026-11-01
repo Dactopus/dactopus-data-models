@@ -10,6 +10,11 @@ names the Ossie schema version its models carry.
 
 ### Fixed
 
+- WooCommerce: an incremental run over a table whose columns a release
+  changed stops before its pre-hooks delete a row. dbt's own check of
+  the columns comes after the hooks: the run stopped with `order_lines`
+  and `refunds` short of the rows of its window, `refunds` empty on the
+  fixture.
 - WooCommerce: category and brand names (`line_categories.category`,
   `category_path`, `line_brands.brand` and the same fields of
   `product_categories` and `product_brands`) are decoded from the HTML
@@ -34,7 +39,8 @@ names the Ossie schema version its models carry.
     `line_brands`; `refunds.refunded_amount`; `sales_events.amount`.
     Shopify's were `Decimal(18, 4)` (`customers.net_total`
     `Decimal(38, 4)`), and Shopify's `order_lines.discount_total`
-    follows; WooCommerce's were `Nullable(Decimal(38, 8))`.
+    follows; WooCommerce's were `Nullable(Decimal(38, 8))`, all but
+    `orders.refunded_total`.
   - `orders.customer_id` is `Nullable(Int64)`, `customers.customer_id`
     `Int64`: Shopify's were `Nullable(UInt64)` and `UInt64`,
     WooCommerce's `orders.customer_id` `Int64`.
@@ -53,9 +59,10 @@ names the Ossie schema version its models carry.
   - Shopify's `order_lines.title` is `String`, not `Nullable(String)`.
 
   The columns of every table come in a new order, the model's first.
-  Shopify and WooCommerce stop the next incremental run until it runs
-  once with `--full-refresh`. GA4 and Sensor.Community keep their types
-  and run on; `--full-refresh` puts their columns in the new order.
+  Run Shopify and WooCommerce once with `--full-refresh` in place of the
+  next incremental run, which stops. GA4 and Sensor.Community keep
+  their types and run on; `--full-refresh` puts their columns in the new
+  order.
 - GA4: `on_schema_change: fail`, as in the other packages; dbt requires
   it of an incremental model with a contract.
 - WooCommerce: an order or refund in another currency without a rate
