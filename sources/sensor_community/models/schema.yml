@@ -24,6 +24,10 @@ models:
       - {name: latitude, data_type: "Nullable(Float64)", data_tests: [not_null]}
       - {name: longitude, data_type: "Nullable(Float64)", data_tests: [not_null]}
   - name: readings
+    data_tests:
+      - sensor_community_unique_key:
+          arguments:
+            columns: [sensor_id, measured_at, measure]
     columns:
       - {name: source_id, data_type: "LowCardinality(String)", data_tests: [sensor_community_one_source_id]}
       - name: device_id

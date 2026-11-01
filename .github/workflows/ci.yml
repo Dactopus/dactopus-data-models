@@ -733,3 +733,130 @@ jobs:
           grep -q 'sensor_community_source_id must be 1 to 64 characters' label.txt
           if ${DBT_BUILD/network_a/network_b} > label.txt 2>&1; then cat label.txt; exit 1; fi
           grep -q 'run dbt build --full-refresh once after changing sensor_community_source_id' label.txt
+  unions:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        dbt:
+          - {name: v2, from: "dbt-oss", with: ""}
+          - {name: v1, from: "dbt-core~=1.11.0", with: "dbt-clickhouse"}
+    name: Unions (dbt ${{ matrix.dbt.name }})
+    services:
+      clickhouse:
+        image: clickhouse/clickhouse-server:26.9
+        ports: ["8123:8123"]
+        env:
+          CLICKHOUSE_SKIP_USER_SETUP: 1  # passwordless default user over the network
+          # A server time zone other than UTC: nothing may assume UTC.
+          TZ: Asia/Makassar
+        options: >-
+          --health-cmd "wget -qO- http://localhost:8123/ping || exit 1"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+    env:
+      DBT: >-
+        uvx --from ${{ matrix.dbt.from }} ${{ matrix.dbt.with && format('--with {0}', matrix.dbt.with) || '' }}
+        dbt
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+      - name: Install dactopus-ossie-clickhouse
+        run: uv tool install "dactopus-ossie-clickhouse @ git+https://github.com/Dactopus/dactopus-ossie-clickhouse@v0.12.0"
+      # The instances: each package's fixture built into a database of its
+      # own under a label of its own. WooCommerce twice, from one input: the
+      # two have the same order, customer and product ids, which only the
+      # label keeps apart; the second keeps its accounts in euros, in
+      # Berlin's time zone, so the union holds two currencies and two
+      # zones: its input is the fixture with each order's USD read as EUR.
+      # Shopify beside them: the commerce union adds up the tables of two
+      # packages.
+      - name: Build the instances
+        run: |
+          load() { python3 -c "
+          import pathlib, sys, urllib.request
+          for s in pathlib.Path(sys.argv[1]).read_text().split(';\n'):
+              if s.strip():
+                  urllib.request.urlopen('http://127.0.0.1:8123/?param_db=' + sys.argv[2], s.encode())" "$1" "$2"; }
+          load sources/shopify/input.sql shopify_input
+          load tests/shopify/fixture.sql shopify_input
+          load sources/woocommerce/input.sql woocommerce_input
+          load tests/woocommerce/fixture.sql woocommerce_input
+          q() { curl -sf http://127.0.0.1:8123/ --data-binary "$1"; }
+          q "CREATE DATABASE analytics_woo_b_input"
+          for t in $(q "SELECT name FROM system.tables WHERE database = 'woocommerce_input'"); do
+              q "CREATE VIEW analytics_woo_b_input.$t AS SELECT * FROM woocommerce_input.$t"
+          done
+          q "CREATE OR REPLACE VIEW analytics_woo_b_input.wp_wc_orders AS
+              SELECT * REPLACE (if(currency = 'USD', 'EUR', currency) AS currency) FROM woocommerce_input.wp_wc_orders"
+          load sources/ga4/input.sql ga4_input
+          load tests/ga4/fixture.sql ga4_input
+          load sources/sensor_community/input.sql sensor_community_input
+          load tests/sensor_community/fixture.sql sensor_community_input
+          # build <database> <package> <vars>
+          build() { CLICKHOUSE_DATABASE=$1 $DBT build --project-dir sources/$2 --profiles-dir tests --vars "$3"; }
+          build analytics_shop shopify '{"shopify_input_database":"shopify_input","shopify_timezone":"America/New_York","shopify_source_id":"shop"}'
+          build analytics_woo_a woocommerce '{"woocommerce_input_database":"woocommerce_input","woocommerce_timezone":"America/New_York","woocommerce_currency":"USD","woocommerce_source_id":"woo_a"}'
+          build analytics_woo_b woocommerce '{"woocommerce_input_database":"analytics_woo_b_input","woocommerce_timezone":"Europe/Berlin","woocommerce_currency":"EUR","woocommerce_source_id":"woo_b"}'
+          build analytics_ga4_a ga4 '{"ga4_input_database":"ga4_input","ga4_source_id":"property_a"}'
+          build analytics_ga4_b ga4 '{"ga4_input_database":"ga4_input","ga4_source_id":"property_b"}'
+          build analytics_iot_a sensor_community '{"sensor_community_input_database":"sensor_community_input","sensor_community_source_id":"network_a"}'
+          build analytics_iot_b sensor_community '{"sensor_community_input_database":"sensor_community_input","sensor_community_source_id":"network_b"}'
+      # Each union, its test (a label in one database),
+      # its views against its contracts and its deployment.yml. Then the
+      # Ossie model over the union: each label's answers there must be its
+      # database's own, and a total of counts and sums their sum
+      # (tests/check_union.py).
+      - name: Build the unions and check their answers
+        run: |
+          # union <database> <domain> <vars>
+          union() {
+              CLICKHOUSE_DATABASE=$1 $DBT build --project-dir unions/$2 --profiles-dir tests --vars "$3"
+              CLICKHOUSE_DATABASE=$1 uv run tests/check_contracts.py --built unions/$2
+              uv run tests/check_deployment.py unions/$2; }
+          union analytics_commerce commerce '{"commerce_union_databases":["analytics_shop","analytics_woo_a","analytics_woo_b"]}'
+          union analytics_web web_analytics '{"web_analytics_union_databases":["analytics_ga4_a","analytics_ga4_b"]}'
+          union analytics_iot iot '{"iot_union_databases":["analytics_iot_a","analytics_iot_b"]}'
+          dactopus-ossie-clickhouse validate entities/commerce.yaml --url http://127.0.0.1:8123/analytics_commerce
+          dactopus-ossie-clickhouse validate entities/web_analytics.yaml --url http://127.0.0.1:8123/analytics_web
+          dactopus-ossie-clickhouse validate entities/iot.yaml --url http://127.0.0.1:8123/analytics_iot
+          OSSIE_CLICKHOUSE_TIME_ZONE=America/New_York uv run tests/check_union.py entities/commerce.yaml \
+              http://127.0.0.1:8123/analytics_commerce http://127.0.0.1:8123/analytics_shop \
+              http://127.0.0.1:8123/analytics_woo_a http://127.0.0.1:8123/analytics_woo_b
+          uv run tests/check_union.py entities/web_analytics.yaml http://127.0.0.1:8123/analytics_web \
+              http://127.0.0.1:8123/analytics_ga4_a http://127.0.0.1:8123/analytics_ga4_b
+          uv run tests/check_union.py entities/iot.yaml http://127.0.0.1:8123/analytics_iot \
+              http://127.0.0.1:8123/analytics_iot_a http://127.0.0.1:8123/analytics_iot_b
+      # Two databases built under one label would add up as one store: the
+      # union's tests fail and say so. A database whose types are not the
+      # contract's stops the build, also where UNION ALL would widen them
+      # to the contract's (Decimal(26, 8), a time in another zone). A
+      # union without its list of databases, with one twice, or with its
+      # own target among them stops before building.
+      - name: A label in two databases, other types, and no databases
+        run: |
+          q() { curl -sf http://127.0.0.1:8123/ --data-binary "$1"; }
+          q "CREATE DATABASE analytics_copy"
+          for t in orders customers order_lines line_categories line_brands refunds sales_events products product_categories product_brands; do
+              q "CREATE VIEW analytics_copy.$t AS SELECT * FROM analytics_woo_a.$t"
+          done
+          twice() { CLICKHOUSE_DATABASE=analytics_twice $DBT build --project-dir unions/commerce --profiles-dir tests "$@"; }
+          if twice --vars '{"commerce_union_databases":["analytics_woo_a","analytics_copy"]}' > union.txt 2>&1; then cat union.txt; exit 1; fi
+          grep -q 'a source_id is in more than one database of commerce_union_databases' union.txt
+          q "CREATE DATABASE analytics_old"
+          for t in customers order_lines line_categories line_brands refunds sales_events products product_categories product_brands; do
+              q "CREATE VIEW analytics_old.$t AS SELECT * FROM analytics_woo_b.$t"
+          done
+          q "CREATE VIEW analytics_old.orders AS SELECT * REPLACE (CAST(total AS Decimal(26, 8)) AS total,
+              toTimeZone(order_time, 'America/New_York') AS order_time) FROM analytics_woo_b.orders"
+          if twice --vars '{"commerce_union_databases":["analytics_woo_a","analytics_old"]}' > union.txt 2>&1; then cat union.txt; exit 1; fi
+          grep -q "analytics_old.orders.order_time is DateTime('America/New_York'), not DateTime('UTC')" union.txt
+          grep -q 'analytics_old.orders.total is Decimal(26,8), not Decimal(38,8)' union.txt
+          if CLICKHOUSE_DATABASE=analytics_woo_a $DBT build --project-dir unions/commerce --profiles-dir tests \
+              --vars '{"commerce_union_databases":["analytics_woo_a","analytics_woo_b"]}' > union.txt 2>&1; then cat union.txt; exit 1; fi
+          grep -q "commerce_union_databases holds analytics_woo_a, the union's own target database" union.txt
+          if twice > union.txt 2>&1; then cat union.txt; exit 1; fi
+          grep -q 'commerce_union_databases must be a list of the databases of the stores, each once' union.txt
+          if twice --vars '{"commerce_union_databases":["analytics_woo_a","analytics_woo_a"]}' > union.txt 2>&1; then cat union.txt; exit 1; fi
+          grep -q 'commerce_union_databases must be a list of the databases of the stores, each once' union.txt
+          if twice --vars '{"commerce_union_databases":{"analytics_woo_a":1,"analytics_woo_b":2}}' > union.txt 2>&1; then cat union.txt; exit 1; fi
+          grep -q 'commerce_union_databases must be a list of the databases of the stores, each once' union.txt

@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" class="dm" viewBox="0 0 680 560" width="680" height="560" role="img" aria-labelledby="d-title d-desc">
 <title id="d-title">dactopus-data-models and the outside world</title>
-<desc id="d-desc">The GA4 export, Shopify's orders, a WooCommerce store's order tables and Sensor.Community's sensor readings are loaded into input tables in your ClickHouse. The dbt packages build the canonical tables: events, sessions and purchases; orders, order lines, refunds and sales events, customers, and products with their categories and brands; devices and readings. BI tools read them directly; AI agents read them through dactopus-ossie-clickhouse, which uses the Ossie models.</desc>
+<desc id="d-desc">The GA4 export, Shopify's orders, a WooCommerce store's order tables and Sensor.Community's sensor readings are loaded into input tables in your ClickHouse. The dbt packages build the canonical tables: events, sessions and purchases; orders, order lines, refunds and sales events, customers, and products with their categories and brands; devices and readings. Unions add up the tables of several stores, properties or networks. BI tools read them directly; AI agents read them through dactopus-ossie-clickhouse, which uses the Ossie models.</desc>
 <style>
 svg.dm {
   --d-bg: #ffffff; --d-muted: #5f5e5a; --d-arrow: #888780; --d-accent: #534ab7;
@@ -66,8 +66,8 @@ svg.dm .cta text { fill: var(--d-accent); font-size: 13px; font-weight: 600; }
 <g class="node purple" data-k="dbt">
 <rect x="265" y="186" width="150" height="76" rx="8" stroke-width="0.5"/>
 <text class="th" x="340" y="206" text-anchor="middle" dominant-baseline="central">dbt packages</text>
-<text class="ts" x="340" y="227" text-anchor="middle" dominant-baseline="central">one per source</text>
-<text class="ts" x="340" y="245" text-anchor="middle" dominant-baseline="central">incremental, tested</text>
+<text class="ts" x="340" y="227" text-anchor="middle" dominant-baseline="central">one per source,</text>
+<text class="ts" x="340" y="245" text-anchor="middle" dominant-baseline="central">a union per domain</text>
 </g>
 <g class="node gray" data-k="canon">
 <rect x="470" y="186" width="150" height="76" rx="8" stroke-width="0.5"/>

@@ -29,6 +29,27 @@ names the Ossie schema version its models carry.
   several stores, each built with its own label, keep their orders and
   customers apart. In one database the label is constant and every
   number stays the same.
+- Unions: `unions/commerce`, `unions/web_analytics` and `unions/iot`, dbt
+  projects that add up the tables of several stores, properties or
+  networks, each built by its package into a database of its own under
+  its own label. A union writes a view of each dataset of the domain's
+  Ossie model, `UNION ALL` over the databases of
+  `commerce_union_databases`, `web_analytics_union_databases` or
+  `iot_union_databases`, with the columns the model reads and their
+  types as a dbt contract. A commerce union takes Shopify and
+  WooCommerce stores alike. The build stops on a database whose column
+  types differ from the contract and on the union's own database among
+  those it adds up; its test fails when a label is in two databases.
+  `deployment.yml` maps the role `input_databases` to the variable.
+  `tests/check_contracts.py` checks the unions' contracts against the
+  Ossie models and the packages, that `source_id` comes first in every
+  key and relationship of the Ossie models, that each package tests the
+  key of each dataset (Sensor.Community's `readings` with
+  `sensor_community_unique_key`, which replaces the test
+  `readings_one_per_sensor_time_measure`), and that the copies of
+  `macros/union.sql` and of each package's `macros/freshness.sql` are
+  the same; `tests/check_union.py` checks that each label's answers over
+  a union are its database's own.
 
 ### Fixed
 
@@ -46,6 +67,12 @@ names the Ossie schema version its models carry.
 
 ### Changed
 
+- The commerce model's instructions: one deployment can hold several
+  stores, under their labels, in different currencies. An agent asks
+  every amount by `orders.currency`, answers in the one currency or in
+  each, and never adds up two; amounts of customers go by
+  `customers.source_id`. `orders.currency` and `customers.net_amount`
+  say the same. A customer of two stores counts in each.
 - README, Known differences from WooCommerce Analytics: buyers in a
   month, where the reports also count a customer with only a refund.
 - Every package declares the type of each column it writes, a dbt
