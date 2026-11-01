@@ -71,7 +71,7 @@ SELECT
     -- After discounts and without tax, also when prices include tax; not
     -- rounded (16.532721 on the test store). Amounts in the store's
     -- currency (orders.sql), unrounded too.
-    {{ woocommerce_convert('m.line_total', 'r', 8) }} AS line_total,
+    {{ woocommerce_amount(woocommerce_convert('m.line_total', 'r', 8)) }} AS line_total,
     {{ woocommerce_convert('m.line_tax', 'r', 8) }} AS line_tax,
     -- Coupons' share of the line, without tax.
     {{ woocommerce_convert('m.line_subtotal - m.line_total', 'r', 8) }} AS discount_total,
@@ -79,7 +79,7 @@ SELECT
     -- discounts and without tax, as line_total. A refund's lines hold
     -- them negative. A refund of an amount alone takes back no line.
     -ifNull(rf.qty, 0) AS returned_quantity,
-    {{ woocommerce_convert('-ifNull(rf.line_total, 0)', 'r', 8) }} AS returned_amount,
+    {{ woocommerce_amount(woocommerce_convert('-ifNull(rf.line_total, 0)', 'r', 8)) }} AS returned_amount,
     -- When the order's row was synced; the next incremental run starts
     -- from it.
     o.synced_at AS synced_at

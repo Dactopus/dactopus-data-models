@@ -52,14 +52,16 @@ rates AS MATERIALIZED (
 )
 SELECT
     f.id AS refund_id,
-    f.parent_order_id AS order_id,
+    -- Every refund has its order; a NULL from a Nullable input fails the
+    -- build.
+    CAST(f.parent_order_id AS UInt64) AS order_id,
     -- Date of the refund in the store's time zone.
     toDate(f.refund_time, '{{ var("woocommerce_timezone") }}') AS refund_date,
-    f.refund_time AS refund_time,
+    toDateTime(f.refund_time, 'UTC') AS refund_time,
     -- What was paid back, positive: lines, shipping, fees and an amount
     -- without lines together. The refund's total is negative; it equals
     -- the _refund_amount meta on every refund of the test store.
-    -{{ woocommerce_total('f.total_amount', 'op.shipping_total_amount', 'op.shipping_tax_amount', 'f.tax_amount') }} AS refunded_amount,
+    {{ woocommerce_amount('-' ~ woocommerce_total('f.total_amount', 'op.shipping_total_amount', 'op.shipping_tax_amount', 'f.tax_amount')) }} AS refunded_amount,
     ifNull(q.quantity, 0) AS refunded_quantity,
     -- When the refund's row was synced; the next incremental run starts
     -- from the latest one while the table's comment has no position.

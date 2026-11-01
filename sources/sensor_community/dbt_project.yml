@@ -13,6 +13,9 @@ vars:
 models:
   dactopus_sensor_community:
     +materialized: incremental
+    # Every model's columns and their types are listed in schema.yml; a
+    # build stops on any other (tests/check_contracts.py).
+    +contract: {enforced: true}
     +incremental_strategy: delete+insert
     # A release that changes a model's columns stops an incremental run
     # with an error rather than leave the old table: run it once with

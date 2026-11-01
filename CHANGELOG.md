@@ -21,6 +21,47 @@ names the Ossie schema version its models carry.
 
 - README, Known differences from WooCommerce Analytics: buyers in a
   month, where the reports also count a customer with only a refund.
+- Every package declares the type of each column it writes, a dbt
+  contract in `models/schema.yml`, and a build stops on any other. The
+  columns an Ossie model reads come first in each table, with the same
+  types in every package that serves the model: the tables of Shopify
+  and WooCommerce add up with `UNION ALL`. `tests/check_contracts.py`
+  checks it in CI. No value changes; these types do:
+  - Amounts are `Decimal(38, 8)` and never NULL: `orders.total`,
+    `subtotal`, `discount_total`, `shipping_total`, `tax_total`,
+    `refunded_total`, `net_total`; `customers.net_total`; `line_total`
+    and `returned_amount` of `order_lines`, `line_categories` and
+    `line_brands`; `refunds.refunded_amount`; `sales_events.amount`.
+    Shopify's were `Decimal(18, 4)` (`customers.net_total`
+    `Decimal(38, 4)`), and Shopify's `order_lines.discount_total`
+    follows; WooCommerce's were `Nullable(Decimal(38, 8))`.
+  - `orders.customer_id` is `Nullable(Int64)`, `customers.customer_id`
+    `Int64`: Shopify's were `Nullable(UInt64)` and `UInt64`,
+    WooCommerce's `orders.customer_id` `Int64`.
+  - Shopify's quantities are `Int64`: `orders.item_quantity`;
+    `quantity` and `current_quantity` of `order_lines`,
+    `line_categories` and `line_brands`. They were `UInt32` and
+    `UInt64`.
+  - WooCommerce's `orders.order_time`, `refunds.refund_time` and
+    `sales_events.event_time` are `DateTime('UTC')`, not
+    `DateTime64(6, 'UTC')`: WooCommerce keeps whole seconds.
+  - Flags are `Bool`: `orders.is_cancelled` and
+    `customers.second_order_within_*_days` (`Nullable(Bool)`) of both
+    packages, WooCommerce's `orders.in_sales_reports` and `is_direct` of
+    `line_categories`, `product_categories` and
+    `product_categories_all`. They were `UInt8`.
+  - Shopify's `order_lines.title` is `String`, not `Nullable(String)`.
+
+  The columns of every table come in a new order, the model's first.
+  Shopify and WooCommerce stop the next incremental run until it runs
+  once with `--full-refresh`. GA4 and Sensor.Community keep their types
+  and run on; `--full-refresh` puts their columns in the new order.
+- GA4: `on_schema_change: fail`, as in the other packages; dbt requires
+  it of an incremental model with a contract.
+- WooCommerce: an order or refund in another currency without a rate
+  the package knows now fails in its model, with a message that names
+  the README's Known limits, where before the `not_null` tests on its
+  amounts failed.
 
 ## [0.8.0] - 2026-10-30
 

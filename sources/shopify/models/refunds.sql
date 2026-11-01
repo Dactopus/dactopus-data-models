@@ -17,7 +17,7 @@ SELECT
     toDate(r.processed_at, '{{ var("shopify_timezone") }}') AS refund_date,
     r.processed_at AS refund_time,
     r.updated_at AS updated_at,
-    r.total_refunded - rl.gift_card_amount AS refunded_amount,
+    toDecimal128(r.total_refunded - rl.gift_card_amount, 8) AS refunded_amount,
     rl.gift_card_amount AS gift_card_amount,
     -- Items refunded, gift cards apart; 0 for a refund of shipping or an
     -- amount alone.

@@ -164,6 +164,15 @@ if({{ rate }}.rate_mul = 1 AND {{ rate }}.rate_div = 1, toDecimal128({{ amount }
    toDecimal128(round(toDecimal256({{ amount }}, 8) * {{ rate }}.rate_mul / {{ rate }}.rate_div, {{ d }}), 8))
 {%- endmacro %}
 
+{# An amount as the tables hold it, Decimal(38, 8) and never NULL. A NULL
+   is an amount in another currency with no rate the package knows
+   (woocommerce_rates), and fails the build. #}
+{% macro woocommerce_amount(amount) -%}
+CAST(assumeNotNull({{ amount }})
+     + throwIf(isNull({{ amount }}), 'An amount in another currency has no exchange rate the package knows (README, Known limits)')
+     AS Decimal(38, 8))
+{%- endmacro %}
+
 {# The total of an order or refund in the store's currency, rounded as the
    plugin that converted it rounds it for Analytics (woocommerce_rates). #}
 {% macro woocommerce_total(total, shipping, shipping_tax, tax, rate='r') -%}

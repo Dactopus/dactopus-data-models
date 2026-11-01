@@ -77,6 +77,12 @@ jobs:
       # UTC only prints.
       - name: Check deployment.yml
         run: uv run tests/check_deployment.py sources/ga4 --time-zone UTC
+      # Every model's columns and types are its contract; the columns the
+      # Ossie models read have one type in every package, so the tables of
+      # two packages add up (tests/check_contracts.py). The built tables
+      # and views must match their contracts column by column, in order.
+      - name: Check column contracts and the built tables
+        run: uv run tests/check_contracts.py --built sources/ga4
       - name: Validate the Ossie model against the built tables
         run: dactopus-ossie-clickhouse validate entities/web_analytics.yaml --url "$OSSIE_CLICKHOUSE_URL"
       # The fixture's events are from 2025: one event now, in the input
@@ -251,6 +257,8 @@ jobs:
           if CLICKHOUSE_DATABASE=analytics_zones uv run tests/check_deployment.py sources/shopify --time-zone UTC > zones.txt; then cat zones.txt; exit 1; fi
           cat zones.txt
           grep -q '^FAIL orders was not built in UTC' zones.txt
+      - name: Check column contracts and the built tables
+        run: uv run tests/check_contracts.py --built sources/shopify
       - name: Validate the Ossie model against the built tables
         run: dactopus-ossie-clickhouse validate entities/commerce.yaml --url "$OSSIE_CLICKHOUSE_URL"
       # The late rows above were loaded now. dbt v2 needs the package's own
@@ -517,6 +525,8 @@ jobs:
           if CLICKHOUSE_DATABASE=analytics_zones uv run tests/check_deployment.py sources/woocommerce --time-zone UTC > zones.txt; then cat zones.txt; exit 1; fi
           cat zones.txt
           grep -q '^FAIL orders was not built in UTC' zones.txt
+      - name: Check column contracts and the built tables
+        run: uv run tests/check_contracts.py --built sources/woocommerce
       - name: Validate the Ossie model against the built tables
         run: dactopus-ossie-clickhouse validate entities/commerce.yaml --url "$OSSIE_CLICKHOUSE_URL"
       # The late rows above were synced now. dbt v2 needs the package's own
@@ -638,6 +648,8 @@ jobs:
       # UTC only prints.
       - name: Check deployment.yml
         run: uv run tests/check_deployment.py sources/sensor_community --time-zone UTC
+      - name: Check column contracts and the built tables
+        run: uv run tests/check_contracts.py --built sources/sensor_community
       - name: Validate the Ossie model against the built tables
         run: dactopus-ossie-clickhouse validate entities/iot.yaml --url "$OSSIE_CLICKHOUSE_URL"
       # The late rows above were loaded now. dbt v2 needs the package's own

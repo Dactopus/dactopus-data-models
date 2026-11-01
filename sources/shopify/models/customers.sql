@@ -25,9 +25,9 @@ SELECT
     -- with no new data, and an incremental run over unchanged input would
     -- change the table.
 {%- for n in [30, 60, 90, 365] %}
-    if(first_order_date + {{ n }} < last_load_date,
-       ifNull(minIf(days_since_previous_order, customer_order_number = 2) <= {{ n }}, false),
-       NULL) AS second_order_within_{{ n }}_days{{ ',' if not loop.last }}
+    CAST(if(first_order_date + {{ n }} < last_load_date,
+            ifNull(minIf(days_since_previous_order, customer_order_number = 2) <= {{ n }}, false),
+            NULL) AS Nullable(Bool)) AS second_order_within_{{ n }}_days{{ ',' if not loop.last }}
 {%- endfor %}
 FROM {{ ref('orders') }}
 CROSS JOIN (SELECT toDate(max(loaded_at), '{{ var("shopify_timezone") }}') AS last_load_date FROM {{ ref('orders') }}) AS clock

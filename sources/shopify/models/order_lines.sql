@@ -44,16 +44,17 @@ SELECT
     l.product_id AS product_id,
     l.variant_id AS variant_id,
     l.sku AS sku,
-    l.title AS title,
+    -- LineItem.title is String! in the API: never NULL.
+    CAST(l.title AS String) AS title,
     l.variant_title AS variant_title,
-    l.quantity AS quantity,
-    l.current_quantity AS current_quantity,
+    toInt64(l.quantity) AS quantity,
+    toInt64(l.current_quantity) AS current_quantity,
     -- After every discount and without tax, whether or not the shop's prices
     -- include tax. With taxes included, original_total and the discounts
     -- have tax inside, and taking the line's tax off leaves the order's
     -- total less shipping and tax (seen on a development store: 1399.90 -
     -- 10 - 161.05 = 1228.85).
-    l.original_total - l.discount_allocated - if(o.taxes_included, l.total_tax, toDecimal64(0, 4)) AS line_total,
+    toDecimal128(l.original_total - l.discount_allocated - if(o.taxes_included, l.total_tax, toDecimal64(0, 4)), 8) AS line_total,
     l.total_tax AS line_tax,
     -- The line's discounts without tax: its price without tax before
     -- discounts less after. With taxes included, discountAllocations have
@@ -78,7 +79,7 @@ SELECT
     -- it: 113 with 13 tax returned 100 in Shopify's reports (#1015 on the
     -- development store).
     toInt64(ifNull(rt.quantity, 0)) AS returned_quantity,
-    toDecimal64(ifNull(rt.subtotal, 0) - if(o.taxes_included, ifNull(rt.total_tax, 0), 0), 4) AS returned_amount,
+    toDecimal128(ifNull(rt.subtotal, 0) - if(o.taxes_included, ifNull(rt.total_tax, 0), 0), 8) AS returned_amount,
     -- When the line was loaded; the next incremental run starts from it.
     l.loaded_at AS loaded_at
 -- The lines of the kept orders, by id from the input: a CTE runs again at

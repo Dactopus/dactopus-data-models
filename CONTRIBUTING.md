@@ -46,6 +46,7 @@ package or a model:
 ```bash
 dbt build --project-dir sources/ga4 --profiles-dir tests      # models and tests
 dactopus-ossie-clickhouse validate entities/web_analytics.yaml --url http://127.0.0.1:8123/dactopus
+uv run tests/check_contracts.py                               # column types agree across packages
 ```
 
 An incremental run over unchanged input must change nothing and match a

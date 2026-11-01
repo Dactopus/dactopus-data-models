@@ -1373,7 +1373,8 @@ table prefix.
                               per day
       macros/                 SQL the package's models share
       models/                 one model per entity, named after it
-      models/schema.yml       structural checks (dbt tests)
+      models/schema.yml       structural checks (dbt tests) and each
+                              column's type (dbt contract)
       tests/                  checks that need their own SQL
     tests/<source>/           hand-written input rows and the numbers the
                               model must answer over them
@@ -1388,6 +1389,13 @@ file, since relationships and metrics span entities), so one model serves
 any database dactopus-ossie-clickhouse connects to, and
 `dactopus-ossie-clickhouse validate --url` checks that the package delivers every
 column the entity declares. A deployment picks one package per entity.
+
+Every package declares the type of each column it writes (a dbt
+contract in `models/schema.yml`), and a build stops on any other type.
+The columns the entity's Ossie model reads come first in each table,
+with the same types in every package of the entity: the tables of
+Shopify and WooCommerce add up with `UNION ALL`.
+`uv run tests/check_contracts.py` checks it.
 
 This is one repository, not one per source. Packages map onto shared
 entities, so they are released together with them under a single version.
@@ -1478,11 +1486,11 @@ One version for the whole repository, [SemVer](https://semver.org), tags
 files carry it, and the changelog names it for every release.
 
 A breaking change is anything that stops a deployment working or changes
-its numbers: renaming or removing a field, metric or column; changing what
-a metric means (the same columns, different numbers); a new required
-column in a package's input. Before 1.0 such changes come in a minor
-release, after 1.0 in a major one. New fields and metrics are minor, fixes
-are patches.
+its numbers: renaming or removing a field, metric or column; changing a
+column's type; changing what a metric means (the same columns, different
+numbers); a new required column in a package's input. Before 1.0 such
+changes come in a minor release, after 1.0 in a major one. New fields and
+metrics are minor, fixes are patches.
 
 A deployment pins a tag: the dbt package from the git tag with its
 subdirectory (`sources/ga4`, `sources/shopify`, `sources/woocommerce`,

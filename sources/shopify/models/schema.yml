@@ -3,116 +3,209 @@ version: 2
 models:
   - name: orders
     columns:
-      - name: order_id
-        data_tests: [unique, not_null]
-      - {name: order_date, data_tests: [not_null]}
-      - {name: currency, data_tests: [not_null]}
+      - {name: order_id, data_type: UInt64, data_tests: [unique, not_null]}
+      - {name: order_number, data_type: String}
+      - {name: order_date, data_type: Date, data_tests: [not_null]}
+      - {name: order_time, data_type: "DateTime('UTC')"}
       - name: financial_status
+        data_type: "Nullable(String)"
         data_tests:
           - not_null
           - accepted_values:
               arguments:
                 values: [unpaid, paid, partially_refunded, refunded, voided]
       - name: fulfillment_status
+        data_type: "Nullable(String)"
         data_tests:
           - not_null
           - accepted_values:
               arguments:
                 values: [unfulfilled, partially_fulfilled, fulfilled]
+      - {name: is_cancelled, data_type: Bool}
+      - {name: in_sales_reports, data_type: Bool}
+      - {name: channel, data_type: "Nullable(String)"}
+      - {name: currency, data_type: String, data_tests: [not_null]}
+      - {name: shipping_country, data_type: "Nullable(String)"}
+      - {name: shipping_region, data_type: "Nullable(String)"}
+      - {name: shipping_city, data_type: "Nullable(String)"}
+      - {name: customer_id, data_type: "Nullable(Int64)"}
+      - {name: customer_order_number, data_type: "Nullable(UInt64)"}
+      - {name: new_vs_repeat, data_type: "Nullable(String)"}
+      - {name: days_since_previous_order, data_type: "Nullable(Int64)"}
+      - {name: months_since_first_order, data_type: "Nullable(Int64)"}
+      - {name: item_quantity, data_type: Int64}
+      - {name: discount_code_count, data_type: UInt64}
+      - {name: total, data_type: "Decimal(38, 8)"}
+      - {name: subtotal, data_type: "Decimal(38, 8)"}
+      - {name: discount_total, data_type: "Decimal(38, 8)"}
+      - {name: shipping_total, data_type: "Decimal(38, 8)"}
+      - {name: tax_total, data_type: "Decimal(38, 8)"}
+      - {name: refunded_total, data_type: "Decimal(38, 8)"}
+      - {name: net_total, data_type: "Decimal(38, 8)"}
+      - {name: updated_at, data_type: "DateTime('UTC')"}
+      - {name: customer_email, data_type: "Nullable(String)"}
+      - {name: tip_total, data_type: "Decimal(18, 4)"}
+      - {name: gift_card_total, data_type: "Decimal(18, 4)"}
+      - {name: duties_total, data_type: "Decimal(18, 4)"}
+      - {name: additional_fees_total, data_type: "Decimal(18, 4)"}
+      - {name: gift_card_refunded_total, data_type: "Decimal(18, 4)"}
+      - {name: taxes_included, data_type: Bool}
+      - {name: display_financial_status, data_type: String}
+      - {name: display_fulfillment_status, data_type: String}
+      - {name: cancelled_time, data_type: "Nullable(DateTime('UTC'))"}
+      - {name: discount_codes, data_type: "Array(String)"}
+      - {name: shipping_postcode, data_type: "Nullable(String)"}
+      - {name: line_item_count, data_type: UInt64}
+      - {name: loaded_at, data_type: "DateTime64(6, 'UTC')"}
   - name: customers
     columns:
-      - name: customer_id
-        data_tests: [unique, not_null]
-      - {name: first_order_date, data_tests: [not_null]}
-      - {name: last_order_date, data_tests: [not_null]}
-      - {name: net_total, data_tests: [not_null]}
+      - {name: customer_id, data_type: Int64, data_tests: [unique, not_null]}
+      - {name: first_order_date, data_type: Date, data_tests: [not_null]}
+      - {name: last_order_date, data_type: Date, data_tests: [not_null]}
+      - {name: number_of_orders, data_type: UInt64}
+      - {name: net_total, data_type: "Decimal(38, 8)"}
+      - {name: second_order_within_30_days, data_type: "Nullable(Bool)"}
+      - {name: second_order_within_60_days, data_type: "Nullable(Bool)"}
+      - {name: second_order_within_90_days, data_type: "Nullable(Bool)"}
+      - {name: second_order_within_365_days, data_type: "Nullable(Bool)"}
   - name: order_lines
     columns:
-      - name: line_id
-        data_tests: [unique, not_null]
+      - {name: line_id, data_type: UInt64, data_tests: [unique, not_null]}
       - name: order_id
+        data_type: UInt64
         data_tests:
           - not_null
           - relationships:
               arguments:
                 to: ref('orders')
                 field: order_id
+      - {name: product_id, data_type: "Nullable(UInt64)"}
+      - {name: variant_id, data_type: "Nullable(UInt64)"}
+      - {name: sku, data_type: "Nullable(String)"}
+      - {name: title, data_type: String}
+      - {name: quantity, data_type: Int64}
+      - {name: current_quantity, data_type: Int64}
+      - {name: line_total, data_type: "Decimal(38, 8)"}
+      - {name: returned_quantity, data_type: Int64}
+      - {name: returned_amount, data_type: "Decimal(38, 8)"}
+      - {name: order_updated_at, data_type: "DateTime('UTC')"}
+      - {name: order_date, data_type: Date}
+      - {name: variant_title, data_type: "Nullable(String)"}
+      - {name: line_tax, data_type: "Decimal(18, 4)"}
+      - {name: discount_total, data_type: "Decimal(38, 8)"}
+      - {name: loaded_at, data_type: "DateTime64(6, 'UTC')"}
   - name: refunds
     columns:
-      - name: refund_id
-        data_tests: [unique, not_null]
-      - {name: refund_date, data_tests: [not_null]}
+      - {name: refund_id, data_type: UInt64, data_tests: [unique, not_null]}
       - name: order_id
+        data_type: UInt64
         data_tests:
           - not_null
           - relationships:
               arguments:
                 to: ref('orders')
                 field: order_id
+      - {name: refund_date, data_type: Date, data_tests: [not_null]}
+      - {name: refund_time, data_type: "DateTime('UTC')"}
+      - {name: refunded_amount, data_type: "Decimal(38, 8)"}
+      - {name: updated_at, data_type: "DateTime('UTC')"}
+      - {name: gift_card_amount, data_type: "Decimal(18, 4)"}
+      - {name: refunded_quantity, data_type: UInt64}
+      - {name: loaded_at, data_type: "DateTime64(6, 'UTC')"}
   - name: products
     columns:
-      - name: product_id
-        data_tests: [unique, not_null]
+      - {name: product_id, data_type: UInt64, data_tests: [unique, not_null]}
+      - {name: title, data_type: String}
       - name: status
+        data_type: "Nullable(String)"
         data_tests:
           - accepted_values:
               arguments:
                 values: [active, draft, archived]
+      - {name: last_sold_date, data_type: "Nullable(Date)"}
   - name: product_categories_all
     columns:
-      - {name: product_id, data_tests: [not_null]}
-      - {name: category, data_tests: [not_null]}
-      - {name: category_path, data_tests: [not_null]}
+      - {name: product_id, data_type: UInt64, data_tests: [not_null]}
+      - {name: category, data_type: String, data_tests: [not_null]}
+      - {name: category_path, data_type: String, data_tests: [not_null]}
+      - {name: is_direct, data_type: Bool}
   - name: product_brands_all
     columns:
-      - {name: product_id, data_tests: [not_null]}
-      - {name: brand, data_tests: [not_null]}
+      - {name: product_id, data_type: UInt64, data_tests: [not_null]}
+      - {name: brand, data_type: String, data_tests: [not_null]}
   - name: product_brands
     columns:
       - name: product_id
+        data_type: UInt64
         data_tests:
           - not_null
           - relationships:
               arguments:
                 to: ref('products')
                 field: product_id
+      - {name: brand, data_type: String}
   - name: line_categories
     columns:
       - name: line_id
+        data_type: UInt64
         data_tests:
           - not_null
           - relationships:
               arguments:
                 to: ref('order_lines')
                 field: line_id
+      - {name: category, data_type: "Nullable(String)"}
+      - {name: category_path, data_type: "Nullable(String)"}
+      - {name: is_direct, data_type: Bool}
+      - {name: quantity, data_type: Int64}
+      - {name: line_total, data_type: "Decimal(38, 8)"}
+      - {name: returned_quantity, data_type: Int64}
+      - {name: returned_amount, data_type: "Decimal(38, 8)"}
+      - {name: current_quantity, data_type: Int64}
   - name: line_brands
     columns:
       - name: line_id
+        data_type: UInt64
         data_tests:
           - not_null
           - relationships:
               arguments:
                 to: ref('order_lines')
                 field: line_id
+      - {name: brand, data_type: "Nullable(String)"}
+      - {name: quantity, data_type: Int64}
+      - {name: line_total, data_type: "Decimal(38, 8)"}
+      - {name: returned_quantity, data_type: Int64}
+      - {name: returned_amount, data_type: "Decimal(38, 8)"}
+      - {name: current_quantity, data_type: Int64}
   - name: sales_events
     columns:
-      - name: event_id
-        data_tests: [unique, not_null]
-      - {name: event_date, data_tests: [not_null]}
-      - {name: amount, data_tests: [not_null]}
+      - {name: event_id, data_type: String, data_tests: [unique, not_null]}
       - name: event_type
+        data_type: String
         data_tests:
           - not_null
           - accepted_values:
               arguments:
                 values: [order, refund, cancellation]
       - name: order_id
+        data_type: UInt64
         data_tests:
           - not_null
           - relationships:
               arguments:
                 to: ref('orders')
                 field: order_id
+      - {name: event_date, data_type: Date, data_tests: [not_null]}
+      - {name: event_time, data_type: "DateTime('UTC')"}
+      - {name: amount, data_type: "Decimal(38, 8)", data_tests: [not_null]}
+  - name: product_categories
+    columns:
+      - {name: product_id, data_type: UInt64}
+      - {name: category, data_type: String}
+      - {name: category_path, data_type: String}
+      - {name: is_direct, data_type: Bool}
+
 unit_tests:
   # Discounts of lines in a shop whose prices include tax. The fixture's
   # tax-included order has one tax line, so these rows cover the rounding
@@ -161,8 +254,8 @@ unit_tests:
                  toDecimal64('161.05', 4) AS total_tax, toDateTime64('2026-09-20 12:00:02', 6, 'UTC') AS loaded_at
     expect:
       rows:
-        - {line_id: 11, line_total: 0.9, discount_total: 0, returned_quantity: 0, returned_amount: 0}
-        - {line_id: 12, line_total: 1228.85, discount_total: 10, returned_quantity: 1, returned_amount: 1228.85}
+        - {line_id: 11, line_total: '0.9', discount_total: 0, returned_quantity: 0, returned_amount: 0}
+        - {line_id: 12, line_total: '1228.85', discount_total: 10, returned_quantity: 1, returned_amount: '1228.85'}
   # Two refund lines of the same line item in one refund, as Shopify returns
   # for a line restocked at two locations (suggestedRefund on the
   # development store): each counts. 2 items, then two halves of a 50 gift

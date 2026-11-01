@@ -14,10 +14,10 @@ SELECT
     -- The product is in the category itself, not only in one under it.
     ifNull(c.is_direct, true) AS is_direct,
     l.quantity AS quantity,
-    l.current_quantity AS current_quantity,
     l.line_total AS line_total,
     l.returned_quantity AS returned_quantity,
-    l.returned_amount AS returned_amount
+    l.returned_amount AS returned_amount,
+    l.current_quantity AS current_quantity
 FROM {{ ref('order_lines') }} AS l
 LEFT JOIN (
     SELECT product_id, toNullable(category) AS category, toNullable(category_path) AS category_path,

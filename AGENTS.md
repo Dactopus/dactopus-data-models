@@ -37,7 +37,8 @@ The README describes what works today. Plans go in
                               entity that is a view over a built table
                               has that table as <entity>_<part>.sql
                               (devices_archive.sql)
-      models/schema.yml       structural checks (dbt tests only)
+      models/schema.yml       structural checks (dbt tests) and each
+                              column's type (the dbt contract)
       tests/                  singular dbt tests, for checks a generic
                               test cannot express
     tests/<source>/           hand-written input rows and the numbers the
@@ -47,6 +48,8 @@ The README describes what works today. Plans go in
                               reports, shared by every source
     tests/check_deployment.py checks each package's deployment.yml against
                               the package and its built tables
+    tests/check_contracts.py  checks the packages' contracts against the
+                              Ossie models and each other
     tests/profiles.yml        the dbt profile CI and the checks build
                               with; a package ships none
     docs/architecture.svg     the diagram, shown in the README and, with
@@ -80,6 +83,19 @@ profile and the sample data. CI builds into other databases to keep it so.
   like a dataset: a count is `<row>_count` (`order_count`), a sum of a
   field `<field>_total` is `<field>_amount` (`discount_amount`).
   Descriptions name a dataset's metric as `dataset.metric`.
+- Every model has a dbt contract (`+contract` in `dbt_project.yml`):
+  `schema.yml` lists each column with its ClickHouse type, and the
+  model's last `SELECT` casts to it. The columns the Ossie model reads
+  come first, in the order it first reads them, with one type in every
+  package of the domain; `tests/check_contracts.py` checks both. The
+  common types: amounts `Decimal(38, 8)`, not Nullable (WooCommerce
+  keeps `decimal(26,8)`, and line totals at up to 6 decimals); the
+  customer key `Int64` (WooCommerce's guests are negative), cast from
+  Shopify's unsigned ids with `accurateCast`, which fails where a plain
+  cast wraps; quantities `Int64`; times `DateTime('UTC')` (both sources
+  keep whole seconds); flags `Bool`. A NULL in a column that is not
+  Nullable fails the build: do not turn it into 0 with `assumeNotNull`
+  alone.
 - Entities are plain Ossie. Mapping, refresh and checks belong in the
   package's dbt project, never in `custom_extensions`. The only extension
   used is dactopus-ossie-clickhouse's `CLICKHOUSE` namespace, for its `dedup` key.

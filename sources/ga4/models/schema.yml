@@ -3,31 +3,51 @@ version: 2
 models:
   - name: events
     columns:
-      - {name: event_name, data_tests: [not_null]}
-      - {name: event_date, data_tests: [not_null]}
-      - {name: event_time, data_tests: [not_null]}
-      - {name: user_pseudo_id, data_tests: [not_null]}
+      - {name: event_name, data_type: String, data_tests: [not_null]}
+      - {name: session_key, data_type: "Nullable(String)"}
+      - {name: event_date, data_type: Date, data_tests: [not_null]}
+      - {name: event_time, data_type: "DateTime64(6, 'UTC')", data_tests: [not_null]}
+      - {name: page_location, data_type: "Nullable(String)"}
+      - {name: page_title, data_type: "Nullable(String)"}
+      - {name: device_category, data_type: "Nullable(String)"}
+      - {name: country, data_type: "Nullable(String)"}
+      - {name: user_pseudo_id, data_type: String, data_tests: [not_null]}
+      - {name: ga_session_id, data_type: "Nullable(Int64)"}
   - name: sessions
     columns:
-      - name: session_key
-        data_tests: [unique, not_null]
-      - {name: user_pseudo_id, data_tests: [not_null]}
-      - {name: session_date, data_tests: [not_null]}
-      - {name: source, data_tests: [not_null]}
-      - {name: medium, data_tests: [not_null]}
-      - {name: campaign, data_tests: [not_null]}
+      - {name: session_key, data_type: String, data_tests: [unique, not_null]}
+      - {name: user_pseudo_id, data_type: String, data_tests: [not_null]}
+      - {name: session_date, data_type: Date, data_tests: [not_null]}
+      - {name: session_start_time, data_type: "DateTime64(6, 'UTC')"}
+      - {name: is_engaged, data_type: "Nullable(UInt8)"}
+      - {name: has_purchase, data_type: UInt8}
+      - {name: page_views, data_type: UInt64}
+      - {name: source, data_type: String, data_tests: [not_null]}
+      - {name: medium, data_type: String, data_tests: [not_null]}
+      - {name: campaign, data_type: String, data_tests: [not_null]}
+      - {name: landing_page, data_type: "Nullable(String)"}
+      - {name: device_category, data_type: "Nullable(String)"}
+      - {name: country, data_type: "Nullable(String)"}
+      - {name: ga_session_id, data_type: Int64}
   - name: purchases
     columns:
-      - name: purchase_key
-        data_tests: [unique, not_null]
-      - {name: user_pseudo_id, data_tests: [not_null]}
-      - {name: purchase_date, data_tests: [not_null]}
+      - {name: purchase_key, data_type: String, data_tests: [unique, not_null]}
+      - {name: transaction_id, data_type: "Nullable(String)"}
       - name: session_key
+        data_type: "Nullable(String)"
         data_tests:
           - relationships:
               arguments:
                 to: ref('sessions')
                 field: session_key
+      - {name: purchase_date, data_type: Date, data_tests: [not_null]}
+      - {name: purchase_time, data_type: "DateTime64(6, 'UTC')"}
+      - {name: revenue, data_type: "Nullable(Float64)"}
+      - {name: currency, data_type: "Nullable(String)"}
+      - {name: revenue_usd, data_type: "Nullable(Float64)"}
+      - {name: tax, data_type: "Nullable(Float64)"}
+      - {name: shipping, data_type: "Nullable(Float64)"}
+      - {name: user_pseudo_id, data_type: String, data_tests: [not_null]}
 
 unit_tests:
   # The sample predates session_traffic_source_last_click (October 2024), so

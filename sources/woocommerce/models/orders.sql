@@ -177,30 +177,31 @@ SELECT
     -- The time the reports date the order by (woocommerce_date_type), and
     -- the time placed while the order has none: a date_paid store dates an
     -- order by payment once it is paid.
-    coalesce({{ report_time }}, o.placed_time) AS order_time,
+    -- In seconds: the order tables keep datetime without fractions.
+    toDateTime(coalesce({{ report_time }}, o.placed_time), 'UTC') AS order_time,
     toDate(order_time, '{{ var("woocommerce_timezone") }}') AS order_date,
     o.placed_time AS placed_time,
     op.paid_time AS paid_time,
     op.completed_time AS completed_time,
     -- Whether the store's reports count the order: its status is not one
     -- they leave out, and it has its report date.
-    NOT has({{ excluded }}, o.status) AND {{ report_time }} IS NOT NULL AS in_sales_reports,
+    toBool(NOT has({{ excluded }}, o.status) AND {{ report_time }} IS NOT NULL) AS in_sales_reports,
     o.status AS status,
-    o.customer_id AS customer_id,
+    CAST(o.customer_id AS Nullable(Int64)) AS customer_id,
     o.customer_email AS customer_email,
     -- Amounts are in the store's currency, converted from the order's
     -- where a multi-currency plugin placed it in another (woocommerce_rates).
     {{ woocommerce_store_currency() }} AS currency,
     o.order_currency AS order_currency,
-    {{ woocommerce_total('o.total_amount', 'op.shipping_total_amount', 'op.shipping_tax_amount', 'o.tax_amount') }} AS total,
+    {{ woocommerce_amount(woocommerce_total('o.total_amount', 'op.shipping_total_amount', 'op.shipping_tax_amount', 'o.tax_amount')) }} AS total,
     -- Shipping after its discounts, without tax (a store enters it so).
-    {{ woocommerce_convert('op.shipping_total_amount') }} AS shipping_total,
+    {{ woocommerce_amount(woocommerce_convert('op.shipping_total_amount')) }} AS shipping_total,
     -- Tax on goods (tax_amount holds only that) and on shipping.
-    {{ woocommerce_convert('o.tax_amount + op.shipping_tax_amount') }} AS tax_total,
+    {{ woocommerce_amount(woocommerce_convert('o.tax_amount + op.shipping_tax_amount')) }} AS tax_total,
     -- Goods after discounts and fees, without tax.
     total - shipping_total - tax_total AS subtotal,
     -- Coupons, without tax.
-    {{ woocommerce_convert('op.discount_total_amount') }} AS discount_total,
+    {{ woocommerce_amount(woocommerce_convert('op.discount_total_amount')) }} AS discount_total,
     {{ woocommerce_convert('e.fee_amount') }} AS fee_total,
     ifNull(rf.refunded_total, toDecimal128(0, 8)) AS refunded_total,
     -- What the order earned after refunds, as the store's reports count
@@ -229,7 +230,7 @@ SELECT
         o.core_status NOT IN {{ core_statuses }}, NULL,
         o.core_status = 'completed', 'fulfilled',
         'unfulfilled') AS fulfillment_status,
-    o.core_status = 'cancelled' AS is_cancelled,
+    toBool(o.core_status = 'cancelled') AS is_cancelled,
     -- checkout, store-api (the block checkout), admin, rest-api, ...
     op.channel AS channel,
     e.discount_codes AS discount_codes,
@@ -239,7 +240,7 @@ SELECT
     a.city AS shipping_city,
     a.postcode AS shipping_postcode,
     l.line_item_count AS line_item_count,
-    l.item_quantity AS item_quantity,
+    toInt64(l.item_quantity) AS item_quantity,
     o.customer_order_number AS customer_order_number,
     multiIf(customer_order_number = 1, 'new', customer_order_number > 1, 'repeat', NULL) AS new_vs_repeat,
     o.days_since_previous_order AS days_since_previous_order,

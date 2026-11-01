@@ -46,7 +46,7 @@ SELECT
     l.product_id AS product_id,
     any(n.name) AS category,
     any(p.path) AS category_path,
-    max(a.depth = 0) = 1 AS is_direct
+    toBool(max(a.depth = 0) = 1) AS is_direct
 FROM links AS l
 INNER JOIN ancestors AS a ON a.term_id = l.term_id
 INNER JOIN names AS n ON n.term_id = a.ancestor_id
