@@ -142,8 +142,8 @@ jobs:
         dbt build --project-dir sources/shopify --profiles-dir tests
         --vars {"shopify_input_database":"shopify_input","shopify_timezone":"America/New_York","shopify_lookback_days":0,"shopify_source_id":"store_ny"}
       OSSIE_CLICKHOUSE_URL: http://127.0.0.1:8123/analytics
-      # The model is served in the zone the package was built in (README,
-      # Use in your dbt project); the checks and validate run in it.
+      # The model is served in the zone the package was built in
+      # (docs/deployment.md); the checks and validate run in it.
       OSSIE_CLICKHOUSE_TIME_ZONE: America/New_York
     steps:
       - uses: actions/checkout@v7
@@ -332,8 +332,8 @@ jobs:
         dbt build --project-dir sources/woocommerce --profiles-dir tests
         --vars {"woocommerce_input_database":"woocommerce_input","woocommerce_table_prefix":"wp_2_","woocommerce_timezone":"America/New_York","woocommerce_currency":"USD","woocommerce_lookback_days":0,"woocommerce_source_id":"store_wc"}
       OSSIE_CLICKHOUSE_URL: http://127.0.0.1:8123/analytics
-      # The model is served in the zone the package was built in (README,
-      # Use in your dbt project); the checks and validate run in it.
+      # The model is served in the zone the package was built in
+      # (docs/deployment.md); the checks and validate run in it.
       OSSIE_CLICKHOUSE_TIME_ZONE: America/New_York
       # Checks that warn in a deployment fail here.
       DACTOPUS_STRICT_TESTS: error
