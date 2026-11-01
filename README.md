@@ -1370,10 +1370,10 @@ Freshness then reports the same ages as on dbt v1.
 
 Several GA4 properties: each exports to its own BigQuery dataset. Build
 the package once per property, each with its own input and target
-database and its own label, and serve the model once per target. A total across properties
-is not modelled. The same holds for several Shopify or WooCommerce
-stores, and for the sites of a WordPress multisite, each with its own
-table prefix.
+database and its own label, and serve the model once per target. A total
+across properties is not modelled. The same holds for several Shopify or
+WooCommerce stores, and for the sites of a WordPress multisite, each
+with its own table prefix.
 
 ## Layout
 
