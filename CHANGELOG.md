@@ -67,6 +67,17 @@ names the Ossie schema version its models carry.
 
 ### Changed
 
+- The README is split. Each package's guide (loading, settings, known
+  differences from the source's own reports) is `sources/<source>/README.md`;
+  what each Ossie model answers and its limits is `docs/<domain>.md`;
+  the packages in a dbt project, labels, time zones, serving and unions
+  are `docs/deployment.md`; layout, what a source package is, out of
+  scope and the authoring rules are in CONTRIBUTING.md. The README keeps
+  the overview, one quick start and versioning. Notes on how the
+  packages were checked against test stores, and the migration note for
+  snapshots loaded before 0.5.1, are gone from the guides: the checked
+  numbers are stated, the history is this changelog. The install
+  recipes take dactopus-ossie-clickhouse from PyPI.
 - The commerce model's instructions: one deployment can hold several
   stores, under their labels, in different currencies. An agent asks
   every amount by `orders.currency`, answers in the one currency or in
@@ -617,7 +628,7 @@ no rebuild is needed.
   Such a shop now builds in at most 1.1 GB per query, and a shop of 8
   million orders in 2.7 GB; an incremental run of `orders` needs 0.2 GB
   instead of 1.7 GB. A full build takes about twice as long. Measurements:
-  [README](README.md#known-differences-from-shopifys-reports). The saving
+  [README](sources/shopify/README.md#known-differences-from-shopifys-reports). The saving
   needs the input tables' sorting keys of `input.sql`; with other keys
   the package builds the same rows at the old memory. The suggested
   `ReplacingMergeTree` key of `refunds` is now `(order_id, id)`.

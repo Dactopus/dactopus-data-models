@@ -6,7 +6,7 @@
 -- Order Storage, HPOS:
 -- https://developer.woocommerce.com/docs/features/high-performance-order-storage/).
 -- A store still on the legacy posts storage turns on HPOS compatibility
--- mode, which keeps these tables in sync (README).
+-- mode, which keeps these tables in sync (the package's README).
 --
 -- Only the columns the package reads; the CDC copy may hold more. Names
 -- and types are those PeerDB gives a MySQL table (checked with PeerDB 0.37

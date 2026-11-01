@@ -11,8 +11,8 @@ through pull requests, like the code.
   the time.
 - **Later**: planned, after what is next.
 - **Exploring**: worth doing; scope or demand is still open.
-- **Not planned**: see [Out of scope](README.md#out-of-scope) in the
-  README.
+- **Not planned**: see [Out of scope](CONTRIBUTING.md#out-of-scope) in
+  CONTRIBUTING.md.
 
 ## Next
 
@@ -42,8 +42,8 @@ the start, the canonical fields can be chosen right away; Fivetran's
 [dbt_ad_reporting](https://github.com/fivetran/dbt_ad_reporting) already
 shows a common schema across eleven ad platforms. A brand buys ads on
 several platforms at once, so one deployment will need more than one
-package writing the same entity. That changes a layout rule in the
-README, which now has a deployment pick one package per entity.
+package writing the same entity. That changes a layout rule in
+CONTRIBUTING.md, which has a deployment pick one package per entity.
 
 ## Exploring
 

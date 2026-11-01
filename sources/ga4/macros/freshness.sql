@@ -2,7 +2,7 @@
    DateTime, which the ClickHouse driver returns as an integer, and dbt v2
    rejects every source for it (https://github.com/dbt-labs/dbt/issues/16714).
    These cast both times to DateTime64, which arrives as a timestamp; dbt v1
-   gets the same ages. Remove them, and the dispatch setting the README
+   gets the same ages. Remove them, and the dispatch setting docs/deployment.md
    gives for installed packages, once a dbt-oss release has the fix. #}
 {% macro clickhouse__collect_freshness(source, loaded_at_field, filter) %}
   {% call statement('collect_freshness', fetch_result=True, auto_begin=False) -%}

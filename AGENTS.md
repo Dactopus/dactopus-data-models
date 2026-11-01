@@ -17,7 +17,7 @@ Everything must be releasable under Apache 2.0. Do not add:
   across systems, cross-source marts. A package covers one source. A
   union adds up the tables of several instances of one domain side by
   side, each row under its label, and matches nothing across them.
-- Data loading code or API connectors. Loading is a recipe in the README.
+- Data loading code or API connectors. Loading is a recipe in the package's README.
 - Query execution. That is dactopus-ossie-clickhouse.
 - Placeholders or stubs for any of the above.
 
@@ -236,7 +236,7 @@ Packages run on dbt v2 (`pip install dbt-oss`) and on dbt v1
 (`dbt-core` 1.11 with `dbt-clickhouse`), with identical results. CI
 installs the latest `dbt-oss` and `dbt-clickhouse`; the changelog names
 the versions each release was tested with.
-Sample data and loading: README, Quick start. A package ships no dbt
+Sample data and loading: the package READMEs. A package ships no dbt
 profile: the runner writes its own, a project that installs the packages
 has one, and CI and the checks use `tests/profiles.yml`. Its connection:
 `CLICKHOUSE_HOST`, `CLICKHOUSE_PORT` (HTTP), `CLICKHOUSE_USER`,
@@ -258,5 +258,5 @@ own `dbt source freshness` fails on ClickHouse for any project (it
 selects `now()`, which arrives as an integer); each package's
 `macros/freshness.sql` replaces it with a query that casts both times to
 `DateTime64`. A project that installs the packages reaches these macros
-through the `dispatch` setting in the README. Remove both once a
+through the `dispatch` setting in `docs/deployment.md`. Remove both once a
 `dbt-oss` release fixes dbt-labs/dbt#16714.
