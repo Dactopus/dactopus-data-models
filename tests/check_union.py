@@ -125,10 +125,10 @@ def main(model, union, instances):
         asked += 1
         got = ask(model, union, metrics, dimensions)
         parts = [ask(model, url, metrics, dimensions) for url in instances]
-        errors = [p for p in [got, *parts] if isinstance(p, str)]
+        errors = [p for p in parts if isinstance(p, str)]
         expected = sorted((r for p in parts if isinstance(p, list) for r in p),
                           key=lambda r: [str(r[k]) for k in r if k not in metrics])
-        if errors or not expected or not same_rows(got, expected):
+        if errors or isinstance(got, str) or not expected or not same_rows(got, expected):
             failed += 1
             print(f"FAIL {' '.join(metrics)} by {', '.join(dimensions)}\n"
                   f"  the instances {errors or expected}\n  the union     {got}")
