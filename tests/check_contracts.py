@@ -199,12 +199,13 @@ def check(packages, unions, built):
             problems.append(f"{name}: dbt_project.yml must set +contract: {{enforced: true}} for all models")
         declared = contracts(package)
         models = sorted(p.stem for p in (package / "models").glob("*.sql"))
+        labels = label_tests(package)
         for model in models:
             problem = typed(name, model, declared)
             if problem:
                 problems.append(problem)
             elif declared[model][0] != ("source_id", LABEL_TYPE) \
-                    or f"{name}_one_source_id" not in label_tests(package)[model]:
+                    or f"{name}_one_source_id" not in labels[model]:
                 problems.append(f"{name}: {model} must start with source_id {LABEL_TYPE}, "
                                 f"tested by {name}_one_source_id")
         model_file = yaml.safe_load((package / "deployment.yml").read_text())["model"]
@@ -250,12 +251,13 @@ def check(packages, unions, built):
         if models != sorted(canonical):
             problems.append(f"{name}: its models must be the datasets of {model_file}, "
                             f"{', '.join(sorted(canonical))}; they are {', '.join(models)}")
+        labels = label_tests(union)
         for model in models:
             problem = typed(name, model, declared)
             if problem:
                 problems.append(problem)
                 continue
-            if f"{prefix}_distinct_source_ids" not in label_tests(union)[model]:
+            if f"{prefix}_distinct_source_ids" not in labels[model]:
                 problems.append(f"{name}: source_id of {model} must be tested by {prefix}_distinct_source_ids")
             listed = [c for c, _ in declared[model]]
             if model in canonical and listed != canonical[model]:

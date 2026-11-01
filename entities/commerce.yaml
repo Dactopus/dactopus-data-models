@@ -17,11 +17,11 @@ ai_context:
     orders.currency as a dimension. With one currency, answer in it and name
     its code. With several, give each currency separately and never add up
     amounts in different currencies; the model converts none. Amounts of
-    customers (customers.net_amount, average_customer_value) cannot be
-    grouped by orders.currency: query them by customers.source_id, and each
-    store's currency as orders.currency by orders.source_id. Counts add up
-    across stores. Dates are in each store's own time zone. The numbers follow the store's
-    own sales reports: every metric but orders.all_orders and
+    customers (customers.net_amount, customers.average_customer_value)
+    cannot be grouped by orders.currency: query them by customers.source_id,
+    and each store's currency as orders.currency by orders.source_id. Counts
+    add up across stores. Dates are in each store's own time zone. The
+    numbers follow the store's own sales reports: every metric but orders.all_orders and
     orders.all_orders_total counts only the orders those reports count
     (orders.in_sales_reports). Shopify's reports count every order, cancelled
     and unpaid ones included; WooCommerce's, by default, only paid orders that

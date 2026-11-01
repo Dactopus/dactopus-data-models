@@ -93,6 +93,8 @@ def questions(model_path):
     first = {}
     for metric in (m for m in model.get("metrics", []) if not now(m)):
         tables = [c.table for c in parse(metric).find_all(exp.Column) if c.table in datasets]
+        if not tables:
+            sys.exit(f"{metric['name']}: names no dataset of {model_path}, to ask it by a label")
         first.setdefault(tables[0], []).append(metric)
         reads[metric["name"]] = set(tables)
     for dataset, metrics in first.items():
@@ -126,7 +128,9 @@ def main(model, union, instances):
         if totals:
             asked += 1
             total = ask(model, union, totals, [])
-            summed = [{m: sum(r[m] or 0 for r in expected) for m in totals}]
+            # SUM over NULLs only is NULL, as the union answers.
+            summed = [{m: sum(v) if (v := [r[m] for r in expected if r[m] is not None]) else None
+                       for m in totals}]
             if isinstance(total, str) or not same_rows(total, summed):
                 failed += 1
                 print(f"FAIL {' '.join(totals)} in total\n  the sum   {summed}\n  the union {total}")

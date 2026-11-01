@@ -858,3 +858,5 @@ jobs:
           grep -q 'commerce_union_databases must be a list of the databases of the stores, each once' union.txt
           if twice --vars '{"commerce_union_databases":["analytics_woo_a","analytics_woo_a"]}' > union.txt 2>&1; then cat union.txt; exit 1; fi
           grep -q 'commerce_union_databases must be a list of the databases of the stores, each once' union.txt
+          if twice --vars '{"commerce_union_databases":{"analytics_woo_a":1,"analytics_woo_b":2}}' > union.txt 2>&1; then cat union.txt; exit 1; fi
+          grep -q 'commerce_union_databases must be a list of the databases of the stores, each once' union.txt

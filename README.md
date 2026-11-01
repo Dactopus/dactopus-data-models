@@ -1420,7 +1420,7 @@ names, so dbt stops a project that installs a package beside it.
   out adds them up as they are. Each store's dates
   are in its own time zone, and `--time-zone` sets one "today" for all
   of them.
-- **`deployment.yml`.** A union's names its Ossie model and the variable
+- **`deployment.yml`.** A union's file names its Ossie model and the variable
   that lists the databases (role `input_databases`). Rows per day are
   counted in the stores' databases, by their packages' files.
 

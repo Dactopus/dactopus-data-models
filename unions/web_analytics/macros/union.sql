@@ -48,7 +48,7 @@ UNION ALL{% endif %}
    replace the tables they read. #}
 {% macro union_databases(variable, instances) -%}
 {%- set databases = var(variable) -%}
-{%- if databases is string or databases is not iterable or not databases
+{%- if databases is string or databases is mapping or databases is not iterable or not databases
        or databases | select('string') | list | length != databases | length
        or databases | unique | list | length != databases | length -%}
 {{ exceptions.raise_compiler_error(variable ~ " must be a list of the databases of the " ~ instances ~ ", each once, not " ~ databases) }}
