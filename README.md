@@ -169,25 +169,15 @@ The same walk, and then your own store or property, for each source:
 
 ## Use in your dbt project
 
-Add the packages you need to your project's `packages.yml`, pinned to a
-release tag, and point dactopus-ossie-clickhouse at your target's database
-with the Ossie models from the same tag:
-
-```yaml
-packages:
-  - git: https://github.com/Dactopus/dactopus-data-models.git
-    revision: v0.8.0
-    subdirectory: sources/ga4
-  - git: https://github.com/Dactopus/dactopus-data-models.git
-    revision: v0.8.0
-    subdirectory: sources/shopify
-```
-
-Each package reads its input from a database you name, labels every row
-with its store, property or network (`source_id`), and dates orders in
-the store's time zone when told it. The variables, the settings dbt v2
-needs on ClickHouse, and serving several models to one agent:
-[docs/deployment.md](docs/deployment.md).
+Add the packages you need to your project's `packages.yml` from the git
+repository, pinned to a release tag with the package's subdirectory, and
+point dactopus-ossie-clickhouse at your target's database with the Ossie
+models from the same tag. Each package reads its input from a database
+you name, labels every row with its store, property or network
+(`source_id`), and dates orders in the store's time zone when told it.
+The `packages.yml`, the variables, the settings dbt v2 needs on
+ClickHouse, and serving several models to one agent:
+[Use in your dbt project](docs/deployment.md#use-in-your-dbt-project).
 
 ## Versioning
 
