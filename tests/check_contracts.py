@@ -62,19 +62,14 @@ def clickhouse(query, **params):
     return [[value.replace("\\'", "'") for value in line.split("\t")] for line in response.splitlines()]
 
 
-DATE_PARTS = {"YEAR", "QUARTER", "MONTH", "WEEK", "DAY", "HOUR", "MINUTE", "SECOND"}
-
-
 def references(expression):
     """The columns an ANSI_SQL expression names, in order: (dataset or None, column).
 
-    SQLGlot reads the unit of DATEDIFF(MINUTE, a, b) as a column; a bare
-    date part as a function's argument is not one.
+    Read as Snowflake, which takes DATEDIFF(MINUTE, a, b) as the executor
+    does: SQLGlot's default reads the unit as a column and b as the unit.
     """
     found = []
-    for column in sqlglot.parse_one(expression).find_all(exp.Column):
-        if column.name in DATE_PARTS and not column.table and isinstance(column.parent, exp.Func):
-            continue
+    for column in sqlglot.parse_one(expression, read="snowflake").find_all(exp.Column):
         reference = (column.table or None, column.name)
         if reference not in found:
             found.append(reference)
@@ -178,6 +173,8 @@ parser.add_argument("--built", metavar="PACKAGE", type=pathlib.Path,
                     help="a package's directory, sources/<source>, built into $CLICKHOUSE_DATABASE")
 args = parser.parse_args()
 packages = sorted(p for p in (ROOT / "sources").iterdir() if (p / "dbt_project.yml").is_file())
+if args.built and args.built.name not in {p.name for p in packages}:
+    sys.exit(f"{args.built} is not a package under sources/")
 failed = check(packages, args.built.name if args.built else None)
 for problem in failed:
     print(f"FAIL {problem}")
