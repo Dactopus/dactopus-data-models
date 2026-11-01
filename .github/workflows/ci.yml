@@ -43,8 +43,8 @@ jobs:
         --vars {"ga4_input_database":"ga4_input"}
       OSSIE_CLICKHOUSE_URL: http://127.0.0.1:8123/analytics
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
       - name: Install dactopus-ossie-clickhouse
         run: uv tool install "dactopus-ossie-clickhouse @ git+https://github.com/Dactopus/dactopus-ossie-clickhouse@v0.12.0"
       # A deployment with several packages serves their models as one, and
@@ -125,8 +125,8 @@ jobs:
       # Use in your dbt project); the checks and validate run in it.
       OSSIE_CLICKHOUSE_TIME_ZONE: America/New_York
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
       - name: Install dactopus-ossie-clickhouse
         run: uv tool install "dactopus-ossie-clickhouse @ git+https://github.com/Dactopus/dactopus-ossie-clickhouse@v0.12.0"
       # Hand-written rows (tests/shopify/fixture.sql) and the model's answers
@@ -304,8 +304,8 @@ jobs:
       # Checks that warn in a deployment fail here.
       DACTOPUS_STRICT_TESTS: error
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
       - name: Install dactopus-ossie-clickhouse
         run: uv tool install "dactopus-ossie-clickhouse @ git+https://github.com/Dactopus/dactopus-ossie-clickhouse@v0.12.0"
       # Hand-written CDC rows (tests/woocommerce/fixture.sql); the first
@@ -559,8 +559,8 @@ jobs:
         dbt build --project-dir sources/sensor_community --profiles-dir tests
         --vars {"sensor_community_input_database":"sensor_community_input","sensor_community_lookback_days":0}
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
       - name: Install dactopus-ossie-clickhouse
         run: uv tool install "dactopus-ossie-clickhouse @ git+https://github.com/Dactopus/dactopus-ossie-clickhouse@v0.12.0"
       # Hand-written rows (tests/sensor_community/fixture.sql) reach the input
