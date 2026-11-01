@@ -4,8 +4,10 @@ Guidance for AI coding agents working in this repository. What the project
 is and why: [README.md](README.md). How the repository is laid out, what a
 source package is, what is out of scope, the authoring rules and the
 checks before a pull request: [CONTRIBUTING.md](CONTRIBUTING.md). This
-file holds what an agent applies while writing and CONTRIBUTING.md does
-not state.
+file holds what an agent applies while writing. A rule that
+CONTRIBUTING.md also states (the Ossie schema version, the SQL dialect,
+the dactopus-ossie-clickhouse limits) is repeated here in the form an
+agent uses; a change to such a rule goes into both files.
 
 ## Language
 
