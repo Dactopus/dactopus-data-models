@@ -19,8 +19,11 @@ jobs:
   # reaches none. The unions job builds every package, so every package
   # reaches it. A pull request is compared with its base branch, a push to
   # main with the commit before it.
+  # The runner image is pinned, as the ClickHouse releases are: ubuntu-latest
+  # moves to the next Ubuntu on GitHub's day, not ours. Dependabot does not
+  # bump it; move every job when the pinned image nears its end of life.
   changes:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       pull-requests: read
@@ -88,19 +91,25 @@ jobs:
   # A deployment with several packages serves their models as one, and
   # the executor refuses a name defined in two files. No server needed.
   validate:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: changes
     if: needs.changes.outputs.validate == 'true'
     name: Validate every Ossie model together
     steps:
       - uses: actions/checkout@v7
+      # setup-uv keys its cache (the dbt and executor downloads) by a hash of
+      # the dependency files; this repository has none, so the key is this
+      # file, where the executor's version is pinned. Without it the key is
+      # constant and the cache is never refreshed.
       - uses: astral-sh/setup-uv@v7
+        with:
+          cache-dependency-glob: .github/workflows/ci.yml
       - name: Install dactopus-ossie-clickhouse
         run: uv tool install "dactopus-ossie-clickhouse @ git+https://github.com/Dactopus/dactopus-ossie-clickhouse@v0.12.0"
       - name: Validate
         run: dactopus-ossie-clickhouse validate entities/*.yaml
   ga4:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: changes
     if: needs.changes.outputs.ga4 == 'true'
     strategy:
@@ -133,6 +142,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
+        with:
+          cache-dependency-glob: .github/workflows/ci.yml
       - name: Install dactopus-ossie-clickhouse
         run: uv tool install "dactopus-ossie-clickhouse @ git+https://github.com/Dactopus/dactopus-ossie-clickhouse@v0.12.0"
       # The GA4 sample needs a Google login, so CI runs on hand-written rows
@@ -195,7 +206,7 @@ jobs:
           then cat label.txt; exit 1; fi
           grep -q 'run dbt build --full-refresh once after changing ga4_source_id' label.txt
   shopify:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: changes
     if: needs.changes.outputs.shopify == 'true'
     strategy:
@@ -234,6 +245,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
+        with:
+          cache-dependency-glob: .github/workflows/ci.yml
       - name: Install dactopus-ossie-clickhouse
         run: uv tool install "dactopus-ossie-clickhouse @ git+https://github.com/Dactopus/dactopus-ossie-clickhouse@v0.12.0"
       # Hand-written rows (tests/shopify/fixture.sql) and the model's answers
@@ -382,7 +395,7 @@ jobs:
           if ${DBT_BUILD/store_ny/store_la} > label.txt 2>&1; then cat label.txt; exit 1; fi
           grep -q 'run dbt build --full-refresh once after changing shopify_source_id' label.txt
   woocommerce:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: changes
     if: needs.changes.outputs.woocommerce == 'true'
     strategy:
@@ -428,6 +441,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
+        with:
+          cache-dependency-glob: .github/workflows/ci.yml
       - name: Install dactopus-ossie-clickhouse
         run: uv tool install "dactopus-ossie-clickhouse @ git+https://github.com/Dactopus/dactopus-ossie-clickhouse@v0.12.0"
       # Hand-written CDC rows (tests/woocommerce/fixture.sql); the first
@@ -685,7 +700,7 @@ jobs:
           if ${DBT_BUILD/store_wc/store_eu} > label.txt 2>&1; then cat label.txt; exit 1; fi
           grep -q 'run dbt build --full-refresh once after changing woocommerce_source_id' label.txt
   sensor_community:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: changes
     if: needs.changes.outputs.sensor_community == 'true'
     strategy:
@@ -720,6 +735,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
+        with:
+          cache-dependency-glob: .github/workflows/ci.yml
       - name: Install dactopus-ossie-clickhouse
         run: uv tool install "dactopus-ossie-clickhouse @ git+https://github.com/Dactopus/dactopus-ossie-clickhouse@v0.12.0"
       # Hand-written rows (tests/sensor_community/fixture.sql) reach the input
@@ -824,7 +841,7 @@ jobs:
           if ${DBT_BUILD/network_a/network_b} > label.txt 2>&1; then cat label.txt; exit 1; fi
           grep -q 'run dbt build --full-refresh once after changing sensor_community_source_id' label.txt
   unions:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: changes
     if: needs.changes.outputs.unions == 'true'
     strategy:
@@ -852,6 +869,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
+        with:
+          cache-dependency-glob: .github/workflows/ci.yml
       - name: Install dactopus-ossie-clickhouse
         run: uv tool install "dactopus-ossie-clickhouse @ git+https://github.com/Dactopus/dactopus-ossie-clickhouse@v0.12.0"
       # The instances: each package's fixture built into a database of its
@@ -957,7 +976,7 @@ jobs:
   # not reach is skipped, and a skipped required check of its own would
   # hold the pull request for ever.
   ci:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [changes, validate, ga4, shopify, woocommerce, sensor_community, unions]
     if: always()
     name: CI passed
