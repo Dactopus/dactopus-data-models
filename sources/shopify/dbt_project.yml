@@ -6,6 +6,10 @@ macro-paths: ["macros"]
 vars:
   # The database holding the input tables (input.sql).
   shopify_input_database: shopify_raw
+  # The label every row carries as source_id: 1 to 64 of a-z, 0-9 and _.
+  # Give each store its own, and the tables of several stores add up.
+  # A new label needs a --full-refresh.
+  shopify_source_id: shopify
   # The shop's time zone (Settings > General in the Shopify admin), for
   # order and refund dates; Shopify's reports use it.
   shopify_timezone: UTC
@@ -16,6 +20,9 @@ vars:
 models:
   dactopus_shopify:
     +materialized: incremental
+    # Every model's columns and their types are listed in schema.yml; a
+    # build stops on any other (tests/check_contracts.py).
+    +contract: {enforced: true}
     +incremental_strategy: delete+insert
     # A release that changes a model's columns stops an incremental run
     # with an error rather than leave the old table: run it once with

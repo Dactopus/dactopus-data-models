@@ -37,7 +37,7 @@ ai_context:
 datasets:
   - name: readings
     source: readings
-    primary_key: [sensor_id, measured_at, measure]
+    primary_key: [source_id, sensor_id, measured_at, measure]
     description: >
       One row per sensor, time and measure: one value of one quantity. A
       sensor gives several measures at once (a BME280 temperature, humidity
@@ -46,6 +46,13 @@ datasets:
     ai_context:
       synonyms: [measurements, observations, telemetry, sensor data, values]
     fields:
+      - name: source_id
+        expression: {dialects: [{dialect: ANSI_SQL, expression: source_id}]}
+        description: >
+          Label of the sensor network the row comes from, which the deployment
+          sets: one value for every row of a sensor network.
+        datatype: String
+        dimension: {is_time: false}
       - name: device_id
         expression: {dialects: [{dialect: ANSI_SQL, expression: device_id}]}
         description: Site the reading was taken at (devices.device_id).
@@ -153,7 +160,7 @@ datasets:
         ai_context:
           synonyms: [maximum, highest, peak, hottest]
       - name: reporting_devices
-        expression: {dialects: [{dialect: ANSI_SQL, expression: COUNT(DISTINCT device_id)}]}
+        expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(DISTINCT source_id, device_id)"}]}
         description: >
           Number of sites with at least one reading in the period and the
           filters: the devices that reported.
@@ -172,7 +179,7 @@ datasets:
 
   - name: devices
     source: devices
-    primary_key: [device_id]
+    primary_key: [source_id, device_id]
     description: >
       One row per site: a place with coordinates where a board reports
       through one or more sensors. Every site the network listed and every
@@ -180,6 +187,13 @@ datasets:
     ai_context:
       synonyms: [sites, locations, stations, sensors, devices]
     fields:
+      - name: source_id
+        expression: {dialects: [{dialect: ANSI_SQL, expression: source_id}]}
+        description: >
+          Label of the sensor network the row comes from, which the deployment
+          sets: one value for every row of a sensor network.
+        datatype: String
+        dimension: {is_time: false}
       - name: device_id
         expression: {dialects: [{dialect: ANSI_SQL, expression: device_id}]}
         description: Identifier of the site, the network's location id.
@@ -301,7 +315,7 @@ relationships:
   - name: readings_to_devices
     from: readings
     to: devices
-    from_columns: [device_id]
-    to_columns: [device_id]
+    from_columns: [source_id, device_id]
+    to_columns: [source_id, device_id]
     ai_context:
       synonyms: [readings by country, readings indoors and outdoors]

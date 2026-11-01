@@ -8,7 +8,7 @@ WITH
 links AS MATERIALIZED (
     SELECT * FROM {{ woocommerce_product_terms('product_brand') }}
 )
-SELECT DISTINCT l.product_id AS product_id, n.name AS brand
+SELECT DISTINCT {{ woocommerce_source_id() }} AS source_id, l.product_id AS product_id, n.name AS brand
 FROM links AS l
 INNER JOIN {{ woocommerce_term_names('(SELECT term_id FROM links)') }} AS n ON n.term_id = l.term_id
 {{ woocommerce_query_settings() }}

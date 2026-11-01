@@ -24,3 +24,31 @@
 SETTINGS max_insert_threads = 1, min_insert_block_size_rows = 262144, min_insert_block_size_bytes = 67108864
 {%- if more %}, {{ more }}{% endif %}
 {%- endmacro %}
+
+{# The label of the sensor network, which every row carries as source_id:
+   the variable sensor_community_source_id, 1 to 64 of a-z, 0-9 and _. Tables of
+   several deployments add up and join by it. A view over a built table
+   passes on that table's. #}
+{% macro sensor_community_source_id() -%}
+{%- set label = var('sensor_community_source_id') | string -%}
+{%- set allowed = 'abcdefghijklmnopqrstuvwxyz0123456789_' -%}
+{%- set other = [] -%}
+{%- for c in label -%}
+{%- if c not in allowed -%}{%- do other.append(c) -%}{%- endif -%}
+{%- endfor -%}
+{%- if not label or label | length > 64 or other -%}
+{{ exceptions.raise_compiler_error("sensor_community_source_id must be 1 to 64 characters of a-z, 0-9 and _, not '" ~ label ~ "'") }}
+{%- endif -%}
+CAST('{{ label }}' AS LowCardinality(String))
+{%- endmacro %}
+
+{# Every row carries the label of this build. A table built under another
+   sensor_community_source_id and then run on incrementally holds both. #}
+{% test sensor_community_one_source_id(model, column_name) -%}
+SELECT 1 FROM (
+    SELECT throwIf(count() > 0, '{{ model }} holds rows of a source_id other than {{ var("sensor_community_source_id") }}: run dbt build --full-refresh once after changing sensor_community_source_id') AS other
+    FROM {{ model }}
+    WHERE {{ column_name }} != {{ sensor_community_source_id() }}
+)
+WHERE other != 0
+{%- endtest %}

@@ -7,6 +7,7 @@
 -- as the archive has them, not cleaned, except a pressure sent in hPa
 -- (input.sql), which becomes Pa.
 SELECT
+    {{ sensor_community_source_id() }} AS source_id,
     location AS device_id,
     sensor_id,
     sensor_type,

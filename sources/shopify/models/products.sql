@@ -22,6 +22,7 @@ sold AS (
     GROUP BY product_id
 )
 SELECT
+    {{ shopify_source_id() }} AS source_id,
     p.id AS product_id,
     -- The product's name as it is now; a line keeps the name it sold under.
     p.title AS title,

@@ -99,7 +99,7 @@ ai_context:
 datasets:
   - name: orders
     source: orders
-    primary_key: [order_id]
+    primary_key: [source_id, order_id]
     description: >
       One row per order the store took, test orders left out. Cancelled and
       unpaid orders are here too, and so are orders the store's sales
@@ -108,6 +108,13 @@ datasets:
     ai_context:
       synonyms: [sales, purchases, transactions, checkouts]
     fields:
+      - name: source_id
+        expression: {dialects: [{dialect: ANSI_SQL, expression: source_id}]}
+        description: >
+          Label of the store the row comes from, which the deployment
+          sets: one value for every row of a store.
+        datatype: String
+        dimension: {is_time: false}
       - name: order_id
         expression: {dialects: [{dialect: ANSI_SQL, expression: order_id}]}
         description: Identifier of the order in the store.
@@ -551,7 +558,7 @@ datasets:
         ai_context:
           synonyms: [tax, taxes, tax total, VAT, sales tax]
       - name: buyer_count
-        expression: {dialects: [{dialect: ANSI_SQL, expression: COUNT(DISTINCT CASE WHEN in_sales_reports THEN customer_id END)}]}
+        expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(DISTINCT source_id, CASE WHEN in_sales_reports THEN customer_id END)"}]}
         description: >
           Number of distinct customers (orders.customer_id) among the
           orders the store's reports count: the customers who bought in a
@@ -588,7 +595,7 @@ datasets:
 
   - name: customers
     source: customers
-    primary_key: [customer_id]
+    primary_key: [source_id, customer_id]
     description: >
       One row per customer with an order the store's report of new and
       returning customers counts (orders.customer_order_number): at Shopify
@@ -602,6 +609,13 @@ datasets:
     ai_context:
       synonyms: [clients, customer list, customer base, customer records]
     fields:
+      - name: source_id
+        expression: {dialects: [{dialect: ANSI_SQL, expression: source_id}]}
+        description: >
+          Label of the store the row comes from, which the deployment
+          sets: one value for every row of a store.
+        datatype: String
+        dimension: {is_time: false}
       - name: customer_id
         expression: {dialects: [{dialect: ANSI_SQL, expression: customer_id}]}
         description: >
@@ -815,7 +829,7 @@ datasets:
 
   - name: order_lines
     source: order_lines
-    primary_key: [line_id]
+    primary_key: [source_id, line_id]
     description: >
       One row per line of goods in an order: a product, its quantity and
       amount. Gift cards sold and tips are not lines. Lines of cancelled
@@ -823,6 +837,13 @@ datasets:
     ai_context:
       synonyms: [line items, order items, products sold, items]
     fields:
+      - name: source_id
+        expression: {dialects: [{dialect: ANSI_SQL, expression: source_id}]}
+        description: >
+          Label of the store the row comes from, which the deployment
+          sets: one value for every row of a store.
+        datatype: String
+        dimension: {is_time: false}
       - name: line_id
         expression: {dialects: [{dialect: ANSI_SQL, expression: line_id}]}
         description: Identifier of the line in the store.
@@ -941,6 +962,13 @@ datasets:
     ai_context:
       synonyms: [sales by category, category sales, lines by category, product type sales]
     fields:
+      - name: source_id
+        expression: {dialects: [{dialect: ANSI_SQL, expression: source_id}]}
+        description: >
+          Label of the store the row comes from, which the deployment
+          sets: one value for every row of a store.
+        datatype: String
+        dimension: {is_time: false}
       - name: line_id
         expression: {dialects: [{dialect: ANSI_SQL, expression: line_id}]}
         description: The line of goods (order_lines.line_id).
@@ -1031,6 +1059,13 @@ datasets:
     ai_context:
       synonyms: [sales by brand, brand sales, sales by vendor, lines by brand]
     fields:
+      - name: source_id
+        expression: {dialects: [{dialect: ANSI_SQL, expression: source_id}]}
+        description: >
+          Label of the store the row comes from, which the deployment
+          sets: one value for every row of a store.
+        datatype: String
+        dimension: {is_time: false}
       - name: line_id
         expression: {dialects: [{dialect: ANSI_SQL, expression: line_id}]}
         description: The line of goods (order_lines.line_id).
@@ -1080,7 +1115,7 @@ datasets:
 
   - name: refunds
     source: refunds
-    primary_key: [refund_id]
+    primary_key: [source_id, refund_id]
     description: >
       One row per refund, dated when it was made. An order can have several.
       A refund of gift cards alone, or the refund Shopify records when it
@@ -1088,6 +1123,13 @@ datasets:
     ai_context:
       synonyms: [returns, refunds issued, money back]
     fields:
+      - name: source_id
+        expression: {dialects: [{dialect: ANSI_SQL, expression: source_id}]}
+        description: >
+          Label of the store the row comes from, which the deployment
+          sets: one value for every row of a store.
+        datatype: String
+        dimension: {is_time: false}
       - name: refund_id
         expression: {dialects: [{dialect: ANSI_SQL, expression: refund_id}]}
         description: Identifier of the refund in the store.
@@ -1145,7 +1187,7 @@ datasets:
 
   - name: sales_events
     source: sales_events
-    primary_key: [event_id]
+    primary_key: [source_id, event_id]
     description: >
       The store's sales over time, as its own sales reports count them: one
       row for each order on order_date, one for each refund on the day it
@@ -1157,6 +1199,13 @@ datasets:
     ai_context:
       synonyms: [sales over time, sales by date, sales ledger, sales reversals]
     fields:
+      - name: source_id
+        expression: {dialects: [{dialect: ANSI_SQL, expression: source_id}]}
+        description: >
+          Label of the store the row comes from, which the deployment
+          sets: one value for every row of a store.
+        datatype: String
+        dimension: {is_time: false}
       - name: event_id
         expression: {dialects: [{dialect: ANSI_SQL, expression: event_id}]}
         description: Identifier of the event, its kind and the order's or refund's id, such as order-1001.
@@ -1244,7 +1293,7 @@ datasets:
 
   - name: products
     source: products
-    primary_key: [product_id]
+    primary_key: [source_id, product_id]
     description: >
       One row per product in the store's catalogue as it is now, sold or
       not: drafts and archived products included, deleted products left
@@ -1259,6 +1308,13 @@ datasets:
     ai_context:
       synonyms: [catalogue, catalog, assortment, product list]
     fields:
+      - name: source_id
+        expression: {dialects: [{dialect: ANSI_SQL, expression: source_id}]}
+        description: >
+          Label of the store the row comes from, which the deployment
+          sets: one value for every row of a store.
+        datatype: String
+        dimension: {is_time: false}
       - name: product_id
         expression: {dialects: [{dialect: ANSI_SQL, expression: product_id}]}
         description: The store's product (order_lines.product_id).
@@ -1333,6 +1389,13 @@ datasets:
     ai_context:
       synonyms: [products by category, category assortment]
     fields:
+      - name: source_id
+        expression: {dialects: [{dialect: ANSI_SQL, expression: source_id}]}
+        description: >
+          Label of the store the row comes from, which the deployment
+          sets: one value for every row of a store.
+        datatype: String
+        dimension: {is_time: false}
       - name: product_id
         expression: {dialects: [{dialect: ANSI_SQL, expression: product_id}]}
         description: The product (products.product_id).
@@ -1371,7 +1434,7 @@ datasets:
           synonyms: [own category, direct category]
     metrics:
       - name: product_count
-        expression: {dialects: [{dialect: ANSI_SQL, expression: COUNT(DISTINCT CASE WHEN is_direct THEN product_id END)}]}
+        expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(DISTINCT source_id, CASE WHEN is_direct THEN product_id END)"}]}
         description: >
           Number of products in each category, the products in the category
           itself (product_categories.is_direct): a parent category whose
@@ -1394,6 +1457,13 @@ datasets:
     ai_context:
       synonyms: [products by brand, brand assortment]
     fields:
+      - name: source_id
+        expression: {dialects: [{dialect: ANSI_SQL, expression: source_id}]}
+        description: >
+          Label of the store the row comes from, which the deployment
+          sets: one value for every row of a store.
+        datatype: String
+        dimension: {is_time: false}
       - name: product_id
         expression: {dialects: [{dialect: ANSI_SQL, expression: product_id}]}
         description: The product (products.product_id).
@@ -1411,7 +1481,7 @@ datasets:
           synonyms: [vendor, manufacturer, make, label]
     metrics:
       - name: product_count
-        expression: {dialects: [{dialect: ANSI_SQL, expression: COUNT(DISTINCT product_id)}]}
+        expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(DISTINCT source_id, product_id)"}]}
         description: >
           Number of products of a brand. A WooCommerce product with two
           brands counts in each. Filter by products.status = 'active' for
@@ -1424,56 +1494,56 @@ relationships:
   - name: orders_to_customers
     from: orders
     to: customers
-    from_columns: [customer_id]
-    to_columns: [customer_id]
+    from_columns: [source_id, customer_id]
+    to_columns: [source_id, customer_id]
   - name: order_lines_to_orders
     from: order_lines
     to: orders
-    from_columns: [order_id]
-    to_columns: [order_id]
+    from_columns: [source_id, order_id]
+    to_columns: [source_id, order_id]
     ai_context:
       synonyms: [products by month, items by customer type]
   - name: refunds_to_orders
     from: refunds
     to: orders
-    from_columns: [order_id]
-    to_columns: [order_id]
+    from_columns: [source_id, order_id]
+    to_columns: [source_id, order_id]
   - name: sales_events_to_orders
     from: sales_events
     to: orders
-    from_columns: [order_id]
-    to_columns: [order_id]
+    from_columns: [source_id, order_id]
+    to_columns: [source_id, order_id]
   - name: line_categories_to_order_lines
     from: line_categories
     to: order_lines
-    from_columns: [line_id]
-    to_columns: [line_id]
+    from_columns: [source_id, line_id]
+    to_columns: [source_id, line_id]
     ai_context:
       synonyms: [categories by month, orders with a category]
   - name: line_brands_to_order_lines
     from: line_brands
     to: order_lines
-    from_columns: [line_id]
-    to_columns: [line_id]
+    from_columns: [source_id, line_id]
+    to_columns: [source_id, line_id]
     ai_context:
       synonyms: [brands by month, orders with a brand]
   - name: order_lines_to_products
     from: order_lines
     to: products
-    from_columns: [product_id]
-    to_columns: [product_id]
+    from_columns: [source_id, product_id]
+    to_columns: [source_id, product_id]
     ai_context:
       synonyms: [sales by product status, sales of archived products, sales of draft products]
   - name: product_categories_to_products
     from: product_categories
     to: products
-    from_columns: [product_id]
-    to_columns: [product_id]
+    from_columns: [source_id, product_id]
+    to_columns: [source_id, product_id]
   - name: product_brands_to_products
     from: product_brands
     to: products
-    from_columns: [product_id]
-    to_columns: [product_id]
+    from_columns: [source_id, product_id]
+    to_columns: [source_id, product_id]
 
 metrics:
   - name: items_sold

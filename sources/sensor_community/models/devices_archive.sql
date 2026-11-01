@@ -5,6 +5,7 @@
 -- snapshots, whose coordinates it prefers. Built whole by each run: a
 -- site's last reading moves with every load.
 SELECT
+    {{ sensor_community_source_id() }} AS source_id,
     r.device_id AS device_id,
     -- The types of the four the package reads among the site's readings.
     r.sensor_types AS sensor_types,

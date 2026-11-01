@@ -14,6 +14,7 @@
 -- Rebuilt from orders on every run: one narrow read, and a customer cannot
 -- drift from their orders, or keep a row when an order moves away.
 SELECT
+    {{ woocommerce_source_id() }} AS source_id,
     -- Numbered orders have a customer.
     assumeNotNull(customer_id) AS customer_id,
     toDate(min(placed_time), '{{ var("woocommerce_timezone") }}') AS first_order_date,
@@ -28,9 +29,9 @@ SELECT
     -- with no new data, and an incremental run over unchanged input would
     -- change the table.
 {%- for n in [30, 60, 90, 365] %}
-    if(first_order_date + {{ n }} < last_load_date,
-       ifNull(minIf(days_since_previous_order, customer_order_number = 2) <= {{ n }}, false),
-       NULL) AS second_order_within_{{ n }}_days{{ ',' if not loop.last }}
+    CAST(if(first_order_date + {{ n }} < last_load_date,
+            ifNull(minIf(days_since_previous_order, customer_order_number = 2) <= {{ n }}, false),
+            NULL) AS Nullable(Bool)) AS second_order_within_{{ n }}_days{{ ',' if not loop.last }}
 {%- endfor %}
 FROM {{ ref('orders') }}
 CROSS JOIN (SELECT toDate(max(synced_at), '{{ var("woocommerce_timezone") }}') AS last_load_date FROM {{ ref('orders') }}) AS clock

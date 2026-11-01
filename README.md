@@ -630,6 +630,7 @@ Cloud's CDC, runs PeerDB but is not checked yet.
    | `woocommerce_price_decimals` | `2` | the store's price decimals, for amounts converted from another currency |
    | `woocommerce_table_prefix` | `wp_` | the tables' prefix; in a multisite, the site's, such as `wp_2_` |
    | `woocommerce_input_database` | `woocommerce_raw` | the database the mirror writes to |
+   | `woocommerce_source_id` | `woocommerce` | the store's label in every row (`source_id`, Use in your dbt project) |
 
    An order in a status that is neither core nor mapped fails the build,
    and so does an order in another currency without a rate the package
@@ -1287,9 +1288,20 @@ vars:
 load or sync an incremental run rereads the input, for inserts that
 commit late.
 
+Every row of every table carries the label of its property, store or
+network in `source_id`, from `ga4_source_id`, `shopify_source_id`,
+`woocommerce_source_id` or `sensor_community_source_id`, whose default
+is the package's name (`shopify`). A label is 1 to 64 of `a-z`, `0-9`
+and `_`; the build stops on any other. The Ossie models put `source_id`
+first in the key of every dataset that has one and join on it, so the
+tables of two stores, each built with its own label, keep their orders
+and customers apart. A new label needs `dbt build --full-refresh`: an
+incremental run labels only the rows it rebuilds, and the package's
+tests then fail with a message that says so.
+
 Each package's `deployment.yml` lists what a deployment sets and reads:
 the Ossie model its tables serve, the variables above by their role
-(input database, time zone) and the tables a deployment counts rows per
+(input database, label, time zone) and the tables a deployment counts rows per
 day in, with the Date column it counts by and the time column that date
 is the day of. A tool that deploys the packages reads it in place of
 this section. A change of `shopify_timezone` or `woocommerce_timezone`
@@ -1358,10 +1370,10 @@ Freshness then reports the same ages as on dbt v1.
 
 Several GA4 properties: each exports to its own BigQuery dataset. Build
 the package once per property, each with its own input and target
-database, and serve the model once per target. A total across properties
-is not modelled. The same holds for several Shopify or WooCommerce
-stores, and for the sites of a WordPress multisite, each with its own
-table prefix.
+database and its own label, and serve the model once per target. A total
+across properties is not modelled. The same holds for several Shopify or
+WooCommerce stores, and for the sites of a WordPress multisite, each
+with its own table prefix.
 
 ## Layout
 
@@ -1373,7 +1385,8 @@ table prefix.
                               per day
       macros/                 SQL the package's models share
       models/                 one model per entity, named after it
-      models/schema.yml       structural checks (dbt tests)
+      models/schema.yml       structural checks (dbt tests) and each
+                              column's type (dbt contract)
       tests/                  checks that need their own SQL
     tests/<source>/           hand-written input rows and the numbers the
                               model must answer over them
@@ -1388,6 +1401,13 @@ file, since relationships and metrics span entities), so one model serves
 any database dactopus-ossie-clickhouse connects to, and
 `dactopus-ossie-clickhouse validate --url` checks that the package delivers every
 column the entity declares. A deployment picks one package per entity.
+
+Every package declares the type of each column it writes (a dbt
+contract in `models/schema.yml`), and a build stops on any other type.
+The columns the entity's Ossie model reads come first in each table,
+with the same types in every package of the entity: the tables of
+Shopify and WooCommerce add up with `UNION ALL`.
+`uv run tests/check_contracts.py` checks it.
 
 This is one repository, not one per source. Packages map onto shared
 entities, so they are released together with them under a single version.
@@ -1478,11 +1498,11 @@ One version for the whole repository, [SemVer](https://semver.org), tags
 files carry it, and the changelog names it for every release.
 
 A breaking change is anything that stops a deployment working or changes
-its numbers: renaming or removing a field, metric or column; changing what
-a metric means (the same columns, different numbers); a new required
-column in a package's input. Before 1.0 such changes come in a minor
-release, after 1.0 in a major one. New fields and metrics are minor, fixes
-are patches.
+its numbers: renaming or removing a field, metric or column; changing a
+column's type; changing what a metric means (the same columns, different
+numbers); a new required column in a package's input. Before 1.0 such
+changes come in a minor release, after 1.0 in a major one. New fields and
+metrics are minor, fixes are patches.
 
 A deployment pins a tag: the dbt package from the git tag with its
 subdirectory (`sources/ga4`, `sources/shopify`, `sources/woocommerce`,

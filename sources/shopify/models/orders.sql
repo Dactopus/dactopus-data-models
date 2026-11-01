@@ -45,13 +45,17 @@
 {% set numbered = 'true' %}
 {% endif %}
 SELECT
+    {{ shopify_source_id() }} AS source_id,
     o.id AS order_id,
     o.name AS order_number,
     -- processedAt, the date Shopify's reports use, in the shop's time zone.
     toDate(o.processed_at, '{{ var("shopify_timezone") }}') AS order_date,
     o.processed_at AS order_time,
     o.updated_at AS updated_at,
-    o.customer_id AS customer_id,
+    -- Signed, as WooCommerce's, whose guests are negative. A plain cast
+    -- would wrap an id from 2^63 up (UnsignedInt64 in the API); this one
+    -- fails the build.
+    accurateCast(o.customer_id, 'Nullable(Int64)') AS customer_id,
     o.email AS customer_email,
     o.currency_code AS currency,
     -- What the order sold: the total less tips and gift cards sold, which
@@ -63,13 +67,13 @@ SELECT
     -- store #1016, 40 of goods, a 50 gift card and 10 shipping, has total
     -- sales 50). Tips have a report of their own
     -- (https://help.shopify.com/en/manual/checkout-settings/tips).
-    o.total_price - o.total_tip - g.gift_card_total AS total,
+    toDecimal128(o.total_price - o.total_tip - g.gift_card_total, 8) AS total,
     o.total_tip AS tip_total,
     g.gift_card_total AS gift_card_total,
     -- Shipping after its discounts, without tax when prices include it.
-    o.shipping_price - if(o.taxes_included, o.shipping_tax, toDecimal64(0, 4)) AS shipping_total,
+    toDecimal128(o.shipping_price - if(o.taxes_included, o.shipping_tax, toDecimal64(0, 4)), 8) AS shipping_total,
     -- Tax on the lines, shipping and duties.
-    o.total_tax AS tax_total,
+    toDecimal128(o.total_tax, 8) AS tax_total,
     o.total_duties AS duties_total,
     o.total_additional_fees AS additional_fees_total,
     total - shipping_total - tax_total - duties_total - additional_fees_total AS subtotal,
@@ -83,12 +87,12 @@ SELECT
     -- as returns (on the development store #1016, its 50 gift card
     -- refunded: returns 0, total sales still 50). A refunded tip has no
     -- refund line and cannot be told apart, so it stays here (#6).
-    o.total_refunded - gift_card_refunded_total AS refunded_total,
+    toDecimal128(o.total_refunded - gift_card_refunded_total, 8) AS refunded_total,
     gr.gift_card_refunded_total AS gift_card_refunded_total,
     -- What the order earned after refunds. A cancelled order earned
     -- nothing: cancelled unpaid, nothing was paid or refunded, yet total
     -- less refunded would count it whole.
-    if(o.cancelled_at IS NOT NULL, toDecimal64(0, 4), total - refunded_total) AS net_total,
+    if(o.cancelled_at IS NOT NULL, toDecimal128(0, 8), total - refunded_total) AS net_total,
     o.taxes_included AS taxes_included,
     -- https://shopify.dev/docs/api/admin-graphql/latest/enums/OrderDisplayFinancialStatus
     -- unpaid: money is still expected. voided: none will come, the
@@ -117,7 +121,7 @@ SELECT
         NULL) AS fulfillment_status,
     o.display_financial_status AS display_financial_status,
     o.display_fulfillment_status AS display_fulfillment_status,
-    o.cancelled_at IS NOT NULL AS is_cancelled,
+    toBool(o.cancelled_at IS NOT NULL) AS is_cancelled,
     o.cancelled_at AS cancelled_time,
     -- Shopify's sales reports count every order, cancelled and unpaid ones
     -- too (a cancellation is a sales reversal of its own, sales_events.sql).
@@ -130,7 +134,7 @@ SELECT
     o.shipping_city AS shipping_city,
     o.shipping_zip AS shipping_postcode,
     l.line_item_count AS line_item_count,
-    l.item_quantity AS item_quantity,
+    toInt64(l.item_quantity) AS item_quantity,
     n.customer_order_number AS customer_order_number,
     multiIf(customer_order_number = 1, 'new', customer_order_number > 1, 'repeat', NULL) AS new_vs_repeat,
     n.days_since_previous_order AS days_since_previous_order,
@@ -189,7 +193,7 @@ LEFT JOIN
 ) AS gr ON gr.order_id = o.id
 LEFT JOIN
 (
-    SELECT order_id, count() AS line_item_count, sum(quantity) AS item_quantity, toDecimal64(sum(discount_total), 4) AS discount_total
+    SELECT order_id, count() AS line_item_count, sum(quantity) AS item_quantity, toDecimal128(sum(discount_total), 8) AS discount_total
     FROM {{ ref('order_lines') }}
     -- Of the kept orders only: every order's lines would make a table of
     -- all orders again.

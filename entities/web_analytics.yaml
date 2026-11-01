@@ -40,13 +40,20 @@ ai_context:
 datasets:
   - name: sessions
     source: sessions
-    primary_key: [session_key]
+    primary_key: [source_id, session_key]
     description: >
       One row per visit to the site. A session ends after 30 minutes without
       activity; it belongs to the date it started on.
     ai_context:
       synonyms: [visits, sessions, traffic]
     fields:
+      - name: source_id
+        expression: {dialects: [{dialect: ANSI_SQL, expression: source_id}]}
+        description: >
+          Label of the analytics property the row comes from, which the deployment
+          sets: one value for every row of an analytics property.
+        datatype: String
+        dimension: {is_time: false}
       - name: session_key
         expression: {dialects: [{dialect: ANSI_SQL, expression: session_key}]}
         description: Identifier of the session, unique across users.
@@ -183,7 +190,7 @@ datasets:
         ai_context:
           synonyms: [engagement]
       - name: users
-        expression: {dialects: [{dialect: ANSI_SQL, expression: COUNT(DISTINCT user_pseudo_id)}]}
+        expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(DISTINCT source_id, user_pseudo_id)"}]}
         description: >
           Number of distinct browsers on devices that visited. Not people: one
           person on two devices counts twice.
@@ -199,7 +206,7 @@ datasets:
         ai_context:
           synonyms: [conversion rate, conversion, ecommerce conversion rate, session key event rate]
       - name: user_conversion_rate
-        expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(DISTINCT CASE WHEN has_purchase THEN user_pseudo_id END) * 1.0 / COUNT(DISTINCT user_pseudo_id)"}]}
+        expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(DISTINCT source_id, CASE WHEN has_purchase THEN user_pseudo_id END) * 1.0 / COUNT(DISTINCT source_id, user_pseudo_id)"}]}
         description: >
           Share of visitors (browsers on devices) who bought at least once in the
           period, from 0 to 1.
@@ -215,7 +222,7 @@ datasets:
 
   - name: purchases
     source: purchases
-    primary_key: [purchase_key]
+    primary_key: [source_id, purchase_key]
     description: >
       One row per purchase recorded by web analytics. A thank-you page
       reloaded or opened twice sends the same purchase again; repeats with
@@ -223,6 +230,13 @@ datasets:
     ai_context:
       synonyms: [conversions, ecommerce purchases, web purchases]
     fields:
+      - name: source_id
+        expression: {dialects: [{dialect: ANSI_SQL, expression: source_id}]}
+        description: >
+          Label of the analytics property the row comes from, which the deployment
+          sets: one value for every row of an analytics property.
+        datatype: String
+        dimension: {is_time: false}
       - name: purchase_key
         expression: {dialects: [{dialect: ANSI_SQL, expression: purchase_key}]}
         description: Identifier of the purchase.
@@ -348,6 +362,13 @@ datasets:
     ai_context:
       synonyms: [actions, hits, interactions]
     fields:
+      - name: source_id
+        expression: {dialects: [{dialect: ANSI_SQL, expression: source_id}]}
+        description: >
+          Label of the analytics property the row comes from, which the deployment
+          sets: one value for every row of an analytics property.
+        datatype: String
+        dimension: {is_time: false}
       - name: event_name
         expression: {dialects: [{dialect: ANSI_SQL, expression: event_name}]}
         description: >
@@ -409,12 +430,12 @@ relationships:
   - name: purchases_to_sessions
     from: purchases
     to: sessions
-    from_columns: [session_key]
-    to_columns: [session_key]
+    from_columns: [source_id, session_key]
+    to_columns: [source_id, session_key]
     ai_context:
       synonyms: [purchases by traffic source, revenue by channel]
   - name: events_to_sessions
     from: events
     to: sessions
-    from_columns: [session_key]
-    to_columns: [session_key]
+    from_columns: [source_id, session_key]
+    to_columns: [source_id, session_key]

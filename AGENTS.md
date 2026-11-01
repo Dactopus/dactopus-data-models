@@ -29,15 +29,17 @@ The README describes what works today. Plans go in
     sources/<source>/         one package per source, a dbt project:
       input.sql               the input table the package accepts
       deployment.yml          what a deployment sets and reads: the Ossie
-                              model, the variables for the input database
-                              and the time zone, the tables counted per
-                              day; every package ships one
+                              model, the variables for the input
+                              database, the label and the time zone, the
+                              tables counted per day; every package ships
+                              one
       macros/                 SQL the package's models share
       models/<entity>.sql     one model per entity, named after it; an
                               entity that is a view over a built table
                               has that table as <entity>_<part>.sql
                               (devices_archive.sql)
-      models/schema.yml       structural checks (dbt tests only)
+      models/schema.yml       structural checks (dbt tests) and each
+                              column's type (the dbt contract)
       tests/                  singular dbt tests, for checks a generic
                               test cannot express
     tests/<source>/           hand-written input rows and the numbers the
@@ -47,6 +49,8 @@ The README describes what works today. Plans go in
                               reports, shared by every source
     tests/check_deployment.py checks each package's deployment.yml against
                               the package and its built tables
+    tests/check_contracts.py  checks the packages' contracts against the
+                              Ossie models and each other
     tests/profiles.yml        the dbt profile CI and the checks build
                               with; a package ships none
     docs/architecture.svg     the diagram, shown in the README and, with
@@ -69,6 +73,17 @@ target's database and reads its input from a variable
 parameter. `dactopus` and `ga4_raw` are only defaults for the sample
 profile and the sample data. CI builds into other databases to keep it so.
 
+Every model writes `source_id`, the label of the store, property or
+network its rows come from, as its first column: `<package>_source_id()`,
+or in a view over one built table, that table's column. Its default
+is the package's name; CI builds with another label, so no model may
+assume it. In the Ossie models `source_id` is each
+dataset's first field, first in every `primary_key`, on both sides of
+every relationship, and in every `COUNT(DISTINCT ...)` beside the
+counted column: `COUNT(DISTINCT source_id, customer_id)`, never a tuple,
+which counts a NULL as a value. A package's `order_by` and `unique_key`
+leave it out: a database holds one label.
+
 ## Model format
 
 - Ossie schema version is pinned to `0.2.0.dev0`. Do not change it.
@@ -80,6 +95,19 @@ profile and the sample data. CI builds into other databases to keep it so.
   like a dataset: a count is `<row>_count` (`order_count`), a sum of a
   field `<field>_total` is `<field>_amount` (`discount_amount`).
   Descriptions name a dataset's metric as `dataset.metric`.
+- Every model has a dbt contract (`+contract` in `dbt_project.yml`):
+  `schema.yml` lists each column with its ClickHouse type, and the
+  model's last `SELECT` casts to it. The columns the Ossie model reads
+  come first, in the order it first reads them, with one type in every
+  package of the domain; `tests/check_contracts.py` checks both. The
+  common types of `commerce`: amounts `Decimal(38, 8)`, not Nullable (WooCommerce
+  keeps `decimal(26,8)`, and line totals at up to 6 decimals); the
+  customer key `Int64` (WooCommerce's guests are negative), cast from
+  Shopify's unsigned ids with `accurateCast`, which fails where a plain
+  cast wraps; quantities `Int64`; times `DateTime('UTC')` (both sources
+  keep whole seconds); flags `Bool`. A NULL in a column that is not
+  Nullable fails the build: do not turn it into 0 with `assumeNotNull`
+  alone.
 - Entities are plain Ossie. Mapping, refresh and checks belong in the
   package's dbt project, never in `custom_extensions`. The only extension
   used is dactopus-ossie-clickhouse's `CLICKHOUSE` namespace, for its `dedup` key.

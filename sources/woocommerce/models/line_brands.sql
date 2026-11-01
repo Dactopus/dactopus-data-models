@@ -5,13 +5,14 @@
 -- has no brand, is deleted or is no product has one row without a brand.
 -- A view, as line_categories.
 SELECT
+    l.source_id AS source_id,
     l.line_id AS line_id,
     b.brand AS brand,
     l.quantity AS quantity,
-    l.current_quantity AS current_quantity,
     l.line_total AS line_total,
     l.returned_quantity AS returned_quantity,
-    l.returned_amount AS returned_amount
+    l.returned_amount AS returned_amount,
+    l.current_quantity AS current_quantity
 FROM {{ ref('order_lines') }} AS l
 LEFT JOIN (
     SELECT product_id, toNullable(brand) AS brand FROM {{ ref('product_brands_all') }}

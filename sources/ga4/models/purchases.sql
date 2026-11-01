@@ -9,6 +9,7 @@
 -- https://support.google.com/analytics/answer/7029846).
 SELECT * FROM (
 SELECT
+    {{ ga4_source_id() }} AS source_id,
     concat(user_pseudo_id, '.', purchase_id) AS purchase_key,
     user_pseudo_id,
     nullIf(any(tid), '(not set)') AS transaction_id,

@@ -40,7 +40,7 @@ jobs:
       DBT_BUILD: >-
         uvx --from ${{ matrix.dbt.from }} ${{ matrix.dbt.with && format('--with {0}', matrix.dbt.with) || '' }}
         dbt build --project-dir sources/ga4 --profiles-dir tests
-        --vars {"ga4_input_database":"ga4_input"}
+        --vars {"ga4_input_database":"ga4_input","ga4_source_id":"property_a"}
       OSSIE_CLICKHOUSE_URL: http://127.0.0.1:8123/analytics
     steps:
       - uses: actions/checkout@v7
@@ -77,6 +77,12 @@ jobs:
       # UTC only prints.
       - name: Check deployment.yml
         run: uv run tests/check_deployment.py sources/ga4 --time-zone UTC
+      # Every model's columns and types are its contract; the columns the
+      # Ossie models read have one type in every package, so the tables of
+      # two packages add up (tests/check_contracts.py). The built tables
+      # and views must match their contracts column by column, in order.
+      - name: Check column contracts and the built tables
+        run: uv run tests/check_contracts.py --built sources/ga4
       - name: Validate the Ossie model against the built tables
         run: dactopus-ossie-clickhouse validate entities/web_analytics.yaml --url "$OSSIE_CLICKHOUSE_URL"
       # The fixture's events are from 2025: one event now, in the input
@@ -89,6 +95,21 @@ jobs:
           ${DBT_BUILD/dbt build/dbt source freshness}
           python3 tests/check_freshness.py sources/ga4 "SELECT max(fromUnixTimestamp64Micro(event_timestamp)) FROM ga4_input.events"
 
+      # Every row carries the label the build was given (ga4_source_id).
+      # CI's builds give one other than the package's default, and the
+      # one-label tests hold every table to it. A label the package does not
+      # accept stops the build; a new label over tables built under the old
+      # one fails those tests, with a message that names --full-refresh.
+      - name: Label of the property
+        run: |
+          if ${DBT_BUILD/property_a/Property-a} > label.txt 2>&1; then cat label.txt; exit 1; fi
+          grep -q 'ga4_source_id must be 1 to 64 characters' label.txt
+          # No lookback: the run rebuilds the fixture's last day only, and its
+          # first keeps the old label. With the default 3 days it would
+          # relabel both, and the table would hold one label again.
+          if ${DBT_BUILD/'"ga4_source_id":"property_a"'/'"ga4_source_id":"property_b","ga4_lookback_days":0'} > label.txt 2>&1
+          then cat label.txt; exit 1; fi
+          grep -q 'run dbt build --full-refresh once after changing ga4_source_id' label.txt
   shopify:
     runs-on: ubuntu-latest
     strategy:
@@ -119,7 +140,7 @@ jobs:
       DBT_BUILD: >-
         uvx --from ${{ matrix.dbt.from }} ${{ matrix.dbt.with && format('--with {0}', matrix.dbt.with) || '' }}
         dbt build --project-dir sources/shopify --profiles-dir tests
-        --vars {"shopify_input_database":"shopify_input","shopify_timezone":"America/New_York","shopify_lookback_days":0}
+        --vars {"shopify_input_database":"shopify_input","shopify_timezone":"America/New_York","shopify_lookback_days":0,"shopify_source_id":"store_ny"}
       OSSIE_CLICKHOUSE_URL: http://127.0.0.1:8123/analytics
       # The model is served in the zone the package was built in (README,
       # Use in your dbt project); the checks and validate run in it.
@@ -251,6 +272,8 @@ jobs:
           if CLICKHOUSE_DATABASE=analytics_zones uv run tests/check_deployment.py sources/shopify --time-zone UTC > zones.txt; then cat zones.txt; exit 1; fi
           cat zones.txt
           grep -q '^FAIL orders was not built in UTC' zones.txt
+      - name: Check column contracts and the built tables
+        run: uv run tests/check_contracts.py --built sources/shopify
       - name: Validate the Ossie model against the built tables
         run: dactopus-ossie-clickhouse validate entities/commerce.yaml --url "$OSSIE_CLICKHOUSE_URL"
       # The late rows above were loaded now. dbt v2 needs the package's own
@@ -261,6 +284,17 @@ jobs:
           ${DBT_BUILD/dbt build/dbt source freshness}
           python3 tests/check_freshness.py sources/shopify "SELECT max(loaded_at) FROM shopify_input.orders"
 
+      # Every row carries the label the build was given (shopify_source_id).
+      # CI's builds give one other than the package's default, and the
+      # one-label tests hold every table to it. A label the package does not
+      # accept stops the build; a new label over tables built under the old
+      # one fails those tests, with a message that names --full-refresh.
+      - name: Label of the store
+        run: |
+          if ${DBT_BUILD/store_ny/Store-ny} > label.txt 2>&1; then cat label.txt; exit 1; fi
+          grep -q 'shopify_source_id must be 1 to 64 characters' label.txt
+          if ${DBT_BUILD/store_ny/store_la} > label.txt 2>&1; then cat label.txt; exit 1; fi
+          grep -q 'run dbt build --full-refresh once after changing shopify_source_id' label.txt
   woocommerce:
     runs-on: ubuntu-latest
     strategy:
@@ -296,7 +330,7 @@ jobs:
       DBT_BUILD: >-
         uvx --from ${{ matrix.dbt.from }} ${{ matrix.dbt.with && format('--with {0}', matrix.dbt.with) || '' }}
         dbt build --project-dir sources/woocommerce --profiles-dir tests
-        --vars {"woocommerce_input_database":"woocommerce_input","woocommerce_table_prefix":"wp_2_","woocommerce_timezone":"America/New_York","woocommerce_currency":"USD","woocommerce_lookback_days":0}
+        --vars {"woocommerce_input_database":"woocommerce_input","woocommerce_table_prefix":"wp_2_","woocommerce_timezone":"America/New_York","woocommerce_currency":"USD","woocommerce_lookback_days":0,"woocommerce_source_id":"store_wc"}
       OSSIE_CLICKHOUSE_URL: http://127.0.0.1:8123/analytics
       # The model is served in the zone the package was built in (README,
       # Use in your dbt project); the checks and validate run in it.
@@ -471,7 +505,29 @@ jobs:
           # and refunded 22 of 44, is a sale, and its net_total is what its
           # events add up to (sales_events_make_net_total): 22, not 0.
           CLICKHOUSE_DATABASE=analytics_cancelled ${DBT_BUILD/'"woocommerce_lookback_days":0'/'"woocommerce_lookback_days":0,"woocommerce_excluded_statuses":["pending","failed"]'}
-          test "$(q "SELECT in_sales_reports AND net_total = 22 FROM analytics_cancelled.orders WHERE order_id = 107")" = 1
+          test "$(q "SELECT in_sales_reports AND net_total = 22 FROM analytics_cancelled.orders WHERE order_id = 107")" = true
+          # A table whose columns a release changed, here one type: the next
+          # incremental run stops before its pre-hooks delete a row
+          # (woocommerce_check_columns). dbt's own check comes after them,
+          # and refunds would be left empty.
+          q "ALTER TABLE analytics_cancelled.refunds MODIFY COLUMN refunded_quantity Int32"
+          refunds=$(q "SELECT count() FROM analytics_cancelled.refunds")
+          if CLICKHOUSE_DATABASE=analytics_cancelled ${DBT_BUILD/'"woocommerce_lookback_days":0'/'"woocommerce_lookback_days":0,"woocommerce_excluded_statuses":["pending","failed"]'} > columns.txt 2>&1
+          then cat columns.txt; exit 1; fi
+          grep -q 'has other columns than this release builds' columns.txt
+          test "$(q "SELECT count() FROM analytics_cancelled.refunds")" = "$refunds"
+          # An order in another currency that no plugin's rate converts fails
+          # the build with woocommerce_amount's message; its amounts are
+          # never 0.
+          load sources/woocommerce/input.sql woocommerce_norate
+          for t in wc_orders wc_order_operational_data wc_order_addresses wc_orders_meta woocommerce_order_items \
+                  woocommerce_order_itemmeta wc_product_meta_lookup posts terms term_taxonomy term_relationships; do
+              q "INSERT INTO woocommerce_norate.wp_2_$t SELECT * FROM woocommerce_fixture.wp_2_$t"; done
+          q "INSERT INTO woocommerce_norate.wp_2_wc_orders SELECT * REPLACE (9901 AS id, 'JPY' AS currency)
+             FROM (SELECT * FROM woocommerce_fixture.wp_2_wc_orders WHERE id = 101 AND status = 'wc-processing')"
+          if CLICKHOUSE_DATABASE=analytics_norate ${DBT_BUILD/'"woocommerce_input"'/'"woocommerce_norate"'} > norate.txt 2>&1
+          then cat norate.txt; exit 1; fi
+          grep -q 'An amount in another currency has no exchange rate the package knows' norate.txt
       # The retention windows close by the last sync of orders
       # (customers.sql), which the late rows above set to now. Over the
       # fixture and the windows' first orders a year back
@@ -517,6 +573,8 @@ jobs:
           if CLICKHOUSE_DATABASE=analytics_zones uv run tests/check_deployment.py sources/woocommerce --time-zone UTC > zones.txt; then cat zones.txt; exit 1; fi
           cat zones.txt
           grep -q '^FAIL orders was not built in UTC' zones.txt
+      - name: Check column contracts and the built tables
+        run: uv run tests/check_contracts.py --built sources/woocommerce
       - name: Validate the Ossie model against the built tables
         run: dactopus-ossie-clickhouse validate entities/commerce.yaml --url "$OSSIE_CLICKHOUSE_URL"
       # The late rows above were synced now. dbt v2 needs the package's own
@@ -527,6 +585,17 @@ jobs:
           ${DBT_BUILD/dbt build/dbt source freshness}
           python3 tests/check_freshness.py sources/woocommerce "SELECT max(_peerdb_synced_at) FROM woocommerce_input.wp_2_wc_orders"
 
+      # Every row carries the label the build was given (woocommerce_source_id).
+      # CI's builds give one other than the package's default, and the
+      # one-label tests hold every table to it. A label the package does not
+      # accept stops the build; a new label over tables built under the old
+      # one fails those tests, with a message that names --full-refresh.
+      - name: Label of the store
+        run: |
+          if ${DBT_BUILD/store_wc/Store-wc} > label.txt 2>&1; then cat label.txt; exit 1; fi
+          grep -q 'woocommerce_source_id must be 1 to 64 characters' label.txt
+          if ${DBT_BUILD/store_wc/store_eu} > label.txt 2>&1; then cat label.txt; exit 1; fi
+          grep -q 'run dbt build --full-refresh once after changing woocommerce_source_id' label.txt
   sensor_community:
     runs-on: ubuntu-latest
     strategy:
@@ -557,7 +626,7 @@ jobs:
       DBT_BUILD: >-
         uvx --from ${{ matrix.dbt.from }} ${{ matrix.dbt.with && format('--with {0}', matrix.dbt.with) || '' }}
         dbt build --project-dir sources/sensor_community --profiles-dir tests
-        --vars {"sensor_community_input_database":"sensor_community_input","sensor_community_lookback_days":0}
+        --vars {"sensor_community_input_database":"sensor_community_input","sensor_community_lookback_days":0,"sensor_community_source_id":"network_a"}
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
@@ -638,6 +707,8 @@ jobs:
       # UTC only prints.
       - name: Check deployment.yml
         run: uv run tests/check_deployment.py sources/sensor_community --time-zone UTC
+      - name: Check column contracts and the built tables
+        run: uv run tests/check_contracts.py --built sources/sensor_community
       - name: Validate the Ossie model against the built tables
         run: dactopus-ossie-clickhouse validate entities/iot.yaml --url "$OSSIE_CLICKHOUSE_URL"
       # The late rows above were loaded now. dbt v2 needs the package's own
@@ -651,3 +722,14 @@ jobs:
               ${DBT_BUILD/dbt build/dbt source freshness} --select "source:sensor_community_raw.$t"
               python3 tests/check_freshness.py sources/sensor_community "SELECT max(loaded_at) FROM sensor_community_input.$t"
           done
+      # Every row carries the label the build was given (sensor_community_source_id).
+      # CI's builds give one other than the package's default, and the
+      # one-label tests hold every table to it. A label the package does not
+      # accept stops the build; a new label over tables built under the old
+      # one fails those tests, with a message that names --full-refresh.
+      - name: Label of the network
+        run: |
+          if ${DBT_BUILD/network_a/Network-a} > label.txt 2>&1; then cat label.txt; exit 1; fi
+          grep -q 'sensor_community_source_id must be 1 to 64 characters' label.txt
+          if ${DBT_BUILD/network_a/network_b} > label.txt 2>&1; then cat label.txt; exit 1; fi
+          grep -q 'run dbt build --full-refresh once after changing sensor_community_source_id' label.txt

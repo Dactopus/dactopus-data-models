@@ -3,39 +3,53 @@ version: 2
 models:
   - name: devices
     columns:
-      - name: device_id
-        data_tests: [unique, not_null]
-      - {name: latitude, data_tests: [not_null]}
-      - {name: longitude, data_tests: [not_null]}
-      - {name: last_contact_at, data_tests: [not_null]}
+      - {name: source_id, data_type: "LowCardinality(String)", data_tests: [sensor_community_one_source_id]}
+      - {name: device_id, data_type: UInt32, data_tests: [unique, not_null]}
+      - {name: latitude, data_type: "Nullable(Float64)", data_tests: [not_null]}
+      - {name: longitude, data_type: "Nullable(Float64)", data_tests: [not_null]}
+      - {name: altitude, data_type: "Nullable(Float64)"}
+      - {name: country_code, data_type: "Nullable(String)"}
+      - {name: is_indoor, data_type: "Nullable(Bool)"}
+      - {name: sensor_types, data_type: String}
+      - {name: first_reading_at, data_type: "Nullable(DateTime('UTC'))"}
+      - {name: last_reading_at, data_type: "Nullable(DateTime('UTC'))"}
+      - {name: last_contact_at, data_type: "Nullable(DateTime('UTC'))", data_tests: [not_null]}
   - name: devices_archive
     columns:
-      - name: device_id
-        data_tests: [unique, not_null]
-      - {name: latitude, data_tests: [not_null]}
-      - {name: longitude, data_tests: [not_null]}
+      - {name: source_id, data_type: "LowCardinality(String)", data_tests: [sensor_community_one_source_id]}
+      - {name: device_id, data_type: UInt32, data_tests: [unique, not_null]}
+      - {name: sensor_types, data_type: "Array(String)"}
+      - {name: first_reading_at, data_type: "DateTime('UTC')"}
+      - {name: last_reading_at, data_type: "DateTime('UTC')"}
+      - {name: latitude, data_type: "Nullable(Float64)", data_tests: [not_null]}
+      - {name: longitude, data_type: "Nullable(Float64)", data_tests: [not_null]}
   - name: readings
     columns:
+      - {name: source_id, data_type: "LowCardinality(String)", data_tests: [sensor_community_one_source_id]}
       - name: device_id
+        data_type: UInt32
         data_tests:
           - not_null
           - relationships:
               arguments:
                 to: ref('devices')
                 field: device_id
-      - {name: sensor_id, data_tests: [not_null]}
+      - {name: sensor_id, data_type: UInt32, data_tests: [not_null]}
       - name: sensor_type
+        data_type: "LowCardinality(String)"
         data_tests:
           - not_null
           - accepted_values:
               arguments:
                 values: [SDS011, PMS5003, BME280, DHT22]
       - name: measure
+        data_type: "LowCardinality(String)"
         data_tests:
           - not_null
           - accepted_values:
               arguments:
                 values: [pm10, pm2_5, temperature, humidity, pressure]
-      - {name: value, data_tests: [not_null]}
-      - {name: measured_at, data_tests: [not_null]}
-      - {name: reading_date, data_tests: [not_null]}
+      - {name: value, data_type: Float64, data_tests: [not_null]}
+      - {name: measured_at, data_type: "DateTime('UTC')", data_tests: [not_null]}
+      - {name: reading_date, data_type: Date, data_tests: [not_null]}
+      - {name: loaded_at, data_type: "DateTime64(6, 'UTC')"}

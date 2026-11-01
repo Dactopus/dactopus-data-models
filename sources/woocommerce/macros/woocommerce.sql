@@ -164,6 +164,15 @@ if({{ rate }}.rate_mul = 1 AND {{ rate }}.rate_div = 1, toDecimal128({{ amount }
    toDecimal128(round(toDecimal256({{ amount }}, 8) * {{ rate }}.rate_mul / {{ rate }}.rate_div, {{ d }}), 8))
 {%- endmacro %}
 
+{# An amount as the tables hold it, Decimal(38, 8) and never NULL. A NULL
+   is an amount in another currency with no rate the package knows
+   (woocommerce_rates), and fails the build. #}
+{% macro woocommerce_amount(amount) -%}
+CAST(assumeNotNull({{ amount }})
+     + throwIf(isNull({{ amount }}), 'An amount in another currency has no exchange rate the package knows (README, Known limits)')
+     AS Decimal(38, 8))
+{%- endmacro %}
+
 {# The total of an order or refund in the store's currency, rounded as the
    plugin that converted it rounds it for Analytics (woocommerce_rates). #}
 {% macro woocommerce_total(total, shipping, shipping_tax, tax, rate='r') -%}
@@ -209,7 +218,29 @@ if({{ rate }}.rate_fox, {{ woocommerce_convert(total, rate) }},
 {{- return(r.columns[0].values()[0] if r.columns[0].values() else '') -}}
 {%- endmacro %}
 
+{# Stops an incremental run whose table has other columns than the model's
+   contract, as a release that changes them leaves it, before a pre-hook
+   deletes rows or rewrites the comment: dbt checks the columns only after
+   the hooks, and its on_schema_change failure would leave the table
+   without the rows they deleted. #}
+{% macro woocommerce_check_columns() -%}
+{%- if execute and is_incremental() -%}
+{%- set built = [] -%}
+{%- for c in adapter.get_columns_in_relation(this) -%}
+{%- do built.append(c.name ~ ' ' ~ c.data_type | replace(' ', '')) -%}
+{%- endfor -%}
+{%- set declared = [] -%}
+{%- for c in model.columns.values() -%}
+{%- do declared.append(c['name'] ~ ' ' ~ c['data_type'] | replace(' ', '')) -%}
+{%- endfor -%}
+{%- if built | sort != declared | sort -%}
+{{ exceptions.raise_compiler_error(this ~ " has other columns than this release builds: run dbt build --full-refresh once (CHANGELOG)") }}
+{%- endif -%}
+{%- endif -%}
+{%- endmacro %}
+
 {% macro woocommerce_reading() -%}
+{{- woocommerce_check_columns() -}}
 {%- if execute and is_incremental() -%}
 {%- set through = woocommerce_comment_position('read') -%}
 {%- set latest = run_query("SELECT toString(toTimeZone(max(_peerdb_synced_at), 'UTC')) FROM "
@@ -258,6 +289,7 @@ SELECT 1
    refunds is not in the new rows, and delete+insert replaces only the
    orders that are. #}
 {% macro woocommerce_delete_changed(products=false, in_comment=false) -%}
+{{- woocommerce_check_columns() -}}
 {%- if is_incremental() -%}
 DELETE FROM {{ this }} WHERE order_id IN {{ woocommerce_changed_orders(products, in_comment) }}
 {%- else -%}
@@ -283,6 +315,7 @@ SELECT 1
 {%- endmacro %}
 
 {% macro woocommerce_keep_changed() -%}
+{{- woocommerce_check_columns() -}}
 {%- if is_incremental() -%}
 {%- set left = execute and run_query("EXISTS TABLE " ~ woocommerce_changed_table()).columns[0].values()[0] -%}
 CREATE OR REPLACE TABLE {{ woocommerce_changed_table() }} ENGINE = MergeTree ORDER BY tuple() AS
@@ -305,6 +338,7 @@ SELECT 1
    orders that are no longer orders (woocommerce_delete_changed). The
    others stay: delete+insert replaces them. #}
 {% macro woocommerce_delete_removed() -%}
+{{- woocommerce_check_columns() -}}
 {%- if is_incremental() -%}
 {%- set changed = "(SELECT order_id FROM " ~ woocommerce_changed_table() ~ ")" -%}
 DELETE FROM {{ this }} WHERE order_id IN {{ changed }}
@@ -332,3 +366,31 @@ DROP TABLE IF EXISTS {{ woocommerce_changed_table() }}
 {% macro woocommerce_query_settings() -%}
 SETTINGS enable_materialized_cte = 1, join_use_nulls = 0
 {%- endmacro %}
+
+{# The label of the store, which every row carries as source_id:
+   the variable woocommerce_source_id, 1 to 64 of a-z, 0-9 and _. Tables of
+   several deployments add up and join by it. A view over a built table
+   passes on that table's. #}
+{% macro woocommerce_source_id() -%}
+{%- set label = var('woocommerce_source_id') | string -%}
+{%- set allowed = 'abcdefghijklmnopqrstuvwxyz0123456789_' -%}
+{%- set other = [] -%}
+{%- for c in label -%}
+{%- if c not in allowed -%}{%- do other.append(c) -%}{%- endif -%}
+{%- endfor -%}
+{%- if not label or label | length > 64 or other -%}
+{{ exceptions.raise_compiler_error("woocommerce_source_id must be 1 to 64 characters of a-z, 0-9 and _, not '" ~ label ~ "'") }}
+{%- endif -%}
+CAST('{{ label }}' AS LowCardinality(String))
+{%- endmacro %}
+
+{# Every row carries the label of this build. A table built under another
+   woocommerce_source_id and then run on incrementally holds both. #}
+{% test woocommerce_one_source_id(model, column_name) -%}
+SELECT 1 FROM (
+    SELECT throwIf(count() > 0, '{{ model }} holds rows of a source_id other than {{ var("woocommerce_source_id") }}: run dbt build --full-refresh once after changing woocommerce_source_id') AS other
+    FROM {{ model }}
+    WHERE {{ column_name }} != {{ woocommerce_source_id() }}
+)
+WHERE other != 0
+{%- endtest %}

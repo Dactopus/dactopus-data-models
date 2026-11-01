@@ -7,6 +7,7 @@
 -- so reading them at every question is cheap; the readings are read by
 -- the build only. A full join of the two reads each once.
 SELECT
+    {{ sensor_community_source_id() }} AS source_id,
     -- Every row has the site on one side at least.
     assumeNotNull(coalesce(s.location_id, a.device_id)) AS device_id,
     -- Coordinates from the latest snapshot, as the source gives them (it

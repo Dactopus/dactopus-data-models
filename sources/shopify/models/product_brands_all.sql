@@ -4,6 +4,7 @@
 -- group by. The store's own name is a vendor too. A product without a
 -- vendor has no row; a deleted product neither.
 SELECT
+    {{ shopify_source_id() }} AS source_id,
     id AS product_id,
     vendor AS brand
 FROM {{ shopify_latest('products', 'id', select='id, vendor, deleted_at, updated_at, loaded_at') }}

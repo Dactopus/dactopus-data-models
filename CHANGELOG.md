@@ -8,8 +8,35 @@ names the Ossie schema version its models carry.
 
 ## [Unreleased]
 
+### Added
+
+- Every table of every package has a first column `source_id`, the
+  label of the store, property or network its rows come from: the
+  variable `ga4_source_id`, `shopify_source_id`, `woocommerce_source_id`
+  or `sensor_community_source_id`, `LowCardinality(String)`. The default
+  is the package's name (`shopify`); a label other than 1 to 64 of
+  `a-z`, `0-9` and `_` stops the build. A dbt test on every model fails
+  on a row of another label, as an incremental run after a new label
+  leaves, and names `--full-refresh`. `deployment.yml` maps the role
+  `source_id` to the variable, and `tests/check_deployment.py` requires
+  it.
+- The Ossie models have a field `source_id` in every dataset. It comes
+  first in every `primary_key` and on both sides of every relationship,
+  and every count of distinct values counts them within a label
+  (`orders.buyer_count`, `product_categories.product_count`,
+  `product_brands.product_count`, `readings.reporting_devices`,
+  `sessions.users`, `sessions.user_conversion_rate`): the tables of
+  several stores, each built with its own label, keep their orders and
+  customers apart. In one database the label is constant and every
+  number stays the same.
+
 ### Fixed
 
+- WooCommerce: an incremental run over a table whose columns a release
+  changed stops before its pre-hooks delete a row. dbt's own check of
+  the columns comes after the hooks: the run stopped with `order_lines`
+  and `refunds` short of the rows of its window, `refunds` empty on the
+  fixture.
 - WooCommerce: category and brand names (`line_categories.category`,
   `category_path`, `line_brands.brand` and the same fields of
   `product_categories` and `product_brands`) are decoded from the HTML
@@ -21,6 +48,47 @@ names the Ossie schema version its models carry.
 
 - README, Known differences from WooCommerce Analytics: buyers in a
   month, where the reports also count a customer with only a refund.
+- Every package declares the type of each column it writes, a dbt
+  contract in `models/schema.yml`, and a build stops on any other. The
+  columns an Ossie model reads come first in each table, with the same
+  types in every package that serves the model: the tables of Shopify
+  and WooCommerce add up with `UNION ALL`. `tests/check_contracts.py`
+  checks it in CI. No value changes; these types do:
+  - Amounts are `Decimal(38, 8)` and never NULL: `orders.total`,
+    `subtotal`, `discount_total`, `shipping_total`, `tax_total`,
+    `refunded_total`, `net_total`; `customers.net_total`; `line_total`
+    and `returned_amount` of `order_lines`, `line_categories` and
+    `line_brands`; `refunds.refunded_amount`; `sales_events.amount`.
+    Shopify's were `Decimal(18, 4)` (`customers.net_total`
+    `Decimal(38, 4)`), and Shopify's `order_lines.discount_total`
+    follows; WooCommerce's were `Nullable(Decimal(38, 8))`, all but
+    `orders.refunded_total`.
+  - `orders.customer_id` is `Nullable(Int64)`, `customers.customer_id`
+    `Int64`: Shopify's were `Nullable(UInt64)` and `UInt64`,
+    WooCommerce's `orders.customer_id` `Int64`.
+  - Shopify's quantities are `Int64`: `orders.item_quantity`;
+    `quantity` and `current_quantity` of `order_lines`,
+    `line_categories` and `line_brands`. They were `UInt32` and
+    `UInt64`.
+  - WooCommerce's `orders.order_time`, `refunds.refund_time` and
+    `sales_events.event_time` are `DateTime('UTC')`, not
+    `DateTime64(6, 'UTC')`: WooCommerce keeps whole seconds.
+  - Flags are `Bool`: `orders.is_cancelled` and
+    `customers.second_order_within_*_days` (`Nullable(Bool)`) of both
+    packages, WooCommerce's `orders.in_sales_reports` and `is_direct` of
+    `line_categories`, `product_categories` and
+    `product_categories_all`. They were `UInt8`.
+  - Shopify's `order_lines.title` is `String`, not `Nullable(String)`.
+
+  The columns of every table come in a new order, the model's first.
+  With `source_id` (Added), every package runs once with
+  `--full-refresh` in place of the next incremental run, which stops.
+- GA4: `on_schema_change: fail`, as in the other packages; dbt requires
+  it of an incremental model with a contract.
+- WooCommerce: an order or refund in another currency without a rate
+  the package knows now fails in its model, with a message that names
+  the README's Known limits, where before the `not_null` tests on its
+  amounts failed.
 
 ## [0.8.0] - 2026-10-30
 
