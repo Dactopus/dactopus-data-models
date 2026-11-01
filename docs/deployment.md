@@ -64,7 +64,10 @@ vars:
 `shopify_lookback_days`, `woocommerce_lookback_days` and
 `sensor_community_lookback_days` (default 3) are how far before its last
 load or sync an incremental run rereads the input, for inserts that
-commit late.
+commit late. `ga4_lookback_days` (default 3) is how many days before the
+latest day it has built an incremental run rereads: Google updates a
+day's export table for up to 72 hours after its date
+([export schedule](https://support.google.com/analytics/answer/9358801)).
 
 Every row of every table carries the label of its property, store or
 network in `source_id`, from `ga4_source_id`, `shopify_source_id`,

@@ -11,13 +11,10 @@ properties: [docs/deployment.md](../../docs/deployment.md).
 Try the GA4 package on Google's public sample
 [`ga4_obfuscated_sample_ecommerce`](https://developers.google.com/analytics/bigquery/web-ecommerce-demo-dataset):
 4.3 million events from November 2020 to January 2021. You need
-[ClickHouse](https://clickhouse.com/docs/install), the
-[gcloud CLI](https://cloud.google.com/sdk/docs/install),
-[uv](https://docs.astral.sh/uv/), dbt v2 (`pip install dbt-oss`) and
-[dactopus-ossie-clickhouse](https://github.com/Dactopus/dactopus-ossie-clickhouse) 0.12.0 or
-later with its MCP server (`pip install "dactopus-ossie-clickhouse[mcp]"`), and
-the dbt profile of the README's [Quick start](../../README.md#quick-start).
-Tested on ClickHouse 26.9.
+ClickHouse, dbt and dactopus-ossie-clickhouse with the dbt profile, as in
+the README's [Quick start](../../README.md#quick-start), and the
+[gcloud CLI](https://cloud.google.com/sdk/docs/install) and
+[uv](https://docs.astral.sh/uv/) for the export.
 
 1. **Export.** A Google Cloud project in the
    [BigQuery sandbox](https://cloud.google.com/bigquery/docs/sandbox) is

@@ -169,7 +169,7 @@ if({{ rate }}.rate_mul = 1 AND {{ rate }}.rate_div = 1, toDecimal128({{ amount }
    (woocommerce_rates), and fails the build. #}
 {% macro woocommerce_amount(amount) -%}
 CAST(assumeNotNull({{ amount }})
-     + throwIf(isNull({{ amount }}), 'An amount in another currency has no exchange rate the package knows (README, Known limits)')
+     + throwIf(isNull({{ amount }}), 'An amount in another currency has no exchange rate the package knows (the package README, Known limits)')
      AS Decimal(38, 8))
 {%- endmacro %}
 

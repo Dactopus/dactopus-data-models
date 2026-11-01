@@ -157,8 +157,9 @@ The same walk, and then your own store or property, for each source:
   customers, and its limits: [web analytics](docs/web_analytics.md),
   [commerce](docs/commerce.md), [iot](docs/iot.md).
 - Where a package's numbers differ from the source's own reports, and
-  why: the package's README (Shopify's reports, WooCommerce Analytics,
-  the GA4 interface).
+  why: [Shopify's reports](sources/shopify/README.md#known-differences-from-shopifys-reports),
+  [WooCommerce Analytics](sources/woocommerce/README.md#known-differences-from-woocommerce-analytics),
+  [the GA4 interface](sources/ga4/README.md#known-differences-from-the-ga4-interface).
 - The packages in your dbt project, the label and time zone of each
   store, serving the models to agents, and unions over several stores,
   properties or networks: [docs/deployment.md](docs/deployment.md).

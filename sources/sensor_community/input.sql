@@ -1,7 +1,8 @@
 -- Input of the Sensor.Community package: two tables, filled from the
--- project's public data by any loader (README, Quick start). Only the
--- columns the package reads; a loader may deliver more. Sensor.Community
--- is a citizen network of air quality sensors (https://sensor.community/).
+-- project's public data by any loader (the package's README, Quick
+-- start). Only the columns the package reads; a loader may deliver more.
+-- Sensor.Community is a citizen network of air quality sensors
+-- (https://sensor.community/).
 -- Its data is under the Open Data Commons Database Contents License
 -- (DbCL 1.0), linked from the site's footer (checked 2026-10-18).
 --
@@ -46,8 +47,8 @@
 -- country and indoor flag, and the freshest of its last contact, so a
 -- loader takes a snapshot regularly and appends it, one row per sensor:
 -- the API gives a sensor several records in five minutes, and the
--- README's query keeps the latest. The package reads the latest row of
--- each site and its latest reported_at.
+-- package README's query keeps the latest. The package reads the latest
+-- row of each site and its latest reported_at.
 -- Nearly every row repeats the site's row in the snapshot before, so the
 -- table is a ReplacingMergeTree: its merges keep, of each site and
 -- sensor, the row of the latest snapshot, and it grows with the sensors,

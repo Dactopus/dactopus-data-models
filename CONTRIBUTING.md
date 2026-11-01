@@ -325,7 +325,9 @@ For maintainers.
    `## [X.Y.Z] - YYYY-MM-DD` with the Ossie schema version the release
    targets, and mark it if it needs a full refresh.
 2. Set `version` in every `sources/*/dbt_project.yml` and
-   `unions/*/dbt_project.yml` to `X.Y.Z`.
+   `unions/*/dbt_project.yml` to `X.Y.Z`, and the `revision` of the
+   `packages.yml` examples in the README and `docs/deployment.md` to
+   `vX.Y.Z`.
 3. Merge after CI passes, then tag the commit on `main`. A published tag
    never moves: a fix is a new version.
 

@@ -29,8 +29,8 @@ WITH
 -- a guest's order without an email is a customer of its own, as Analytics
 -- makes it. Analytics keeps its own table of customers; the package reads
 -- only the orders (no account's own email, and a guest is joined to an
--- account whatever the order of the two), so the README lists where the
--- two differ.
+-- account whatever the order of the two), so the package's README lists
+-- where the two differ.
 identified AS MATERIALIZED (
     SELECT
         * REPLACE (coalesce(toInt64(customer_id),

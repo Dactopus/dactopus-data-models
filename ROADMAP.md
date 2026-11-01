@@ -42,7 +42,7 @@ the start, the canonical fields can be chosen right away; Fivetran's
 [dbt_ad_reporting](https://github.com/fivetran/dbt_ad_reporting) already
 shows a common schema across eleven ad platforms. A brand buys ads on
 several platforms at once, so one deployment will need more than one
-package writing the same entity. That changes a layout rule in the
+package writing the same entity. That changes a layout rule in
 CONTRIBUTING.md, which has a deployment pick one package per entity.
 
 ## Exploring
