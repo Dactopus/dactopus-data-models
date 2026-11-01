@@ -9,6 +9,7 @@
 -- refund's lines may be loaded after it, and an incremental run replaces
 -- rows, it does not remove them.
 SELECT
+    {{ shopify_source_id() }} AS source_id,
     r.id AS refund_id,
     r.order_id AS order_id,
     -- processedAt in the shop's time zone, the date Shopify's sales reports

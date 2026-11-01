@@ -52,6 +52,7 @@ products AS MATERIALIZED (
                                 'toUInt64(product_id) IN (SELECT product_id FROM item_meta UNION ALL SELECT variation_id FROM item_meta)') }}
 )
 SELECT
+    {{ woocommerce_source_id() }} AS source_id,
     i.order_item_id AS line_id,
     i.order_id AS order_id,
     nullIf(m.product_id, 0) AS product_id,

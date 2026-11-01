@@ -630,6 +630,7 @@ Cloud's CDC, runs PeerDB but is not checked yet.
    | `woocommerce_price_decimals` | `2` | the store's price decimals, for amounts converted from another currency |
    | `woocommerce_table_prefix` | `wp_` | the tables' prefix; in a multisite, the site's, such as `wp_2_` |
    | `woocommerce_input_database` | `woocommerce_raw` | the database the mirror writes to |
+   | `woocommerce_source_id` | `woocommerce` | the store's label in every row (`source_id`, Use in your dbt project) |
 
    An order in a status that is neither core nor mapped fails the build,
    and so does an order in another currency without a rate the package
@@ -1287,9 +1288,20 @@ vars:
 load or sync an incremental run rereads the input, for inserts that
 commit late.
 
+Every row of every table carries the label of its property, store or
+network in `source_id`, from `ga4_source_id`, `shopify_source_id`,
+`woocommerce_source_id` or `sensor_community_source_id`, whose default
+is the package's name (`shopify`). A label is 1 to 64 of `a-z`, `0-9`
+and `_`; the build stops on any other. The Ossie models put `source_id`
+first in the key of every dataset that has one and join on it, so the
+tables of two stores, each built with its own label, keep their orders
+and customers apart. A new label needs `dbt build --full-refresh`: an
+incremental run labels only the rows it rebuilds, and the package's
+tests then fail with a message that says so.
+
 Each package's `deployment.yml` lists what a deployment sets and reads:
 the Ossie model its tables serve, the variables above by their role
-(input database, time zone) and the tables a deployment counts rows per
+(input database, label, time zone) and the tables a deployment counts rows per
 day in, with the Date column it counts by and the time column that date
 is the day of. A tool that deploys the packages reads it in place of
 this section. A change of `shopify_timezone` or `woocommerce_timezone`
@@ -1358,7 +1370,7 @@ Freshness then reports the same ages as on dbt v1.
 
 Several GA4 properties: each exports to its own BigQuery dataset. Build
 the package once per property, each with its own input and target
-database, and serve the model once per target. A total across properties
+database and its own label, and serve the model once per target. A total across properties
 is not modelled. The same holds for several Shopify or WooCommerce
 stores, and for the sites of a WordPress multisite, each with its own
 table prefix.

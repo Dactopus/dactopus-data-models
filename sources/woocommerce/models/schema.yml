@@ -3,6 +3,7 @@ version: 2
 models:
   - name: orders
     columns:
+      - {name: source_id, data_type: "LowCardinality(String)", data_tests: [woocommerce_one_source_id]}
       - {name: order_id, data_type: UInt64, data_tests: [unique, not_null]}
       - {name: order_number, data_type: String}
       - {name: order_date, data_type: Date, data_tests: [not_null]}
@@ -56,6 +57,7 @@ models:
       - {name: synced_at, data_type: "DateTime64(9)"}
   - name: customers
     columns:
+      - {name: source_id, data_type: "LowCardinality(String)", data_tests: [woocommerce_one_source_id]}
       - {name: customer_id, data_type: Int64, data_tests: [unique, not_null]}
       - {name: first_order_date, data_type: Date, data_tests: [not_null]}
       - {name: last_order_date, data_type: Date, data_tests: [not_null]}
@@ -67,6 +69,7 @@ models:
       - {name: second_order_within_365_days, data_type: "Nullable(Bool)"}
   - name: order_lines
     columns:
+      - {name: source_id, data_type: "LowCardinality(String)", data_tests: [woocommerce_one_source_id]}
       - {name: line_id, data_type: UInt64, data_tests: [unique, not_null]}
       - name: order_id
         data_type: UInt64
@@ -90,6 +93,7 @@ models:
       - {name: synced_at, data_type: "DateTime64(9)"}
   - name: refunds
     columns:
+      - {name: source_id, data_type: "LowCardinality(String)", data_tests: [woocommerce_one_source_id]}
       - {name: refund_id, data_type: UInt64, data_tests: [unique, not_null]}
       - name: order_id
         data_type: UInt64
@@ -106,6 +110,7 @@ models:
       - {name: synced_at, data_type: "DateTime64(9)"}
   - name: products
     columns:
+      - {name: source_id, data_type: "LowCardinality(String)", data_tests: [woocommerce_one_source_id]}
       - {name: product_id, data_type: UInt64, data_tests: [unique, not_null]}
       - {name: title, data_type: String}
       - name: status
@@ -117,16 +122,19 @@ models:
       - {name: last_sold_date, data_type: "Nullable(Date)"}
   - name: product_categories_all
     columns:
+      - {name: source_id, data_type: "LowCardinality(String)", data_tests: [woocommerce_one_source_id]}
       - {name: product_id, data_type: UInt64, data_tests: [not_null]}
       - {name: category, data_type: String, data_tests: [not_null]}
       - {name: category_path, data_type: String, data_tests: [not_null]}
       - {name: is_direct, data_type: Bool}
   - name: product_brands_all
     columns:
+      - {name: source_id, data_type: "LowCardinality(String)", data_tests: [woocommerce_one_source_id]}
       - {name: product_id, data_type: UInt64, data_tests: [not_null]}
       - {name: brand, data_type: String, data_tests: [not_null]}
   - name: product_brands
     columns:
+      - {name: source_id, data_type: "LowCardinality(String)", data_tests: [woocommerce_one_source_id]}
       - name: product_id
         data_type: UInt64
         data_tests:
@@ -138,6 +146,7 @@ models:
       - {name: brand, data_type: String}
   - name: line_categories
     columns:
+      - {name: source_id, data_type: "LowCardinality(String)", data_tests: [woocommerce_one_source_id]}
       - name: line_id
         data_type: UInt64
         data_tests:
@@ -156,6 +165,7 @@ models:
       - {name: current_quantity, data_type: Int64}
   - name: line_brands
     columns:
+      - {name: source_id, data_type: "LowCardinality(String)", data_tests: [woocommerce_one_source_id]}
       - name: line_id
         data_type: UInt64
         data_tests:
@@ -172,6 +182,7 @@ models:
       - {name: current_quantity, data_type: Int64}
   - name: sales_events
     columns:
+      - {name: source_id, data_type: "LowCardinality(String)", data_tests: [woocommerce_one_source_id]}
       - {name: event_id, data_type: String, data_tests: [unique, not_null]}
       - name: event_type
         data_type: String
@@ -193,6 +204,7 @@ models:
       - {name: amount, data_type: "Decimal(38, 8)", data_tests: [not_null]}
   - name: product_categories
     columns:
+      - {name: source_id, data_type: "LowCardinality(String)", data_tests: [woocommerce_one_source_id]}
       - {name: product_id, data_type: UInt64}
       - {name: category, data_type: String}
       - {name: category_path, data_type: String}
@@ -229,6 +241,7 @@ unit_tests:
         woocommerce_lookback_days: 3
         woocommerce_table_prefix: wp_
         woocommerce_input_database: woocommerce_raw
+        woocommerce_source_id: woocommerce
     given:
       - input: source('woocommerce_raw', 'wc_orders')
         rows:

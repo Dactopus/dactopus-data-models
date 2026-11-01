@@ -19,7 +19,9 @@ Run from the repository root:
     uv run tests/check_contracts.py
 
 Checks every package under sources/: contracts are enforced; every model
-has a contract with a type for each column; each dataset of the package's
+has a contract with a type for each column, the first of them the label
+source_id, LowCardinality(String), under the package's one-label test
+(<package>_one_source_id); each dataset of the package's
 Ossie model is a model of the package whose contract starts with the
 dataset's canonical columns; the packages that serve one Ossie model give
 each canonical column one type. With --built <package>, also checks the
@@ -44,6 +46,7 @@ import yaml
 from sqlglot import exp
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
+LABEL_TYPE = "LowCardinality(String)"
 
 
 def clickhouse(query, **params):
@@ -119,6 +122,14 @@ def contracts(package):
     return {m["name"]: [(c["name"], c.get("data_type")) for c in m.get("columns", [])] for m in schema["models"]}
 
 
+def label_tests(package):
+    """{model: the tests on its source_id column} from the package's schema.yml."""
+    schema = yaml.safe_load((package / "models" / "schema.yml").read_text())
+    return {m["name"]: [t if isinstance(t, str) else next(iter(t)) for c in m.get("columns", [])
+                        if c["name"] == "source_id" for t in c.get("data_tests", [])]
+            for m in schema["models"]}
+
+
 def normal(data_type):
     return "".join(str(data_type).split())
 
@@ -139,6 +150,10 @@ def check(packages, built):
                 problems.append(f"{name}: model {model} has no columns in schema.yml")
             elif not declared[model] or any(t is None for _, t in declared[model]):
                 problems.append(f"{name}: every column of {model} needs a data_type in schema.yml")
+            elif declared[model][0] != ("source_id", LABEL_TYPE) \
+                    or f"{name}_one_source_id" not in label_tests(package)[model]:
+                problems.append(f"{name}: {model} must start with source_id {LABEL_TYPE}, "
+                                f"tested by {name}_one_source_id")
         model_file = yaml.safe_load((package / "deployment.yml").read_text())["model"]
         for table, columns in canonical_columns(ROOT / model_file).items():
             if table not in declared:

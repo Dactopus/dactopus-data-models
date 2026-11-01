@@ -5,6 +5,7 @@
 -- has no brand, is deleted or is no product has one row without a brand.
 -- A view, as line_categories.
 SELECT
+    l.source_id AS source_id,
     l.line_id AS line_id,
     b.brand AS brand,
     l.quantity AS quantity,

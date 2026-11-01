@@ -3,6 +3,7 @@ version: 2
 models:
   - name: events
     columns:
+      - {name: source_id, data_type: "LowCardinality(String)", data_tests: [ga4_one_source_id]}
       - {name: event_name, data_type: String, data_tests: [not_null]}
       - {name: session_key, data_type: "Nullable(String)"}
       - {name: event_date, data_type: Date, data_tests: [not_null]}
@@ -15,6 +16,7 @@ models:
       - {name: ga_session_id, data_type: "Nullable(Int64)"}
   - name: sessions
     columns:
+      - {name: source_id, data_type: "LowCardinality(String)", data_tests: [ga4_one_source_id]}
       - {name: session_key, data_type: String, data_tests: [unique, not_null]}
       - {name: user_pseudo_id, data_type: String, data_tests: [not_null]}
       - {name: session_date, data_type: Date, data_tests: [not_null]}
@@ -31,6 +33,7 @@ models:
       - {name: ga_session_id, data_type: Int64}
   - name: purchases
     columns:
+      - {name: source_id, data_type: "LowCardinality(String)", data_tests: [ga4_one_source_id]}
       - {name: purchase_key, data_type: String, data_tests: [unique, not_null]}
       - {name: transaction_id, data_type: "Nullable(String)"}
       - name: session_key

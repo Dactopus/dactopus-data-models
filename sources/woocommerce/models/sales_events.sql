@@ -12,6 +12,7 @@
 -- Rebuilt from orders and refunds on every run: two narrow reads, and the
 -- events cannot drift from the orders they come from.
 SELECT
+    {{ woocommerce_source_id() }} AS source_id,
     concat('order-', toString(order_id)) AS event_id,
     'order' AS event_type,
     order_id,
@@ -22,6 +23,7 @@ FROM {{ ref('orders') }}
 WHERE in_sales_reports
 UNION ALL
 SELECT
+    {{ woocommerce_source_id() }} AS source_id,
     concat('refund-', toString(refund_id)) AS event_id,
     'refund' AS event_type,
     order_id,

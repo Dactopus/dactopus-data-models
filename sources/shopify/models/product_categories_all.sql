@@ -7,6 +7,7 @@
 -- Gift cards keep theirs: product_categories and line_categories take the
 -- products they need.
 SELECT
+    {{ shopify_source_id() }} AS source_id,
     id AS product_id,
     product_type AS category,
     product_type AS category_path,

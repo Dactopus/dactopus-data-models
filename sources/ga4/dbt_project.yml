@@ -6,6 +6,10 @@ macro-paths: ["macros"]
 vars:
   # The database holding the input table events (input.sql).
   ga4_input_database: ga4_raw
+  # The label every row carries as source_id: 1 to 64 of a-z, 0-9 and _.
+  # Give each property its own, and the tables of several properties add up.
+  # A new label needs a --full-refresh.
+  ga4_source_id: ga4
   # GA4 keeps updating a daily export table for up to 72 hours after its date:
   # https://support.google.com/analytics/answer/9358801
   ga4_lookback_days: 3

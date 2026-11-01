@@ -40,7 +40,7 @@ jobs:
       DBT_BUILD: >-
         uvx --from ${{ matrix.dbt.from }} ${{ matrix.dbt.with && format('--with {0}', matrix.dbt.with) || '' }}
         dbt build --project-dir sources/ga4 --profiles-dir tests
-        --vars {"ga4_input_database":"ga4_input"}
+        --vars {"ga4_input_database":"ga4_input","ga4_source_id":"property_a"}
       OSSIE_CLICKHOUSE_URL: http://127.0.0.1:8123/analytics
     steps:
       - uses: actions/checkout@v7
@@ -95,6 +95,21 @@ jobs:
           ${DBT_BUILD/dbt build/dbt source freshness}
           python3 tests/check_freshness.py sources/ga4 "SELECT max(fromUnixTimestamp64Micro(event_timestamp)) FROM ga4_input.events"
 
+      # Every row carries the label the build was given (ga4_source_id).
+      # CI's builds give one other than the package's default, and the
+      # one-label tests hold every table to it. A label the package does not
+      # accept stops the build; a new label over tables built under the old
+      # one fails those tests, with a message that names --full-refresh.
+      - name: Label of the property
+        run: |
+          if ${DBT_BUILD/property_a/Property-a} > label.txt 2>&1; then cat label.txt; exit 1; fi
+          grep -q 'ga4_source_id must be 1 to 64 characters' label.txt
+          # No lookback: the run rebuilds the fixture's last day only, and its
+          # first keeps the old label. With the default 3 days it would
+          # relabel both, and the table would hold one label again.
+          if ${DBT_BUILD/'"ga4_source_id":"property_a"'/'"ga4_source_id":"property_b","ga4_lookback_days":0'} > label.txt 2>&1
+          then cat label.txt; exit 1; fi
+          grep -q 'run dbt build --full-refresh once after changing ga4_source_id' label.txt
   shopify:
     runs-on: ubuntu-latest
     strategy:
@@ -125,7 +140,7 @@ jobs:
       DBT_BUILD: >-
         uvx --from ${{ matrix.dbt.from }} ${{ matrix.dbt.with && format('--with {0}', matrix.dbt.with) || '' }}
         dbt build --project-dir sources/shopify --profiles-dir tests
-        --vars {"shopify_input_database":"shopify_input","shopify_timezone":"America/New_York","shopify_lookback_days":0}
+        --vars {"shopify_input_database":"shopify_input","shopify_timezone":"America/New_York","shopify_lookback_days":0,"shopify_source_id":"store_ny"}
       OSSIE_CLICKHOUSE_URL: http://127.0.0.1:8123/analytics
       # The model is served in the zone the package was built in (README,
       # Use in your dbt project); the checks and validate run in it.
@@ -269,6 +284,17 @@ jobs:
           ${DBT_BUILD/dbt build/dbt source freshness}
           python3 tests/check_freshness.py sources/shopify "SELECT max(loaded_at) FROM shopify_input.orders"
 
+      # Every row carries the label the build was given (shopify_source_id).
+      # CI's builds give one other than the package's default, and the
+      # one-label tests hold every table to it. A label the package does not
+      # accept stops the build; a new label over tables built under the old
+      # one fails those tests, with a message that names --full-refresh.
+      - name: Label of the store
+        run: |
+          if ${DBT_BUILD/store_ny/Store-ny} > label.txt 2>&1; then cat label.txt; exit 1; fi
+          grep -q 'shopify_source_id must be 1 to 64 characters' label.txt
+          if ${DBT_BUILD/store_ny/store_la} > label.txt 2>&1; then cat label.txt; exit 1; fi
+          grep -q 'run dbt build --full-refresh once after changing shopify_source_id' label.txt
   woocommerce:
     runs-on: ubuntu-latest
     strategy:
@@ -304,7 +330,7 @@ jobs:
       DBT_BUILD: >-
         uvx --from ${{ matrix.dbt.from }} ${{ matrix.dbt.with && format('--with {0}', matrix.dbt.with) || '' }}
         dbt build --project-dir sources/woocommerce --profiles-dir tests
-        --vars {"woocommerce_input_database":"woocommerce_input","woocommerce_table_prefix":"wp_2_","woocommerce_timezone":"America/New_York","woocommerce_currency":"USD","woocommerce_lookback_days":0}
+        --vars {"woocommerce_input_database":"woocommerce_input","woocommerce_table_prefix":"wp_2_","woocommerce_timezone":"America/New_York","woocommerce_currency":"USD","woocommerce_lookback_days":0,"woocommerce_source_id":"store_wc"}
       OSSIE_CLICKHOUSE_URL: http://127.0.0.1:8123/analytics
       # The model is served in the zone the package was built in (README,
       # Use in your dbt project); the checks and validate run in it.
@@ -559,6 +585,17 @@ jobs:
           ${DBT_BUILD/dbt build/dbt source freshness}
           python3 tests/check_freshness.py sources/woocommerce "SELECT max(_peerdb_synced_at) FROM woocommerce_input.wp_2_wc_orders"
 
+      # Every row carries the label the build was given (woocommerce_source_id).
+      # CI's builds give one other than the package's default, and the
+      # one-label tests hold every table to it. A label the package does not
+      # accept stops the build; a new label over tables built under the old
+      # one fails those tests, with a message that names --full-refresh.
+      - name: Label of the store
+        run: |
+          if ${DBT_BUILD/store_wc/Store-wc} > label.txt 2>&1; then cat label.txt; exit 1; fi
+          grep -q 'woocommerce_source_id must be 1 to 64 characters' label.txt
+          if ${DBT_BUILD/store_wc/store_eu} > label.txt 2>&1; then cat label.txt; exit 1; fi
+          grep -q 'run dbt build --full-refresh once after changing woocommerce_source_id' label.txt
   sensor_community:
     runs-on: ubuntu-latest
     strategy:
@@ -589,7 +626,7 @@ jobs:
       DBT_BUILD: >-
         uvx --from ${{ matrix.dbt.from }} ${{ matrix.dbt.with && format('--with {0}', matrix.dbt.with) || '' }}
         dbt build --project-dir sources/sensor_community --profiles-dir tests
-        --vars {"sensor_community_input_database":"sensor_community_input","sensor_community_lookback_days":0}
+        --vars {"sensor_community_input_database":"sensor_community_input","sensor_community_lookback_days":0,"sensor_community_source_id":"network_a"}
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
@@ -685,3 +722,14 @@ jobs:
               ${DBT_BUILD/dbt build/dbt source freshness} --select "source:sensor_community_raw.$t"
               python3 tests/check_freshness.py sources/sensor_community "SELECT max(loaded_at) FROM sensor_community_input.$t"
           done
+      # Every row carries the label the build was given (sensor_community_source_id).
+      # CI's builds give one other than the package's default, and the
+      # one-label tests hold every table to it. A label the package does not
+      # accept stops the build; a new label over tables built under the old
+      # one fails those tests, with a message that names --full-refresh.
+      - name: Label of the network
+        run: |
+          if ${DBT_BUILD/network_a/Network-a} > label.txt 2>&1; then cat label.txt; exit 1; fi
+          grep -q 'sensor_community_source_id must be 1 to 64 characters' label.txt
+          if ${DBT_BUILD/network_a/network_b} > label.txt 2>&1; then cat label.txt; exit 1; fi
+          grep -q 'run dbt build --full-refresh once after changing sensor_community_source_id' label.txt

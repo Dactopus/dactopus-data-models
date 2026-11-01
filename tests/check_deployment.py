@@ -5,8 +5,8 @@
 
 deployment.yml declares what a deployment of a package sets and reads: the
 Ossie model its tables serve (`model`), the dbt variables that take the
-input database and the time zone (`vars`, a role mapped to the variable's
-name), and the built tables a deployment counts rows per day in (`daily`:
+input database, the label every row carries (source_id) and the time
+zone (`vars`, a role mapped to the variable's name), and the built tables a deployment counts rows per day in (`daily`:
 `table`, its Date column `date`, the column `time` whose day `date` is,
 and `gap: true` where a day without rows is a finding). Tools that deploy
 the packages read it and never read the package's SQL, so nothing else
@@ -16,7 +16,8 @@ package into $CLICKHOUSE_DATABASE:
     uv run tests/check_deployment.py sources/shopify --time-zone America/New_York
 
 Checks: the file has these keys and no others; every variable it names
-is in the package's dbt_project.yml; the model file exists; every daily
+is in the package's dbt_project.yml, and the label's default is one the
+package accepts (1 to 64 of a-z, 0-9 and _); the model file exists; every daily
 table is a model of the package and a table in the database, its date
 column a Date and its time column a DateTime. With --time-zone, counts in
 every daily table with a time column the rows whose date is not the day
@@ -33,6 +34,7 @@ packages.
 import argparse
 import os
 import pathlib
+import re
 import sys
 import urllib.error
 import urllib.parse
@@ -40,7 +42,9 @@ import urllib.request
 
 import yaml
 
-ROLES = ("input_database", "time_zone")
+ROLES = ("input_database", "source_id", "time_zone")
+REQUIRED = {"input_database", "source_id"}
+LABEL = re.compile(r"[a-z0-9_]{1,64}")
 KEYS = {"model", "vars", "daily"}
 DAILY_KEYS = {"table", "date", "time", "gap"}
 
@@ -75,13 +79,15 @@ def check(package, time_zone):
         problems.append(f"model {declared['model']} is not a file under {root}")
 
     variables = declared["vars"]
-    if not isinstance(variables, dict) or "input_database" not in variables \
+    if not isinstance(variables, dict) or not REQUIRED <= set(variables) \
             or any(role not in ROLES for role in variables):
-        problems.append(f"vars must map input_database, and may map time_zone, to a variable: {variables}")
+        problems.append(f"vars must map input_database and source_id, and may map time_zone, to a variable: {variables}")
         variables = {}
     for role, variable in variables.items():
         if variable not in project.get("vars", {}):
             problems.append(f"vars.{role}: {variable} is not a variable of {project['name']} (dbt_project.yml)")
+        elif role == "source_id" and not LABEL.fullmatch(str(project["vars"][variable])):
+            problems.append(f"vars.source_id: the default of {variable} is not 1 to 64 of a-z, 0-9 and _")
 
     daily = declared["daily"]
     if not isinstance(daily, list) or not daily:

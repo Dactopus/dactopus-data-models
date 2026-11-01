@@ -45,6 +45,7 @@
 {% set numbered = 'true' %}
 {% endif %}
 SELECT
+    {{ shopify_source_id() }} AS source_id,
     o.id AS order_id,
     o.name AS order_number,
     -- processedAt, the date Shopify's reports use, in the shop's time zone.

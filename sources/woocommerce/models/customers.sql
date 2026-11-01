@@ -14,6 +14,7 @@
 -- Rebuilt from orders on every run: one narrow read, and a customer cannot
 -- drift from their orders, or keep a row when an order moves away.
 SELECT
+    {{ woocommerce_source_id() }} AS source_id,
     -- Numbered orders have a customer.
     assumeNotNull(customer_id) AS customer_id,
     toDate(min(placed_time), '{{ var("woocommerce_timezone") }}') AS first_order_date,

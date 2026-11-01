@@ -8,6 +8,7 @@
 -- ones, so a change of the catalog moves every past line at once, with
 -- nothing to rebuild.
 SELECT
+    l.source_id AS source_id,
     l.line_id AS line_id,
     c.category AS category,
     c.category_path AS category_path,

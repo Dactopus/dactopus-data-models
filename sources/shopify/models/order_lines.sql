@@ -37,6 +37,7 @@ returned AS (
     GROUP BY line_item_id
 )
 SELECT
+    {{ shopify_source_id() }} AS source_id,
     l.id AS line_id,
     l.order_id AS order_id,
     o.updated_at AS order_updated_at,

@@ -1,5 +1,6 @@
 {{ config(unique_key='event_date', order_by='(event_date, event_name)') }}
 SELECT
+    {{ ga4_source_id() }} AS source_id,
     if(ga_session_id IS NULL, NULL, concat(user_pseudo_id, '.', toString(ga_session_id))) AS session_key,
     user_pseudo_id,
     ga_session_id,

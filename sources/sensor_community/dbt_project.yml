@@ -6,6 +6,10 @@ macro-paths: ["macros"]
 vars:
   # The database holding the input tables (input.sql).
   sensor_community_input_database: sensor_community_raw
+  # The label every row carries as source_id: 1 to 64 of a-z, 0-9 and _.
+  # Give each network its own, and the tables of several networks add up.
+  # A new label needs a --full-refresh.
+  sensor_community_source_id: sensor_community
   # Each incremental run rereads the sensor-days loaded (loaded_at) in this
   # many days before the latest load it has seen: an insert that began
   # before that load may commit after it.

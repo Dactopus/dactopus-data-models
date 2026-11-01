@@ -3,6 +3,7 @@ version: 2
 models:
   - name: devices
     columns:
+      - {name: source_id, data_type: "LowCardinality(String)", data_tests: [sensor_community_one_source_id]}
       - {name: device_id, data_type: UInt32, data_tests: [unique, not_null]}
       - {name: latitude, data_type: "Nullable(Float64)", data_tests: [not_null]}
       - {name: longitude, data_type: "Nullable(Float64)", data_tests: [not_null]}
@@ -15,6 +16,7 @@ models:
       - {name: last_contact_at, data_type: "Nullable(DateTime('UTC'))", data_tests: [not_null]}
   - name: devices_archive
     columns:
+      - {name: source_id, data_type: "LowCardinality(String)", data_tests: [sensor_community_one_source_id]}
       - {name: device_id, data_type: UInt32, data_tests: [unique, not_null]}
       - {name: sensor_types, data_type: "Array(String)"}
       - {name: first_reading_at, data_type: "DateTime('UTC')"}
@@ -23,6 +25,7 @@ models:
       - {name: longitude, data_type: "Nullable(Float64)", data_tests: [not_null]}
   - name: readings
     columns:
+      - {name: source_id, data_type: "LowCardinality(String)", data_tests: [sensor_community_one_source_id]}
       - name: device_id
         data_type: UInt32
         data_tests:

@@ -51,6 +51,7 @@ rates AS MATERIALIZED (
     LEFT JOIN {{ woocommerce_rates('(SELECT id FROM orders)') }} AS ro ON ro.order_id = f.parent_order_id
 )
 SELECT
+    {{ woocommerce_source_id() }} AS source_id,
     f.id AS refund_id,
     -- Never NULL: the refunds read are those of the orders read. The cast
     -- keeps the key's type when the input's column is Nullable.

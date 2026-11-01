@@ -43,6 +43,7 @@ paths AS MATERIALIZED (
     GROUP BY a.term_id
 )
 SELECT
+    {{ woocommerce_source_id() }} AS source_id,
     l.product_id AS product_id,
     any(n.name) AS category,
     any(p.path) AS category_path,

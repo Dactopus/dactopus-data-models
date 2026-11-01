@@ -6,6 +6,10 @@ macro-paths: ["macros"]
 vars:
   # The database holding the input tables (input.sql).
   woocommerce_input_database: woocommerce_raw
+  # The label every row carries as source_id: 1 to 64 of a-z, 0-9 and _.
+  # Give each store its own, and the tables of several stores add up.
+  # A new label needs a --full-refresh.
+  woocommerce_source_id: woocommerce
   # The prefix of the store's tables, wp_ unless the store chose another
   # (in multisite, the site's number is part of it, as in wp_2_).
   woocommerce_table_prefix: wp_

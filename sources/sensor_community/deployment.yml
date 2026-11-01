@@ -7,6 +7,7 @@ model: entities/iot.yaml
 # the UTC day.
 vars:
   input_database: sensor_community_input_database
+  source_id: sensor_community_source_id
 # The built tables a deployment counts rows per day in, by `date`, a Date
 # column. `time` is the column whose day `date` is, in UTC. `gap: true`:
 # a day without rows is a finding there.

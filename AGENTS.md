@@ -29,9 +29,10 @@ The README describes what works today. Plans go in
     sources/<source>/         one package per source, a dbt project:
       input.sql               the input table the package accepts
       deployment.yml          what a deployment sets and reads: the Ossie
-                              model, the variables for the input database
-                              and the time zone, the tables counted per
-                              day; every package ships one
+                              model, the variables for the input
+                              database, the label and the time zone, the
+                              tables counted per day; every package ships
+                              one
       macros/                 SQL the package's models share
       models/<entity>.sql     one model per entity, named after it; an
                               entity that is a view over a built table
@@ -71,6 +72,17 @@ target's database and reads its input from a variable
 (`ga4_input_database`); `input.sql` takes the database as a query
 parameter. `dactopus` and `ga4_raw` are only defaults for the sample
 profile and the sample data. CI builds into other databases to keep it so.
+
+Every model writes `source_id`, the label of the store, property or
+network its rows come from, as its first column: `<package>_source_id()`,
+or in a view over one built table, that table's column. Its default
+is the package's name; CI builds with another label, so no model may
+assume it. In the Ossie models `source_id` is each
+dataset's first field, first in every `primary_key`, on both sides of
+every relationship, and in every `COUNT(DISTINCT ...)` beside the
+counted column: `COUNT(DISTINCT source_id, customer_id)`, never a tuple,
+which counts a NULL as a value. A package's `order_by` and `unique_key`
+leave it out: a database holds one label.
 
 ## Model format
 

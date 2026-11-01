@@ -8,6 +8,28 @@ names the Ossie schema version its models carry.
 
 ## [Unreleased]
 
+### Added
+
+- Every table of every package has a first column `source_id`, the
+  label of the store, property or network its rows come from: the
+  variable `ga4_source_id`, `shopify_source_id`, `woocommerce_source_id`
+  or `sensor_community_source_id`, `LowCardinality(String)`. The default
+  is the package's name (`shopify`); a label other than 1 to 64 of
+  `a-z`, `0-9` and `_` stops the build. A dbt test on every model fails
+  on a row of another label, as an incremental run after a new label
+  leaves, and names `--full-refresh`. `deployment.yml` maps the role
+  `source_id` to the variable, and `tests/check_deployment.py` requires
+  it.
+- The Ossie models have a field `source_id` in every dataset. It comes
+  first in every `primary_key` and on both sides of every relationship,
+  and every count of distinct values counts them within a label
+  (`orders.buyer_count`, `product_categories.product_count`,
+  `product_brands.product_count`, `readings.reporting_devices`,
+  `sessions.users`, `sessions.user_conversion_rate`): the tables of
+  several stores, each built with its own label, keep their orders and
+  customers apart. In one database the label is constant and every
+  number stays the same.
+
 ### Fixed
 
 - WooCommerce: an incremental run over a table whose columns a release
@@ -59,10 +81,8 @@ names the Ossie schema version its models carry.
   - Shopify's `order_lines.title` is `String`, not `Nullable(String)`.
 
   The columns of every table come in a new order, the model's first.
-  Run Shopify and WooCommerce once with `--full-refresh` in place of the
-  next incremental run, which stops. GA4 and Sensor.Community keep
-  their types and run on; `--full-refresh` puts their columns in the new
-  order.
+  With `source_id` (Added), every package runs once with
+  `--full-refresh` in place of the next incremental run, which stops.
 - GA4: `on_schema_change: fail`, as in the other packages; dbt requires
   it of an incremental model with a contract.
 - WooCommerce: an order or refund in another currency without a rate

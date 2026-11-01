@@ -5,6 +5,7 @@
 -- session counts (HyperLogLog++); counts here are exact and differ slightly.
 SELECT * FROM (
 SELECT
+    {{ ga4_source_id() }} AS source_id,
     concat(user_pseudo_id, '.', toString(assumeNotNull(ga_session_id))) AS session_key,
     user_pseudo_id,
     assumeNotNull(ga_session_id) AS ga_session_id,

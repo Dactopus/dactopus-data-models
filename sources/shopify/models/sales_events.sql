@@ -13,6 +13,7 @@
 -- Rebuilt from orders and refunds on every run: two narrow reads, and the
 -- events cannot drift from the orders they come from.
 SELECT
+    {{ shopify_source_id() }} AS source_id,
     concat('order-', toString(order_id)) AS event_id,
     'order' AS event_type,
     order_id,
@@ -22,6 +23,7 @@ SELECT
 FROM {{ ref('orders') }}
 UNION ALL
 SELECT
+    {{ shopify_source_id() }} AS source_id,
     concat('refund-', toString(refund_id)) AS event_id,
     'refund' AS event_type,
     order_id,
@@ -31,6 +33,7 @@ SELECT
 FROM {{ ref('refunds') }}
 UNION ALL
 SELECT
+    {{ shopify_source_id() }} AS source_id,
     concat('cancellation-', toString(order_id)) AS event_id,
     'cancellation' AS event_type,
     order_id,

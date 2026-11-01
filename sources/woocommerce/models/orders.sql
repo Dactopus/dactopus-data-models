@@ -166,6 +166,7 @@ refunds AS MATERIALIZED (
     GROUP BY order_id
 )
 SELECT
+    {{ woocommerce_source_id() }} AS source_id,
     o.id AS order_id,
     {% if number_key %}
     -- The number a sequential order number plugin gave the order, as the
