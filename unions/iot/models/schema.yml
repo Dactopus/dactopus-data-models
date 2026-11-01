@@ -1,0 +1,34 @@
+version: 2
+# Structural checks only; descriptions live in entities/iot.yaml.
+models:
+  - name: readings
+    data_tests:
+      - iot_union_unique_key:
+          arguments:
+            columns: [source_id, sensor_id, measured_at, measure]
+    columns:
+      - {name: source_id, data_type: "LowCardinality(String)", data_tests: [iot_union_distinct_source_ids]}
+      - {name: device_id, data_type: UInt32}
+      - {name: sensor_id, data_type: UInt32}
+      - {name: sensor_type, data_type: "LowCardinality(String)"}
+      - {name: measure, data_type: "LowCardinality(String)"}
+      - {name: value, data_type: Float64}
+      - {name: measured_at, data_type: "DateTime('UTC')"}
+      - {name: reading_date, data_type: Date}
+  - name: devices
+    data_tests:
+      - iot_union_unique_key:
+          arguments:
+            columns: [source_id, device_id]
+    columns:
+      - {name: source_id, data_type: "LowCardinality(String)", data_tests: [iot_union_distinct_source_ids]}
+      - {name: device_id, data_type: UInt32}
+      - {name: latitude, data_type: "Nullable(Float64)"}
+      - {name: longitude, data_type: "Nullable(Float64)"}
+      - {name: altitude, data_type: "Nullable(Float64)"}
+      - {name: country_code, data_type: "Nullable(String)"}
+      - {name: is_indoor, data_type: "Nullable(Bool)"}
+      - {name: sensor_types, data_type: String}
+      - {name: first_reading_at, data_type: "Nullable(DateTime('UTC'))"}
+      - {name: last_reading_at, data_type: "Nullable(DateTime('UTC'))"}
+      - {name: last_contact_at, data_type: "Nullable(DateTime('UTC'))"}

@@ -1,0 +1,18 @@
+name: dactopus_commerce_union
+version: "0.8.0"
+profile: dactopus
+model-paths: ["models"]
+macro-paths: ["macros"]
+vars:
+  # The databases of the stores, each built by its package with its own
+  # label (source_id), as a list: [store_a, store_b]. Required.
+  commerce_union_databases: []
+models:
+  dactopus_commerce_union:
+    # Views: the union holds no rows of its own and sees each build of
+    # the stores at once.
+    +materialized: view
+    # Every view's columns and their types are listed in schema.yml: the
+    # columns entities/commerce.yaml reads, no others; a build stops on a
+    # database that gives another type (tests/check_contracts.py).
+    +contract: {enforced: true}

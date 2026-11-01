@@ -1,0 +1,51 @@
+version: 2
+# Structural checks only; descriptions live in entities/web_analytics.yaml.
+models:
+  - name: sessions
+    data_tests:
+      - web_analytics_union_unique_key:
+          arguments:
+            columns: [source_id, session_key]
+    columns:
+      - {name: source_id, data_type: "LowCardinality(String)", data_tests: [web_analytics_union_distinct_source_ids]}
+      - {name: session_key, data_type: String}
+      - {name: user_pseudo_id, data_type: String}
+      - {name: session_date, data_type: Date}
+      - {name: session_start_time, data_type: "DateTime64(6, 'UTC')"}
+      - {name: is_engaged, data_type: "Nullable(UInt8)"}
+      - {name: has_purchase, data_type: UInt8}
+      - {name: page_views, data_type: UInt64}
+      - {name: source, data_type: String}
+      - {name: medium, data_type: String}
+      - {name: campaign, data_type: String}
+      - {name: landing_page, data_type: "Nullable(String)"}
+      - {name: device_category, data_type: "Nullable(String)"}
+      - {name: country, data_type: "Nullable(String)"}
+  - name: purchases
+    data_tests:
+      - web_analytics_union_unique_key:
+          arguments:
+            columns: [source_id, purchase_key]
+    columns:
+      - {name: source_id, data_type: "LowCardinality(String)", data_tests: [web_analytics_union_distinct_source_ids]}
+      - {name: purchase_key, data_type: String}
+      - {name: transaction_id, data_type: "Nullable(String)"}
+      - {name: session_key, data_type: "Nullable(String)"}
+      - {name: purchase_date, data_type: Date}
+      - {name: purchase_time, data_type: "DateTime64(6, 'UTC')"}
+      - {name: revenue, data_type: "Nullable(Float64)"}
+      - {name: currency, data_type: "Nullable(String)"}
+      - {name: revenue_usd, data_type: "Nullable(Float64)"}
+      - {name: tax, data_type: "Nullable(Float64)"}
+      - {name: shipping, data_type: "Nullable(Float64)"}
+  - name: events
+    columns:
+      - {name: source_id, data_type: "LowCardinality(String)", data_tests: [web_analytics_union_distinct_source_ids]}
+      - {name: event_name, data_type: String}
+      - {name: session_key, data_type: "Nullable(String)"}
+      - {name: event_date, data_type: Date}
+      - {name: event_time, data_type: "DateTime64(6, 'UTC')"}
+      - {name: page_location, data_type: "Nullable(String)"}
+      - {name: page_title, data_type: "Nullable(String)"}
+      - {name: device_category, data_type: "Nullable(String)"}
+      - {name: country, data_type: "Nullable(String)"}

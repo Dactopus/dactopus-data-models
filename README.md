@@ -16,6 +16,10 @@ format, with IoT devices as a reference domain. Two kinds of content:
 - **Source packages**: each maps one source onto those entities. GA4,
   Shopify, WooCommerce and Sensor.Community are available.
 
+Unions add up the tables of several stores, GA4 properties or networks
+of one domain ([Several stores, properties or
+networks](#several-stores-properties-or-networks)).
+
 What comes next is in [ROADMAP.md](ROADMAP.md).
 
 The aim: a store on Shopify and a store on its own Postgres look the same
@@ -23,7 +27,7 @@ once both are mapped, and one query works on both. The same model serves
 BI tools through ClickHouse tables and AI agents through
 [dactopus-ossie-clickhouse](https://github.com/Dactopus/dactopus-ossie-clickhouse).
 
-<a href="https://dactopus.github.io/dactopus-data-models/"><img src="docs/architecture.svg" width="680" alt="How the packages work: the GA4 export, Shopify's orders, a WooCommerce store's order tables and Sensor.Community's readings are loaded into input tables in your ClickHouse; the dbt packages build the canonical tables; BI tools read them directly and AI agents through dactopus-ossie-clickhouse and the Ossie models."></a>
+<a href="https://dactopus.github.io/dactopus-data-models/"><img src="docs/architecture.svg" width="680" alt="How the packages work: the GA4 export, Shopify's orders, a WooCommerce store's order tables and Sensor.Community's readings are loaded into input tables in your ClickHouse; the dbt packages build the canonical tables, and unions add up those of several stores; BI tools read them directly and AI agents through dactopus-ossie-clickhouse and the Ossie models."></a>
 
 Click the diagram for the [interactive version](https://dactopus.github.io/dactopus-data-models/):
 what each part does and where it takes its settings from, and one
@@ -1250,7 +1254,7 @@ packages:
 The Shopify and WooCommerce packages write the same tables, so a project
 installs one of them: with both, dbt stops before building anything. A
 business with a store on each builds them into separate target
-databases, as for several stores below.
+databases, as for [several stores](#several-stores-properties-or-networks).
 
 The GA4 package writes `events`, `sessions` and `purchases` to your
 target's database and reads its input from `ga4_raw.events`. The Shopify
@@ -1368,12 +1372,58 @@ dispatch:
 
 Freshness then reports the same ages as on dbt v1.
 
-Several GA4 properties: each exports to its own BigQuery dataset. Build
-the package once per property, each with its own input and target
-database and its own label, and serve the model once per target. A total
-across properties is not modelled. The same holds for several Shopify or
-WooCommerce stores, and for the sites of a WordPress multisite, each
-with its own table prefix.
+## Several stores, properties or networks
+
+Build each store, GA4 property or Sensor.Community network with its
+package into a target database of its own, under a label of its own
+(`shopify_source_id` and the like, [Use in your dbt
+project](#use-in-your-dbt-project)). Each GA4 property exports to its own
+BigQuery dataset, and each site of a WordPress multisite is a store with
+its own table prefix. A union then adds up their tables for one domain:
+`unions/commerce`, `unions/web_analytics` and `unions/iot` are dbt
+projects that write, to a database of their own, a view of each table
+the domain's Ossie model reads, `UNION ALL` over the databases a
+variable lists. A commerce union takes Shopify and WooCommerce stores
+alike.
+
+```bash
+dbt build --project-dir unions/commerce --vars '{commerce_union_databases: [shop_us, shop_eu, woo_wholesale]}'
+```
+
+The union is a dbt project of its own, with its database as the target:
+built from a checkout of the release tag, or installed as the only
+package of a project (`subdirectory: unions/commerce`, its variable
+under `dactopus_commerce_union`). Its views have the packages' table
+names, so dbt stops a project that installs a package beside it.
+
+- **Columns.** A view has the columns the Ossie model reads and no
+  others; a package's own columns (`tip_total`, `fee_total`) stay in the
+  store's database. Each column has the type every package gives it, and
+  the build stops on a database whose table gives another, as one built
+  by an earlier release would, and names the column.
+- **Tests.** `dbt build` fails when a label is in two of the databases,
+  as for two stores built under the package's default, and when a key of
+  the Ossie model is not unique in a view. The union's own database is
+  not one of those it adds up: its views would replace the tables they
+  read, and the build stops before.
+- **Views.** The union holds no rows of its own and sees a store's
+  tables as soon as its build finishes. Build it again after adding a
+  database and after a release changes the packages' columns.
+- **Answers.** Serve the domain's Ossie model over the union's database.
+  Each store's numbers are the ones it gives alone, `orders.source_id`
+  splits them, and a total adds them up. Customers and products belong
+  to their store: a customer of two stores counts twice. Amounts are in
+  each store's currency and a total adds them up as they are, so where
+  the currencies differ, ask by `orders.currency`. Each store's dates
+  are in its own time zone, and `--time-zone` sets one "today" for all
+  of them.
+- **`deployment.yml`.** A union's names its Ossie model and the variable
+  that lists the databases (role `input_databases`). Rows per day are
+  counted in the stores' databases, by their packages' files.
+
+`uv run tests/check_union.py entities/commerce.yaml <union url> <store
+url>...` asks the model over the union and over each store's database
+and compares: each label's answers must be its store's own.
 
 ## Layout
 
@@ -1388,6 +1438,13 @@ with its own table prefix.
       models/schema.yml       structural checks (dbt tests) and each
                               column's type (dbt contract)
       tests/                  checks that need their own SQL
+    unions/<domain>/          one union per domain, a dbt project: views
+                              that add up the tables of several databases
+      deployment.yml          what a deployment sets and reads: the Ossie
+                              model, the variable that lists the databases
+      models/                 one view per dataset of the Ossie model
+      models/schema.yml       each view's columns and types (dbt
+                              contract) and its tests
     tests/<source>/           hand-written input rows and the numbers the
                               model must answer over them
     tests/profiles.yml        the dbt profile CI builds with; a package
@@ -1439,7 +1496,9 @@ that look plausible.
 - Running queries. That is dactopus-ossie-clickhouse.
 - Reconciling with the source's own reports through its API.
 - Anything that needs two sources at once: attributing sessions to
-  orders, matching customers across systems, cross-source marts.
+  orders, matching customers across systems, cross-source marts. A union
+  puts the tables of several stores side by side and matches nothing
+  across them.
 - API connectors (for example to the GA4 API) and Universal Analytics.
 
 Everything here is Apache 2.0. If a file cannot be released under it, it

@@ -29,6 +29,23 @@ names the Ossie schema version its models carry.
   several stores, each built with its own label, keep their orders and
   customers apart. In one database the label is constant and every
   number stays the same.
+- Unions: `unions/commerce`, `unions/web_analytics` and `unions/iot`,
+  dbt projects that add up the tables of several stores, properties or
+  networks, each built by its package into a database of its own under
+  its own label. A union writes a view of each dataset of the domain's
+  Ossie model, `UNION ALL` over the databases of
+  `commerce_union_databases`, `web_analytics_union_databases` or
+  `iot_union_databases`, with the columns the model reads and their
+  types as a dbt contract. A commerce union takes Shopify and
+  WooCommerce stores alike. The build stops on a database whose column
+  types differ from the contract and on the union's own database among
+  those it adds up; its tests fail when a label is in two databases and
+  when a key of the Ossie model is not unique. `deployment.yml` maps the
+  role `input_databases` to the variable. `tests/check_contracts.py`
+  checks the unions' contracts against the Ossie models and the
+  packages, and that `source_id` comes first in every key and
+  relationship of the Ossie models; `tests/check_union.py` checks that
+  each label's answers over a union are its database's own.
 
 ### Fixed
 

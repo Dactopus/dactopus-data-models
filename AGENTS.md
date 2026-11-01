@@ -14,7 +14,9 @@ includes examples and test data written by hand.
 Everything must be releasable under Apache 2.0. Do not add:
 
 - Anything that needs two sources at once: attribution, matching customers
-  across systems, cross-source marts. A package covers one source.
+  across systems, cross-source marts. A package covers one source. A
+  union adds up the tables of several instances of one domain side by
+  side, each row under its label, and matches nothing across them.
 - Data loading code or API connectors. Loading is a recipe in the README.
 - Query execution. That is dactopus-ossie-clickhouse.
 - Placeholders or stubs for any of the above.
@@ -47,10 +49,24 @@ The README describes what works today. Plans go in
     tests/ask_model.py        asks the questions, shared by every source
     tests/check_freshness.py  checks the ages `dbt source freshness`
                               reports, shared by every source
-    tests/check_deployment.py checks each package's deployment.yml against
-                              the package and its built tables
-    tests/check_contracts.py  checks the packages' contracts against the
-                              Ossie models and each other
+    tests/check_deployment.py checks the deployment.yml of each package
+                              and union against it and its built tables
+    unions/<domain>/          one union per domain, a dbt project of views
+                              that add up the tables of several databases,
+                              each built by a package under its own label
+      deployment.yml          the Ossie model and the variable that lists
+                              the databases
+      macros/<domain>_union.sql
+                              the view over the databases and its tests
+      models/<entity>.sql     one view per dataset of the Ossie model
+      models/schema.yml       the view's columns and types (the dbt
+                              contract): those the Ossie model reads,
+                              no others; its tests
+    tests/check_contracts.py  checks the contracts of the packages and the
+                              unions against the Ossie models and each
+                              other
+    tests/check_union.py      checks a union's answers against those of
+                              the databases it adds up
     tests/profiles.yml        the dbt profile CI and the checks build
                               with; a package ships none
     docs/architecture.svg     the diagram, shown in the README and, with
@@ -83,6 +99,15 @@ every relationship, and in every `COUNT(DISTINCT ...)` beside the
 counted column: `COUNT(DISTINCT source_id, customer_id)`, never a tuple,
 which counts a NULL as a value. A package's `order_by` and `unique_key`
 leave it out: a database holds one label.
+
+A union reads the tables of the databases its variable lists
+(`commerce_union_databases`) and casts nothing. Its macro compares each
+database's column types with the contract and fails the build on any
+other: the contract alone would pass one that `UNION ALL` widens to the
+contract's type (`Decimal(26, 8)` to `Decimal(38, 8)`). A dataset or a column the
+Ossie model starts to read goes into the union's `schema.yml` in the same
+change, with its type and, for a dataset with a `primary_key`, the key
+test; `tests/check_contracts.py` requires both.
 
 ## Model format
 

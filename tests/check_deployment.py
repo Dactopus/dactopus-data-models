@@ -1,7 +1,7 @@
 # /// script
 # dependencies = ["pyyaml"]
 # ///
-"""Check a package's deployment.yml against the package and its built tables.
+"""Check the deployment.yml of a package or a union against it and its built tables.
 
 deployment.yml declares what a deployment of a package sets and reads:
 the Ossie model its tables serve (`model`), the dbt variables that take
@@ -16,6 +16,13 @@ $CLICKHOUSE_DATABASE:
 
     uv run tests/check_deployment.py sources/shopify --time-zone America/New_York
 
+A union (unions/<domain>/) adds up the tables of several databases, each
+with a deployment of a package. Its deployment.yml has `model` and `vars`,
+which maps one role, input_databases, to the variable that lists those
+databases; rows are counted per day in them, by each package's file:
+
+    uv run tests/check_deployment.py unions/commerce
+
 Checks: the file has these keys and no others; every variable it names
 is in the package's dbt_project.yml, and the label's default is one the
 package accepts (1 to 64 of a-z, 0-9 and _); the model file exists;
@@ -27,7 +34,9 @@ such row when the package
 has a time_zone variable: the table was built in another zone, or in two
 (an incremental run after the variable changed rebuilds only the rows
 that changed), and is due a --full-refresh. A package without the
-variable (GA4: the property's days) only prints the counts.
+variable (GA4: the property's days) only prints the counts. For a union:
+the file has the two keys, its variable is in the union's dbt_project.yml
+and its model file exists.
 
 Connection: CLICKHOUSE_HOST, CLICKHOUSE_PORT (HTTP), CLICKHOUSE_USER,
 CLICKHOUSE_PASSWORD, CLICKHOUSE_DATABASE (default dactopus), as for the
@@ -48,6 +57,8 @@ ROLES = ("input_database", "source_id", "time_zone")
 REQUIRED = {"input_database", "source_id"}
 LABEL = re.compile(r"[a-z0-9_]{1,64}")
 KEYS = {"model", "vars", "daily"}
+UNION_KEYS = {"model", "vars"}
+UNION_ROLES = {"input_databases"}
 DAILY_KEYS = {"table", "date", "time", "gap"}
 
 
@@ -73,14 +84,23 @@ def check(package, time_zone):
     database = os.environ.get("CLICKHOUSE_DATABASE", "dactopus")
     declared = yaml.safe_load((package / "deployment.yml").read_text())
     project = yaml.safe_load((package / "dbt_project.yml").read_text())
-    if not isinstance(declared, dict) or set(declared) != KEYS:
-        return [f"deployment.yml must have the keys {sorted(KEYS)} and no others"]
+    union = package.parent.name == "unions"
+    keys = UNION_KEYS if union else KEYS
+    if not isinstance(declared, dict) or set(declared) != keys:
+        return [f"deployment.yml must have the keys {sorted(keys)} and no others"]
 
     model = root / str(declared["model"])
     if not model.is_file():
         problems.append(f"model {declared['model']} is not a file under {root}")
 
     variables = declared["vars"]
+    if union:
+        if not isinstance(variables, dict) or set(variables) != UNION_ROLES:
+            return problems + [f"vars must map input_databases, and nothing else, to a variable: {variables}"]
+        if variables["input_databases"] not in project.get("vars", {}):
+            problems.append(f"vars.input_databases: {variables['input_databases']} is not a variable of "
+                            f"{project['name']} (dbt_project.yml)")
+        return problems
     if not isinstance(variables, dict) or not REQUIRED <= set(variables) \
             or any(role not in ROLES for role in variables):
         problems.append(f"vars must map input_database and source_id, and may map time_zone, to a variable: {variables}")
@@ -127,7 +147,8 @@ def check(package, time_zone):
 
 
 parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-parser.add_argument("package", type=pathlib.Path, help="the package's directory, sources/<source>")
+parser.add_argument("package", type=pathlib.Path,
+                    help="the package's or the union's directory, sources/<source> or unions/<domain>")
 parser.add_argument("--time-zone", help="the zone the package was built in, to count the rows whose date is not the day of their time there")
 args = parser.parse_args()
 failed = check(args.package, args.time_zone)

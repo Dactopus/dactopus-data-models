@@ -1,0 +1,139 @@
+version: 2
+# Structural checks only; descriptions live in entities/commerce.yaml.
+models:
+  - name: orders
+    data_tests:
+      - commerce_union_unique_key:
+          arguments:
+            columns: [source_id, order_id]
+    columns:
+      - {name: source_id, data_type: "LowCardinality(String)", data_tests: [commerce_union_distinct_source_ids]}
+      - {name: order_id, data_type: UInt64}
+      - {name: order_number, data_type: String}
+      - {name: order_date, data_type: Date}
+      - {name: order_time, data_type: "DateTime('UTC')"}
+      - {name: financial_status, data_type: "Nullable(String)"}
+      - {name: fulfillment_status, data_type: "Nullable(String)"}
+      - {name: is_cancelled, data_type: Bool}
+      - {name: in_sales_reports, data_type: Bool}
+      - {name: channel, data_type: "Nullable(String)"}
+      - {name: currency, data_type: String}
+      - {name: shipping_country, data_type: "Nullable(String)"}
+      - {name: shipping_region, data_type: "Nullable(String)"}
+      - {name: shipping_city, data_type: "Nullable(String)"}
+      - {name: customer_id, data_type: "Nullable(Int64)"}
+      - {name: customer_order_number, data_type: "Nullable(UInt64)"}
+      - {name: new_vs_repeat, data_type: "Nullable(String)"}
+      - {name: days_since_previous_order, data_type: "Nullable(Int64)"}
+      - {name: months_since_first_order, data_type: "Nullable(Int64)"}
+      - {name: item_quantity, data_type: Int64}
+      - {name: discount_code_count, data_type: UInt64}
+      - {name: total, data_type: "Decimal(38, 8)"}
+      - {name: subtotal, data_type: "Decimal(38, 8)"}
+      - {name: discount_total, data_type: "Decimal(38, 8)"}
+      - {name: shipping_total, data_type: "Decimal(38, 8)"}
+      - {name: tax_total, data_type: "Decimal(38, 8)"}
+      - {name: refunded_total, data_type: "Decimal(38, 8)"}
+      - {name: net_total, data_type: "Decimal(38, 8)"}
+  - name: customers
+    data_tests:
+      - commerce_union_unique_key:
+          arguments:
+            columns: [source_id, customer_id]
+    columns:
+      - {name: source_id, data_type: "LowCardinality(String)", data_tests: [commerce_union_distinct_source_ids]}
+      - {name: customer_id, data_type: Int64}
+      - {name: first_order_date, data_type: Date}
+      - {name: last_order_date, data_type: Date}
+      - {name: number_of_orders, data_type: UInt64}
+      - {name: net_total, data_type: "Decimal(38, 8)"}
+      - {name: second_order_within_30_days, data_type: "Nullable(Bool)"}
+      - {name: second_order_within_60_days, data_type: "Nullable(Bool)"}
+      - {name: second_order_within_90_days, data_type: "Nullable(Bool)"}
+      - {name: second_order_within_365_days, data_type: "Nullable(Bool)"}
+  - name: order_lines
+    data_tests:
+      - commerce_union_unique_key:
+          arguments:
+            columns: [source_id, line_id]
+    columns:
+      - {name: source_id, data_type: "LowCardinality(String)", data_tests: [commerce_union_distinct_source_ids]}
+      - {name: line_id, data_type: UInt64}
+      - {name: order_id, data_type: UInt64}
+      - {name: product_id, data_type: "Nullable(UInt64)"}
+      - {name: variant_id, data_type: "Nullable(UInt64)"}
+      - {name: sku, data_type: "Nullable(String)"}
+      - {name: title, data_type: String}
+      - {name: quantity, data_type: Int64}
+      - {name: current_quantity, data_type: Int64}
+      - {name: line_total, data_type: "Decimal(38, 8)"}
+      - {name: returned_quantity, data_type: Int64}
+      - {name: returned_amount, data_type: "Decimal(38, 8)"}
+  - name: line_categories
+    columns:
+      - {name: source_id, data_type: "LowCardinality(String)", data_tests: [commerce_union_distinct_source_ids]}
+      - {name: line_id, data_type: UInt64}
+      - {name: category, data_type: "Nullable(String)"}
+      - {name: category_path, data_type: "Nullable(String)"}
+      - {name: is_direct, data_type: Bool}
+      - {name: quantity, data_type: Int64}
+      - {name: line_total, data_type: "Decimal(38, 8)"}
+      - {name: returned_quantity, data_type: Int64}
+      - {name: returned_amount, data_type: "Decimal(38, 8)"}
+  - name: line_brands
+    columns:
+      - {name: source_id, data_type: "LowCardinality(String)", data_tests: [commerce_union_distinct_source_ids]}
+      - {name: line_id, data_type: UInt64}
+      - {name: brand, data_type: "Nullable(String)"}
+      - {name: quantity, data_type: Int64}
+      - {name: line_total, data_type: "Decimal(38, 8)"}
+      - {name: returned_quantity, data_type: Int64}
+      - {name: returned_amount, data_type: "Decimal(38, 8)"}
+  - name: refunds
+    data_tests:
+      - commerce_union_unique_key:
+          arguments:
+            columns: [source_id, refund_id]
+    columns:
+      - {name: source_id, data_type: "LowCardinality(String)", data_tests: [commerce_union_distinct_source_ids]}
+      - {name: refund_id, data_type: UInt64}
+      - {name: order_id, data_type: UInt64}
+      - {name: refund_date, data_type: Date}
+      - {name: refund_time, data_type: "DateTime('UTC')"}
+      - {name: refunded_amount, data_type: "Decimal(38, 8)"}
+  - name: sales_events
+    data_tests:
+      - commerce_union_unique_key:
+          arguments:
+            columns: [source_id, event_id]
+    columns:
+      - {name: source_id, data_type: "LowCardinality(String)", data_tests: [commerce_union_distinct_source_ids]}
+      - {name: event_id, data_type: String}
+      - {name: event_type, data_type: String}
+      - {name: order_id, data_type: UInt64}
+      - {name: event_date, data_type: Date}
+      - {name: event_time, data_type: "DateTime('UTC')"}
+      - {name: amount, data_type: "Decimal(38, 8)"}
+  - name: products
+    data_tests:
+      - commerce_union_unique_key:
+          arguments:
+            columns: [source_id, product_id]
+    columns:
+      - {name: source_id, data_type: "LowCardinality(String)", data_tests: [commerce_union_distinct_source_ids]}
+      - {name: product_id, data_type: UInt64}
+      - {name: title, data_type: String}
+      - {name: status, data_type: "Nullable(String)"}
+      - {name: last_sold_date, data_type: "Nullable(Date)"}
+  - name: product_categories
+    columns:
+      - {name: source_id, data_type: "LowCardinality(String)", data_tests: [commerce_union_distinct_source_ids]}
+      - {name: product_id, data_type: UInt64}
+      - {name: category, data_type: String}
+      - {name: category_path, data_type: String}
+      - {name: is_direct, data_type: Bool}
+  - name: product_brands
+    columns:
+      - {name: source_id, data_type: "LowCardinality(String)", data_tests: [commerce_union_distinct_source_ids]}
+      - {name: product_id, data_type: UInt64}
+      - {name: brand, data_type: String}
