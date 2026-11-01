@@ -29,7 +29,7 @@ The files are listed in [Layout](CONTRIBUTING.md#layout). A change ships
 with the page that states what it changes, in the same pull request:
 
 - a package's variables, loading recipe, known differences from the
-  source's own reports or limits: the package's `README.md`;
+  source's own reports: the package's `README.md`;
 - what a model answers, how it defines a term or where it stops:
   `docs/<domain>.md`;
 - how the packages go into a dbt project, labels, time zones, serving,
@@ -123,16 +123,15 @@ and with one label in a database and each label in one database
 
 The rules are in [Authoring rules](CONTRIBUTING.md#authoring-rules):
 which fields enter the canon, descriptions and `ai_context`, naming the
-choices that look obvious, where source behaviour comes from. For an
-agent they mean:
+choices that look obvious. Where source behaviour comes from and how it
+is cited: [Adding a source package](CONTRIBUTING.md#adding-a-source-package).
+For an agent they mean:
 
 - A missing description or `ai_context` is a defect, not a style issue:
   agents answer from them.
 - If the source data does not settle a choice (which date an order date
   is, which time zone, what identifies a customer), ask; do not pick
   silently.
-- Cite the source's documentation in the package next to the code that
-  relies on it; do not rely on memory.
 
 ## ClickHouse traits
 
