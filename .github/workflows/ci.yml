@@ -765,8 +765,11 @@ jobs:
       # The instances: each package's fixture built into a database of its
       # own under a label of its own. WooCommerce twice, from one input: the
       # two have the same order, customer and product ids, which only the
-      # label keeps apart. Shopify beside them: the commerce union adds up
-      # the tables of two packages.
+      # label keeps apart; the second keeps its accounts in euros, in
+      # Berlin's time zone, so the union holds two currencies and two
+      # zones: its input is the fixture with each order's USD read as EUR.
+      # Shopify beside them: the commerce union adds up the tables of two
+      # packages.
       - name: Build the instances
         run: |
           load() { python3 -c "
@@ -778,6 +781,13 @@ jobs:
           load tests/shopify/fixture.sql shopify_input
           load sources/woocommerce/input.sql woocommerce_input
           load tests/woocommerce/fixture.sql woocommerce_input
+          q() { curl -sf http://127.0.0.1:8123/ --data-binary "$1"; }
+          q "CREATE DATABASE analytics_woo_b_input"
+          for t in $(q "SELECT name FROM system.tables WHERE database = 'woocommerce_input'"); do
+              q "CREATE VIEW analytics_woo_b_input.$t AS SELECT * FROM woocommerce_input.$t"
+          done
+          q "CREATE OR REPLACE VIEW analytics_woo_b_input.wp_wc_orders AS
+              SELECT * REPLACE (if(currency = 'USD', 'EUR', currency) AS currency) FROM woocommerce_input.wp_wc_orders"
           load sources/ga4/input.sql ga4_input
           load tests/ga4/fixture.sql ga4_input
           load sources/sensor_community/input.sql sensor_community_input
@@ -786,12 +796,12 @@ jobs:
           build() { CLICKHOUSE_DATABASE=$1 $DBT build --project-dir sources/$2 --profiles-dir tests --vars "$3"; }
           build analytics_shop shopify '{"shopify_input_database":"shopify_input","shopify_timezone":"America/New_York","shopify_source_id":"shop"}'
           build analytics_woo_a woocommerce '{"woocommerce_input_database":"woocommerce_input","woocommerce_timezone":"America/New_York","woocommerce_currency":"USD","woocommerce_source_id":"woo_a"}'
-          build analytics_woo_b woocommerce '{"woocommerce_input_database":"woocommerce_input","woocommerce_timezone":"America/New_York","woocommerce_currency":"USD","woocommerce_source_id":"woo_b"}'
+          build analytics_woo_b woocommerce '{"woocommerce_input_database":"analytics_woo_b_input","woocommerce_timezone":"Europe/Berlin","woocommerce_currency":"EUR","woocommerce_source_id":"woo_b"}'
           build analytics_ga4_a ga4 '{"ga4_input_database":"ga4_input","ga4_source_id":"property_a"}'
           build analytics_ga4_b ga4 '{"ga4_input_database":"ga4_input","ga4_source_id":"property_b"}'
           build analytics_iot_a sensor_community '{"sensor_community_input_database":"sensor_community_input","sensor_community_source_id":"network_a"}'
           build analytics_iot_b sensor_community '{"sensor_community_input_database":"sensor_community_input","sensor_community_source_id":"network_b"}'
-      # Each union, its tests (a label in one database, the key unique),
+      # Each union, its test (a label in one database),
       # its views against its contracts and its deployment.yml. Then the
       # Ossie model over the union: each label's answers there must be its
       # database's own, and a total of counts and sums their sum

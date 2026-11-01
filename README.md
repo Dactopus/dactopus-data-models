@@ -1402,8 +1402,9 @@ names, so dbt stops a project that installs a package beside it.
   the build stops on a database whose table gives another, as one built
   by an earlier release would, and names the column.
 - **Tests.** `dbt build` fails when a label is in two of the databases,
-  as for two stores built under the package's default, and when a key of
-  the Ossie model is not unique in a view. The union's own database is
+  as for two stores built under the package's default. Each package
+  tests its keys when it builds, so with a label of its own in each
+  database, every key is unique in the union. The union's own database is
   not one of those it adds up: its views would replace the tables they
   read, and the build stops before.
 - **Views.** The union holds no rows of its own and sees a store's
@@ -1413,8 +1414,10 @@ names, so dbt stops a project that installs a package beside it.
   Each store's numbers are the ones it gives alone, `orders.source_id`
   splits them, and a total adds them up. Customers and products belong
   to their store: a customer of two stores counts twice. Amounts are in
-  each store's currency and a total adds them up as they are, so where
-  the currencies differ, ask by `orders.currency`. Each store's dates
+  each store's currency, and the model converts none: its instructions
+  have an agent ask every amount by `orders.currency` and never add up
+  two currencies, while a query of your own that leaves the currency
+  out adds them up as they are. Each store's dates
   are in its own time zone, and `--time-zone` sets one "today" for all
   of them.
 - **`deployment.yml`.** A union's names its Ossie model and the variable

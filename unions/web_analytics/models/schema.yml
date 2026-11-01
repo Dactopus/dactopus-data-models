@@ -2,10 +2,6 @@ version: 2
 # Structural checks only; descriptions live in entities/web_analytics.yaml.
 models:
   - name: sessions
-    data_tests:
-      - web_analytics_union_unique_key:
-          arguments:
-            columns: [source_id, session_key]
     columns:
       - {name: source_id, data_type: "LowCardinality(String)", data_tests: [web_analytics_union_distinct_source_ids]}
       - {name: session_key, data_type: String}
@@ -22,10 +18,6 @@ models:
       - {name: device_category, data_type: "Nullable(String)"}
       - {name: country, data_type: "Nullable(String)"}
   - name: purchases
-    data_tests:
-      - web_analytics_union_unique_key:
-          arguments:
-            columns: [source_id, purchase_key]
     columns:
       - {name: source_id, data_type: "LowCardinality(String)", data_tests: [web_analytics_union_distinct_source_ids]}
       - {name: purchase_key, data_type: String}

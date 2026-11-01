@@ -2,10 +2,6 @@ version: 2
 # Structural checks only; descriptions live in entities/iot.yaml.
 models:
   - name: readings
-    data_tests:
-      - iot_union_unique_key:
-          arguments:
-            columns: [source_id, sensor_id, measured_at, measure]
     columns:
       - {name: source_id, data_type: "LowCardinality(String)", data_tests: [iot_union_distinct_source_ids]}
       - {name: device_id, data_type: UInt32}
@@ -16,10 +12,6 @@ models:
       - {name: measured_at, data_type: "DateTime('UTC')"}
       - {name: reading_date, data_type: Date}
   - name: devices
-    data_tests:
-      - iot_union_unique_key:
-          arguments:
-            columns: [source_id, device_id]
     columns:
       - {name: source_id, data_type: "LowCardinality(String)", data_tests: [iot_union_distinct_source_ids]}
       - {name: device_id, data_type: UInt32}

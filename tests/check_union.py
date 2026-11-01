@@ -15,9 +15,13 @@ the label would join rows across instances and break the first.
 A url is the ClickHouse URL with the database, as $OSSIE_CLICKHOUSE_URL;
 the model is asked in $OSSIE_CLICKHOUSE_TIME_ZONE. The questions: every
 metric of each dataset by that dataset's source_id; every metric of the
-model by the source_id of the first dataset it reads; and, per model in
-JOINS, metrics by a label and fields of other datasets, through each
-relationship of the model. A count or a sum (an expression that is one
+model by the source_id of the first dataset it reads; and, for each
+relationship of the model, a metric that reads its from side by the
+source_id of its to side, where there is one. A join that matches rows
+across instances puts rows of one under the label of another, even where
+two instances of one fixture give the same values to every other field.
+(Both labels in one question would be plainer, but the executor takes
+no two fields of one name.) A count or a sum (an expression that is one
 COUNT or SUM) is also asked without dimensions, for the total. A metric
 of the time now (CURRENT_TIMESTAMP, CURRENT_DATE) is left out: its
 answer moves between the questions. A question no database answers with
@@ -32,33 +36,6 @@ import sys
 import sqlglot
 import yaml
 from sqlglot import exp
-
-# Metrics by a label and fields of other datasets: (metric, dimensions).
-# Together they go through every relationship of each model. A label from
-# the other side of a relationship catches a join across instances that
-# leaves the dimension's values alone (two instances of one fixture).
-JOINS = {
-    "commerce": [
-        ("sales_events.net_revenue", ["sales_events.source_id", "orders.new_vs_repeat"]),
-        ("sales_events.net_revenue", ["sales_events.source_id", "customers.first_order_month"]),
-        ("orders.revenue", ["orders.source_id", "customers.first_order_month"]),
-        ("refunds_total", ["orders.source_id", "orders.channel"]),
-        ("line_revenue", ["orders.source_id", "products.title"]),
-        ("category_net_revenue", ["orders.source_id", "line_categories.category"]),
-        ("brand_net_revenue", ["orders.source_id", "line_brands.brand"]),
-        ("product_categories.product_count", ["products.source_id", "products.status"]),
-        ("product_brands.product_count", ["products.source_id", "products.status"]),
-    ],
-    "web_analytics": [
-        ("purchases.purchase_count", ["purchases.source_id", "sessions.source"]),
-        ("events.event_count", ["events.source_id", "sessions.medium"]),
-    ],
-    "iot": [
-        ("readings.reading_count", ["readings.source_id", "devices.country_code", "readings.measure"]),
-        ("readings.reporting_devices", ["devices.source_id", "devices.is_indoor"]),
-    ],
-}
-
 
 def expression(item):
     return next(d["expression"] for d in item["expression"]["dialects"] if d["dialect"] == "ANSI_SQL")
@@ -87,9 +64,10 @@ def same_rows(got, expected):
         g.keys() == e.keys() and all(same(g[k], e[k]) for k in e) for g, e in zip(got, expected))
 
 
-def ask(model, url, metrics, dimensions):
+def ask(model, url, metrics, dimensions, filters=()):
     """The answer's rows, sorted by their dimensions, or the executor's error."""
-    args = [a for m in metrics for a in ("-m", m)] + [a for d in dimensions for a in ("-d", d)]
+    args = [a for m in metrics for a in ("-m", m)] + [a for d in dimensions for a in ("-d", d)] \
+        + [a for f in filters for a in ("-f", f)]
     out = subprocess.run(["dactopus-ossie-clickhouse", "query", model, *args, "--json", "--url", url],
                          capture_output=True, text=True)
     if out.returncode:
@@ -99,32 +77,44 @@ def ask(model, url, metrics, dimensions):
 
 
 def questions(model_path):
-    """(metrics, dimensions, the additive ones among the metrics); every question has a label among its dimensions."""
+    """(metrics, dimensions, filters, the additive ones among the metrics); every question has a label
+    among its dimensions."""
     model = yaml.safe_load(model_path.read_text())
     datasets = [d["name"] for d in model["datasets"]]
     found = []
     for dataset in model["datasets"]:
         metrics = [m for m in dataset.get("metrics", []) if not now(m)]
         if metrics:
-            found.append(([f"{dataset['name']}.{m['name']}" for m in metrics], [f"{dataset['name']}.source_id"],
+            found.append(([f"{dataset['name']}.{m['name']}" for m in metrics], [f"{dataset['name']}.source_id"], [],
                           [f"{dataset['name']}.{m['name']}" for m in metrics if additive(m)]))
+    # {metric as asked: the datasets it reads}, the datasets' metrics first.
+    reads = {f"{d['name']}.{m['name']}": {d["name"]}
+             for d in model["datasets"] for m in d.get("metrics", []) if not now(m)}
     first = {}
     for metric in (m for m in model.get("metrics", []) if not now(m)):
         tables = [c.table for c in parse(metric).find_all(exp.Column) if c.table in datasets]
         first.setdefault(tables[0], []).append(metric)
+        reads[metric["name"]] = set(tables)
     for dataset, metrics in first.items():
-        found.append(([m["name"] for m in metrics], [f"{dataset}.source_id"],
+        found.append(([m["name"] for m in metrics], [f"{dataset}.source_id"], [],
                       [m["name"] for m in metrics if additive(m)]))
-    found += [([metric], dimensions, []) for metric, dimensions in JOINS[model_path.stem]]
+    for relationship in model.get("relationships", []):
+        side = relationship["from"]
+        metric = next((m for m, tables in reads.items() if side in tables), None)
+        if metric is None:
+            sys.exit(f"{relationship['name']}: no metric of {model_path} reads {side}, to ask through it")
+        # Rows without a match (guests) would add up under no label in the union.
+        label = f"{relationship['to']}.source_id"
+        found.append(([metric], [label], [f"{label} IS NOT NULL"], []))
     return found
 
 
 def main(model, union, instances):
     failed = asked = 0
-    for metrics, dimensions, totals in questions(pathlib.Path(model)):
+    for metrics, dimensions, filters, totals in questions(pathlib.Path(model)):
         asked += 1
-        got = ask(model, union, metrics, dimensions)
-        parts = [ask(model, url, metrics, dimensions) for url in instances]
+        got = ask(model, union, metrics, dimensions, filters)
+        parts = [ask(model, url, metrics, dimensions, filters) for url in instances]
         errors = [p for p in parts if isinstance(p, str)]
         expected = sorted((r for p in parts if isinstance(p, list) for r in p),
                           key=lambda r: [str(r[k]) for k in r if k not in metrics])

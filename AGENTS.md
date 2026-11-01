@@ -56,8 +56,10 @@ The README describes what works today. Plans go in
                               each built by a package under its own label
       deployment.yml          the Ossie model and the variable that lists
                               the databases
+      macros/union.sql        the view over the databases and its test,
+                              the same file in every union
       macros/<domain>_union.sql
-                              the view over the databases and its tests
+                              the union's variable and its test's name
       models/<entity>.sql     one view per dataset of the Ossie model
       models/schema.yml       the view's columns and types (the dbt
                               contract): those the Ossie model reads,
@@ -106,8 +108,13 @@ database's column types with the contract and fails the build on any
 other: the contract alone would pass one that `UNION ALL` widens to the
 contract's type (`Decimal(26, 8)` to `Decimal(38, 8)`). A dataset or a column the
 Ossie model starts to read goes into the union's `schema.yml` in the same
-change, with its type and, for a dataset with a `primary_key`, the key
-test; `tests/check_contracts.py` requires both.
+change, with its type; `tests/check_contracts.py` requires it. A union
+does not test keys: each package tests the key of each dataset without
+`source_id` (`unique`, or `<package>_unique_key` for several columns),
+and with one label in a database and each label in one database
+(`<domain>_union_distinct_source_ids`), the key is unique in the union.
+`macros/union.sql` is the same file in every union, and
+`macros/freshness.sql` in every package; change all copies at once.
 
 ## Model format
 

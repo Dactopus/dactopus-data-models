@@ -26,16 +26,19 @@ source_id, LowCardinality(String), under the package's one-label test
 (<package>_one_source_id); each dataset of the package's
 Ossie model is a model of the package whose contract starts with the
 dataset's canonical columns; the packages that serve one Ossie model give
-each canonical column one type. Checks every union under unions/: its
-models are views with enforced contracts, one for each dataset of its
-Ossie model and no others; each lists exactly the dataset's canonical
-columns, with the packages' types; source_id is under the test that each
-label is in one database (<domain>_union_distinct_source_ids), and a
-dataset with a primary_key is under the test that the key is unique
-(<domain>_union_unique_key) with that key's columns. In every Ossie model
-under entities/, source_id comes first in each primary_key and on both
-sides of each relationship: without it a union joins rows across
-instances. With --built
+each canonical column one type; the dataset's primary_key without
+source_id is tested unique (unique on its one column, or
+<package>_unique_key on its columns). Checks every union under unions/:
+its models are views with enforced contracts, one for each dataset of
+its Ossie model and no others; each lists exactly the dataset's
+canonical columns, with the packages' types; source_id is under the test
+that each label is in one database (<domain>_union_distinct_source_ids).
+With one label in each database and the packages' key tests, that keeps
+every key unique in a union. In every Ossie model under entities/,
+source_id comes first in each primary_key and on both sides of each
+relationship: without it a union joins rows across instances. The copies
+of one macro file are the same: macros/freshness.sql in every package,
+macros/union.sql in every union. With --built
 <package or union>, also checks its tables and views in
 $CLICKHOUSE_DATABASE against its contracts, column by column in order:
 dbt checks the types of a view but keeps the order of its SELECT.
@@ -133,12 +136,17 @@ def contracts(package):
     return {m["name"]: [(c["name"], c.get("data_type")) for c in m.get("columns", [])] for m in schema["models"]}
 
 
-def label_tests(package):
-    """{model: the tests on its source_id column} from the package's schema.yml."""
-    schema = yaml.safe_load((package / "models" / "schema.yml").read_text())
-    return {m["name"]: [t if isinstance(t, str) else next(iter(t)) for c in m.get("columns", [])
-                        if c["name"] == "source_id" for t in c.get("data_tests", [])]
+def column_tests(project):
+    """{model: {column: the names of its tests}} from the project's schema.yml."""
+    schema = yaml.safe_load((project / "models" / "schema.yml").read_text())
+    return {m["name"]: {c["name"]: [t if isinstance(t, str) else next(iter(t)) for t in c.get("data_tests", [])]
+                        for c in m.get("columns", [])}
             for m in schema["models"]}
+
+
+def label_tests(project):
+    """{model: the tests on its source_id column} from the project's schema.yml."""
+    return {model: columns.get("source_id", []) for model, columns in column_tests(project).items()}
 
 
 def normal(data_type):
@@ -211,6 +219,20 @@ def check(packages, unions, built):
             types = dict(declared[table])
             for column in columns:
                 served.setdefault((model_file, table, column), {})[name] = types.get(column)
+        # A database holds one label, so the key without it is unique in
+        # the package's table: unique on its one column, or
+        # <package>_unique_key on its columns.
+        unique_columns, tests = column_tests(package), model_tests(package)
+        for dataset in yaml.safe_load((ROOT / model_file).read_text())["datasets"]:
+            table = dataset["source"]
+            key = [c for c in dataset.get("primary_key") or [] if c != "source_id"]
+            if not key or table not in declared:
+                continue
+            if not (len(key) == 1 and "unique" in unique_columns.get(table, {}).get(key[0], [])
+                    or tests.get(table, {}).get(f"{name}_unique_key", {}).get("columns") == key):
+                problems.append(f"{name}: {table} must test that its key in {model_file} without source_id, "
+                                f"{', '.join(key)}, is unique: unique on the column, or {name}_unique_key "
+                                f"with the columns")
         if package == built:
             problems += check_built(name, models, declared)
     for union in unions:
@@ -224,13 +246,10 @@ def check(packages, unions, built):
         declared = contracts(union)
         models = sorted(p.stem for p in (union / "models").glob("*.sql"))
         model_file = yaml.safe_load((union / "deployment.yml").read_text())["model"]
-        ossie = yaml.safe_load((ROOT / model_file).read_text())
-        keys = {d["source"]: d.get("primary_key") for d in ossie["datasets"]}
         canonical = canonical_columns(ROOT / model_file)
         if models != sorted(canonical):
             problems.append(f"{name}: its models must be the datasets of {model_file}, "
                             f"{', '.join(sorted(canonical))}; they are {', '.join(models)}")
-        tests = model_tests(union)
         for model in models:
             problem = typed(name, model, declared)
             if problem:
@@ -238,10 +257,6 @@ def check(packages, unions, built):
                 continue
             if f"{prefix}_distinct_source_ids" not in label_tests(union)[model]:
                 problems.append(f"{name}: source_id of {model} must be tested by {prefix}_distinct_source_ids")
-            key = tests.get(model, {}).get(f"{prefix}_unique_key", {}).get("columns")
-            if model in keys and key != keys[model]:
-                problems.append(f"{name}: {model} must be tested by {prefix}_unique_key with the columns of "
-                                f"its primary_key in {model_file}, {keys[model]}; it has {key}")
             listed = [c for c, _ in declared[model]]
             if model in canonical and listed != canonical[model]:
                 problems.append(f"{name}: {model} must list the columns {model_file} reads and no others, "
@@ -265,6 +280,12 @@ def check(packages, unions, built):
         if len({normal(t) for t in types.values()}) > 1:
             problems.append(f"{model_file}: {table}.{column} has different types: "
                             f"{', '.join(f'{p} {t}' for p, t in sorted(types.items()))}")
+    # Copies of one file, kept in each project so that each installs alone.
+    for projects, macro in ((packages, "freshness.sql"), (unions, "union.sql")):
+        texts = {(p / "macros" / macro).read_bytes() if (p / "macros" / macro).is_file() else None for p in projects}
+        if None in texts or len(texts) > 1:
+            problems.append(f"macros/{macro} must be the same file in each of "
+                            f"{', '.join(str(p.relative_to(ROOT)) for p in projects)}: copy one over the others")
     return problems
 
 

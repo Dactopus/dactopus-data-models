@@ -52,3 +52,14 @@ SELECT 1 FROM (
 )
 WHERE other != 0
 {%- endtest %}
+
+{# A key of several columns is unique: a sensor gives one value of a
+   measure at a time (readings). The package keeps one row of each sensor
+   and time (readings.sql), and an incremental run replaces a sensor-day
+   whole. #}
+{% test sensor_community_unique_key(model, columns) -%}
+SELECT {{ columns | join(', ') }}, count() AS rows
+FROM {{ model }}
+GROUP BY {{ columns | join(', ') }}
+HAVING rows > 1
+{%- endtest %}
