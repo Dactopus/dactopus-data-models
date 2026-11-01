@@ -165,18 +165,21 @@ that any Ossie tool reads. The only extension used is dactopus-ossie-clickhouse'
 `CLICKHOUSE` namespace and its `dedup` key.
 
 **The canon is selected, not designed.** A field that at least two
-sources provide goes into the canonical entity. While a domain has a
-single source (GA4 for events), a field qualifies when its meaning does
-not depend on that source. Where the second source is known but not yet
-packaged, the field must exist there too, checked against its
-documentation. A field only one source has is not modelled until a
-second source needs it. A reference domain (`iot`) is built from one
-public dataset with no second source planned: a field qualifies when any
-network of devices would have it with the same meaning.
+sources provide goes into the canonical entity. A source that has less
+of it still provides it when the meaning is the same: a category with
+its subcategories, where Shopify's product types have no subcategories.
+While a domain has a single source (GA4 for events), a field qualifies
+when its meaning does not depend on that source. Where the second source
+is known but not yet packaged, the field must exist there too, checked
+against its documentation. A field only one source has is not modelled
+until a second source needs it. A reference domain (`iot`) is built from
+one public dataset with no second source planned: a field qualifies when
+any network of devices would have it with the same meaning. No canonical
+field goes in "for completeness".
 
 **Descriptions are part of the model.** Agents answer from descriptions,
-synonyms and `ai_context`. Without them even strong models guess. A dbt
-`.yml` description is the minimum, not the target.
+synonyms and `ai_context`. Without them even strong models guess. A
+one-line description is the minimum, not the target.
 
 **Name the "obvious" choices.** Models break on what looks obvious:
 - Order date: placed, paid or shipped? Store time zone or UTC?

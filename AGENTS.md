@@ -1,7 +1,11 @@
 # AGENTS.md
 
 Guidance for AI coding agents working in this repository. What the project
-is and why: [README.md](README.md).
+is and why: [README.md](README.md). How the repository is laid out, what a
+source package is, what is out of scope, the authoring rules and the
+checks before a pull request: [CONTRIBUTING.md](CONTRIBUTING.md). This
+file holds what an agent applies while writing and CONTRIBUTING.md does
+not state.
 
 ## Language
 
@@ -11,77 +15,41 @@ includes examples and test data written by hand.
 
 ## Scope
 
-Everything must be releasable under Apache 2.0. Do not add:
-
-- Anything that needs two sources at once: attribution, matching customers
-  across systems, cross-source marts. A package covers one source. A
-  union adds up the tables of several instances of one domain side by
-  side, each row under its label, and matches nothing across them.
-- Data loading code or API connectors. Loading is a recipe in the package's README.
-- Query execution. That is dactopus-ossie-clickhouse.
-- Placeholders or stubs for any of the above.
+Everything must be releasable under Apache 2.0. What does not belong
+here: [Out of scope](CONTRIBUTING.md#out-of-scope). Do not add
+placeholders or stubs for any of it either: no loader skeletons, no
+cross-source marts "to fill in later".
 
 The README describes what works today. Plans go in
 [ROADMAP.md](ROADMAP.md), never into the README as if they existed.
 
-## Layout
+## Documentation
 
-    entities/<domain>.yaml    one Ossie model per domain: its entities,
-                              relationships and metrics
-    sources/<source>/         one package per source, a dbt project:
-      input.sql               the input table the package accepts
-      deployment.yml          what a deployment sets and reads: the Ossie
-                              model, the variables for the input
-                              database, the label and the time zone, the
-                              tables counted per day; every package ships
-                              one
-      macros/                 SQL the package's models share
-      models/<entity>.sql     one model per entity, named after it; an
-                              entity that is a view over a built table
-                              has that table as <entity>_<part>.sql
-                              (devices_archive.sql)
-      models/schema.yml       structural checks (dbt tests) and each
-                              column's type (the dbt contract)
-      tests/                  singular dbt tests, for checks a generic
-                              test cannot express
-    tests/<source>/           hand-written input rows and the numbers the
-                              model must answer over them
-    tests/ask_model.py        asks the questions, shared by every source
-    tests/check_freshness.py  checks the ages `dbt source freshness`
-                              reports, shared by every source
-    tests/check_deployment.py checks the deployment.yml of each package
-                              and union against it and its built tables
-    unions/<domain>/          one union per domain, a dbt project of views
-                              that add up the tables of several databases,
-                              each built by a package under its own label
-      deployment.yml          the Ossie model and the variable that lists
-                              the databases
-      macros/union.sql        the view over the databases and its test,
-                              the same file in every union
-      macros/<domain>_union.sql
-                              the union's variable and its test's name
-      models/<entity>.sql     one view per dataset of the Ossie model
-      models/schema.yml       the view's columns and types (the dbt
-                              contract): those the Ossie model reads,
-                              no others; its tests
-    tests/check_contracts.py  checks the contracts of the packages and the
-                              unions against the Ossie models and each
-                              other
-    tests/check_union.py      checks a union's answers against those of
-                              the databases it adds up
-    tests/profiles.yml        the dbt profile CI and the checks build
-                              with; a package ships none
-    docs/architecture.svg     the diagram, shown in the README and, with
-    docs/index.html           the text for each part, on GitHub Pages;
-                              update both in the change that alters
-                              what they show
+The files are listed in [Layout](CONTRIBUTING.md#layout). A change ships
+with the page that states what it changes, in the same pull request:
+
+- a package's variables, loading recipe, known differences from the
+  source's own reports or limits: the package's `README.md`;
+- what a model answers, how it defines a term or where it stops:
+  `docs/<domain>.md`;
+- how the packages go into a dbt project, labels, time zones, serving,
+  unions: `docs/deployment.md`;
+- the checks, the layout, the authoring rules: `CONTRIBUTING.md`;
+- what the diagram shows: `docs/architecture.svg` and `docs/index.html`,
+  both.
+
+A number in a guide (a count of metrics or questions, a memory
+measurement) is checked against the code before it is written.
+Descriptions of fields and metrics live in the Ossie entity only; do not
+repeat them in `schema.yml`.
+
+## Models, packages and unions
 
 An entity holds schema (grain, keys), field descriptions and simple
 metrics. A package holds the mapping from the source, the refresh
 strategy and structural checks. Never put source-specific logic in an
 entity. A model writes the table or view `<entity>`, which the entity's
-`source` names. Descriptions live in the Ossie entity only; do not repeat them in
-`schema.yml`.
+`source` names.
 
 No database name is written into a model, an entity or a package: the
 deployment chooses them. A `source` is a bare table name, read in the
@@ -153,30 +121,18 @@ and with one label in a database and each label in one database
 
 ## Authoring rules
 
-- A field goes into a canonical entity only when at least two sources
-  provide it. A source that has less of it still provides it when the
-  meaning is the same: a category with its subcategories, where
-  Shopify's product types have no subcategories. While a domain has a
-  single source (GA4 for events), a field qualifies when its meaning
-  does not depend on that source; where
-  the second source is known but not yet packaged, it must exist there
-  too, checked against its documentation. A source-only field is not
-  modelled yet. A reference domain (`iot`) is built from one public
-  dataset with no second source planned: a field qualifies when any
-  network of devices would have it with the same meaning. Do not add
-  canonical fields "for completeness".
-- Every field and metric gets a description, and `ai_context` with
-  synonyms where an analyst could phrase it differently. Agents answer
-  from these; a missing description is a defect, not a style issue.
-- Choices that look obvious are not: which date an order date is
-  (placed, paid, shipped), which time zone, what identifies a customer.
-  State the choice and the reason in the description. If the source
-  data does not settle it, ask; do not pick silently.
-- Source behaviour (what a status means, when a refund counts, duplicate
-  events) comes from the source's documentation or the data. Cite the
-  documentation in the package; do not rely on memory.
-- A package adapted from a Fivetran dbt package says so and keeps
-  Fivetran's license notice.
+The rules are in [Authoring rules](CONTRIBUTING.md#authoring-rules):
+which fields enter the canon, descriptions and `ai_context`, naming the
+choices that look obvious, where source behaviour comes from. For an
+agent they mean:
+
+- A missing description or `ai_context` is a defect, not a style issue:
+  agents answer from them.
+- If the source data does not settle a choice (which date an order date
+  is, which time zone, what identifies a customer), ask; do not pick
+  silently.
+- Cite the source's documentation in the package next to the code that
+  relies on it; do not rely on memory.
 
 ## ClickHouse traits
 
@@ -207,28 +163,17 @@ and with one label in a database and each label in one database
 
 ## Verifying work
 
-A model that validates can still return wrong numbers. For a change to a
-model:
+A model that validates can still return wrong numbers. A change to a
+model or a package is done when every step of
+[Checks before a pull request](CONTRIBUTING.md#checks-before-a-pull-request)
+has passed, and the report shows the hand-written queries and both
+results. A change to descriptions, `ai_context` or model instructions is
+checked by asking, in fresh sessions with more than one AI model, the
+questions it affects.
 
-1. `dactopus-ossie-clickhouse validate <model> --url <clickhouse>/<database>`
-   passes against loaded data.
-2. `dbt build` of the package passes: models and their tests.
-3. An incremental run over unchanged input changes nothing, and matches a
-   `--full-refresh` build row for row.
-4. A number the change affects matches a hand-written ClickHouse query
-   over the same data. Show both queries and both results.
-5. `tests/<source>/check_numbers.py` passes over that source's fixture
-   (CI runs it). A changed number gets a new expected value with its
-   derivation; a new source behaviour gets fixture rows. Check that a
-   new case fails against the old code.
-6. A change to descriptions, `ai_context` or model instructions changes
-   what agents answer. Ask the questions it affects through
-   `dactopus-ossie-clickhouse serve` (MCP), in fresh sessions, with more than one
-   AI model, and compare every number in the answers with the
-   hand-written queries.
-
-Facts about ClickHouse behaviour and the GA4 export schema come from
-running queries (`clickhouse local` or a server), not from memory.
+Facts about ClickHouse behaviour and a source's export schema come from
+running queries (`clickhouse local` or a server) or from the source's
+documentation, cited next to the code, not from memory.
 
 ## Development
 

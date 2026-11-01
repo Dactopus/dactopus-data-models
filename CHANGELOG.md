@@ -67,6 +67,12 @@ names the Ossie schema version its models carry.
 
 ### Changed
 
+- AGENTS.md keeps what an agent applies while writing and is not in
+  CONTRIBUTING.md: the rules of `source_id`, contracts and unions, the
+  model format, ClickHouse traits, which page a change ships with, and
+  the development setup. Layout, scope, the authoring rules and the
+  checks before a pull request are read from CONTRIBUTING.md, which
+  takes the canon rule's two details from it.
 - The README is split. Each package's guide (loading, settings, known
   differences from the source's own reports) is `sources/<source>/README.md`;
   what each Ossie model answers and its limits is `docs/<domain>.md`;
