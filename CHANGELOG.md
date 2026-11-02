@@ -8,6 +8,18 @@ names the Ossie schema version its models carry.
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-11-02
+
+Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.12.0,
+dbt v2 (`dbt-oss` 2.0.8) and dbt v1 (`dbt-core` 1.11 with
+`dbt-clickhouse` 1.10) on ClickHouse 26.9, the WooCommerce package also
+on 26.7. Several stores, properties or networks in one deployment: every
+table starts with the label `source_id`, `orders` carries `platform`,
+and the unions add up the tables of several databases. Every column has
+a declared type, and some types change: an incremental run stops on the
+changed schema, and a deployment runs `dbt build --full-refresh` once.
+No input table changes.
+
 ### Added
 
 - Every table of every package has a first column `source_id`, the
@@ -977,7 +989,8 @@ ClickHouse 26.9.
 - Hand-written GA4 rows and the numbers the model must answer over them
   (`tests/ga4`), checked in CI on both dbt versions.
 
-[Unreleased]: https://github.com/Dactopus/dactopus-data-models/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/Dactopus/dactopus-data-models/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/Dactopus/dactopus-data-models/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/Dactopus/dactopus-data-models/compare/v0.7.2...v0.8.0
 [0.7.2]: https://github.com/Dactopus/dactopus-data-models/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/Dactopus/dactopus-data-models/compare/v0.7.0...v0.7.1
