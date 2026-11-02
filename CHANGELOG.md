@@ -30,9 +30,13 @@ names the Ossie schema version its models carry.
   a table, with `tests/commerce/tables.sql`, their DDL in standard SQL.
   The questions and their expected rows are in
   `tests/<source>/questions.yaml`. `tests/run_canon.py` loads the files
-  into an engine (ClickHouse today) and asks the questions through
-  dactopus-ossie-clickhouse, so the model's numbers can be checked
-  without dbt or the platform's raw rows. `tests/export_canon.py` writes
+  into ClickHouse and asks the questions through dactopus-ossie-clickhouse,
+  so the model's numbers can be checked without dbt or the platform's raw
+  rows; `--engine duckdb` asks them through DuckDB's community extension
+  `ossie` instead. With its 0.3.0, 66 of the 95 questions give the same
+  numbers and 19 are refused. 8 fail on `COUNT(DISTINCT source_id, x)`,
+  which is not standard SQL, and 2 differ: by `products.status`, it
+  leaves out the lines of products the `products` table does not have. `tests/export_canon.py` writes
   the files from a built package, and CI fails when a build differs from
   them.
 

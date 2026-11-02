@@ -63,19 +63,25 @@ def matches(got, expected):
         g.keys() == e.keys() and all(same(g[k], e[k]) for k in e) for g, e in zip(got, expected))
 
 
-def check(model, cases, ask=ask, quit=True):
+def check(model, cases, ask=ask, quit=True, refused=None):
     """Ask each case with ask(model, case); print the ones that differ and the count.
 
-    Exits with 1 if any differ, else 0; with quit=False returns the number that differ.
+    An answer refused(got) holds for (an engine's deliberate refusal of a
+    question) is printed as refused and does not count as a difference. Exits
+    with 1 if any differ, else 0; with quit=False returns the number that differ.
     """
-    failed = 0
+    failed = refusals = 0
     cases = [case_of(*case) if isinstance(case, tuple) else case for case in cases]
     for case in cases:
         got = ask(model, case)
-        if not matches(got, case["expected"]):
+        if refused and refused(got):
+            refusals += 1
+            print(f"REFUSED {' '.join(flags(case))}\n  {got}")
+        elif not matches(got, case["expected"]):
             failed += 1
             print(f"FAIL {' '.join(flags(case))}\n  expected {case['expected']}\n  got      {got}")
-    print(f"{len(cases) - failed} of {len(cases)} questions match")
+    print(f"{len(cases) - failed - refusals} of {len(cases)} questions match"
+          + (f", {refusals} refused" if refusals else ""))
     if quit:
         sys.exit(1 if failed else 0)
     return failed

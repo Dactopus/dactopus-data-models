@@ -243,7 +243,8 @@ package or a model:
    `uv run tests/export_canon.py <source>` (`--windows` for the second)
    and commit the files. `uv run tests/run_canon.py <source> --engine
    clickhouse` (`--windows`) then asks the questions of the files alone;
-   CI does both.
+   CI does both. `--engine duckdb` asks them through DuckDB's community
+   extension `ossie`, which refuses some questions; CI does not run it.
 7. A change to descriptions, `ai_context` or model instructions changes
    what agents answer. Ask the questions it affects through
    `dactopus-ossie-clickhouse serve` (MCP), in fresh sessions, with more

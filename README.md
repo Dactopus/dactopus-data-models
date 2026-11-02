@@ -166,7 +166,7 @@ The same walk, and then your own store or property, for each source:
 - Checking the commerce model's numbers without dbt or the platform's raw
   rows: load the canonical tables of `tests/shopify/canon` or
   `tests/woocommerce/canon` and ask the questions of `questions.yaml`
-  with `tests/run_canon.py`
+  with `tests/run_canon.py`, on ClickHouse or DuckDB
   ([CONTRIBUTING.md](CONTRIBUTING.md#checks-before-a-pull-request)).
 - Layout, what a source package is, out of scope, authoring rules and
   the checks before a pull request: [CONTRIBUTING.md](CONTRIBUTING.md).

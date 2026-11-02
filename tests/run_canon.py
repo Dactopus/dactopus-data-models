@@ -1,5 +1,5 @@
 # /// script
-# dependencies = ["pyyaml", "sqlglot"]
+# dependencies = ["duckdb==1.5.6", "pytz", "pyyaml", "sqlglot"]
 # ///
 """Ask the commerce model its questions over the canonical tables, with no dbt.
 
@@ -13,6 +13,7 @@ raw rows to the model. Run from the repository root:
 
     uv run tests/run_canon.py shopify --engine clickhouse
     uv run tests/run_canon.py woocommerce --windows --engine clickhouse
+    uv run tests/run_canon.py shopify --engine duckdb
 
 Prints "N of N questions match" and exits with 1 if one differs.
 
@@ -20,6 +21,13 @@ clickhouse: loads the tables into a new database of the server of
 CLICKHOUSE_HOST, CLICKHOUSE_PORT (HTTP), CLICKHOUSE_USER, CLICKHOUSE_PASSWORD, asks
 through dactopus-ossie-clickhouse and drops the database. --database names it
 (default canon_<package>_<random>); it must not exist.
+
+duckdb: loads the tables into DuckDB in memory (--database: a file instead) and asks
+through DuckDB's community extension ossie, which it installs. The extension refuses
+some questions; they are printed as refused, with its reason, and do not count as a
+difference. CI does not run it: the extension is not ours, and with 0.3.0 questions of
+each package differ (COUNT(DISTINCT source_id, x) is not standard SQL, and it leaves
+out the rows a many-to-one relationship finds no match for).
 
 Another engine is a class with create(sql), load(table, csv_path) and ask(model, case),
 and an entry in ENGINES.
@@ -98,7 +106,117 @@ class ClickHouse:
         self.post(f"DROP DATABASE IF EXISTS {self.database}")
 
 
-ENGINES = {"clickhouse": ClickHouse}
+class DuckDB:
+    """The tables in a DuckDB database in memory; the model is asked through DuckDB's
+    community extension ossie (https://duckdb.org/community_extensions/extensions/ossie).
+
+    The extension (0.3.0) does not read the metrics of a dataset (apache/ossie#591), so
+    the model is loaded with each of them moved to the model's metrics as
+    <dataset>__<metric>: its columns qualified with the dataset, COUNT(*) counted on the
+    dataset's key. The answers name them back. The extension refuses a question it
+    cannot answer with one aggregate per grain or without fan-out (two facts in one
+    question, a filter on a dataset that repeats the counted rows, no metric); such a
+    question is reported as refused, not as a wrong number. Any other error is one.
+    """
+
+    @staticmethod
+    def refused(got):
+        return isinstance(got, str) and "Invalid Input Error: ossie: " in got
+
+    def __init__(self, database, time_zone):
+        import duckdb
+
+        self.connection = duckdb.connect(database or ":memory:")
+        self.connection.execute(f"SET TimeZone = '{time_zone}'")
+        self.connection.execute("INSTALL ossie FROM community")
+        self.connection.execute("LOAD ossie")
+        self.model = None
+
+    def create(self, sql):
+        self.connection.execute(sql)
+
+    def load(self, table, csv_path):
+        # Read as text and cast to the table's types: a time carries its offset.
+        self.connection.execute(f"INSERT INTO {table} SELECT * FROM read_csv(?, header = true, "
+                                f"nullstr = '{canon.NULL}', all_varchar = true)", [str(csv_path)])
+
+    def load_model(self, model):
+        import tempfile
+
+        import sqlglot
+        import yaml
+        from sqlglot import exp
+
+        document = yaml.safe_load(pathlib.Path(model).read_text())
+        self.metrics = {}
+        for dataset in document["datasets"]:
+            for metric in dataset.pop("metrics", None) or []:
+                for dialect in metric["expression"]["dialects"]:
+                    expression = sqlglot.parse_one(dialect["expression"])
+                    for star in list(expression.find_all(exp.Star)):
+                        if isinstance(star.parent, exp.Count):
+                            star.replace(exp.column(dataset["primary_key"][-1], dataset["name"]))
+                    for column in expression.find_all(exp.Column):
+                        if not column.table:
+                            column.set("table", exp.to_identifier(dataset["name"]))
+                    dialect["expression"] = expression.sql()
+                name = f"{dataset['name']}.{metric['name']}"
+                metric["name"] = self.metrics[name] = f"{dataset['name']}__{metric['name']}"
+                document.setdefault("metrics", []).append(metric)
+        with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False) as file:
+            yaml.safe_dump(document, file, sort_keys=False)
+        self.connection.execute("CALL ossie_load(?)", [file.name])
+        pathlib.Path(file.name).unlink()
+        self.names = {moved: name for name, moved in self.metrics.items()}
+        self.model = model
+
+    def ask(self, model, case):
+        import datetime
+        import decimal
+
+        import duckdb
+
+        if self.model != model:
+            self.load_model(model)
+
+        def term(name):
+            return self.metrics.get(name, name)
+
+        def order(item):
+            name, _, direction = item.partition(" ")
+            return f'"{term(name)}" {direction}'.strip()
+
+        query = "SELECT * FROM ossie_query(?, ?, ?)"
+        if case.get("order"):
+            query += " ORDER BY " + ", ".join(order(item) for item in case["order"])
+        if "limit" in case:
+            query += f" LIMIT {int(case['limit'])}"
+        try:
+            result = self.connection.execute(query, [[term(m) for m in case.get("metrics", [])],
+                                                     case.get("dimensions", []), case.get("filters", [])])
+        except duckdb.Error as error:
+            return str(error).splitlines()[0]
+
+        def value(v):
+            # As dactopus-ossie-clickhouse --json writes them. DATE_TRUNC of a date is a
+            # timestamp at midnight in DuckDB, a date in ClickHouse: the same day.
+            if isinstance(v, decimal.Decimal):
+                return float(v)
+            if isinstance(v, datetime.datetime) and v.tzinfo is None and v.time() == datetime.time():
+                return v.date().isoformat()
+            if isinstance(v, (datetime.date, datetime.datetime)):
+                return v.isoformat()
+            return v
+
+        # A dimension is named by its field, a metric as it was asked.
+        columns = [self.names.get(c[0], c[0].split(".")[-1]) for c in result.description]
+        return [dict(zip(columns, map(value, row))) for row in result.fetchall()]
+
+    def close(self):
+        self.connection.close()
+
+
+ENGINES = {"clickhouse": ClickHouse, "duckdb": DuckDB}
 
 
 def main():
@@ -119,7 +237,8 @@ def main():
     try:
         for table in tables:
             engine.load(table, csv_dir / f"{table}.csv")
-        ask_model.check(str(canon.ROOT / model_file), cases, ask=engine.ask)
+        ask_model.check(str(canon.ROOT / model_file), cases, ask=engine.ask,
+                        refused=getattr(engine, "refused", None))
     finally:
         engine.close()
 
