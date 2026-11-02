@@ -85,12 +85,17 @@ the Ossie model its tables serve, the variables above by their role
 (input database, label, time zone) and the tables a deployment counts rows per
 day in, with the Date column it counts by and the time column that date
 is the day of. A tool that deploys the packages reads it in place of
-this section. A change of `shopify_timezone` or `woocommerce_timezone`
-needs `dbt build --full-refresh`: an incremental run rebuilds only the
-orders and refunds loaded since the last one, the rest keep the days of
-the old zone, and no dbt test fails. `uv run tests/check_deployment.py
-sources/shopify --time-zone <zone>` counts the rows whose date is not
-the day of their time in the zone: none in a table built whole in it.
+this section. A package's days are in the zone of the variable with the
+role `time_zone` (Shopify, WooCommerce), in the `zone` the package fixes
+(Sensor.Community: UTC), or in the source's own zone, which only the
+deployment knows (GA4: neither key). A change of `shopify_timezone` or
+`woocommerce_timezone` needs `dbt build --full-refresh`: an incremental
+run rebuilds only the orders and refunds loaded since the last one, the
+rest keep the days of the old zone, and no dbt test fails. `uv run
+tests/check_deployment.py sources/shopify --time-zone <zone>` counts the
+rows whose date is not the day of their time in the zone: none in a table
+built whole in it. For a package with `zone` the check runs without
+`--time-zone`.
 
 Point dactopus-ossie-clickhouse at your target's database
 (`--url http://host:8123/<database>`, or `https://` over TLS) and take

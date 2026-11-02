@@ -51,7 +51,8 @@ release it builds on; older releases are untested.
       input.sql               the input tables the package accepts
       deployment.yml          what a deployment sets and reads: the Ossie
                               model, the variables for the input database,
-                              the label and the time zone, the tables
+                              the label and the time zone, the zone the
+                              package fixes for its days, the tables
                               counted per day
       macros/<source>.sql     SQL the package's models share
       macros/freshness.sql    `dbt source freshness` on dbt v2, the same
@@ -292,7 +293,10 @@ project in `sources/<source>/`, laid out as in [Layout](#layout):
   dbt source with their freshness; the macro file is the same in every
   package.
 - `deployment.yml`: the Ossie model, the variables by their role and the
-  tables counted per day. `tests/check_deployment.py` checks it.
+  tables counted per day. A package whose model fixes the zone of its
+  days (`toDate(..., 'UTC')`) declares it as `zone`, without the role
+  `time_zone`; a package whose days are in the source's zone declares
+  neither. `tests/check_deployment.py` checks it.
 - `README.md`: how to load the source, the package's variables, and its
   known differences from the source's own reports.
 - `tests/<source>/fixture.sql` and `check_numbers.py`: hand-written rows,
