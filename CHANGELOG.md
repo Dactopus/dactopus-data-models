@@ -180,6 +180,8 @@ names the Ossie schema version its models carry.
   to which date the data reaches instead of reporting them as days
   without visits; the latest date is a whole day, and a low count there
   is not a partial export (#48). `docs/web_analytics.md` says the same.
+- `ROADMAP.md`: Magento (Adobe Commerce) under Exploring, a store whose
+  MySQL database reaches ClickHouse by CDC, as WooCommerce's does.
 
 ## [0.8.0] - 2026-10-30
 
