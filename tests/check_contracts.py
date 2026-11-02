@@ -99,16 +99,21 @@ def expression(item):
     return next(d["expression"] for d in item["expression"]["dialects"] if d["dialect"] == "ANSI_SQL")
 
 
-def canonical_columns(model_path):
-    """{dataset source: [column, ...]}: the columns the Ossie model reads, in the order it first reads them.
+def field_columns(model):
+    """{dataset: {field: [column, ...]}}: the columns each field's expression reads.
 
-    A name that is one of the dataset's fields stands for the columns of
-    that field's expression; any other name is a column.
+    A name in an expression that is one of the dataset's fields stands
+    for these columns; any other name is a column.
     """
+    return {d["name"]: {f["name"]: [c for _, c in references(expression(f))] for f in d.get("fields", [])}
+            for d in model["datasets"]}
+
+
+def canonical_columns(model_path):
+    """{dataset source: [column, ...]}: the columns the Ossie model reads, in the order it first reads them."""
     model = yaml.safe_load(model_path.read_text())
     datasets = {d["name"]: d for d in model["datasets"]}
-    fields = {name: {f["name"]: [c for _, c in references(expression(f))] for f in d.get("fields", [])}
-              for name, d in datasets.items()}
+    fields = field_columns(model)
     read = {name: [] for name in datasets}
 
     def add(dataset, name):
@@ -137,21 +142,29 @@ def bool_comparisons(model_path, bool_columns):
 
     bool_columns is {(table, column)} for the columns the packages type
     Bool. ClickHouse and DuckDB take true = 1; Postgres has no such
-    operator, so the model writes the column alone.
+    operator, so the model writes the column alone. A name that is one of
+    the dataset's fields stands for the columns of its expression.
     """
     model = yaml.safe_load(model_path.read_text())
     sources = {d["name"]: d["source"] for d in model["datasets"]}
+    fields = field_columns(model)
+
+    def is_bool(dataset, name):
+        return dataset in sources and any((sources[dataset], c) in bool_columns
+                                          for c in fields[dataset].get(name, [name]))
+
     items = [(d["name"], i) for d in model["datasets"] for i in d.get("fields", []) + d.get("metrics", [])]
     items += [(None, m) for m in model.get("metrics", [])]
     found = []
     for dataset, item in items:
         sql = expression(item)
-        for comparison in sqlglot.parse_one(sql, read="snowflake").find_all(exp.EQ, exp.NEQ):
-            sides = (comparison.this, comparison.expression)
-            for column, other in (sides, sides[::-1]):
-                if isinstance(column, exp.Column) and isinstance(other, exp.Literal) and other.is_number \
-                        and (sources.get(column.table or dataset), column.name) in bool_columns:
-                    found.append((f"{dataset}.{item['name']}" if dataset else item["name"], sql))
+        tree = sqlglot.parse_one(sql, read="snowflake")
+        sides = [(c.this, c.expression) for c in tree.find_all(exp.EQ, exp.NEQ, exp.GT, exp.GTE, exp.LT, exp.LTE)]
+        sides += [(c.this, e) for c in tree.find_all(exp.In) for e in c.expressions]
+        if any(isinstance(column, exp.Column) and isinstance(other, exp.Literal) and other.is_number
+               and is_bool(column.table or dataset, column.name)
+               for pair in sides for column, other in (pair, pair[::-1])):
+            found.append((f"{dataset}.{item['name']}" if dataset else item["name"], sql))
     return found
 
 

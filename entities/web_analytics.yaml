@@ -30,8 +30,8 @@ ai_context:
     been exported or loaded yet: say up to which date the data reaches,
     and never report those days as days without visits or purchases. The
     latest date with rows is a whole day: GA4 can still add events that
-    arrive late for up to two days after it, but a low count on that day
-    is its traffic, not a partial export. A user is a
+    arrive late for up to three days after it, but a low count on that
+    day is its traffic, not a partial export. A user is a
     browser on a device (GA4 user_pseudo_id), not a person, and is counted
     within a property: a browser that visited two properties counts in
     each, so sessions.users adds up across them. The model does not match

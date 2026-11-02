@@ -79,10 +79,13 @@ compare the website with the apps. It adds input columns too.
 
 ### Magento (Adobe Commerce)
 
-Magento Open Source and Adobe Commerce share one code base and run more
-live stores than BigCommerce, many of them large retailers. A store keeps
-its data in its own MySQL database, which reaches ClickHouse by change
-data capture (CDC), as a WooCommerce store's does
+Magento Open Source and Adobe Commerce share one code base and run
+about three times as many live stores as BigCommerce, though the count
+has been falling since 2021 ([Store
+Leads](https://storeleads.app/reports/magento),
+[BigCommerce](https://storeleads.app/reports/bigcommerce)). A store
+keeps its data in its own MySQL database, which reaches ClickHouse by
+change data capture (CDC), as a WooCommerce store's does
 ([sources/woocommerce](sources/woocommerce/README.md)). Open: whether
 Magento's order tables, copied this way, give the numbers of Magento's
 own reports; and demand, since the stores the library is built for today
