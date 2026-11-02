@@ -809,11 +809,21 @@ jobs:
           python3 tests/sensor_community/check_numbers.py
           OSSIE_CLICKHOUSE_URL=http://127.0.0.1:8123/analytics_full python3 tests/sensor_community/check_numbers.py
       # deployment.yml names what a deployment sets and reads; the check
-      # holds it to the package and the built tables. reading_date is the
-      # UTC day by the model, not by a variable, so the count against
-      # UTC only prints.
+      # holds it to the package and the built tables. The file declares
+      # zone: UTC, the zone reading_date is in by the model, not by a
+      # variable: the check counts in it, with no option, and fails on a
+      # row off. The negative run moves every reading_date a day, and the
+      # count must find it and the check fail on readings.
       - name: Check deployment.yml
-        run: uv run tests/check_deployment.py sources/sensor_community --time-zone UTC
+        run: |
+          q() { curl -sf http://127.0.0.1:8123/ --data-binary "$1"; }
+          uv run tests/check_deployment.py sources/sensor_community
+          q "CREATE DATABASE analytics_zones"
+          q "CREATE TABLE analytics_zones.readings AS analytics.readings"
+          q "INSERT INTO analytics_zones.readings SELECT * REPLACE (reading_date + 1 AS reading_date) FROM analytics.readings"
+          if CLICKHOUSE_DATABASE=analytics_zones uv run tests/check_deployment.py sources/sensor_community > zones.txt; then cat zones.txt; exit 1; fi
+          cat zones.txt
+          grep -q '^FAIL readings has rows' zones.txt
       - name: Check column contracts and the built tables
         run: uv run tests/check_contracts.py --built sources/sensor_community
       - name: Validate the Ossie model against the built tables
