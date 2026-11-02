@@ -8,6 +8,11 @@ names the Ossie schema version its models carry.
 
 ## [Unreleased]
 
+### Changed
+
+- The label examples in `docs/deployment.md` name a store's role, not its
+  platform: `main_store`, `outlet_store`, `wholesale_store`, `usa_store`.
+
 ## [0.9.0] - 2026-11-02
 
 Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.12.0,

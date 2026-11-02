@@ -164,7 +164,7 @@ variable lists. A commerce union takes Shopify and WooCommerce stores
 alike.
 
 ```bash
-dbt build --project-dir unions/commerce --vars '{commerce_union_databases: [shop_us, shop_eu, woo_wholesale]}'
+dbt build --project-dir unions/commerce --vars '{commerce_union_databases: [main_store, outlet_store, wholesale_store]}'
 ```
 
 The union is a dbt project of its own, with its database as the target:
@@ -202,7 +202,7 @@ names, so dbt stops a project that installs a package beside it.
 - **Labels.** Agents know a store, property or network by its label,
   and a store also by its currency and its platform (`orders.platform`);
   the model has no country or market. Give labels that name what people
-  call them (`shop_us`, `woo_wholesale`); an agent asked about "the US
+  call them (`usa_store`, `wholesale_store`); an agent asked about "the US
   store" picks the label that names it, and asks when none does. An
   order, customer, product or device id is unique within its label only.
 - **`deployment.yml`.** A union's file names its Ossie model and the variable
