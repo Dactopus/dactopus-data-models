@@ -12,7 +12,7 @@ read order lines, their categories and brands, or refunds together with
   `buyer_count`, `repeat_order_share`, `average_days_between_orders`.
   They break down by the order's date, week and month; payment and
   fulfillment status, cancelled or not, counted in the store's reports
-  or not, channel and currency; shipping country, region and city; new
+  or not, channel, currency and the store's platform; shipping country, region and city; new
   or repeat customer, the order's place among its customer's orders,
   days since the customer's previous order and months since their
   first; and by the customer's fields below, such as the month of their

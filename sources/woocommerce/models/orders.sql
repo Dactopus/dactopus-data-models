@@ -193,6 +193,8 @@ SELECT
     -- Amounts are in the store's currency, converted from the order's
     -- where a multi-currency plugin placed it in another (woocommerce_rates).
     {{ woocommerce_store_currency() }} AS currency,
+    -- The store's platform, for agents over stores of several (entities/commerce.yaml).
+    CAST('woocommerce' AS LowCardinality(String)) AS platform,
     o.order_currency AS order_currency,
     {{ woocommerce_amount(woocommerce_total('o.total_amount', 'op.shipping_total_amount', 'op.shipping_tax_amount', 'o.tax_amount')) }} AS total,
     -- Shipping after its discounts, without tax (a store enters it so).

@@ -26,6 +26,7 @@ models:
       - {name: in_sales_reports, data_type: Bool}
       - {name: channel, data_type: "Nullable(String)"}
       - {name: currency, data_type: String, data_tests: [not_null]}
+      - {name: platform, data_type: "LowCardinality(String)"}
       - {name: shipping_country, data_type: "Nullable(String)"}
       - {name: shipping_region, data_type: "Nullable(String)"}
       - {name: shipping_city, data_type: "Nullable(String)"}

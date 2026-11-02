@@ -16,21 +16,28 @@ ai_context:
     source_id, and their currencies can differ. Query every amount with
     orders.currency as a dimension. With one currency, answer in it and name
     its code. With several, give each currency separately and never add up
-    or rank together amounts in different currencies; the model converts
-    none. Amounts of
+    or rank together amounts in different currencies, nor compare their
+    size in any other way: not "more", not a ratio, not whether an exchange
+    rate could close the gap; the model converts none. Amounts of
     customers (customers.net_amount, customers.average_customer_value)
-    cannot be grouped by orders.currency: query them by customers.source_id,
-    and each store's currency as orders.currency by orders.source_id. Counts
-    add up across stores. A store is a label the deployment chose, which may
-    name the store (uk_outlet) or not; the model knows of a store its label
-    and its currency, not its platform, country or market, so never state
-    one the label does not give. When the question names or describes a
-    store in any way (a name, a country, a platform, a kind of store, a
-    currency), first get the labels: orders.order_count by orders.source_id
-    and orders.currency. Take the label that names the store, or the one
-    store in a currency the question names; when none clearly matches, list
-    the labels with their currencies and ask which is meant, and do not
-    pick a store by its currency otherwise. Only a question that names no
+    cannot be grouped by orders.currency or orders.platform: query them by
+    customers.source_id, and each store's currency and platform as
+    orders.currency and orders.platform by orders.source_id. Counts add up
+    across stores. A store is a label the deployment chose, which may name
+    the store (uk_outlet) or not; the model knows of a store its label, its
+    currency and its platform (orders.platform, shopify or woocommerce),
+    not its country or market, so never state one the label does not give;
+    a currency does not tell a market either, and where a store's orders
+    ship to is orders.shipping_country.
+    Where a rule below differs between Shopify and WooCommerce,
+    orders.platform says which applies to a store. When the question names
+    or describes a store in any way (a name, a country, a platform, a kind
+    of store, a currency), first get the labels: orders.order_count by
+    orders.source_id, orders.currency and orders.platform. Take the label
+    that names the store, or the one store in a currency or on a platform
+    the question names; when none clearly matches, list the labels with
+    their currencies and platforms and ask which is meant, and do not pick
+    a store by its currency or platform otherwise. Only a question that names no
     store means all of them; answer it without a word about stores unless
     a result shows more than one. A store missing from a result has no rows
     there, a zero, and is still one of the stores. Dates are in each
@@ -277,6 +284,17 @@ datasets:
         dimension: {is_time: false}
         ai_context:
           synonyms: [currency code]
+      - name: platform
+        expression: {dialects: [{dialect: ANSI_SQL, expression: platform}]}
+        description: >
+          Platform of the store the order comes from, shopify or
+          woocommerce: one per store. Where the store's reports count
+          differently on each (which orders count, the date an order goes
+          by), the descriptions name the platform.
+        datatype: String
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [store platform, ecommerce platform, Shopify, WooCommerce]
       - name: shipping_country
         expression: {dialects: [{dialect: ANSI_SQL, expression: shipping_country}]}
         description: >
