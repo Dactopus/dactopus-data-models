@@ -10,8 +10,9 @@ names the Ossie schema version its models carry.
 
 ### Changed
 
-- The label examples in `docs/deployment.md` name a store's role, not its
-  platform: `main_store`, `outlet_store`, `wholesale_store`, `usa_store`.
+- The example databases and labels in `docs/deployment.md` name what
+  the store is, not its platform: databases `main_store`, `outlet_store`,
+  `wholesale_store`, labels `usa_store`, `wholesale_store`.
 
 ## [0.9.0] - 2026-11-02
 
