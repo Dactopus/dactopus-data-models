@@ -33,6 +33,13 @@ ai_context:
     devices.last_contact_at below the time minus the period. Name both in the
     answer ("as of 00:35 UTC, 3 minutes ago"). An age of hours or days means
     the snapshots are not running: say so, the answer is about that time.
+    One deployment can hold several sensor networks, each under its own
+    source_id, a label the deployment chose; a question that names no
+    network means all of them, and devices.device_count adds up across
+    them. Each network has its own latest contact: with more than one, get
+    devices.last_contact_time and devices.minutes_since_last_contact by
+    devices.source_id, and filter each network's devices by its own time
+    ((devices.source_id = 'a' AND devices.last_contact_at < ...) OR ...).
 
 datasets:
   - name: readings
@@ -49,10 +56,13 @@ datasets:
       - name: source_id
         expression: {dialects: [{dialect: ANSI_SQL, expression: source_id}]}
         description: >
-          Label of the sensor network the row comes from, which the deployment
-          sets: one value for every row of a sensor network.
+          Sensor network the row comes from: the label the deployment gives it,
+          which may name the network or not, one value for every row of a
+          network. Group by it to answer per network or to compare them.
         datatype: String
         dimension: {is_time: false}
+        ai_context:
+          synonyms: [network, sensor network]
       - name: device_id
         expression: {dialects: [{dialect: ANSI_SQL, expression: device_id}]}
         description: Site the reading was taken at (devices.device_id).
@@ -190,10 +200,13 @@ datasets:
       - name: source_id
         expression: {dialects: [{dialect: ANSI_SQL, expression: source_id}]}
         description: >
-          Label of the sensor network the row comes from, which the deployment
-          sets: one value for every row of a sensor network.
+          Sensor network the row comes from: the label the deployment gives it,
+          which may name the network or not, one value for every row of a
+          network. Group by it to answer per network or to compare them.
         datatype: String
         dimension: {is_time: false}
+        ai_context:
+          synonyms: [network, sensor network]
       - name: device_id
         expression: {dialects: [{dialect: ANSI_SQL, expression: device_id}]}
         description: Identifier of the site, the network's location id.

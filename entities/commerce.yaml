@@ -20,7 +20,15 @@ ai_context:
     customers (customers.net_amount, customers.average_customer_value)
     cannot be grouped by orders.currency: query them by customers.source_id,
     and each store's currency as orders.currency by orders.source_id. Counts
-    add up across stores. Dates are in each store's own time zone. The
+    add up across stores. A store is a label the deployment chose, which may
+    name the store (shop_us) or not; the model knows of a store its label
+    and its currency, not its platform, country or market. For a store the
+    question names (the US store, the Shopify one), take the label that
+    names it; when no label clearly does, list the labels with their
+    currencies and ask which is meant, and do not pick one by its currency.
+    A question that names no store means all of them. Dates are in each
+    store's own time zone; CURRENT_DATE is the date in the model's time
+    zone, so with stores in several zones, name the date you asked for. The
     numbers follow the store's own sales reports: every metric but orders.all_orders and
     orders.all_orders_total counts only the orders those reports count
     (orders.in_sales_reports). Shopify's reports count every order, cancelled
@@ -120,10 +128,13 @@ datasets:
       - name: source_id
         expression: {dialects: [{dialect: ANSI_SQL, expression: source_id}]}
         description: >
-          Label of the store the row comes from, which the deployment
-          sets: one value for every row of a store.
+          Store the row comes from: the label the deployment gives it, which
+          may name the store (shop_us) or not, one value for every row of a
+          store. Group by it to answer per store or to compare stores.
         datatype: String
         dimension: {is_time: false}
+        ai_context:
+          synonyms: [store, shop, storefront, store name, webshop]
       - name: order_id
         expression: {dialects: [{dialect: ANSI_SQL, expression: order_id}]}
         description: Identifier of the order in the store.
@@ -623,10 +634,13 @@ datasets:
       - name: source_id
         expression: {dialects: [{dialect: ANSI_SQL, expression: source_id}]}
         description: >
-          Label of the store the row comes from, which the deployment
-          sets: one value for every row of a store.
+          Store the row comes from: the label the deployment gives it, which
+          may name the store (shop_us) or not, one value for every row of a
+          store. Group by it to answer per store or to compare stores.
         datatype: String
         dimension: {is_time: false}
+        ai_context:
+          synonyms: [store, shop, storefront, store name, webshop]
       - name: customer_id
         expression: {dialects: [{dialect: ANSI_SQL, expression: customer_id}]}
         description: >
@@ -853,10 +867,13 @@ datasets:
       - name: source_id
         expression: {dialects: [{dialect: ANSI_SQL, expression: source_id}]}
         description: >
-          Label of the store the row comes from, which the deployment
-          sets: one value for every row of a store.
+          Store the row comes from: the label the deployment gives it, which
+          may name the store (shop_us) or not, one value for every row of a
+          store. Group by it to answer per store or to compare stores.
         datatype: String
         dimension: {is_time: false}
+        ai_context:
+          synonyms: [store, shop, storefront, store name, webshop]
       - name: line_id
         expression: {dialects: [{dialect: ANSI_SQL, expression: line_id}]}
         description: Identifier of the line in the store.
@@ -978,10 +995,13 @@ datasets:
       - name: source_id
         expression: {dialects: [{dialect: ANSI_SQL, expression: source_id}]}
         description: >
-          Label of the store the row comes from, which the deployment
-          sets: one value for every row of a store.
+          Store the row comes from: the label the deployment gives it, which
+          may name the store (shop_us) or not, one value for every row of a
+          store. Group by it to answer per store or to compare stores.
         datatype: String
         dimension: {is_time: false}
+        ai_context:
+          synonyms: [store, shop, storefront, store name, webshop]
       - name: line_id
         expression: {dialects: [{dialect: ANSI_SQL, expression: line_id}]}
         description: The line of goods (order_lines.line_id).
@@ -1075,10 +1095,13 @@ datasets:
       - name: source_id
         expression: {dialects: [{dialect: ANSI_SQL, expression: source_id}]}
         description: >
-          Label of the store the row comes from, which the deployment
-          sets: one value for every row of a store.
+          Store the row comes from: the label the deployment gives it, which
+          may name the store (shop_us) or not, one value for every row of a
+          store. Group by it to answer per store or to compare stores.
         datatype: String
         dimension: {is_time: false}
+        ai_context:
+          synonyms: [store, shop, storefront, store name, webshop]
       - name: line_id
         expression: {dialects: [{dialect: ANSI_SQL, expression: line_id}]}
         description: The line of goods (order_lines.line_id).
@@ -1139,10 +1162,13 @@ datasets:
       - name: source_id
         expression: {dialects: [{dialect: ANSI_SQL, expression: source_id}]}
         description: >
-          Label of the store the row comes from, which the deployment
-          sets: one value for every row of a store.
+          Store the row comes from: the label the deployment gives it, which
+          may name the store (shop_us) or not, one value for every row of a
+          store. Group by it to answer per store or to compare stores.
         datatype: String
         dimension: {is_time: false}
+        ai_context:
+          synonyms: [store, shop, storefront, store name, webshop]
       - name: refund_id
         expression: {dialects: [{dialect: ANSI_SQL, expression: refund_id}]}
         description: Identifier of the refund in the store.
@@ -1215,10 +1241,13 @@ datasets:
       - name: source_id
         expression: {dialects: [{dialect: ANSI_SQL, expression: source_id}]}
         description: >
-          Label of the store the row comes from, which the deployment
-          sets: one value for every row of a store.
+          Store the row comes from: the label the deployment gives it, which
+          may name the store (shop_us) or not, one value for every row of a
+          store. Group by it to answer per store or to compare stores.
         datatype: String
         dimension: {is_time: false}
+        ai_context:
+          synonyms: [store, shop, storefront, store name, webshop]
       - name: event_id
         expression: {dialects: [{dialect: ANSI_SQL, expression: event_id}]}
         description: Identifier of the event, its kind and the order's or refund's id, such as order-1001.
@@ -1324,10 +1353,13 @@ datasets:
       - name: source_id
         expression: {dialects: [{dialect: ANSI_SQL, expression: source_id}]}
         description: >
-          Label of the store the row comes from, which the deployment
-          sets: one value for every row of a store.
+          Store the row comes from: the label the deployment gives it, which
+          may name the store (shop_us) or not, one value for every row of a
+          store. Group by it to answer per store or to compare stores.
         datatype: String
         dimension: {is_time: false}
+        ai_context:
+          synonyms: [store, shop, storefront, store name, webshop]
       - name: product_id
         expression: {dialects: [{dialect: ANSI_SQL, expression: product_id}]}
         description: The store's product (order_lines.product_id).
@@ -1405,10 +1437,13 @@ datasets:
       - name: source_id
         expression: {dialects: [{dialect: ANSI_SQL, expression: source_id}]}
         description: >
-          Label of the store the row comes from, which the deployment
-          sets: one value for every row of a store.
+          Store the row comes from: the label the deployment gives it, which
+          may name the store (shop_us) or not, one value for every row of a
+          store. Group by it to answer per store or to compare stores.
         datatype: String
         dimension: {is_time: false}
+        ai_context:
+          synonyms: [store, shop, storefront, store name, webshop]
       - name: product_id
         expression: {dialects: [{dialect: ANSI_SQL, expression: product_id}]}
         description: The product (products.product_id).
@@ -1473,10 +1508,13 @@ datasets:
       - name: source_id
         expression: {dialects: [{dialect: ANSI_SQL, expression: source_id}]}
         description: >
-          Label of the store the row comes from, which the deployment
-          sets: one value for every row of a store.
+          Store the row comes from: the label the deployment gives it, which
+          may name the store (shop_us) or not, one value for every row of a
+          store. Group by it to answer per store or to compare stores.
         datatype: String
         dimension: {is_time: false}
+        ai_context:
+          synonyms: [store, shop, storefront, store name, webshop]
       - name: product_id
         expression: {dialects: [{dialect: ANSI_SQL, expression: product_id}]}
         description: The product (products.product_id).

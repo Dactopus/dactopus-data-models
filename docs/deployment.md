@@ -196,7 +196,14 @@ names, so dbt stops a project that installs a package beside it.
   two currencies, while a query of your own that leaves the currency
   out adds them up as they are. Each store's dates
   are in its own time zone, and `--time-zone` sets one "today" for all
-  of them.
+  of them. A GA4 user belongs to a property, as a customer to a store: a
+  browser that visited two sites counts in each. A sensor network's
+  silent devices count from that network's own latest contact.
+- **Labels.** Agents know a store, property or network by its label
+  alone: the model has no platform, country or market. Give labels that
+  name what people call them (`shop_us`, `woo_wholesale`); an agent asked
+  about "the US store" picks the label that names it, and asks when none
+  does.
 - **`deployment.yml`.** A union's file names its Ossie model and the variable
   that lists the databases (role `input_databases`). Rows per day are
   counted in the stores' databases, by their packages' files.

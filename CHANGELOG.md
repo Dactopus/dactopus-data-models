@@ -28,7 +28,14 @@ names the Ossie schema version its models carry.
   `sessions.users`, `sessions.user_conversion_rate`): the tables of
   several stores, each built with its own label, keep their orders and
   customers apart. In one database the label is constant and every
-  number stays the same.
+  number stays the same. Its description and synonyms (store, shop;
+  property, site; network) let an agent find it, and each model's
+  instructions say how to answer over several: a store, property or
+  network the question names is the label that names it, and an agent
+  asks when none does; a question that names none means all of them;
+  "today" is the date where the model is served, while each one's dates
+  are in its own zone. GA4 users count within a property, and a sensor
+  network's silent devices count from its own latest contact.
 - Unions: `unions/commerce`, `unions/web_analytics` and `unions/iot`, dbt
   projects that add up the tables of several stores, properties or
   networks, each built by its package into a database of its own under

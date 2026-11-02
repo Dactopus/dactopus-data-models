@@ -10,8 +10,17 @@ ai_context:
     Purchases and revenue here are what web analytics recorded on the site,
     not the store's orders: they miss purchases made with tracking blocked and
     may differ from the store's own figures. Say so when someone compares them
-    with sales. Dates are in the GA4 property's time zone. A user is a browser
-    on a device (GA4 user_pseudo_id), not a person. Session and user counts
+    with sales. One deployment can hold several GA4 properties (sites), each
+    under its own source_id. A property is a label the deployment chose,
+    which may name the site or not; the model knows nothing else of it. For
+    a site the question names, take the label that names it; when no label
+    clearly does, list the labels and ask which is meant. A question that
+    names no property means all of them. Dates are in each property's own
+    time zone; CURRENT_DATE is the date in the model's time zone, so with
+    properties in several zones, name the date you asked for. A user is a
+    browser on a device (GA4 user_pseudo_id), not a person, and is counted
+    within a property: a browser that visited two properties counts in
+    each, so sessions.users adds up across them. Session and user counts
     are exact; the GA4 interface estimates them, so its numbers can be
     slightly different. "Conversion rate" without a qualifier means
     sessions.session_conversion_rate; name the definition in the answer and
@@ -33,7 +42,8 @@ ai_context:
     purchases.currency returns; do not guess a currency sign. When this model
     is served together with the commerce model, questions about sales,
     revenue, orders or average order value mean the store's figures there;
-    answer them from it alone. The metrics here answer what web analytics
+    answer them from it alone. Properties and stores have labels of their
+    own, and the model does not link a property to a store. The metrics here answer what web analytics
     recorded, and a comparison of the two names both; any amount from here
     goes by purchases.currency or as purchases.gross_purchase_revenue_usd.
 
@@ -50,10 +60,13 @@ datasets:
       - name: source_id
         expression: {dialects: [{dialect: ANSI_SQL, expression: source_id}]}
         description: >
-          Label of the analytics property the row comes from, which the deployment
-          sets: one value for every row of an analytics property.
+          GA4 property the row comes from: the label the deployment gives it,
+          which may name the site (site_us) or not, one value for every row of
+          a property. Group by it to answer per property or to compare them.
         datatype: String
         dimension: {is_time: false}
+        ai_context:
+          synonyms: [property, GA4 property, site, website]
       - name: session_key
         expression: {dialects: [{dialect: ANSI_SQL, expression: session_key}]}
         description: Identifier of the session, unique across users.
@@ -69,7 +82,7 @@ datasets:
           synonyms: [visitor, user, client id]
       - name: session_date
         expression: {dialects: [{dialect: ANSI_SQL, expression: session_date}]}
-        description: Date the session started, in the GA4 property's time zone.
+        description: Date the session started, in its GA4 property's time zone.
         datatype: Date
         dimension: {is_time: true}
         ai_context:
@@ -193,7 +206,8 @@ datasets:
         expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(DISTINCT source_id, user_pseudo_id)"}]}
         description: >
           Number of distinct browsers on devices that visited. Not people: one
-          person on two devices counts twice.
+          person on two devices counts twice, and a browser that visited two
+          GA4 properties counts in each.
         datatype: Integer
         ai_context:
           synonyms: [visitors, unique visitors, total users]
@@ -233,10 +247,13 @@ datasets:
       - name: source_id
         expression: {dialects: [{dialect: ANSI_SQL, expression: source_id}]}
         description: >
-          Label of the analytics property the row comes from, which the deployment
-          sets: one value for every row of an analytics property.
+          GA4 property the row comes from: the label the deployment gives it,
+          which may name the site (site_us) or not, one value for every row of
+          a property. Group by it to answer per property or to compare them.
         datatype: String
         dimension: {is_time: false}
+        ai_context:
+          synonyms: [property, GA4 property, site, website]
       - name: purchase_key
         expression: {dialects: [{dialect: ANSI_SQL, expression: purchase_key}]}
         description: Identifier of the purchase.
@@ -256,7 +273,7 @@ datasets:
         datatype: String
       - name: purchase_date
         expression: {dialects: [{dialect: ANSI_SQL, expression: purchase_date}]}
-        description: Date of the purchase, in the GA4 property's time zone.
+        description: Date of the purchase, in its GA4 property's time zone.
         datatype: Date
         dimension: {is_time: true}
         ai_context:
@@ -365,10 +382,13 @@ datasets:
       - name: source_id
         expression: {dialects: [{dialect: ANSI_SQL, expression: source_id}]}
         description: >
-          Label of the analytics property the row comes from, which the deployment
-          sets: one value for every row of an analytics property.
+          GA4 property the row comes from: the label the deployment gives it,
+          which may name the site (site_us) or not, one value for every row of
+          a property. Group by it to answer per property or to compare them.
         datatype: String
         dimension: {is_time: false}
+        ai_context:
+          synonyms: [property, GA4 property, site, website]
       - name: event_name
         expression: {dialects: [{dialect: ANSI_SQL, expression: event_name}]}
         description: >
@@ -384,7 +404,7 @@ datasets:
         datatype: String
       - name: event_date
         expression: {dialects: [{dialect: ANSI_SQL, expression: event_date}]}
-        description: Date of the event, in the GA4 property's time zone.
+        description: Date of the event, in its GA4 property's time zone.
         datatype: Date
         dimension: {is_time: true}
         ai_context:
