@@ -1,0 +1,15 @@
+source_id,line_id,brand,quantity,line_total,returned_quantity,returned_amount
+shopify,11,Acme,2,100,0,0
+shopify,21,dactopus-dev,1,80,0,0
+shopify,31,\N,1,30,0,0
+shopify,41,Northwind,1,81,0,0
+shopify,42,Acme,2,90,1,45
+shopify,51,Acme,1,60,1,60
+shopify,61,Northwind,1,200,1,200
+shopify,71,Northwind,1,100,0,0
+shopify,72,\N,1,20,0,0
+shopify,81,\N,1,90,0,0
+shopify,82,dactopus-dev,1,45,0,0
+shopify,101,Acme,1,60,1,60
+shopify,111,Acme,2,40,0,0
+shopify,121,Acme,2,190,0,0

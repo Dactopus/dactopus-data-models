@@ -1,0 +1,5 @@
+source_id,refund_id,order_id,refund_date,refund_time,refunded_amount
+woocommerce,901,104,2026-10-05,2026-10-05 14:00:00+00:00,29.7
+woocommerce,902,111,2026-09-22,2026-09-22 12:00:00+00:00,33
+woocommerce,903,112,2026-10-02,2026-10-02 09:00:00+00:00,5
+woocommerce,904,107,2026-09-10,2026-09-10 10:00:00+00:00,22

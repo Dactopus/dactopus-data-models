@@ -1,0 +1,11 @@
+source_id,product_id,title,status,last_sold_date
+shopify,101,T-shirt,active,2026-09-05
+shopify,102,Mug,active,2026-09-12
+shopify,103,Scarf,active,\N
+shopify,104,Hoodie,active,2026-09-15
+shopify,105,Cap,active,\N
+shopify,106,Jacket,archived,2026-09-10
+shopify,108,Socks,active,2026-10-02
+shopify,110,Cotton T-shirt,active,2026-10-03
+shopify,111,Teapot,draft,\N
+shopify,112,Poster,active,\N

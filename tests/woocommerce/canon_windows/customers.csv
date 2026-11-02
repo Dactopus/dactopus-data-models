@@ -1,0 +1,11 @@
+source_id,customer_id,first_order_date,last_order_date,number_of_orders,net_total,second_order_within_30_days,second_order_within_60_days,second_order_within_90_days,second_order_within_365_days
+woocommerce,-2011,2026-03-02,2026-03-20,2,44,true,true,true,\N
+woocommerce,-119,2026-09-30,2026-09-30,1,22,\N,\N,\N,\N
+woocommerce,-112,2026-09-28,2026-10-01,2,83,\N,\N,\N,\N
+woocommerce,1,2026-08-10,2026-10-09,5,225.5,true,\N,\N,\N
+woocommerce,2,2026-08-20,2026-10-03,4,112,true,\N,\N,\N
+woocommerce,11,2025-09-01,2026-08-01,2,44,false,false,false,true
+woocommerce,12,2025-10-08,2025-10-08,1,22,false,false,false,false
+woocommerce,13,2025-10-09,2025-10-09,1,22,false,false,false,\N
+woocommerce,14,2026-05-01,2026-07-30,2,44,false,false,true,\N
+woocommerce,15,2026-06-01,2026-07-15,2,44,false,true,true,\N

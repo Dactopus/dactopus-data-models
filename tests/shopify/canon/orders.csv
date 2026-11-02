@@ -1,0 +1,12 @@
+source_id,order_id,order_number,order_date,order_time,financial_status,fulfillment_status,is_cancelled,in_sales_reports,channel,currency,platform,shipping_country,shipping_region,shipping_city,customer_id,customer_order_number,new_vs_repeat,days_since_previous_order,months_since_first_order,item_quantity,discount_code_count,total,subtotal,discount_total,shipping_total,tax_total,refunded_total,net_total
+shopify,1001,#1001,2026-08-10,2026-08-10 15:00:00+00:00,partially_refunded,fulfilled,false,true,web,USD,shopify,US,NY,New York,1,1,new,\N,-1,2,0,110,100,0,10,0,0,110
+shopify,1002,#1002,2026-08-20,2026-08-20 15:00:00+00:00,unpaid,unfulfilled,false,true,web,USD,shopify,\N,\N,\N,\N,\N,\N,\N,\N,1,0,80,80,0,0,0,0,80
+shopify,1003,#1003,2026-08-31,2026-09-01 02:00:00+00:00,voided,unfulfilled,false,true,web,USD,shopify,\N,\N,\N,2,1,new,\N,-1,1,0,30,30,0,0,0,0,30
+shopify,1004,#1004,2026-09-05,2026-09-05 15:00:00+00:00,partially_refunded,unfulfilled,false,true,web,USD,shopify,US,NY,New York,1,2,repeat,26,1,3,1,181,171,29,10,0,45,136
+shopify,1005,#1005,2026-09-08,2026-09-08 15:00:00+00:00,refunded,unfulfilled,true,true,web,USD,shopify,CA,ON,Toronto,2,2,repeat,8,1,1,0,60,60,0,0,0,60,0
+shopify,1006,#1006,2026-09-10,2026-09-10 15:00:00+00:00,refunded,unfulfilled,false,true,web,USD,shopify,CA,\N,Toronto,2,3,repeat,2,1,1,0,210,200,0,10,0,210,0
+shopify,1007,#1007,2026-09-15,2026-09-15 15:00:00+00:00,paid,partially_fulfilled,false,true,web,USD,shopify,US,NY,New York,1,4,repeat,3,1,2,0,137,120,0,5,12,0,137
+shopify,1008,#1008,2026-09-12,2026-09-12 15:00:00+00:00,partially_refunded,unfulfilled,false,true,dactopus-import,USD,shopify,CA,ON,Toronto,1,3,repeat,7,1,2,1,169.5,135,15,15,19.5,16.95,152.55
+shopify,1010,#1010,2026-09-25,2026-09-25 15:00:00+00:00,voided,unfulfilled,true,true,web,USD,shopify,US,CA,San Francisco,3,1,new,\N,-1,1,0,70,60,0,10,0,0,0
+shopify,1011,#1011,2026-10-02,2026-10-02 15:00:00+00:00,paid,unfulfilled,false,true,web,USD,shopify,CA,ON,Toronto,2,4,repeat,22,2,2,1,40,40,0,0,0,0,40
+shopify,1012,#1012,2026-10-03,2026-10-03 16:00:00+00:00,paid,unfulfilled,false,true,web,USD,shopify,CA,ON,Toronto,\N,\N,\N,\N,\N,2,0,272.5,190,0,16.95,31.35,0,272.5

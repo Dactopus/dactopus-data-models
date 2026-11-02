@@ -1,0 +1,10 @@
+source_id,product_id,category,category_path,is_direct
+woocommerce,11,Accessories,Kitchen & Dining > Accessories,true
+woocommerce,11,Gifts,Gifts,true
+woocommerce,11,Kitchen & Dining,Kitchen & Dining,true
+woocommerce,12,Clothing,Clothing,false
+woocommerce,12,T-Shirts,Clothing > T-Shirts,true
+woocommerce,15,Accessories,Clothing > Accessories,true
+woocommerce,15,Clothing,Clothing,false
+woocommerce,15,Gifts,Gifts,true
+woocommerce,16,Kitchen & Dining,Kitchen & Dining,true

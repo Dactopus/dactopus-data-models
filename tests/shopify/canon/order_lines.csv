@@ -1,0 +1,15 @@
+source_id,line_id,order_id,product_id,variant_id,sku,title,quantity,current_quantity,line_total,returned_quantity,returned_amount
+shopify,11,1001,101,1011,TEE-M,T-shirt,2,2,100,0,0
+shopify,21,1002,102,1021,MUG,Mug,1,1,80,0,0
+shopify,31,1003,\N,\N,EBOOK,Field guide,1,1,30,0,0
+shopify,41,1004,104,1041,HOODIE,Hoodie,1,1,81,0,0
+shopify,42,1004,101,1011,TEE-M,T-shirt,2,1,90,1,45
+shopify,51,1005,105,1051,CAP,Cap,1,0,60,1,60
+shopify,61,1006,106,1061,JACKET,Jacket,1,0,200,1,200
+shopify,71,1007,104,1041,HOODIE,Hoodie,1,1,100,0,0
+shopify,72,1007,\N,\N,\N,Gift wrap,1,1,20,0,0
+shopify,81,1008,107,1071,BLANKET,Blanket,1,1,90,0,0
+shopify,82,1008,102,1021,MUG,Mug,1,1,45,0,0
+shopify,101,1010,105,1051,CAP,Cap,1,0,60,1,60
+shopify,111,1011,108,1081,SOCKS,Socks,2,2,40,0,0
+shopify,121,1012,110,1101,TEE-COTTON,Cotton T-shirt,2,2,190,0,0
