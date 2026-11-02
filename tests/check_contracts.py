@@ -36,7 +36,9 @@ that each label is in one database (<domain>_union_distinct_source_ids).
 With one label in each database and the packages' key tests, that keeps
 every key unique in a union. In every Ossie model under entities/,
 source_id comes first in each primary_key and on both sides of each
-relationship: without it a union joins rows across instances. The copies
+relationship: without it a union joins rows across instances. No
+expression of an Ossie model compares a column the packages type Bool
+with a number (is_cancelled = 1): Postgres rejects it. The copies
 of one macro file are the same: macros/freshness.sql in every package,
 macros/union.sql in every union. With --built
 <package or union>, also checks its tables and views in
@@ -97,16 +99,21 @@ def expression(item):
     return next(d["expression"] for d in item["expression"]["dialects"] if d["dialect"] == "ANSI_SQL")
 
 
-def canonical_columns(model_path):
-    """{dataset source: [column, ...]}: the columns the Ossie model reads, in the order it first reads them.
+def field_columns(model):
+    """{dataset: {field: [column, ...]}}: the columns each field's expression reads.
 
-    A name that is one of the dataset's fields stands for the columns of
-    that field's expression; any other name is a column.
+    A name in an expression that is one of the dataset's fields stands
+    for these columns; any other name is a column.
     """
+    return {d["name"]: {f["name"]: [c for _, c in references(expression(f))] for f in d.get("fields", [])}
+            for d in model["datasets"]}
+
+
+def canonical_columns(model_path):
+    """{dataset source: [column, ...]}: the columns the Ossie model reads, in the order it first reads them."""
     model = yaml.safe_load(model_path.read_text())
     datasets = {d["name"]: d for d in model["datasets"]}
-    fields = {name: {f["name"]: [c for _, c in references(expression(f))] for f in d.get("fields", [])}
-              for name, d in datasets.items()}
+    fields = field_columns(model)
     read = {name: [] for name in datasets}
 
     def add(dataset, name):
@@ -128,6 +135,37 @@ def canonical_columns(model_path):
         for dataset, column in references(expression(metric)):
             add(dataset, column)
     return {datasets[name]["source"]: columns for name, columns in read.items()}
+
+
+def bool_comparisons(model_path, bool_columns):
+    """The model's expressions that compare a Bool column with a number: [(item, expression), ...].
+
+    bool_columns is {(table, column)} for the columns the packages type
+    Bool. ClickHouse and DuckDB take true = 1; Postgres has no such
+    operator, so the model writes the column alone. A name that is one of
+    the dataset's fields stands for the columns of its expression.
+    """
+    model = yaml.safe_load(model_path.read_text())
+    sources = {d["name"]: d["source"] for d in model["datasets"]}
+    fields = field_columns(model)
+
+    def is_bool(dataset, name):
+        return dataset in sources and any((sources[dataset], c) in bool_columns
+                                          for c in fields[dataset].get(name, [name]))
+
+    items = [(d["name"], i) for d in model["datasets"] for i in d.get("fields", []) + d.get("metrics", [])]
+    items += [(None, m) for m in model.get("metrics", [])]
+    found = []
+    for dataset, item in items:
+        sql = expression(item)
+        tree = sqlglot.parse_one(sql, read="snowflake")
+        sides = [(c.this, c.expression) for c in tree.find_all(exp.EQ, exp.NEQ, exp.GT, exp.GTE, exp.LT, exp.LTE)]
+        sides += [(c.this, e) for c in tree.find_all(exp.In) for e in c.expressions]
+        if any(isinstance(column, exp.Column) and isinstance(other, exp.Literal) and other.is_number
+               and is_bool(column.table or dataset, column.name)
+               for pair in sides for column, other in (pair, pair[::-1])):
+            found.append((f"{dataset}.{item['name']}" if dataset else item["name"], sql))
+    return found
 
 
 def contracts(package):
@@ -282,6 +320,12 @@ def check(packages, unions, built):
         if len({normal(t) for t in types.values()}) > 1:
             problems.append(f"{model_file}: {table}.{column} has different types: "
                             f"{', '.join(f'{p} {t}' for p, t in sorted(types.items()))}")
+    for model_file in sorted({m for m, _, _ in served}):
+        bools = {(t, c) for (m, t, c), types in served.items()
+                 if m == model_file and any(normal(x).removeprefix("Nullable(").startswith("Bool") for x in types.values())}
+        for item, sql in bool_comparisons(ROOT / model_file, bools):
+            problems.append(f"{model_file}: {item} compares a Bool column with a number, which Postgres "
+                            f"rejects; write the column alone: {sql}")
     # Copies of one file, kept in each project so that each installs alone.
     for projects, macro in ((packages, "freshness.sql"), (unions, "union.sql")):
         texts = {(p / "macros" / macro).read_bytes() if (p / "macros" / macro).is_file() else None for p in projects}

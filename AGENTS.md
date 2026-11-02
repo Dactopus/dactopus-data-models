@@ -107,7 +107,9 @@ and with one label in a database and each label in one database
   customer key `Int64` (WooCommerce's guests are negative), cast from
   Shopify's unsigned ids with `accurateCast`, which fails where a plain
   cast wraps; quantities `Int64`; times `DateTime('UTC')` (both sources
-  keep whole seconds); flags `Bool`. A NULL in a column that is not
+  keep whole seconds); flags `Bool`, which an expression reads alone,
+  never `= 1`: Postgres has no such operator, and
+  `tests/check_contracts.py` fails on it. A NULL in a column that is not
   Nullable fails the build: do not turn it into 0 with `assumeNotNull`
   alone.
 - Entities are plain Ossie. Mapping, refresh and checks belong in the

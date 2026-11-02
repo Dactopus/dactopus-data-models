@@ -22,7 +22,16 @@ ai_context:
     than one.
     Dates are in each property's own
     time zone; CURRENT_DATE is the date in the model's time zone, so with
-    properties in several zones, name the date you asked for. A user is a
+    properties in several zones, name the date you asked for. GA4 exports
+    each day once, after it is over: usually in the afternoon of the
+    following day in the property's time zone, sometimes later. The days
+    after the latest date with rows (sessions.session_count by
+    sessions.session_date over the last days, for each property) have not
+    been exported or loaded yet: say up to which date the data reaches,
+    and never report those days as days without visits or purchases. The
+    latest date with rows is a whole day: GA4 can still add events that
+    arrive late for up to three days after it, but a low count on that
+    day is its traffic, not a partial export. A user is a
     browser on a device (GA4 user_pseudo_id), not a person, and is counted
     within a property: a browser that visited two properties counts in
     each, so sessions.users adds up across them. The model does not match
