@@ -11,11 +11,12 @@ names the Ossie schema version its models carry.
 ### Added
 
 - `zone` in `deployment.yml`: the zone of the days of a package that
-  fixes it in its model, so a deployment no longer has to be told. The
-  Sensor.Community package declares `zone: UTC`; Shopify and WooCommerce
-  take the zone from the variable with the role `time_zone`, GA4's days
-  are in the property's zone, and neither has the key. `zone` and
-  `time_zone` exclude each other, and a union's file has no `zone`.
+  fixes it in its model, so a deployment no longer has to be told it.
+  The Sensor.Community package declares `zone: UTC`; Shopify and
+  WooCommerce take the zone from the variable with the role `time_zone`,
+  and GA4's days are in the property's zone; none of the three has the
+  key. `zone` and `time_zone` exclude each other, and a union's file has
+  no `zone`.
   `tests/check_deployment.py` requires an IANA name and counts in every
   daily table the rows whose date is not the day of their time in
   `zone`, with or without `--time-zone`, and fails on any such row or on
