@@ -58,6 +58,12 @@ Units: PM10 and PM2.5 in µg/m³, temperature in °C, relative humidity in
 - **`devices_archive`**, behind the view `devices`, is rebuilt whole on
   every run (the package's [Quick start](../sources/sensor_community/README.md#quick-start), step 7).
 
+Over the tables of several networks (a union), every dataset has the
+field `source_id`, the network's label, and a device or sensor id is
+unique within its network only. `devices.device_count` adds up across
+networks. Each network's silent devices count from that network's own
+latest contact.
+
 The Sensor.Community package builds the tables the model reads:
 [sources/sensor_community/README.md](../sources/sensor_community/README.md).
 Several networks and installing the package: [deployment.md](deployment.md).

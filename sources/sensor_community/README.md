@@ -24,7 +24,10 @@ You need ClickHouse, dbt, dactopus-ossie-clickhouse and
    [`sources/sensor_community/input.sql`](input.sql).
    Their database is a parameter; the package reads it from the dbt
    variable `sensor_community_input_database` (default
-   `sensor_community_raw`).
+   `sensor_community_raw`). The input has no label: the package writes
+   the network's label into every row it builds, from the dbt variable
+   `sensor_community_source_id` (default `sensor_community`; [several
+   networks](../../docs/deployment.md#several-stores-properties-or-networks)).
 
    ```bash
    clickhouse client --param_db=sensor_community_raw --multiquery < sources/sensor_community/input.sql

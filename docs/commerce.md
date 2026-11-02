@@ -78,6 +78,15 @@ store's currency.
 Dates are in the store's time zone, and so is "today" (`CURRENT_DATE`)
 when the model is served in that zone ([deployment.md](deployment.md)).
 
+Over the tables of several stores (a union), every dataset has the
+field `source_id`, the store's label, and `orders.platform` says whether
+a store is `shopify` or `woocommerce`. An order, customer or product id
+is unique within its store only, so a question groups or filters by one
+together with `source_id`. Counts add up across stores; amounts are in each
+store's currency (`orders.currency`) and the model converts none, so the
+instructions have an agent give each currency apart and never add up,
+rank or compare amounts in two. A customer of two stores counts in each.
+
 The Shopify and WooCommerce packages build the tables the model reads;
 where their numbers differ from the stores' own reports, and why:
 [Known differences from Shopify's reports](../sources/shopify/README.md#known-differences-from-shopifys-reports)

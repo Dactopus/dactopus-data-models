@@ -195,9 +195,10 @@ names, so dbt stops a project that installs a package beside it.
   have an agent ask every amount by `orders.currency` and never add up
   two currencies, while a query of your own that leaves the currency
   out adds them up as they are. Each store's dates are in its own time
-  zone, and `--time-zone` sets one "today" for all of them. A GA4 user belongs to a property, as a customer to a store: a
-  browser that visited two sites counts in each. A sensor network's
-  silent devices count from that network's own latest contact.
+  zone, and `--time-zone` sets one "today" for all of them. A GA4 user
+  belongs to a property, as a customer to a store: a browser that
+  visited two sites counts in each. A sensor network's silent devices
+  count from that network's own latest contact.
 - **Labels.** Agents know a store, property or network by its label,
   and a store also by its currency and its platform (`orders.platform`);
   the model has no country or market. Give labels that name what people
