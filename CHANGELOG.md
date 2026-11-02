@@ -159,6 +159,14 @@ names the Ossie schema version its models carry.
   the package knows now fails in its model, with a message that names
   the README's Known limits, where before the `not_null` tests on its
   amounts failed.
+- The commerce model reads its `Bool` flags alone, without `= 1`
+  (`orders.is_cancelled`, `orders.in_sales_reports`,
+  `customers.second_order_within_*_days` and the
+  `customers.second_order_rate_*_days` metrics, `is_direct` of
+  `line_categories` and `product_categories`): Postgres has no operator
+  for `Bool = Int`, so the model now translates to engines other than
+  ClickHouse. The numbers are the same. `tests/check_contracts.py` fails
+  on an expression that compares a `Bool` column with a number.
 
 ## [0.8.0] - 2026-10-30
 

@@ -235,7 +235,7 @@ datasets:
         ai_context:
           synonyms: [shipping status, delivery status, shipped or not]
       - name: is_cancelled
-        expression: {dialects: [{dialect: ANSI_SQL, expression: is_cancelled = 1}]}
+        expression: {dialects: [{dialect: ANSI_SQL, expression: is_cancelled}]}
         description: >
           Whether the order was cancelled. Shopify's reports count a cancelled
           order when it was placed and take it back when it was cancelled: it
@@ -247,7 +247,7 @@ datasets:
         ai_context:
           synonyms: [cancelled, canceled, cancellation]
       - name: in_sales_reports
-        expression: {dialects: [{dialect: ANSI_SQL, expression: in_sales_reports = 1}]}
+        expression: {dialects: [{dialect: ANSI_SQL, expression: in_sales_reports}]}
         description: >
           Whether the store's own sales reports count the order. Every metric
           but orders.all_orders and orders.all_orders_total counts only these
@@ -737,7 +737,7 @@ datasets:
         ai_context:
           synonyms: [lifetime value, customer value, total spend, LTV, CLV, customer revenue]
       - name: second_order_within_30_days
-        expression: {dialects: [{dialect: ANSI_SQL, expression: second_order_within_30_days = 1}]}
+        expression: {dialects: [{dialect: ANSI_SQL, expression: second_order_within_30_days}]}
         description: >
           Whether the customer's second order came within 30 days of the
           first, counting days between the orders' dates
@@ -752,7 +752,7 @@ datasets:
         ai_context:
           synonyms: [ordered again within 30 days, came back within 30 days, repeat buyer within 30 days]
       - name: second_order_within_60_days
-        expression: {dialects: [{dialect: ANSI_SQL, expression: second_order_within_60_days = 1}]}
+        expression: {dialects: [{dialect: ANSI_SQL, expression: second_order_within_60_days}]}
         description: >
           Whether the customer's second order came within 60 days of the
           first, counting days between the orders' dates
@@ -767,7 +767,7 @@ datasets:
         ai_context:
           synonyms: [ordered again within 60 days, came back within 60 days, repeat buyer within 60 days]
       - name: second_order_within_90_days
-        expression: {dialects: [{dialect: ANSI_SQL, expression: second_order_within_90_days = 1}]}
+        expression: {dialects: [{dialect: ANSI_SQL, expression: second_order_within_90_days}]}
         description: >
           Whether the customer's second order came within 90 days of the
           first, counting days between the orders' dates
@@ -782,7 +782,7 @@ datasets:
         ai_context:
           synonyms: [ordered again within 90 days, came back within 90 days, repeat buyer within 90 days]
       - name: second_order_within_365_days
-        expression: {dialects: [{dialect: ANSI_SQL, expression: second_order_within_365_days = 1}]}
+        expression: {dialects: [{dialect: ANSI_SQL, expression: second_order_within_365_days}]}
         description: >
           Whether the customer's second order came within 365 days of the
           first, counting days between the orders' dates
@@ -825,7 +825,7 @@ datasets:
         ai_context:
           synonyms: [average lifetime value, average LTV, revenue per customer, average customer spend]
       - name: second_order_rate_30_days
-        expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(CASE WHEN second_order_within_30_days = 1 THEN 1 END) * 1.0 / NULLIF(COUNT(second_order_within_30_days), 0)"}]}
+        expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(CASE WHEN second_order_within_30_days THEN 1 END) * 1.0 / NULLIF(COUNT(second_order_within_30_days), 0)"}]}
         description: >
           Share of customers whose second order came within 30 days of their
           first, from 0 to 1, among the customers whose 30 days are over
@@ -839,7 +839,7 @@ datasets:
         ai_context:
           synonyms: [30-day repeat purchase rate, 30-day repeat customer rate, 30-day retention, 30-day repurchase rate, share of customers who ordered again within 30 days]
       - name: second_order_rate_60_days
-        expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(CASE WHEN second_order_within_60_days = 1 THEN 1 END) * 1.0 / NULLIF(COUNT(second_order_within_60_days), 0)"}]}
+        expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(CASE WHEN second_order_within_60_days THEN 1 END) * 1.0 / NULLIF(COUNT(second_order_within_60_days), 0)"}]}
         description: >
           Share of customers whose second order came within 60 days of their
           first, from 0 to 1, among the customers whose 60 days are over
@@ -853,7 +853,7 @@ datasets:
         ai_context:
           synonyms: [60-day repeat purchase rate, 60-day repeat customer rate, 60-day retention, 60-day repurchase rate, share of customers who ordered again within 60 days]
       - name: second_order_rate_90_days
-        expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(CASE WHEN second_order_within_90_days = 1 THEN 1 END) * 1.0 / NULLIF(COUNT(second_order_within_90_days), 0)"}]}
+        expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(CASE WHEN second_order_within_90_days THEN 1 END) * 1.0 / NULLIF(COUNT(second_order_within_90_days), 0)"}]}
         description: >
           Share of customers whose second order came within 90 days of their
           first, from 0 to 1, among the customers whose 90 days are over
@@ -867,7 +867,7 @@ datasets:
         ai_context:
           synonyms: [90-day repeat purchase rate, 90-day repeat customer rate, 90-day retention, 90-day repurchase rate, share of customers who ordered again within 90 days]
       - name: second_order_rate_365_days
-        expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(CASE WHEN second_order_within_365_days = 1 THEN 1 END) * 1.0 / NULLIF(COUNT(second_order_within_365_days), 0)"}]}
+        expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(CASE WHEN second_order_within_365_days THEN 1 END) * 1.0 / NULLIF(COUNT(second_order_within_365_days), 0)"}]}
         description: >
           Share of customers whose second order came within 365 days of their
           first, from 0 to 1, among the customers whose 365 days are over
@@ -1062,7 +1062,7 @@ datasets:
         ai_context:
           synonyms: [category, full category, category tree, category hierarchy]
       - name: is_direct
-        expression: {dialects: [{dialect: ANSI_SQL, expression: is_direct = 1}]}
+        expression: {dialects: [{dialect: ANSI_SQL, expression: is_direct}]}
         description: >
           Whether the product is in this category itself, not only in a
           category under it. The category metrics (category_revenue and the
@@ -1496,7 +1496,7 @@ datasets:
         ai_context:
           synonyms: [category, full category]
       - name: is_direct
-        expression: {dialects: [{dialect: ANSI_SQL, expression: is_direct = 1}]}
+        expression: {dialects: [{dialect: ANSI_SQL, expression: is_direct}]}
         description: >
           Whether the product is in this category itself, not only in a
           category under it; product_categories.product_count counts only
