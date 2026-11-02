@@ -16,17 +16,24 @@ ai_context:
     source_id, and their currencies can differ. Query every amount with
     orders.currency as a dimension. With one currency, answer in it and name
     its code. With several, give each currency separately and never add up
-    amounts in different currencies; the model converts none. Amounts of
+    or rank together amounts in different currencies; the model converts
+    none. Amounts of
     customers (customers.net_amount, customers.average_customer_value)
     cannot be grouped by orders.currency: query them by customers.source_id,
     and each store's currency as orders.currency by orders.source_id. Counts
     add up across stores. A store is a label the deployment chose, which may
-    name the store (shop_us) or not; the model knows of a store its label
-    and its currency, not its platform, country or market. For a store the
-    question names (the US store, the Shopify one), take the label that
-    names it; when no label clearly does, list the labels with their
-    currencies and ask which is meant, and do not pick one by its currency.
-    A question that names no store means all of them. Dates are in each
+    name the store (uk_outlet) or not; the model knows of a store its label
+    and its currency, not its platform, country or market, so never state
+    one the label does not give. When the question names or describes a
+    store in any way (a name, a country, a platform, a kind of store, a
+    currency), first get the labels: orders.order_count by orders.source_id
+    and orders.currency. Take the label that names the store, or the one
+    store in a currency the question names; when none clearly matches, list
+    the labels with their currencies and ask which is meant, and do not
+    pick a store by its currency otherwise. Only a question that names no
+    store means all of them; answer it without a word about stores unless
+    a result shows more than one. A store missing from a result has no rows
+    there, a zero, and is still one of the stores. Dates are in each
     store's own time zone; CURRENT_DATE is the date in the model's time
     zone, so with stores in several zones, name the date you asked for. The
     numbers follow the store's own sales reports: every metric but orders.all_orders and
@@ -64,7 +71,9 @@ ai_context:
     customers counts: at Shopify the store's customer record, which an order
     with an email gets even without an account; at WooCommerce an account,
     or a guest by billing email. Customers are not matched across sources
-    or stores: a customer of two stores counts in each.
+    or stores: a customer of two stores counts in each. Identifiers
+    (order_id, customer_id, product_id) repeat across stores: with several
+    stores, group or filter by one together with its source_id.
     For buyers in a period, use orders.buyer_count by the order date. For
     anything about customers over all their orders, use customers: new
     customers by the month of their first order (customers.customer_count
@@ -129,7 +138,7 @@ datasets:
         expression: {dialects: [{dialect: ANSI_SQL, expression: source_id}]}
         description: >
           Store the row comes from: the label the deployment gives it, which
-          may name the store (shop_us) or not, one value for every row of a
+          may name the store (uk_outlet) or not, one value for every row of a
           store. Group by it to answer per store or to compare stores.
         datatype: String
         dimension: {is_time: false}
@@ -635,7 +644,7 @@ datasets:
         expression: {dialects: [{dialect: ANSI_SQL, expression: source_id}]}
         description: >
           Store the row comes from: the label the deployment gives it, which
-          may name the store (shop_us) or not, one value for every row of a
+          may name the store (uk_outlet) or not, one value for every row of a
           store. Group by it to answer per store or to compare stores.
         datatype: String
         dimension: {is_time: false}
@@ -868,7 +877,7 @@ datasets:
         expression: {dialects: [{dialect: ANSI_SQL, expression: source_id}]}
         description: >
           Store the row comes from: the label the deployment gives it, which
-          may name the store (shop_us) or not, one value for every row of a
+          may name the store (uk_outlet) or not, one value for every row of a
           store. Group by it to answer per store or to compare stores.
         datatype: String
         dimension: {is_time: false}
@@ -996,7 +1005,7 @@ datasets:
         expression: {dialects: [{dialect: ANSI_SQL, expression: source_id}]}
         description: >
           Store the row comes from: the label the deployment gives it, which
-          may name the store (shop_us) or not, one value for every row of a
+          may name the store (uk_outlet) or not, one value for every row of a
           store. Group by it to answer per store or to compare stores.
         datatype: String
         dimension: {is_time: false}
@@ -1096,7 +1105,7 @@ datasets:
         expression: {dialects: [{dialect: ANSI_SQL, expression: source_id}]}
         description: >
           Store the row comes from: the label the deployment gives it, which
-          may name the store (shop_us) or not, one value for every row of a
+          may name the store (uk_outlet) or not, one value for every row of a
           store. Group by it to answer per store or to compare stores.
         datatype: String
         dimension: {is_time: false}
@@ -1163,7 +1172,7 @@ datasets:
         expression: {dialects: [{dialect: ANSI_SQL, expression: source_id}]}
         description: >
           Store the row comes from: the label the deployment gives it, which
-          may name the store (shop_us) or not, one value for every row of a
+          may name the store (uk_outlet) or not, one value for every row of a
           store. Group by it to answer per store or to compare stores.
         datatype: String
         dimension: {is_time: false}
@@ -1242,7 +1251,7 @@ datasets:
         expression: {dialects: [{dialect: ANSI_SQL, expression: source_id}]}
         description: >
           Store the row comes from: the label the deployment gives it, which
-          may name the store (shop_us) or not, one value for every row of a
+          may name the store (uk_outlet) or not, one value for every row of a
           store. Group by it to answer per store or to compare stores.
         datatype: String
         dimension: {is_time: false}
@@ -1354,7 +1363,7 @@ datasets:
         expression: {dialects: [{dialect: ANSI_SQL, expression: source_id}]}
         description: >
           Store the row comes from: the label the deployment gives it, which
-          may name the store (shop_us) or not, one value for every row of a
+          may name the store (uk_outlet) or not, one value for every row of a
           store. Group by it to answer per store or to compare stores.
         datatype: String
         dimension: {is_time: false}
@@ -1438,7 +1447,7 @@ datasets:
         expression: {dialects: [{dialect: ANSI_SQL, expression: source_id}]}
         description: >
           Store the row comes from: the label the deployment gives it, which
-          may name the store (shop_us) or not, one value for every row of a
+          may name the store (uk_outlet) or not, one value for every row of a
           store. Group by it to answer per store or to compare stores.
         datatype: String
         dimension: {is_time: false}
@@ -1509,7 +1518,7 @@ datasets:
         expression: {dialects: [{dialect: ANSI_SQL, expression: source_id}]}
         description: >
           Store the row comes from: the label the deployment gives it, which
-          may name the store (shop_us) or not, one value for every row of a
+          may name the store (uk_outlet) or not, one value for every row of a
           store. Group by it to answer per store or to compare stores.
         datatype: String
         dimension: {is_time: false}

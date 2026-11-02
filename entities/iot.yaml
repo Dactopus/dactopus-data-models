@@ -34,9 +34,18 @@ ai_context:
     answer ("as of 00:35 UTC, 3 minutes ago"). An age of hours or days means
     the snapshots are not running: say so, the answer is about that time.
     One deployment can hold several sensor networks, each under its own
-    source_id, a label the deployment chose; a question that names no
-    network means all of them, and devices.device_count adds up across
-    them. Each network has its own latest contact: with more than one, get
+    source_id, a label the deployment chose, which may name the network or
+    not. When the question names or describes a network in any way (a
+    name, a place, a kind of site such as the city sensors or the lab),
+    first get the labels: devices.device_count by devices.source_id. Take
+    the label that names it; when none clearly matches, list the labels and
+    ask which is meant, and do not answer with another field in its place
+    (devices.is_indoor is a room, not a network). Only a question that
+    names no network means all of them; answer it without a word about
+    networks unless a result shows more than one. devices.device_count adds
+    up across them. Device and sensor ids repeat across networks: with several,
+    group by an id together with devices.source_id and name a device with
+    its network. Each network has its own latest contact: with more than one, get
     devices.last_contact_time and devices.minutes_since_last_contact by
     devices.source_id, and filter each network's devices by its own time
     ((devices.source_id = 'a' AND devices.last_contact_at < ...) OR ...).

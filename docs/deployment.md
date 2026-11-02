@@ -203,7 +203,8 @@ names, so dbt stops a project that installs a package beside it.
   alone: the model has no platform, country or market. Give labels that
   name what people call them (`shop_us`, `woo_wholesale`); an agent asked
   about "the US store" picks the label that names it, and asks when none
-  does.
+  does. An order, customer, product or device id is unique within its
+  label only.
 - **`deployment.yml`.** A union's file names its Ossie model and the variable
   that lists the databases (role `input_databases`). Rows per day are
   counted in the stores' databases, by their packages' files.

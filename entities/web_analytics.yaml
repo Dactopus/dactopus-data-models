@@ -12,15 +12,23 @@ ai_context:
     may differ from the store's own figures. Say so when someone compares them
     with sales. One deployment can hold several GA4 properties (sites), each
     under its own source_id. A property is a label the deployment chose,
-    which may name the site or not; the model knows nothing else of it. For
-    a site the question names, take the label that names it; when no label
-    clearly does, list the labels and ask which is meant. A question that
-    names no property means all of them. Dates are in each property's own
+    which may name the site or not; the model knows nothing else of it.
+    When the question names or describes a site in any way (a name, a
+    domain, a kind of site such as the shop or the blog), first get the
+    labels: sessions.session_count by sessions.source_id. Take the label
+    that names the site; when none clearly matches, list the labels and ask
+    which is meant. Only a question that names no site means all of them;
+    answer it without a word about properties unless a result shows more
+    than one.
+    Dates are in each property's own
     time zone; CURRENT_DATE is the date in the model's time zone, so with
     properties in several zones, name the date you asked for. A user is a
     browser on a device (GA4 user_pseudo_id), not a person, and is counted
     within a property: a browser that visited two properties counts in
-    each, so sessions.users adds up across them. Session and user counts
+    each, so sessions.users adds up across them. The model does not match
+    users across properties: never compare user_pseudo_id values of two
+    properties, and say that how many browsers visited both cannot be
+    answered. Session and user counts
     are exact; the GA4 interface estimates them, so its numbers can be
     slightly different. "Conversion rate" without a qualifier means
     sessions.session_conversion_rate; name the definition in the answer and
@@ -61,7 +69,7 @@ datasets:
         expression: {dialects: [{dialect: ANSI_SQL, expression: source_id}]}
         description: >
           GA4 property the row comes from: the label the deployment gives it,
-          which may name the site (site_us) or not, one value for every row of
+          which may name the site (help_center) or not, one value for every row of
           a property. Group by it to answer per property or to compare them.
         datatype: String
         dimension: {is_time: false}
@@ -248,7 +256,7 @@ datasets:
         expression: {dialects: [{dialect: ANSI_SQL, expression: source_id}]}
         description: >
           GA4 property the row comes from: the label the deployment gives it,
-          which may name the site (site_us) or not, one value for every row of
+          which may name the site (help_center) or not, one value for every row of
           a property. Group by it to answer per property or to compare them.
         datatype: String
         dimension: {is_time: false}
@@ -383,7 +391,7 @@ datasets:
         expression: {dialects: [{dialect: ANSI_SQL, expression: source_id}]}
         description: >
           GA4 property the row comes from: the label the deployment gives it,
-          which may name the site (site_us) or not, one value for every row of
+          which may name the site (help_center) or not, one value for every row of
           a property. Group by it to answer per property or to compare them.
         datatype: String
         dimension: {is_time: false}
