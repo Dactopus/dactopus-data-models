@@ -174,6 +174,12 @@ names the Ossie schema version its models carry.
   refund of 0, who a customer is (`customers`), what a category and a
   brand are (`line_categories.category`, `line_brands.brand`). The
   rules are the same.
+- The web_analytics model's instructions say when GA4 exports a day:
+  once, usually in the afternoon of the following day. The days after
+  the latest date with rows have not arrived yet, and an agent says up
+  to which date the data reaches instead of reporting them as days
+  without visits; the latest date is a whole day, and a low count there
+  is not a partial export (#48). `docs/web_analytics.md` says the same.
 
 ## [0.8.0] - 2026-10-30
 
