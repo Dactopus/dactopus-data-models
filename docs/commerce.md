@@ -80,9 +80,9 @@ when the model is served in that zone ([deployment.md](deployment.md)).
 
 Over the tables of several stores (a union), every dataset has the
 field `source_id`, the store's label, and `orders.platform` says whether
-a store is `shopify` or `woocommerce`. Order, customer and product ids
-repeat across stores, so a question groups or filters by one together
-with `source_id`. Counts add up across stores; amounts are in each
+a store is `shopify` or `woocommerce`. An order, customer or product id
+is unique within its store only, so a question groups or filters by one
+together with `source_id`. Counts add up across stores; amounts are in each
 store's currency (`orders.currency`) and the model converts none, so the
 instructions have an agent give each currency apart and never add up,
 rank or compare amounts in two. A customer of two stores counts in each.

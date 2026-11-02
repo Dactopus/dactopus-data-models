@@ -25,7 +25,8 @@ dactopus-ossie-clickhouse, as in the README's [Quick start](../../README.md#quic
    [`sources/shopify/input.sql`](input.sql) and the rows.
    Their database is a parameter; the package reads it from the dbt
    variable `shopify_input_database` (default `shopify_raw`, kept here
-   for your own store). Every row carries the store's label,
+   for your own store). The input has no label: the package writes the
+   store's label into every row it builds, from the dbt variable
    `shopify_source_id` (default `shopify`; [several
    stores](../../docs/deployment.md#several-stores-properties-or-networks)).
 
