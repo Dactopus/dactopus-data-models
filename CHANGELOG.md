@@ -167,6 +167,13 @@ names the Ossie schema version its models carry.
   for `Bool = Int`, so the model now translates to engines other than
   ClickHouse. The numbers are the same. `tests/check_contracts.py` fails
   on an expression that compares a `Bool` column with a number.
+- The commerce model's instructions state each rule that depends on the
+  platform from the field that carries it, with Shopify and WooCommerce
+  as examples: which orders the sales reports count
+  (`orders.in_sales_reports`), the order date (`orders.order_date`), a
+  refund of 0, who a customer is (`customers`), what a category and a
+  brand are (`line_categories.category`, `line_brands.brand`). The
+  rules are the same.
 
 ## [0.8.0] - 2026-10-30
 
