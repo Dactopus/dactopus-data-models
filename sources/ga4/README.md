@@ -58,6 +58,9 @@ the README's [Quick start](../../README.md#quick-start), and the
    columns the package reads; any other way of delivering the export must
    fill the same table. Its database is a parameter, `ga4_raw` here; the
    package reads another one from the dbt variable `ga4_input_database`.
+   Every row carries the property's label, `ga4_source_id` (default
+   `ga4`; [several
+   properties](../../docs/deployment.md#several-stores-properties-or-networks)).
 
    ```bash
    clickhouse client --param_db=ga4_raw --multiquery < sources/ga4/input.sql

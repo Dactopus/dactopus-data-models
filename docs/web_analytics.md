@@ -18,6 +18,12 @@ as `dataset.metric` (`sessions.session_count`):
 
 The descriptions in the file say what each one counts.
 
+Over the tables of several GA4 properties (a union), every dataset has
+the field `source_id`, the property's label. A user is a browser within
+its property: a browser that visited two properties counts in each, so
+`sessions.users` adds up across them, and the model cannot say how many
+browsers visited both. Dates are in each property's own time zone.
+
 The GA4 package builds the tables the model reads; where its numbers
 differ from the GA4 interface, and why:
 [Known differences from the GA4 interface](../sources/ga4/README.md#known-differences-from-the-ga4-interface).

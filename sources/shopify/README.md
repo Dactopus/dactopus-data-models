@@ -25,7 +25,9 @@ dactopus-ossie-clickhouse, as in the README's [Quick start](../../README.md#quic
    [`sources/shopify/input.sql`](input.sql) and the rows.
    Their database is a parameter; the package reads it from the dbt
    variable `shopify_input_database` (default `shopify_raw`, kept here
-   for your own store).
+   for your own store). Every row carries the store's label,
+   `shopify_source_id` (default `shopify`; [several
+   stores](../../docs/deployment.md#several-stores-properties-or-networks)).
 
    ```bash
    clickhouse client --param_db=shopify_sample_raw --multiquery < sources/shopify/input.sql
@@ -42,7 +44,7 @@ dactopus-ossie-clickhouse, as in the README's [Quick start](../../README.md#quic
    ```
 
 3. **Validate** the model and **check** its answers: `check_numbers.py`
-   asks 41 questions through dactopus-ossie-clickhouse, in the zone of
+   asks 42 questions through dactopus-ossie-clickhouse, in the zone of
    step 2, and compares the answers with numbers worked out by hand from
    the rows.
 

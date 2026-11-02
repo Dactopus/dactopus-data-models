@@ -47,7 +47,7 @@ on 26.7 and 26.9.
    ```
 
 3. **Validate** the model and **check** its answers: `check_numbers.py`
-   asks 44 questions, in the zone of step 2, and compares the answers
+   asks 45 questions, in the zone of step 2, and compares the answers
    with numbers worked out by hand from the rows.
 
    ```bash
