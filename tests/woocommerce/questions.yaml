@@ -1,3 +1,9 @@
+# The questions the commerce model must answer over the package's fixture, and the
+# rows of each answer, derived by hand. A case: metrics, dimensions, filters and
+# order (lists, left out when empty), limit, and expected. window_cases are asked
+# over the fixture with windows.sql. The questions are asked in time_zone, the
+# zone of the build.
+time_zone: America/New_York
 cases:
   # revenue = the counted orders' totals: 88 + 33 + 70.40 + 30.80 + 46 +
   # 33 + 66 + 16.50 + 66 = 449.70 over 9 orders (565.20 over all 13 rows,
@@ -14,6 +20,8 @@ cases:
   # + 6.40 + 2.80 + 4.18 + 3 + 6 + 1.50 + 6 = 40.88 (33.88 if tax_amount,
   # which leaves shipping tax out, were taken alone). Customers 1, 2 and
   # -112, guest4 (112); 2 if guests were not counted.
+  # orders.refund_rate is 67.7 / 449.7 written out in full precision
+  # orders.average_order_value is 338.82 / 9 written out in full precision
   - metrics: [orders.order_count, orders.revenue, orders.refunded_amount, sales_events.net_revenue,
               orders.refund_rate, orders.average_order_value, orders.discount_amount,
               orders.shipping_amount, orders.tax_amount, orders.buyer_count]
@@ -161,6 +169,7 @@ cases:
       - {new_vs_repeat: "repeat", orders.order_count: 8, orders.revenue: 361.7}
       - {new_vs_repeat: null, orders.order_count: 0, orders.revenue: 0}
   # Repeat orders over the counted orders with a customer: 8 / 9.
+  # orders.repeat_order_share is 8 / 9 written out in full precision
   - metrics: [orders.repeat_order_share]
     expected:
       - {orders.repeat_order_share: 0.8888888888888888}
@@ -171,6 +180,7 @@ cases:
   # with them 15 would be 13. Line totals without tax: 40 + 30 + 25 + 54 +
   # 20 + 31.818182 + 20 + 60 + 10 + 50 (117's 45 EUR) = 340.818182; the
   # orders' subtotal is 338.82 with 109's fees of -2.
+  # orders.items_per_order is 15 / 9 written out in full precision
   - metrics: [items_sold, items_net, line_revenue, orders.items_per_order]
     expected:
       - {items_sold: 15, items_net: 13, line_revenue: 340.818182,
@@ -329,10 +339,12 @@ cases:
   # category of the line, Gifts or Kitchen & Dining would give 316 over 8.
   # Clothing, with its subcategories: 101 70, 104 54, 110 31.82, 112 60 =
   # 215.82 over 4, the same as T-Shirts.
+  # orders.average_order_value is 158 / 4 written out in full precision
   - metrics: [orders.average_order_value, orders.order_count]
     filters: ["line_categories.category_path = 'Gifts'"]
     expected:
       - {orders.average_order_value: 39.5, orders.order_count: 4}
+  # orders.average_order_value is 215.82 / 4 written out in full precision
   - metrics: [orders.average_order_value, orders.order_count]
     filters: ["line_categories.category_path = 'Clothing'"]
     expected:
@@ -469,9 +481,11 @@ cases:
   # 109 13, 111 8, 117 19; 103 11 (August 20 to 31; 12 to September 1 in
   # UTC), 110 15, 113 18; 112 3. All repeat orders 107 / 8; second orders
   # 20, 11 and 3 days, 34 / 3.
+  # orders.average_days_between_orders is 107 / 8 written out in full precision
   - metrics: [orders.average_days_between_orders]
     expected:
       - {orders.average_days_between_orders: 13.375}
+  # orders.average_days_between_orders is 34 / 3 written out in full precision
   - metrics: [orders.average_days_between_orders]
     filters: ["orders.customer_order_number = 2"]
     expected:
@@ -573,6 +587,10 @@ window_cases:
       - {customer_id: 15, second_order_within_30_days: 0, second_order_within_60_days: 1,
          second_order_within_90_days: 1, second_order_within_365_days: null,
          customers.customer_count: 1}
+  # customers.second_order_rate_30_days is 3 / 8 written out in full precision
+  # customers.second_order_rate_60_days is 2 / 6 written out in full precision
+  # customers.second_order_rate_90_days is 3 / 6 written out in full precision
+  # customers.second_order_rate_365_days is 1 / 2 written out in full precision
   - metrics: [customers.second_order_rate_30_days, customers.second_order_rate_60_days,
               customers.second_order_rate_90_days, customers.second_order_rate_365_days]
     expected:

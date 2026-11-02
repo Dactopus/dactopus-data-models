@@ -1,3 +1,9 @@
+# The questions the commerce model must answer over the package's fixture, and the
+# rows of each answer, derived by hand. A case: metrics, dimensions, filters and
+# order (lists, left out when empty), limit, and expected. window_cases are asked
+# over the fixture with windows.sql. The questions are asked in time_zone, the
+# zone of the build.
+time_zone: America/New_York
 cases:
   # revenue: every order as placed = 110 + 80 + 30 + 181 + 60 + 210 + 137
   # + 169.50 + 70 + 40 + 272.50 = 1360 over 11 orders, 1012's duties
@@ -23,6 +29,8 @@ cases:
   # lines, shipping and duties) = 62.85. Customers 1, 2 and 3 (1010,
   # cancelled, is in the reports); guests do not count, nor customer 4,
   # whose only order is a test order.
+  # orders.refund_rate is 331.95 / 1360 written out in full precision
+  # orders.average_order_value is 1186 / 11 written out in full precision
   - metrics: [orders.order_count, orders.revenue, orders.refunded_amount, sales_events.net_revenue,
               orders.refund_rate, orders.average_order_value, orders.discount_amount,
               orders.shipping_amount, orders.tax_amount, orders.buyer_count]
@@ -128,6 +136,7 @@ cases:
   # Units per order over the 11 orders: the lines' 18 items (see
   # items_sold below) / 11. Gift cards and tips are not goods: 1001's
   # gift card and 1007's tip would make it 20 / 11.
+  # orders.items_per_order is 18 / 11 written out in full precision
   - metrics: [orders.items_per_order]
     expected:
       - {orders.items_per_order: 1.6363636363636365}
@@ -135,6 +144,7 @@ cases:
   # 181), 1007 (2, 137); San Francisco 1010 (1, 70, cancelled); Toronto
   # 1005 (1, 60, cancelled), 1006 (1, 210), 1008 (2, 169.50), 1011 (2,
   # 40), 1012 (2, 272.50); no address 1002 (1, 80), 1003 (1, 30).
+  # orders.items_per_order is 7 / 3 written out in full precision
   - metrics: [orders.order_count, orders.revenue, orders.items_per_order]
     dimensions: [orders.shipping_city]
     order: [orders.shipping_city]
@@ -219,6 +229,7 @@ cases:
   # Repeat orders over the orders that have a customer, the ones numbered
   # in sequence, cancelled ones included: 6 / 9. The guests (1002, 1012)
   # are not counted; over all orders it would be 6 / 11.
+  # orders.repeat_order_share is 6 / 9 written out in full precision
   - metrics: [orders.repeat_order_share]
     expected:
       - {orders.repeat_order_share: 0.6666666666666666}
@@ -335,6 +346,7 @@ cases:
   # T-shirts), 1006 200, 1007 120 (the Gift wrap included), 1011 40, 1012
   # 190 = 821 over 6. Counting an order once per matching line would give
   # 992 over 7.
+  # orders.average_order_value is 821 / 6 written out in full precision
   - metrics: [orders.average_order_value, orders.order_count]
     filters: ["line_categories.category_path = 'Apparel'"]
     expected:
@@ -471,6 +483,7 @@ cases:
   # to September 8; 7 between UTC dates), 1006 2 (from cancelled 1005; 10
   # from 1003), 1011 22; none on first orders. All repeat orders (26 + 7 +
   # 3 + 8 + 2 + 22) / 6 = 68 / 6; second orders 26 and 8, 17.
+  # orders.average_days_between_orders is 68 / 6 written out in full precision
   - metrics: [orders.average_days_between_orders]
     expected:
       - {orders.average_days_between_orders: 11.333333333333334}
@@ -562,6 +575,10 @@ window_cases:
       - {customer_id: 15, second_order_within_30_days: 0, second_order_within_60_days: 1,
          second_order_within_90_days: 1, second_order_within_365_days: null,
          customers.customer_count: 1}
+  # customers.second_order_rate_30_days is 2 / 7 written out in full precision
+  # customers.second_order_rate_60_days is 1 / 5 written out in full precision
+  # customers.second_order_rate_90_days is 2 / 5 written out in full precision
+  # customers.second_order_rate_365_days is 1 / 2 written out in full precision
   - metrics: [customers.second_order_rate_30_days, customers.second_order_rate_60_days,
               customers.second_order_rate_90_days, customers.second_order_rate_365_days]
     expected:

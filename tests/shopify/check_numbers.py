@@ -1,3 +1,6 @@
+# /// script
+# dependencies = ["pyyaml"]
+# ///
 """Ask the commerce model questions over tests/shopify/fixture.sql and compare
 the answers with numbers derived by hand from those rows.
 

@@ -15,10 +15,13 @@ def questions(source, windows=False):
     A case is a mapping: metrics, dimensions, filters and order (lists,
     absent when empty), limit, and expected, the rows of the answer.
     """
+    return load_questions(source)["window_cases" if windows else "cases"]
+
+
+def load_questions(source):
     import yaml  # only the questions need it: GA4 and sensor_community list theirs in Python
 
-    path = pathlib.Path(__file__).resolve().parent / source / "questions.yaml"
-    return yaml.safe_load(path.read_text())["window_cases" if windows else "cases"]
+    return yaml.safe_load((pathlib.Path(__file__).resolve().parent / source / "questions.yaml").read_text())
 
 
 def flags(case):
