@@ -65,14 +65,22 @@ jobs:
               - '!sources/shopify/README.md'
               - entities/commerce.yaml
               - tests/shopify/**
+              - tests/commerce/**
               - tests/ask_model.py
+              - tests/canon.py
+              - tests/export_canon.py
+              - tests/run_canon.py
             woocommerce:
               - *common
               - sources/woocommerce/**
               - '!sources/woocommerce/README.md'
               - entities/commerce.yaml
               - tests/woocommerce/**
+              - tests/commerce/**
               - tests/ask_model.py
+              - tests/canon.py
+              - tests/export_canon.py
+              - tests/run_canon.py
             sensor_community:
               - *common
               - sources/sensor_community/**
@@ -320,11 +328,11 @@ jobs:
           q "DELETE FROM shopify_input.orders WHERE id = 1004 AND updated_at < '2026-10-03 15:00:00'"
           q "DELETE FROM shopify_input.order_lines WHERE order_id = 1004 AND order_updated_at < '2026-10-03 15:00:00'"
           $DBT_BUILD                 # an order moved to another customer
-          python3 tests/shopify/check_numbers.py
+          uv run tests/shopify/check_numbers.py
           $DBT_BUILD                 # incremental over unchanged input
-          python3 tests/shopify/check_numbers.py
+          uv run tests/shopify/check_numbers.py
           same
-          OSSIE_CLICKHOUSE_URL=http://127.0.0.1:8123/analytics_full python3 tests/shopify/check_numbers.py
+          OSSIE_CLICKHOUSE_URL=http://127.0.0.1:8123/analytics_full uv run tests/shopify/check_numbers.py
       # The retention windows close by the last load of orders
       # (customers.sql), which the late loads above set to now. Over the
       # fixture and the windows' first orders a year back
@@ -341,7 +349,24 @@ jobs:
           load tests/shopify/fixture.sql shopify_windows
           load tests/shopify/windows.sql shopify_windows
           CLICKHOUSE_DATABASE=analytics_windows ${DBT_BUILD/'"shopify_input"'/'"shopify_windows"'}
-          OSSIE_CLICKHOUSE_URL=http://127.0.0.1:8123/analytics_windows python3 tests/shopify/check_numbers.py --windows
+          OSSIE_CLICKHOUSE_URL=http://127.0.0.1:8123/analytics_windows uv run tests/shopify/check_numbers.py --windows
+      # The canonical tables: the columns the model reads, as the package
+      # builds them over the fixture loaded at once, the database
+      # shopify_fixture the late loads above read from (the windows' columns
+      # depend on the last load, which the late loads above set to now, so
+      # the files cannot come from that build) and over the fixture with
+      # windows.sql. They must be the files in the repository
+      # (tests/shopify/canon, canon_windows, tests/commerce/tables.sql):
+      # a change that moves a canonical row changes them in the same pull
+      # request. The model is then asked its questions over the files
+      # alone, loaded into new databases with no dbt: tests/run_canon.py.
+      - name: Check the canonical tables
+        run: |
+          CLICKHOUSE_DATABASE=analytics_canon ${DBT_BUILD/'"shopify_input"'/'"shopify_fixture"'}
+          CLICKHOUSE_DATABASE=analytics_canon uv run tests/export_canon.py shopify --check
+          CLICKHOUSE_DATABASE=analytics_windows uv run tests/export_canon.py shopify --windows --check
+          uv run tests/run_canon.py shopify --engine clickhouse --database analytics_canon_files
+          uv run tests/run_canon.py shopify --windows --engine clickhouse --database analytics_canon_files_windows
       # deployment.yml names what a deployment sets and reads; the check
       # holds it to the package and the built tables, and counts the rows
       # whose date is not the day of their time in the build's zone: none
@@ -585,8 +610,8 @@ jobs:
           # it read, in UTC on a server that is not.
           test "$(q "SELECT comment FROM system.tables WHERE database = 'analytics' AND name = 'refunds'")" = \
                "read through $(q "SELECT toString(toTimeZone(max(_peerdb_synced_at), 'UTC')) FROM woocommerce_input.wp_2_wc_orders") UTC"
-          python3 tests/woocommerce/check_numbers.py
-          OSSIE_CLICKHOUSE_URL=http://127.0.0.1:8123/analytics_full python3 tests/woocommerce/check_numbers.py
+          uv run tests/woocommerce/check_numbers.py
+          OSSIE_CLICKHOUSE_URL=http://127.0.0.1:8123/analytics_full uv run tests/woocommerce/check_numbers.py
           # Nullable columns but the keys and CDC's own; empty times, the
           # refunds' customer and the channel of refunds as NULL.
           sed -E '/^ +(id|order_id|order_item_id|meta_id|product_id|term_id|term_taxonomy_id|object_id|_peerdb_[a-z_]+) /!s/^( +[a-z_]+) (String|Decimal\(26, 8\)|DateTime64\(6\)|UInt64|Bool|Int64)/\1 Nullable(\2)/' \
@@ -647,7 +672,24 @@ jobs:
           load tests/woocommerce/fixture.sql woocommerce_windows
           load tests/woocommerce/windows.sql woocommerce_windows
           CLICKHOUSE_DATABASE=analytics_windows ${DBT_BUILD/'"woocommerce_input"'/'"woocommerce_windows"'}
-          OSSIE_CLICKHOUSE_URL=http://127.0.0.1:8123/analytics_windows python3 tests/woocommerce/check_numbers.py --windows
+          OSSIE_CLICKHOUSE_URL=http://127.0.0.1:8123/analytics_windows uv run tests/woocommerce/check_numbers.py --windows
+      # The canonical tables: the columns the model reads, as the package
+      # builds them over the fixture synced at once, the database
+      # woocommerce_fixture the late rows above read from (the windows' columns
+      # depend on the last sync, which the late rows above set to now, so
+      # the files cannot come from that build) and over the fixture with
+      # windows.sql. They must be the files in the repository
+      # (tests/woocommerce/canon, canon_windows, tests/commerce/tables.sql):
+      # a change that moves a canonical row changes them in the same pull
+      # request. The model is then asked its questions over the files
+      # alone, loaded into new databases with no dbt: tests/run_canon.py.
+      - name: Check the canonical tables
+        run: |
+          CLICKHOUSE_DATABASE=analytics_canon ${DBT_BUILD/'"woocommerce_input"'/'"woocommerce_fixture"'}
+          CLICKHOUSE_DATABASE=analytics_canon uv run tests/export_canon.py woocommerce --check
+          CLICKHOUSE_DATABASE=analytics_windows uv run tests/export_canon.py woocommerce --windows --check
+          uv run tests/run_canon.py woocommerce --engine clickhouse --database analytics_canon_files
+          uv run tests/run_canon.py woocommerce --windows --engine clickhouse --database analytics_canon_files_windows
       # deployment.yml names what a deployment sets and reads; the check
       # holds it to the package and the built tables, and counts the rows
       # whose date is not the day of their time in the build's zone: none
