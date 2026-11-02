@@ -51,7 +51,8 @@ ai_context:
     is served together with the commerce model, questions about sales,
     revenue, orders or average order value mean the store's figures there;
     answer them from it alone. Properties and stores have labels of their
-    own, and the model does not link a property to a store. The metrics here answer what web analytics
+    own, and the model does not link a property to a store. The metrics
+    here answer what web analytics
     recorded, and a comparison of the two names both; any amount from here
     goes by purchases.currency or as purchases.gross_purchase_revenue_usd.
 

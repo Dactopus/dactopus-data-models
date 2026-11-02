@@ -218,6 +218,9 @@ CASES = [
     # Every amount is in the store's currency, 117 converted: one currency.
     (["-m", "orders.order_count", "-d", "orders.currency"],
      [{"currency": "USD", "orders.order_count": 9}]),
+    # Every order is of one platform, the package's.
+    (["-m", "orders.order_count", "-d", "orders.platform"],
+     [{"platform": "woocommerce", "orders.order_count": 9}]),
     # Without a plugin's number, the order number is the id: 101's meta
     # holds a plugin's 1, which the package reads only when told its key.
     (["-m", "orders.order_count", "-d", "orders.order_number", "-f", "orders.order_id = 101"],
