@@ -58,6 +58,8 @@ SELECT
     accurateCast(o.customer_id, 'Nullable(Int64)') AS customer_id,
     o.email AS customer_email,
     o.currency_code AS currency,
+    -- The store's platform, for agents over stores of several (entities/commerce.yaml).
+    CAST('shopify' AS LowCardinality(String)) AS platform,
     -- What the order sold: the total less tips and gift cards sold, which
     -- Shopify's sales reports leave out. Import duties and fees stay in it,
     -- as in Shopify's total sales (input.sql). A gift card counts when it is

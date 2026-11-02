@@ -98,6 +98,9 @@ CASES = [
        "sales_events.net_revenue": 425.55, "orders.refunded_amount": 331.95},
       {"order_month": "2026-10-01", "orders.order_count": 2, "orders.revenue": 312.5,
        "sales_events.net_revenue": 312.5, "orders.refunded_amount": 0}]),
+    # Every order is of one platform, the package's.
+    (["-m", "orders.order_count", "-d", "orders.platform"],
+     [{"platform": "shopify", "orders.order_count": 11}]),
     # Revenue without cancelled orders: 1360 - 60 - 70.
     (["-m", "orders.order_count", "-m", "orders.revenue", "-f", "orders.is_cancelled = false"],
      [{"orders.order_count": 9, "orders.revenue": 1230}]),
