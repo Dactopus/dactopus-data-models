@@ -19,10 +19,11 @@ NULL = r"\N"  # a NULL in the CSV files
 
 def standard_type(clickhouse_type):
     """(type in standard SQL, nullable) for a ClickHouse type of a contract."""
-    nullable = clickhouse_type.startswith("Nullable(")
-    inner = clickhouse_type[len("Nullable("):-1] if nullable else clickhouse_type
+    spelled = check_contracts.normal(clickhouse_type)  # as check_contracts compares them: no spaces
+    nullable = spelled.startswith("Nullable(")
+    inner = spelled[len("Nullable("):-1] if nullable else spelled
     inner = re.sub(r"^LowCardinality\((.*)\)$", r"\1", inner)
-    decimal = re.fullmatch(r"Decimal\((\d+), (\d+)\)", inner)
+    decimal = re.fullmatch(r"Decimal\((\d+),(\d+)\)", inner)
     if decimal:
         return f"DECIMAL({decimal[1]}, {decimal[2]})", nullable
     known = {"String": "VARCHAR", "Int64": "BIGINT", "UInt64": "BIGINT", "Bool": "BOOLEAN",

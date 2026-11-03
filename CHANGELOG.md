@@ -34,8 +34,8 @@ names the Ossie schema version its models carry.
   so the model's numbers can be checked without dbt or the platform's raw
   rows; `--engine duckdb` asks them through DuckDB's community extension
   `ossie` instead. Its 0.3.0 does not read the metrics of a dataset
-  (apache/ossie#591), so the model does not load there as it is: the
-  runner loads a copy with them moved to the model's metrics. With that
+  (apache/ossie#591), so the model does not load there as it is:
+  `tests/run_canon.py` loads a copy with them moved to the model's metrics. With that
   copy, 72 of the 95 questions give the same
   numbers, 19 are refused, and 4 differ: it leaves out the rows a
   many-to-one relationship finds no match for (by `products.status`, the

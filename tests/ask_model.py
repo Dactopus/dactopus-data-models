@@ -36,11 +36,11 @@ def case_of(args, expected):
     """A case from the flags of the command line and the expected rows: the form
     GA4's and sensor_community's check_numbers.py still list their questions in."""
     case = {}
-    for (flag, key), values in ((f, [args[i + 1] for i in range(0, len(args), 2) if args[i] == f[0]]) for f in FLAGS):
-        if values:
-            case[key] = values
-    if "-l" in args:
-        case["limit"] = int(args[args.index("-l") + 1])
+    for flag, value in zip(args[::2], args[1::2]):
+        if flag == "-l":
+            case["limit"] = int(value)
+        else:
+            case.setdefault(dict(FLAGS)[flag], []).append(value)
     return {**case, "expected": expected}
 
 
@@ -63,12 +63,12 @@ def matches(got, expected):
         g.keys() == e.keys() and all(same(g[k], e[k]) for k in e) for g, e in zip(got, expected))
 
 
-def check(model, cases, ask=ask, quit=True, refused=None):
+def check(model, cases, ask=ask, refused=None):
     """Ask each case with ask(model, case); print the ones that differ and the count.
 
     An answer refused(got) holds for (an engine's deliberate refusal of a
     question) is printed as refused and does not count as a difference. Exits
-    with 1 if any differ, else 0; with quit=False returns the number that differ.
+    with 1 if any differ, else 0.
     """
     failed = refusals = 0
     cases = [case_of(*case) if isinstance(case, tuple) else case for case in cases]
@@ -82,6 +82,4 @@ def check(model, cases, ask=ask, quit=True, refused=None):
             print(f"FAIL {' '.join(flags(case))}\n  expected {case['expected']}\n  got      {got}")
     print(f"{len(cases) - failed - refusals} of {len(cases)} questions match"
           + (f", {refusals} refused" if refusals else ""))
-    if quit:
-        sys.exit(1 if failed else 0)
-    return failed
+    sys.exit(1 if failed else 0)

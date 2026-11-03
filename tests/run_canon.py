@@ -73,6 +73,7 @@ class ClickHouse:
         self.user = os.environ.get("CLICKHOUSE_USER", "default")
         self.password = os.environ.get("CLICKHOUSE_PASSWORD", "")
         self.time_zone = time_zone
+        self.created = False  # close() drops only a database this run created
 
     def post(self, query, data=b"", **settings):
         url = f"http://{self.host}:{self.port}/?{urllib.parse.urlencode({**settings, 'query': query})}"
@@ -85,6 +86,7 @@ class ClickHouse:
 
     def create(self, sql):
         self.post(f"CREATE DATABASE {self.database}")
+        self.created = True
         for statement in clickhouse_ddl(sql).split(";\n"):
             if statement.strip():
                 self.post(statement.replace("CREATE TABLE ", f"CREATE TABLE {self.database}.", 1))
@@ -103,7 +105,8 @@ class ClickHouse:
         return ask_model.ask(model, case)
 
     def close(self):
-        self.post(f"DROP DATABASE IF EXISTS {self.database}")
+        if self.created:
+            self.post(f"DROP DATABASE IF EXISTS {self.database}")
 
 
 class DuckDB:
@@ -233,8 +236,8 @@ def main():
     engine = ENGINES[args.engine](args.database, source["time_zone"])
     ddl = (canon.ROOT / "tests" / canon.domain(model_file) / "tables.sql").read_text()
     csv_dir = canon.csv_dir(args.package, args.windows)
-    engine.create(ddl)
     try:
+        engine.create(ddl)
         for table in tables:
             engine.load(table, csv_dir / f"{table}.csv")
         ask_model.check(str(canon.ROOT / model_file), cases, ask=engine.ask,
