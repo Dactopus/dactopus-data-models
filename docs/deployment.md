@@ -197,8 +197,10 @@ names, so dbt stops a project that installs a package beside it.
   privileges`. Queries through the views go under the builder's row
   policies on the stores' tables, not the reader's.
   The builder keeps `SELECT` on every store's database while the union is
-  served, or every query through its views fails. A build by another
-  user makes that user the owner of every view.
+  served, or every query through its views fails; for a sensor network,
+  also on its input database, whose snapshots the network's `devices`
+  view reads at every question. A build by another user makes that user
+  the owner of every view.
 - **Views.** The union holds no rows of its own and sees a store's
   tables as soon as its build finishes. Build it again after adding a
   database and after a release changes the packages' columns.
