@@ -1,0 +1,10 @@
+source_id,product_id,category,category_path,is_direct
+shopify,101,Apparel,Apparel,true
+shopify,102,Kitchen,Kitchen,true
+shopify,103,Apparel,Apparel,true
+shopify,104,Apparel,Apparel,true
+shopify,106,Apparel,Apparel,true
+shopify,108,Apparel,Apparel,true
+shopify,110,Apparel,Apparel,true
+shopify,111,Kitchen,Kitchen,true
+shopify,112,Home,Home,true

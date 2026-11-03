@@ -1,9 +1,47 @@
 """Ask a model questions with dactopus-ossie-clickhouse and compare the answers with
-expected rows; tests/<source>/check_numbers.py hold the questions."""
+expected rows; tests/<source>/questions.yaml hold the questions."""
 import json
 import math
+import pathlib
 import subprocess
 import sys
+
+FLAGS = (("-m", "metrics"), ("-d", "dimensions"), ("-f", "filters"), ("-o", "order"))
+
+
+def questions(source, windows=False):
+    """The cases of tests/<source>/questions.yaml, or its window_cases.
+
+    A case is a mapping: metrics, dimensions, filters and order (lists,
+    absent when empty), limit, and expected, the rows of the answer.
+    """
+    return load_questions(source)["window_cases" if windows else "cases"]
+
+
+def load_questions(source):
+    import yaml  # only the questions need it: GA4 and sensor_community list theirs in Python
+
+    return yaml.safe_load((pathlib.Path(__file__).resolve().parent / source / "questions.yaml").read_text())
+
+
+def flags(case):
+    """The command-line flags of dactopus-ossie-clickhouse query for a case."""
+    args = [item for flag, key in FLAGS for value in case.get(key, []) for item in (flag, value)]
+    if "limit" in case:
+        args += ["-l", str(case["limit"])]
+    return args
+
+
+def case_of(args, expected):
+    """A case from the flags of the command line and the expected rows: the form
+    GA4's and sensor_community's check_numbers.py still list their questions in."""
+    case = {}
+    for flag, value in zip(args[::2], args[1::2]):
+        if flag == "-l":
+            case["limit"] = int(value)
+        else:
+            case.setdefault(dict(FLAGS)[flag], []).append(value)
+    return {**case, "expected": expected}
 
 
 def same(a, b):
@@ -12,16 +50,36 @@ def same(a, b):
     return a == b
 
 
-def check(model, cases):
-    failed = 0
-    for args, expected in cases:
-        out = subprocess.run(["dactopus-ossie-clickhouse", "query", model, *args, "--json"],
-                             capture_output=True, text=True)
-        got = json.loads(out.stdout) if out.returncode == 0 else out.stderr.strip()
-        ok = isinstance(got, list) and len(got) == len(expected) and all(
-            g.keys() == e.keys() and all(same(g[k], e[k]) for k in e) for g, e in zip(got, expected))
-        if not ok:
+def ask(model, case):
+    """The answer's rows, or the error text, from dactopus-ossie-clickhouse
+    (the database is $OSSIE_CLICKHOUSE_URL, the zone $OSSIE_CLICKHOUSE_TIME_ZONE)."""
+    out = subprocess.run(["dactopus-ossie-clickhouse", "query", model, *flags(case), "--json"],
+                         capture_output=True, text=True)
+    return json.loads(out.stdout) if out.returncode == 0 else out.stderr.strip()
+
+
+def matches(got, expected):
+    return isinstance(got, list) and len(got) == len(expected) and all(
+        g.keys() == e.keys() and all(same(g[k], e[k]) for k in e) for g, e in zip(got, expected))
+
+
+def check(model, cases, ask=ask, refused=None):
+    """Ask each case with ask(model, case); print the ones that differ and the count.
+
+    An answer refused(got) holds for (an engine's deliberate refusal of a
+    question) is printed as refused and does not count as a difference. Exits
+    with 1 if any differ, else 0.
+    """
+    failed = refusals = 0
+    cases = [case_of(*case) if isinstance(case, tuple) else case for case in cases]
+    for case in cases:
+        got = ask(model, case)
+        if refused and refused(got):
+            refusals += 1
+            print(f"REFUSED {' '.join(flags(case))}\n  {got}")
+        elif not matches(got, case["expected"]):
             failed += 1
-            print(f"FAIL {' '.join(args)}\n  expected {expected}\n  got      {got}")
-    print(f"{len(cases) - failed} of {len(cases)} questions match")
+            print(f"FAIL {' '.join(flags(case))}\n  expected {case['expected']}\n  got      {got}")
+    print(f"{len(cases) - failed - refusals} of {len(cases)} questions match"
+          + (f", {refusals} refused" if refusals else ""))
     sys.exit(1 if failed else 0)

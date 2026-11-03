@@ -1,0 +1,17 @@
+source_id,line_id,order_id,product_id,variant_id,sku,title,quantity,current_quantity,line_total,returned_quantity,returned_amount
+woocommerce,1,101,11,\N,MUG,Mug,2,2,40,0,0
+woocommerce,2,101,12,121,TEE-M,Tee,1,1,30,0,0
+woocommerce,6,102,13,\N,\N,Sticker,3,3,15,0,0
+woocommerce,8,103,14,\N,\N,Cap,1,1,25,0,0
+woocommerce,10,104,12,122,TEE-L,Tee,2,1,54,1,27
+woocommerce,14,106,11,\N,MUG,Mug,1,1,20,0,0
+woocommerce,15,107,11,\N,MUG,Mug,2,1,40,1,20
+woocommerce,16,108,12,121,TEE-M,Tee,1,1,30,0,0
+woocommerce,17,109,11,\N,MUG,Mug,1,1,20,0,0
+woocommerce,22,110,12,121,TEE-M,Tee,1,1,31.818182,0,0
+woocommerce,24,111,11,\N,MUG,Mug,1,0,20,1,20
+woocommerce,28,112,12,121,TEE-M,Tee,2,2,60,0,0
+woocommerce,29,113,13,\N,\N,Sticker,2,2,10,0,0
+woocommerce,34,117,11,\N,MUG,Mug,2,2,50,0,0
+woocommerce,37,118,11,\N,MUG,Mug,1,1,20,0,0
+woocommerce,38,119,11,\N,MUG,Mug,1,1,20,0,0

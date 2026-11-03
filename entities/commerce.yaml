@@ -616,7 +616,7 @@ datasets:
         ai_context:
           synonyms: [tax, taxes, tax total, VAT, sales tax]
       - name: buyer_count
-        expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(DISTINCT source_id, CASE WHEN in_sales_reports THEN customer_id END)"}]}
+        expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(DISTINCT CASE WHEN in_sales_reports THEN source_id || '/' || CAST(customer_id AS VARCHAR) END)"}]}
         description: >
           Number of distinct customers (orders.customer_id) among the
           orders the store's reports count: the customers who bought in a
@@ -1518,7 +1518,7 @@ datasets:
           synonyms: [own category, direct category]
     metrics:
       - name: product_count
-        expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(DISTINCT source_id, CASE WHEN is_direct THEN product_id END)"}]}
+        expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(DISTINCT CASE WHEN is_direct THEN source_id || '/' || CAST(product_id AS VARCHAR) END)"}]}
         description: >
           Number of products in each category, the products in the category
           itself (product_categories.is_direct): a parent category whose
@@ -1568,7 +1568,7 @@ datasets:
           synonyms: [vendor, manufacturer, make, label]
     metrics:
       - name: product_count
-        expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(DISTINCT source_id, product_id)"}]}
+        expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(DISTINCT source_id || '/' || CAST(product_id AS VARCHAR))"}]}
         description: >
           Number of products of a brand. A WooCommerce product with two
           brands counts in each. Filter by products.status = 'active' for

@@ -335,20 +335,25 @@ def check(packages, unions, built):
     return problems
 
 
-parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-parser.add_argument("--built", metavar="PROJECT", type=pathlib.Path,
-                    help="a package's or a union's directory, sources/<source> or unions/<domain>, "
-                         "built into $CLICKHOUSE_DATABASE")
-args = parser.parse_args()
-projects = {kind: sorted(p for p in (ROOT / kind).iterdir() if (p / "dbt_project.yml").is_file())
-            for kind in ("sources", "unions")}
-built = args.built.resolve() if args.built else None
-if built and built not in projects["sources"] + projects["unions"]:
-    sys.exit(f"{args.built} is not a package under sources/ or a union under unions/")
-failed = check(projects["sources"], projects["unions"], built)
-for problem in failed:
-    print(f"FAIL {problem}")
-if not failed:
-    print(f"contracts agree: {', '.join(p.name for p in projects['sources'])}; "
-          f"unions {', '.join(p.name for p in projects['unions'])}")
-sys.exit(1 if failed else 0)
+def main():
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--built", metavar="PROJECT", type=pathlib.Path,
+                        help="a package's or a union's directory, sources/<source> or unions/<domain>, "
+                             "built into $CLICKHOUSE_DATABASE")
+    args = parser.parse_args()
+    projects = {kind: sorted(p for p in (ROOT / kind).iterdir() if (p / "dbt_project.yml").is_file())
+                for kind in ("sources", "unions")}
+    built = args.built.resolve() if args.built else None
+    if built and built not in projects["sources"] + projects["unions"]:
+        sys.exit(f"{args.built} is not a package under sources/ or a union under unions/")
+    failed = check(projects["sources"], projects["unions"], built)
+    for problem in failed:
+        print(f"FAIL {problem}")
+    if not failed:
+        print(f"contracts agree: {', '.join(p.name for p in projects['sources'])}; "
+              f"unions {', '.join(p.name for p in projects['unions'])}")
+    sys.exit(1 if failed else 0)
+
+
+if __name__ == "__main__":
+    main()

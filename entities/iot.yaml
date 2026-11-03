@@ -179,7 +179,7 @@ datasets:
         ai_context:
           synonyms: [maximum, highest, peak, hottest]
       - name: reporting_devices
-        expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(DISTINCT source_id, device_id)"}]}
+        expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(DISTINCT source_id || '/' || CAST(device_id AS VARCHAR))"}]}
         description: >
           Number of sites with at least one reading in the period and the
           filters: the devices that reported.

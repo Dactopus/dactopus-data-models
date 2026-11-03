@@ -83,8 +83,20 @@ release it builds on; older releases are untested.
     tests/<source>/           hand-written input rows (fixture.sql, and
                               windows.sql for the retention windows) and
                               the numbers the model must answer over them
-                              (check_numbers.py)
+                              (check_numbers.py asks the questions of
+                              questions.yaml, each with the derivation of
+                              its numbers in comments)
+      canon/                  commerce packages: the canonical tables over
+      canon_windows/          fixture.sql, and over fixture.sql with
+                              windows.sql, one CSV file a table
+    tests/commerce/tables.sql the canonical tables of the commerce domain
+                              in standard SQL, written by export_canon.py
     tests/ask_model.py        asks the questions, shared by every source
+    tests/export_canon.py     writes the canonical tables of a built
+                              package to the CSV files, and tables.sql
+    tests/run_canon.py        loads the CSV files into an engine and asks
+                              the questions of them, with no dbt
+    tests/canon.py            what the two share
     tests/check_contracts.py  checks the contracts of the packages and the
                               unions against the Ossie models and each other
     tests/check_deployment.py checks the deployment.yml of each package and
@@ -220,9 +232,22 @@ package or a model:
    request.
 5. `tests/<source>/check_numbers.py` passes over that source's fixture
    (CI runs it). A changed number gets a new expected value with its
-   derivation; a new source behaviour gets fixture rows. Check that a
+   derivation in `tests/<source>/questions.yaml` (GA4 and
+   Sensor.Community still list theirs in `check_numbers.py`); a new source
+   behaviour gets fixture rows. Check that a
    new case fails against the old code.
-6. A change to descriptions, `ai_context` or model instructions changes
+6. A change that moves a canonical row of a commerce package (a column
+   the model reads, a mapping, the fixture) regenerates its files:
+   build the package over `fixture.sql` loaded at once (and, for
+   `canon_windows`, over `windows.sql` as well), then run
+   `uv run tests/export_canon.py <source>` (`--windows` for the second)
+   and commit the files. `uv run tests/run_canon.py <source> --engine
+   clickhouse` (`--windows`) then asks the questions of the files alone;
+   CI does both. `--engine duckdb` asks them through DuckDB's community
+   extension `ossie`, over a copy of the model with the metrics of each
+   dataset moved to the model's (the extension does not read them yet);
+   it refuses some questions, and CI does not run it.
+7. A change to descriptions, `ai_context` or model instructions changes
    what agents answer. Ask the questions it affects through
    `dactopus-ossie-clickhouse serve` (MCP), in fresh sessions, with more
    than one AI model, and compare every number in the answers with the
@@ -249,7 +274,9 @@ checks `deployment.yml`, the contracts against the built tables, the
 Ossie model against them and `dbt source freshness`, and builds under a
 label other than the package's default. The Shopify and WooCommerce jobs
 also check the retention windows (`windows.sql`) and a build in two time
-zones; the WooCommerce job runs on ClickHouse 26.7 and 26.9. The unions
+zones, and that the canonical tables of the build are the CSV files in
+`tests/<source>/canon*`, over which `tests/run_canon.py` asks the
+questions again with no dbt; the WooCommerce job runs on ClickHouse 26.7 and 26.9. The unions
 job builds every package into databases of its own, builds the three
 unions over them and compares each label's answers with its database's
 (`tests/check_union.py`). The fixtures are small, so they do not replace

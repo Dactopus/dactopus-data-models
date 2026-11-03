@@ -1,0 +1,13 @@
+source_id,event_id,event_type,order_id,event_date,event_time,amount
+woocommerce,order-101,order,101,2026-08-10,2026-08-10 14:05:00+00:00,88
+woocommerce,order-103,order,103,2026-08-31,2026-09-01 02:10:00+00:00,33
+woocommerce,order-104,order,104,2026-09-02,2026-09-02 12:00:00+00:00,70.4
+woocommerce,order-109,order,109,2026-09-12,2026-09-12 15:00:00+00:00,30.8
+woocommerce,order-110,order,110,2026-09-15,2026-09-15 16:00:00+00:00,46
+woocommerce,order-111,order,111,2026-09-20,2026-09-20 10:00:00+00:00,33
+woocommerce,order-112,order,112,2026-10-01,2026-10-01 13:00:00+00:00,66
+woocommerce,order-113,order,113,2026-10-06,2026-10-06 18:00:00+00:00,16.5
+woocommerce,order-117,order,117,2026-10-09,2026-10-09 10:00:00+00:00,66
+woocommerce,refund-901,refund,104,2026-10-05,2026-10-05 14:00:00+00:00,-29.7
+woocommerce,refund-902,refund,111,2026-09-22,2026-09-22 12:00:00+00:00,-33
+woocommerce,refund-903,refund,112,2026-10-02,2026-10-02 09:00:00+00:00,-5

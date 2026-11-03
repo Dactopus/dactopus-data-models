@@ -221,7 +221,7 @@ datasets:
         ai_context:
           synonyms: [engagement]
       - name: users
-        expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(DISTINCT source_id, user_pseudo_id)"}]}
+        expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(DISTINCT source_id || '/' || CAST(user_pseudo_id AS VARCHAR))"}]}
         description: >
           Number of distinct browsers on devices that visited. Not people: one
           person on two devices counts twice, and a browser that visited two
@@ -238,7 +238,7 @@ datasets:
         ai_context:
           synonyms: [conversion rate, conversion, ecommerce conversion rate, session key event rate]
       - name: user_conversion_rate
-        expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(DISTINCT source_id, CASE WHEN has_purchase THEN user_pseudo_id END) * 1.0 / COUNT(DISTINCT source_id, user_pseudo_id)"}]}
+        expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(DISTINCT CASE WHEN has_purchase THEN source_id || '/' || CAST(user_pseudo_id AS VARCHAR) END) * 1.0 / COUNT(DISTINCT source_id || '/' || CAST(user_pseudo_id AS VARCHAR))"}]}
         description: >
           Share of visitors (browsers on devices) who bought at least once in the
           period, from 0 to 1.

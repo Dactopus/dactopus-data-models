@@ -1,0 +1,9 @@
+source_id,customer_id,first_order_date,last_order_date,number_of_orders,net_total,second_order_within_30_days,second_order_within_60_days,second_order_within_90_days,second_order_within_365_days
+shopify,1,2026-08-10,2026-09-15,4,535.55,true,\N,\N,\N
+shopify,2,2026-08-31,2026-10-02,4,70,true,\N,\N,\N
+shopify,3,2026-09-25,2026-09-25,1,0,\N,\N,\N,\N
+shopify,11,2025-09-01,2026-08-01,2,120,false,false,false,true
+shopify,12,2025-10-03,2025-10-03,1,60,false,false,false,false
+shopify,13,2025-10-04,2025-10-04,1,60,false,false,false,\N
+shopify,14,2026-05-01,2026-07-30,2,120,false,false,true,\N
+shopify,15,2026-06-01,2026-07-15,2,120,false,true,true,\N

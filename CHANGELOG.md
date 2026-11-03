@@ -23,8 +23,41 @@ names the Ossie schema version its models carry.
   a `--time-zone` that differs
   ([#60](https://github.com/Dactopus/dactopus-data-models/issues/60)).
 
+- `tests/<source>/canon/` and `canon_windows/` for Shopify and
+  WooCommerce: the canonical tables of `entities/commerce.yaml` (the
+  columns the model reads, in the order of the contracts) over
+  `fixture.sql`, and over `fixture.sql` with `windows.sql`, one CSV file
+  a table, with `tests/commerce/tables.sql`, their DDL in standard SQL.
+  The questions and their expected rows are in
+  `tests/<source>/questions.yaml`. `tests/run_canon.py` loads the files
+  into ClickHouse and asks the questions through dactopus-ossie-clickhouse,
+  so the model's numbers can be checked without dbt or the platform's raw
+  rows; `--engine duckdb` asks them through DuckDB's community extension
+  `ossie` instead. Its 0.3.0 does not read the metrics of a dataset
+  (apache/ossie#591), so the model does not load there as it is:
+  `tests/run_canon.py` loads a copy with them moved to the model's metrics. With that
+  copy, 72 of the 95 questions give the same
+  numbers, 19 are refused, and 4 differ: it leaves out the rows a
+  many-to-one relationship finds no match for (by `products.status`, the
+  lines of products the `products` table does not have; by
+  `customers.first_order_month`, the guests' orders). `tests/export_canon.py` writes
+  the files from a built package, and CI fails when a build differs from
+  them.
+
 ### Changed
 
+- The distinct counts that pair `source_id` with the counted column
+  (`orders.buyer_count`, `product_categories.product_count`,
+  `product_brands.product_count`, `sessions.users`,
+  `sessions.user_conversion_rate`, `readings.reporting_devices`) join the
+  two: `COUNT(DISTINCT source_id || '/' || CAST(customer_id AS VARCHAR))`.
+  `COUNT(DISTINCT source_id, customer_id)` is not standard SQL, and DuckDB
+  rejects it. The numbers are unchanged.
+- The questions of `tests/shopify/check_numbers.py` and
+  `tests/woocommerce/check_numbers.py` moved to `questions.yaml`, with
+  their derivations as comments; the two scripts read it and need
+  `pyyaml` (`uv run` installs it). The questions and their numbers are
+  unchanged.
 - The example databases and labels in `docs/deployment.md` name what
   the store is, not its platform: databases `main_store`, `outlet_store`,
   `wholesale_store`, labels `usa_store`, `wholesale_store`.
