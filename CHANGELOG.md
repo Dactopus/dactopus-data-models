@@ -8,6 +8,15 @@ names the Ossie schema version its models carry.
 
 ## [Unreleased]
 
+### Changed
+
+- The models of the three domains write expressions as
+  `expression: {sql: ...}` instead of
+  `expression: {dialects: [{dialect: ANSI_SQL, ...}]}`, the form of the
+  apache/ossie examples and spec since apache/ossie#640. Reading it
+  needs dactopus-ossie-clickhouse 0.11.0 or newer. The numbers of the
+  models do not change and no rebuild is needed.
+
 ## [0.10.0] - 2026-11-03
 
 Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.12.0,
