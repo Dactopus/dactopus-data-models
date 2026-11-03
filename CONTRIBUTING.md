@@ -281,8 +281,9 @@ job builds every package into databases of its own, builds the three
 unions over them and compares each label's answers with its database's
 (`tests/check_union.py`); a user with `SELECT` on the unions' databases
 alone gets the models' answers and is refused the packages' tables. The
-fixtures are small, so they do not replace the check on real data. A job of its own validates the Ossie models of
-every domain together, with no server: a deployment with several
+fixtures are small, so they do not replace the check on real data. A job
+of its own validates the Ossie models of every domain together, with no
+server: a deployment with several
 packages serves them as one, and the executor refuses a name defined in
 two files.
 
