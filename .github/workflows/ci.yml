@@ -989,6 +989,31 @@ jobs:
               http://127.0.0.1:8123/analytics_ga4_a http://127.0.0.1:8123/analytics_ga4_b
           uv run tests/check_union.py entities/iot.yaml http://127.0.0.1:8123/analytics_iot \
               http://127.0.0.1:8123/analytics_iot_a http://127.0.0.1:8123/analytics_iot_b
+      # A union's views read the instances' tables with the rights of the
+      # user who built them (SQL SECURITY DEFINER): a user with SELECT on
+      # the unions' databases alone gets the models' answers, also through
+      # a package's own view over its input database (devices), and the
+      # instances' databases stay closed to it.
+      - name: A reader of the unions alone
+        run: |
+          q() { curl -sf http://127.0.0.1:8123/ --data-binary "$1"; }
+          q "CREATE USER reader IDENTIFIED WITH no_password"
+          q "GRANT SELECT ON analytics_commerce.* TO reader"
+          q "GRANT SELECT ON analytics_web.* TO reader"
+          q "GRANT SELECT ON analytics_iot.* TO reader"
+          dactopus-ossie-clickhouse query entities/commerce.yaml -m orders.order_count -d orders.source_id \
+              --url http://reader@127.0.0.1:8123/analytics_commerce
+          dactopus-ossie-clickhouse query entities/web_analytics.yaml -m sessions.session_count -d sessions.source_id \
+              --url http://reader@127.0.0.1:8123/analytics_web
+          dactopus-ossie-clickhouse query entities/iot.yaml -m readings.reading_count -d readings.source_id \
+              --url http://reader@127.0.0.1:8123/analytics_iot
+          dactopus-ossie-clickhouse query entities/iot.yaml -m devices.device_count -d devices.source_id \
+              --url http://reader@127.0.0.1:8123/analytics_iot
+          for t in analytics_shop.orders analytics_ga4_a.sessions analytics_iot_a.readings; do
+              if curl -s --fail-with-body http://127.0.0.1:8123/ -u reader: --data-binary "SELECT count() FROM $t" > reader.txt; then
+                  cat reader.txt; exit 1; fi
+              grep -q 'Code: 497.*Not enough privileges' reader.txt
+          done
       # Two databases built under one label would add up as one store: the
       # union's tests fail and say so. A database whose types are not the
       # contract's stops the build, also where UNION ALL would widen them

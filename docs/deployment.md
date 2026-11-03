@@ -18,10 +18,10 @@ WooCommerce, `subdirectory: sources/woocommerce`; for Sensor.Community,
 ```yaml
 packages:
   - git: https://github.com/Dactopus/dactopus-data-models.git
-    revision: v0.9.0
+    revision: v0.10.0
     subdirectory: sources/ga4
   - git: https://github.com/Dactopus/dactopus-data-models.git
-    revision: v0.9.0
+    revision: v0.10.0
     subdirectory: sources/shopify
 ```
 
@@ -189,6 +189,18 @@ names, so dbt stops a project that installs a package beside it.
   database, every key is unique in the union. The union's own database is
   not one of those it adds up: its views would replace the tables they
   read, and the build stops before.
+- **Access.** Each view reads the stores' tables with the rights of the
+  user who built the union (`SQL SECURITY DEFINER`, with that user as its
+  `DEFINER`). A user that only reads the model, such as an agent's, needs
+  `SELECT` on the union's database alone; the stores' databases stay
+  closed to it, and a query of their tables fails with `Not enough
+  privileges`. Queries through the views go under the builder's row
+  policies on the stores' tables, not the reader's.
+  The builder keeps `SELECT` on every store's database while the union is
+  served, or every query through its views fails; for a sensor network,
+  also on its input database, whose snapshots the network's `devices`
+  view reads at every question. A build by another user makes that user
+  the owner of every view.
 - **Views.** The union holds no rows of its own and sees a store's
   tables as soon as its build finishes. Build it again after adding a
   database and after a release changes the packages' columns.

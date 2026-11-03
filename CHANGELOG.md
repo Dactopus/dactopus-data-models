@@ -8,6 +8,19 @@ names the Ossie schema version its models carry.
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-11-03
+
+Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.12.0,
+dbt v2 (`dbt-oss` 2.0.8) and dbt v1 (`dbt-core` 1.11 with
+`dbt-clickhouse` 1.10) on ClickHouse 26.9, the WooCommerce package also
+on 26.7. The unions' views read the tables they add up with the rights
+of the user who built them, so a user that reads a model needs `SELECT`
+on the union's database alone; where row policies on those tables hide
+rows from the reader, the numbers through a union change.
+`deployment.yml` names the zone of the days of a package that fixes it.
+No table changes and no rebuild is needed: a union changes on its next
+build.
+
 ### Added
 
 - `zone` in `deployment.yml`: the zone of the days of a package that
@@ -61,6 +74,16 @@ names the Ossie schema version its models carry.
 - The example databases and labels in `docs/deployment.md` name what
   the store is, not its platform: databases `main_store`, `outlet_store`,
   `wholesale_store`, labels `usa_store`, `wholesale_store`.
+- The unions' views read the tables of the stores, properties and
+  networks with the rights of the user who built them
+  (`+sql_security: definer`, `+definer: CURRENT_USER`). A user with
+  `SELECT` on a union's database reads its model without a grant on the
+  databases it adds up, and those stay closed to it. Queries through a
+  view go under the builder's row policies on those tables, no longer
+  the reader's: this changes the numbers of a deployment whose row
+  policies there hide rows from the reader. A union changes on its next
+  build
+  ([Several stores, properties or networks](docs/deployment.md#several-stores-properties-or-networks)).
 
 ## [0.9.0] - 2026-11-02
 
@@ -1043,7 +1066,8 @@ ClickHouse 26.9.
 - Hand-written GA4 rows and the numbers the model must answer over them
   (`tests/ga4`), checked in CI on both dbt versions.
 
-[Unreleased]: https://github.com/Dactopus/dactopus-data-models/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/Dactopus/dactopus-data-models/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/Dactopus/dactopus-data-models/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/Dactopus/dactopus-data-models/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/Dactopus/dactopus-data-models/compare/v0.7.2...v0.8.0
 [0.7.2]: https://github.com/Dactopus/dactopus-data-models/compare/v0.7.1...v0.7.2
