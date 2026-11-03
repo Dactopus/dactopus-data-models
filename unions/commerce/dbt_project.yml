@@ -12,6 +12,10 @@ models:
     # Views: the union holds no rows of its own and sees each build of
     # the stores at once.
     +materialized: view
+    # Each view reads the stores' tables with the rights of the user who
+    # built it, so a reader needs SELECT on the union's database only.
+    +sql_security: definer
+    +definer: CURRENT_USER
     # Every view's columns and their types are listed in schema.yml: the
     # columns entities/commerce.yaml reads, no others; a build stops on a
     # database that gives another type (tests/check_contracts.py).

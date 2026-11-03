@@ -61,6 +61,16 @@ names the Ossie schema version its models carry.
 - The example databases and labels in `docs/deployment.md` name what
   the store is, not its platform: databases `main_store`, `outlet_store`,
   `wholesale_store`, labels `usa_store`, `wholesale_store`.
+- The unions' views read the tables of the stores, properties and
+  networks with the rights of the user who built them
+  (`+sql_security: definer`, `+definer: CURRENT_USER`). A user with
+  `SELECT` on a union's database reads its model without a grant on the
+  databases it adds up, and those stay closed to it. Queries through a
+  view go under the builder's row policies on those tables, no longer
+  the reader's: this changes the numbers of a deployment whose row
+  policies there hide rows from the reader. A union changes on its next
+  build
+  ([Several stores, properties or networks](docs/deployment.md#several-stores-properties-or-networks)).
 
 ## [0.9.0] - 2026-11-02
 
