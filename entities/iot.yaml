@@ -63,7 +63,7 @@ datasets:
       synonyms: [measurements, observations, telemetry, sensor data, values]
     fields:
       - name: source_id
-        expression: {dialects: [{dialect: ANSI_SQL, expression: source_id}]}
+        expression: {sql: source_id}
         description: >
           Sensor network the row comes from: the label the deployment gives it,
           which may name the network or not, one value for every row of a
@@ -73,14 +73,14 @@ datasets:
         ai_context:
           synonyms: [network, sensor network]
       - name: device_id
-        expression: {dialects: [{dialect: ANSI_SQL, expression: device_id}]}
+        expression: {sql: device_id}
         description: Site the reading was taken at (devices.device_id).
         datatype: Integer
         dimension: {is_time: false}
         ai_context:
           synonyms: [device, site, location, station]
       - name: sensor_id
-        expression: {dialects: [{dialect: ANSI_SQL, expression: sensor_id}]}
+        expression: {sql: sensor_id}
         description: >
           Sensor that took the reading. A device has one sensor of each
           type it carries, usually one for particulate matter and one for
@@ -90,7 +90,7 @@ datasets:
         ai_context:
           synonyms: [sensor, channel]
       - name: sensor_type
-        expression: {dialects: [{dialect: ANSI_SQL, expression: sensor_type}]}
+        expression: {sql: sensor_type}
         description: >
           Model of the sensor: SDS011 or PMS5003 for particulate matter,
           BME280 for temperature, humidity and pressure, DHT22 for
@@ -100,7 +100,7 @@ datasets:
         ai_context:
           synonyms: [sensor model, sensor kind]
       - name: measure
-        expression: {dialects: [{dialect: ANSI_SQL, expression: measure}]}
+        expression: {sql: measure}
         description: >
           Quantity the value is of: pm10 (particles up to 10 µm, µg/m³),
           pm2_5 (fine particles up to 2.5 µm, µg/m³), temperature (°C),
@@ -110,41 +110,41 @@ datasets:
         ai_context:
           synonyms: [quantity, metric, parameter, variable, PM2.5, PM10, fine dust, air pressure, barometric pressure]
       - name: value
-        expression: {dialects: [{dialect: ANSI_SQL, expression: value}]}
+        expression: {sql: value}
         description: >
           The reading, in the unit of its measure (see measure), as the
           sensor sent it.
         datatype: Float
       - name: measured_at
-        expression: {dialects: [{dialect: ANSI_SQL, expression: measured_at}]}
+        expression: {sql: measured_at}
         description: Time the reading was taken, UTC.
         datatype: DateTimeTz
         dimension: {is_time: true}
         ai_context:
           synonyms: [time, timestamp, reading time]
       - name: reading_hour
-        expression: {dialects: [{dialect: ANSI_SQL, expression: "DATE_TRUNC('hour', measured_at)"}]}
+        expression: {sql: "DATE_TRUNC('hour', measured_at)"}
         description: Start of the hour the reading was taken in, UTC.
         datatype: DateTimeTz
         dimension: {is_time: true}
         ai_context:
           synonyms: [hour, hourly]
       - name: reading_date
-        expression: {dialects: [{dialect: ANSI_SQL, expression: reading_date}]}
+        expression: {sql: reading_date}
         description: Date the reading was taken, in UTC.
         datatype: Date
         dimension: {is_time: true}
         ai_context:
           synonyms: [date, day, daily]
       - name: reading_week
-        expression: {dialects: [{dialect: ANSI_SQL, expression: "DATE_TRUNC('week', reading_date)"}]}
+        expression: {sql: "DATE_TRUNC('week', reading_date)"}
         description: First day (Monday) of the week the reading was taken in, UTC.
         datatype: Date
         dimension: {is_time: true}
         ai_context:
           synonyms: [week, weekly]
       - name: reading_month
-        expression: {dialects: [{dialect: ANSI_SQL, expression: "DATE_TRUNC('month', reading_date)"}]}
+        expression: {sql: "DATE_TRUNC('month', reading_date)"}
         description: First day of the month the reading was taken in, UTC.
         datatype: Date
         dimension: {is_time: true}
@@ -152,13 +152,13 @@ datasets:
           synonyms: [month, monthly]
     metrics:
       - name: reading_count
-        expression: {dialects: [{dialect: ANSI_SQL, expression: COUNT(*)}]}
+        expression: {sql: COUNT(*)}
         description: Number of readings, one per sensor, time and measure.
         datatype: Integer
         ai_context:
           synonyms: [readings, number of readings, measurements, data points]
       - name: avg_value
-        expression: {dialects: [{dialect: ANSI_SQL, expression: AVG(value)}]}
+        expression: {sql: AVG(value)}
         description: >
           Average of the readings' values, over readings, not over time: a
           sensor that reports more often weighs more. Only for one measure at
@@ -167,19 +167,19 @@ datasets:
         ai_context:
           synonyms: [average, mean, average temperature, average PM2.5, average humidity]
       - name: min_value
-        expression: {dialects: [{dialect: ANSI_SQL, expression: MIN(value)}]}
+        expression: {sql: MIN(value)}
         description: Lowest reading value, for one measure at a time.
         datatype: Float
         ai_context:
           synonyms: [minimum, lowest, coldest]
       - name: max_value
-        expression: {dialects: [{dialect: ANSI_SQL, expression: MAX(value)}]}
+        expression: {sql: MAX(value)}
         description: Highest reading value, for one measure at a time.
         datatype: Float
         ai_context:
           synonyms: [maximum, highest, peak, hottest]
       - name: reporting_devices
-        expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(DISTINCT source_id || '/' || CAST(device_id AS VARCHAR))"}]}
+        expression: {sql: "COUNT(DISTINCT source_id || '/' || CAST(device_id AS VARCHAR))"}
         description: >
           Number of sites with at least one reading in the period and the
           filters: the devices that reported.
@@ -187,7 +187,7 @@ datasets:
         ai_context:
           synonyms: [active devices, devices reporting, online devices, reporting sites]
       - name: last_reading_time
-        expression: {dialects: [{dialect: ANSI_SQL, expression: MAX(measured_at)}]}
+        expression: {sql: MAX(measured_at)}
         description: >
           Time of the latest reading, UTC. Without a dimension, the latest
           reading in the data, hours old: silence is measured from
@@ -207,7 +207,7 @@ datasets:
       synonyms: [sites, locations, stations, sensors, devices]
     fields:
       - name: source_id
-        expression: {dialects: [{dialect: ANSI_SQL, expression: source_id}]}
+        expression: {sql: source_id}
         description: >
           Sensor network the row comes from: the label the deployment gives it,
           which may name the network or not, one value for every row of a
@@ -217,25 +217,25 @@ datasets:
         ai_context:
           synonyms: [network, sensor network]
       - name: device_id
-        expression: {dialects: [{dialect: ANSI_SQL, expression: device_id}]}
+        expression: {sql: device_id}
         description: Identifier of the site, the network's location id.
         datatype: Integer
         dimension: {is_time: false}
         ai_context:
           synonyms: [device, site, location id, station]
       - name: latitude
-        expression: {dialects: [{dialect: ANSI_SQL, expression: latitude}]}
+        expression: {sql: latitude}
         description: >
           Latitude of the site, in degrees. The network coarsens the
           coordinates of sites not marked exact, so they can be
           approximate.
         datatype: Float
       - name: longitude
-        expression: {dialects: [{dialect: ANSI_SQL, expression: longitude}]}
+        expression: {sql: longitude}
         description: Longitude of the site, in degrees; rounded like latitude.
         datatype: Float
       - name: altitude
-        expression: {dialects: [{dialect: ANSI_SQL, expression: altitude}]}
+        expression: {sql: altitude}
         description: >
           Height of the site above sea level, in metres, as the network
           lists it. Empty when not given or when the network has not listed
@@ -244,7 +244,7 @@ datasets:
         ai_context:
           synonyms: [elevation, height]
       - name: country_code
-        expression: {dialects: [{dialect: ANSI_SQL, expression: country_code}]}
+        expression: {sql: country_code}
         description: >
           Country of the site, ISO 3166-1 alpha-2 (AU, NZ, DE). Empty for a
           site the network has not listed while it was reporting, known
@@ -254,7 +254,7 @@ datasets:
         ai_context:
           synonyms: [country]
       - name: is_indoor
-        expression: {dialects: [{dialect: ANSI_SQL, expression: is_indoor}]}
+        expression: {sql: is_indoor}
         description: >
           Whether the site is indoors, by the network's latest listing of
           it. Empty for a site never listed.
@@ -263,7 +263,7 @@ datasets:
         ai_context:
           synonyms: [indoor, inside, outdoor, outside]
       - name: sensor_types
-        expression: {dialects: [{dialect: ANSI_SQL, expression: sensor_types}]}
+        expression: {sql: sensor_types}
         description: >
           Sensor models at the site, separated by commas in alphabetical
           order (DHT22, SDS011). Only SDS011, PMS5003, BME280 and DHT22,
@@ -274,14 +274,14 @@ datasets:
         ai_context:
           synonyms: [sensors, sensor models, equipment]
       - name: first_reading_at
-        expression: {dialects: [{dialect: ANSI_SQL, expression: first_reading_at}]}
+        expression: {sql: first_reading_at}
         description: Time of the site's first reading, UTC. Empty for a site without readings.
         datatype: DateTimeTz
         dimension: {is_time: true}
         ai_context:
           synonyms: [first seen, installed, online since]
       - name: last_reading_at
-        expression: {dialects: [{dialect: ANSI_SQL, expression: last_reading_at}]}
+        expression: {sql: last_reading_at}
         description: >
           Time of the site's latest reading in the archive, UTC, hours old
           even for a site that works: the archive publishes a day the day
@@ -292,7 +292,7 @@ datasets:
         ai_context:
           synonyms: [latest reading, last measurement]
       - name: last_contact_at
-        expression: {dialects: [{dialect: ANSI_SQL, expression: last_contact_at}]}
+        expression: {sql: last_contact_at}
         description: >
           Time the network last heard from the site, UTC: its latest report
           in the API's snapshots, from a sensor of any type, or its latest
@@ -306,7 +306,7 @@ datasets:
           synonyms: [last seen, last contact, last heard from, silent, offline, not reporting, online]
     metrics:
       - name: device_count
-        expression: {dialects: [{dialect: ANSI_SQL, expression: COUNT(*)}]}
+        expression: {sql: COUNT(*)}
         description: >
           Number of sites, with or without readings in any period; use
           readings.reporting_devices for the sites that reported in one.
@@ -314,7 +314,7 @@ datasets:
         ai_context:
           synonyms: [devices, number of devices, sites, stations, how many devices]
       - name: last_contact_time
-        expression: {dialects: [{dialect: ANSI_SQL, expression: MAX(last_contact_at)}]}
+        expression: {sql: MAX(last_contact_at)}
         description: >
           Time of the latest contact, UTC. Without a dimension, the latest the
           network heard from any site: the time silence is measured from.
@@ -324,7 +324,7 @@ datasets:
         ai_context:
           synonyms: [data as of, latest contact, how current, freshest data, latest data, last update, data up to]
       - name: minutes_since_last_contact
-        expression: {dialects: [{dialect: ANSI_SQL, expression: "DATEDIFF(MINUTE, MAX(last_contact_at), CURRENT_TIMESTAMP)"}]}
+        expression: {sql: "DATEDIFF(MINUTE, MAX(last_contact_at), CURRENT_TIMESTAMP)"}
         description: >
           Minutes from the latest contact to now, by the database's clock.
           Without a dimension, the age of devices.last_contact_time: a few

@@ -151,7 +151,7 @@ datasets:
       synonyms: [sales, purchases, transactions, checkouts]
     fields:
       - name: source_id
-        expression: {dialects: [{dialect: ANSI_SQL, expression: source_id}]}
+        expression: {sql: source_id}
         description: >
           Store the row comes from: the label the deployment gives it, which
           may name the store (uk_outlet) or not, one value for every row of a
@@ -161,20 +161,20 @@ datasets:
         ai_context:
           synonyms: [store, shop, storefront, store name, webshop]
       - name: order_id
-        expression: {dialects: [{dialect: ANSI_SQL, expression: order_id}]}
+        expression: {sql: order_id}
         description: Identifier of the order in the store.
         datatype: Integer
         ai_context:
           synonyms: [order key]
       - name: order_number
-        expression: {dialects: [{dialect: ANSI_SQL, expression: order_number}]}
+        expression: {sql: order_number}
         description: Order number as the customer sees it, such as #1001.
         datatype: String
         dimension: {is_time: false}
         ai_context:
           synonyms: [order name, order reference]
       - name: order_date
-        expression: {dialects: [{dialect: ANSI_SQL, expression: order_date}]}
+        expression: {sql: order_date}
         description: >
           Date the store's reports date the order by, in the store's time
           zone. Shopify: the date it was placed; for an order imported or
@@ -187,14 +187,14 @@ datasets:
         ai_context:
           synonyms: [date, day, purchase date, sale date]
       - name: order_week
-        expression: {dialects: [{dialect: ANSI_SQL, expression: "DATE_TRUNC('week', order_date)"}]}
+        expression: {sql: "DATE_TRUNC('week', order_date)"}
         description: First day (Monday) of the week of order_date.
         datatype: Date
         dimension: {is_time: true}
         ai_context:
           synonyms: [week]
       - name: order_month
-        expression: {dialects: [{dialect: ANSI_SQL, expression: "DATE_TRUNC('month', order_date)"}]}
+        expression: {sql: "DATE_TRUNC('month', order_date)"}
         description: >
           First day of the month of order_date, the date the store's
           reports date the order by: the month placed at Shopify, the month
@@ -204,7 +204,7 @@ datasets:
         ai_context:
           synonyms: [month]
       - name: order_time
-        expression: {dialects: [{dialect: ANSI_SQL, expression: order_time}]}
+        expression: {sql: order_time}
         description: >
           Time of order_date, UTC: when the order was placed (Shopify), or
           when it was paid, completed or placed, whichever the store's
@@ -214,7 +214,7 @@ datasets:
           synonyms: [order timestamp]
         dimension: {is_time: true}
       - name: financial_status
-        expression: {dialects: [{dialect: ANSI_SQL, expression: financial_status}]}
+        expression: {sql: financial_status}
         description: >
           Payment state of the order: unpaid (money is still expected:
           pending, partly paid, or authorized but not yet captured), paid,
@@ -228,7 +228,7 @@ datasets:
         ai_context:
           synonyms: [payment status, paid or not]
       - name: fulfillment_status
-        expression: {dialects: [{dialect: ANSI_SQL, expression: fulfillment_status}]}
+        expression: {sql: fulfillment_status}
         description: >
           Shipping state of the order: unfulfilled (nothing sent yet,
           for any reason: waiting, on hold or scheduled),
@@ -244,7 +244,7 @@ datasets:
         ai_context:
           synonyms: [shipping status, delivery status, shipped or not]
       - name: is_cancelled
-        expression: {dialects: [{dialect: ANSI_SQL, expression: is_cancelled}]}
+        expression: {sql: is_cancelled}
         description: >
           Whether the order was cancelled. Shopify's reports count a cancelled
           order when it was placed and take it back when it was cancelled: it
@@ -256,7 +256,7 @@ datasets:
         ai_context:
           synonyms: [cancelled, canceled, cancellation]
       - name: in_sales_reports
-        expression: {dialects: [{dialect: ANSI_SQL, expression: in_sales_reports}]}
+        expression: {sql: in_sales_reports}
         description: >
           Whether the store's own sales reports count the order. Every metric
           but orders.all_orders and orders.all_orders_total counts only these
@@ -271,7 +271,7 @@ datasets:
         ai_context:
           synonyms: [counted in reports, counted as a sale, in store reports]
       - name: channel
-        expression: {dialects: [{dialect: ANSI_SQL, expression: channel}]}
+        expression: {sql: channel}
         description: >
           Where the order came from, as the source names it: an online
           checkout, a point of sale, staff, an app or an import. Values are
@@ -283,7 +283,7 @@ datasets:
         ai_context:
           synonyms: [sales channel, order source, source]
       - name: currency
-        expression: {dialects: [{dialect: ANSI_SQL, expression: currency}]}
+        expression: {sql: currency}
         description: >
           Currency of every amount of the order: the store's currency (ISO
           4217 code, such as USD), one per store. Stores in different
@@ -294,7 +294,7 @@ datasets:
         ai_context:
           synonyms: [currency code]
       - name: platform
-        expression: {dialects: [{dialect: ANSI_SQL, expression: platform}]}
+        expression: {sql: platform}
         description: >
           Platform of the store the order comes from, shopify or
           woocommerce: one per store. Where the store's reports count
@@ -305,7 +305,7 @@ datasets:
         ai_context:
           synonyms: [store platform, ecommerce platform, Shopify, WooCommerce]
       - name: shipping_country
-        expression: {dialects: [{dialect: ANSI_SQL, expression: shipping_country}]}
+        expression: {sql: shipping_country}
         description: >
           Country of the shipping address, as a two-letter code (US, CA).
           Empty when the order has no shipping address: downloads only,
@@ -316,7 +316,7 @@ datasets:
         ai_context:
           synonyms: [country, destination country, ship-to country]
       - name: shipping_region
-        expression: {dialects: [{dialect: ANSI_SQL, expression: shipping_region}]}
+        expression: {sql: shipping_region}
         description: >
           State or province of the shipping address, as the store's code for
           it (NY, ON). Empty when the address has none.
@@ -325,7 +325,7 @@ datasets:
         ai_context:
           synonyms: [state, province, region]
       - name: shipping_city
-        expression: {dialects: [{dialect: ANSI_SQL, expression: shipping_city}]}
+        expression: {sql: shipping_city}
         description: >
           City of the shipping address, as the customer typed it: one city
           can appear under several spellings (New York, NYC, new york), and
@@ -338,7 +338,7 @@ datasets:
         ai_context:
           synonyms: [city, town, destination city, ship-to city]
       - name: customer_id
-        expression: {dialects: [{dialect: ANSI_SQL, expression: customer_id}]}
+        expression: {sql: customer_id}
         description: >
           The customer who placed the order (customers.customer_id), as the
           store's report of new and returning customers counts them.
@@ -356,7 +356,7 @@ datasets:
         ai_context:
           synonyms: [customer, buyer, client]
       - name: customer_order_number
-        expression: {dialects: [{dialect: ANSI_SQL, expression: customer_order_number}]}
+        expression: {sql: customer_order_number}
         description: >
           Place of the order among its customer's orders by the time they
           were placed, 1 for the first, as the store's report of new and
@@ -371,7 +371,7 @@ datasets:
         ai_context:
           synonyms: [order sequence, nth order, purchase number]
       - name: new_vs_repeat
-        expression: {dialects: [{dialect: ANSI_SQL, expression: new_vs_repeat}]}
+        expression: {sql: new_vs_repeat}
         description: >
           new for a customer's first order, repeat for any later one (see
           customer_order_number). Empty where customer_order_number is.
@@ -380,7 +380,7 @@ datasets:
         ai_context:
           synonyms: [new or returning, first or repeat purchase, customer type]
       - name: days_since_previous_order
-        expression: {dialects: [{dialect: ANSI_SQL, expression: days_since_previous_order}]}
+        expression: {sql: days_since_previous_order}
         description: >
           Days from the customer's previous order to this one, between their
           dates placed in the store's time zone: an order the next day is 1,
@@ -395,7 +395,7 @@ datasets:
         ai_context:
           synonyms: [days between orders, purchase interval, days to next order, reorder gap]
       - name: months_since_first_order
-        expression: {dialects: [{dialect: ANSI_SQL, expression: months_since_first_order}]}
+        expression: {sql: months_since_first_order}
         description: >
           Calendar months from the month of the customer's first order to
           the month of this one, as Shopify's months_since_first_purchase:
@@ -412,7 +412,7 @@ datasets:
         ai_context:
           synonyms: [month number, cohort month index, months since first purchase, customer age in months]
       - name: item_quantity
-        expression: {dialects: [{dialect: ANSI_SQL, expression: item_quantity}]}
+        expression: {sql: item_quantity}
         description: >
           Units of goods in the order as placed, before refunds: the
           quantities of its lines added up. Gift cards sold and tips are not
@@ -422,14 +422,14 @@ datasets:
         ai_context:
           synonyms: [basket size, units in order, items in order, number of items]
       - name: discount_code_count
-        expression: {dialects: [{dialect: ANSI_SQL, expression: discount_code_count}]}
+        expression: {sql: discount_code_count}
         description: Number of discount codes applied to the order; 0 when none.
         datatype: Integer
         dimension: {is_time: false}
         ai_context:
           synonyms: [coupons used, promo codes, with discount code]
       - name: total
-        expression: {dialects: [{dialect: ANSI_SQL, expression: total}]}
+        expression: {sql: total}
         description: >
           Order total as placed, before refunds: goods after discounts, plus
           shipping and tax, and import duties and fees where the store
@@ -439,7 +439,7 @@ datasets:
         ai_context:
           synonyms: [order total, grand total, order amount]
       - name: subtotal
-        expression: {dialects: [{dialect: ANSI_SQL, expression: subtotal}]}
+        expression: {sql: subtotal}
         description: >
           Goods after discounts, without shipping, tax and import duties:
           total less shipping_total, tax_total and duties, whether or not the
@@ -450,7 +450,7 @@ datasets:
         ai_context:
           synonyms: [goods total, merchandise total]
       - name: discount_total
-        expression: {dialects: [{dialect: ANSI_SQL, expression: discount_total}]}
+        expression: {sql: discount_total}
         description: >
           Discounts on the goods, without tax, a share of discounts on the
           whole order included. A shipping discount is not in it;
@@ -459,7 +459,7 @@ datasets:
         ai_context:
           synonyms: [discounts, markdowns]
       - name: shipping_total
-        expression: {dialects: [{dialect: ANSI_SQL, expression: shipping_total}]}
+        expression: {sql: shipping_total}
         description: >
           Shipping charged, after its discounts and without tax, as on the
           order, before refunds (a refund of shipping is in refunded_total).
@@ -467,7 +467,7 @@ datasets:
         ai_context:
           synonyms: [shipping, delivery fee]
       - name: tax_total
-        expression: {dialects: [{dialect: ANSI_SQL, expression: tax_total}]}
+        expression: {sql: tax_total}
         description: >
           Tax on the goods and on shipping, and on import duties where the
           store collects them, as on the order, before refunds (refunded tax
@@ -476,7 +476,7 @@ datasets:
         ai_context:
           synonyms: [tax, VAT, sales tax]
       - name: refunded_total
-        expression: {dialects: [{dialect: ANSI_SQL, expression: refunded_total}]}
+        expression: {sql: refunded_total}
         description: >
           Money paid back on the order over all its refunds, whenever they
           were made: goods, shipping and tax, and import duties paid back.
@@ -485,7 +485,7 @@ datasets:
         ai_context:
           synonyms: [refunded, amount refunded, money back]
       - name: net_total
-        expression: {dialects: [{dialect: ANSI_SQL, expression: net_total}]}
+        expression: {sql: net_total}
         description: >
           What the order earned: total less refunded_total. A cancelled
           order has 0, paid back or not, unless the store's reports count
@@ -498,7 +498,7 @@ datasets:
           synonyms: [order net, net order value]
     metrics:
       - name: order_count
-        expression: {dialects: [{dialect: ANSI_SQL, expression: COUNT(CASE WHEN in_sales_reports THEN order_id END)}]}
+        expression: {sql: COUNT(CASE WHEN in_sales_reports THEN order_id END)}
         description: >
           Number of orders the store's reports count (orders.in_sales_reports):
           at Shopify every order, cancelled and unpaid ones included; at
@@ -510,7 +510,7 @@ datasets:
         ai_context:
           synonyms: [orders, number of orders, purchases, transactions]
       - name: all_orders
-        expression: {dialects: [{dialect: ANSI_SQL, expression: COUNT(*)}]}
+        expression: {sql: COUNT(*)}
         description: >
           Number of orders of every kind, the ones the store's reports leave
           out included: orders awaiting payment, failed, and at WooCommerce
@@ -522,7 +522,7 @@ datasets:
         ai_context:
           synonyms: [orders awaiting payment, unpaid orders, failed orders, pending orders, all orders including unpaid]
       - name: all_orders_total
-        expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(total)}]}
+        expression: {sql: SUM(total)}
         description: >
           Totals of orders of every kind (orders.total), the ones the store's
           reports leave out included, by order date. Use it for the value of
@@ -533,7 +533,7 @@ datasets:
         ai_context:
           synonyms: [value of unpaid orders, value of pending orders, amount awaiting payment]
       - name: revenue
-        expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN in_sales_reports THEN total ELSE 0 END)}]}
+        expression: {sql: SUM(CASE WHEN in_sales_reports THEN total ELSE 0 END)}
         description: >
           Orders as placed (orders.total), by order date: goods after
           discounts, shipping and tax (and import duties where collected),
@@ -546,7 +546,7 @@ datasets:
         ai_context:
           synonyms: [gross revenue, orders placed value, booked revenue, order value]
       - name: refunded_amount
-        expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN in_sales_reports THEN refunded_total ELSE 0 END)}]}
+        expression: {sql: SUM(CASE WHEN in_sales_reports THEN refunded_total ELSE 0 END)}
         description: >
           Money paid back on orders, with the tax paid back, by the date of
           the order, whenever the refund was made. For refunds by the date
@@ -558,7 +558,7 @@ datasets:
         ai_context:
           synonyms: [refunded on orders, returns of these orders]
       - name: refund_rate
-        expression: {dialects: [{dialect: ANSI_SQL, expression: CAST(SUM(CASE WHEN in_sales_reports THEN refunded_total ELSE 0 END) AS DOUBLE) / CAST(SUM(CASE WHEN in_sales_reports THEN total ELSE 0 END) AS DOUBLE)}]}
+        expression: {sql: CAST(SUM(CASE WHEN in_sales_reports THEN refunded_total ELSE 0 END) AS DOUBLE) / CAST(SUM(CASE WHEN in_sales_reports THEN total ELSE 0 END) AS DOUBLE)}
         description: >
           Share of revenue paid back, from 0 to 1: orders.refunded_amount over
           orders.revenue, cancelled orders in both where the store's reports
@@ -567,7 +567,7 @@ datasets:
         ai_context:
           synonyms: [return rate, refund share, refund percentage]
       - name: average_order_value
-        expression: {dialects: [{dialect: ANSI_SQL, expression: CAST(SUM(CASE WHEN in_sales_reports THEN subtotal ELSE 0 END) AS DOUBLE) / COUNT(CASE WHEN in_sales_reports THEN order_id END)}]}
+        expression: {sql: CAST(SUM(CASE WHEN in_sales_reports THEN subtotal ELSE 0 END) AS DOUBLE) / COUNT(CASE WHEN in_sales_reports THEN order_id END)}
         description: >
           Goods after discounts per order (orders.subtotal over
           orders.order_count): without shipping, tax and import duties, before
@@ -587,7 +587,7 @@ datasets:
         ai_context:
           synonyms: [AOV, average order, average check, average basket value, average transaction value]
       - name: items_per_order
-        expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN in_sales_reports THEN item_quantity ELSE 0 END) * 1.0 / COUNT(CASE WHEN in_sales_reports THEN order_id END)}]}
+        expression: {sql: SUM(CASE WHEN in_sales_reports THEN item_quantity ELSE 0 END) * 1.0 / COUNT(CASE WHEN in_sales_reports THEN order_id END)}
         description: >
           Average units of goods per order, as placed, before refunds, over
           the same orders as orders.average_order_value. Filter by
@@ -596,19 +596,19 @@ datasets:
         ai_context:
           synonyms: [units per transaction, UPT, units per order, average basket size, items per order]
       - name: discount_amount
-        expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN in_sales_reports THEN discount_total ELSE 0 END)}]}
+        expression: {sql: SUM(CASE WHEN in_sales_reports THEN discount_total ELSE 0 END)}
         description: Discounts on goods, without tax, by order date (orders.discount_total).
         datatype: Decimal
         ai_context:
           synonyms: [discounts, discount total, promotions]
       - name: shipping_amount
-        expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN in_sales_reports THEN shipping_total ELSE 0 END)}]}
+        expression: {sql: SUM(CASE WHEN in_sales_reports THEN shipping_total ELSE 0 END)}
         description: Shipping charged, after its discounts and without tax, as on the order, before refunds, by order date.
         datatype: Decimal
         ai_context:
           synonyms: [shipping, shipping total, delivery charges, shipping revenue]
       - name: tax_amount
-        expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN in_sales_reports THEN tax_total ELSE 0 END)}]}
+        expression: {sql: SUM(CASE WHEN in_sales_reports THEN tax_total ELSE 0 END)}
         description: >
           Tax on goods, shipping and any import duties, as on the order, before
           refunds, by order date; store reports show tax net of refunded tax.
@@ -616,7 +616,7 @@ datasets:
         ai_context:
           synonyms: [tax, taxes, tax total, VAT, sales tax]
       - name: buyer_count
-        expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(DISTINCT CASE WHEN in_sales_reports THEN source_id || '/' || CAST(customer_id AS VARCHAR) END)"}]}
+        expression: {sql: "COUNT(DISTINCT CASE WHEN in_sales_reports THEN source_id || '/' || CAST(customer_id AS VARCHAR) END)"}
         description: >
           Number of distinct customers (orders.customer_id) among the
           orders the store's reports count: the customers who bought in a
@@ -629,7 +629,7 @@ datasets:
         ai_context:
           synonyms: [buyers, purchasers, active customers, customers who bought, customers who ordered, shoppers in a period]
       - name: repeat_order_share
-        expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(CASE WHEN in_sales_reports AND new_vs_repeat = 'repeat' THEN 1 END) * 1.0 / COUNT(CASE WHEN in_sales_reports THEN customer_order_number END)"}]}
+        expression: {sql: "COUNT(CASE WHEN in_sales_reports AND new_vs_repeat = 'repeat' THEN 1 END) * 1.0 / COUNT(CASE WHEN in_sales_reports THEN customer_order_number END)"}
         description: >
           Share of orders that were a customer's second or later, from 0 to 1,
           among orders with a customer and a place in its sequence
@@ -640,7 +640,7 @@ datasets:
         ai_context:
           synonyms: [repeat order rate, share of repeat orders, returning customer orders]
       - name: average_days_between_orders
-        expression: {dialects: [{dialect: ANSI_SQL, expression: AVG(CASE WHEN in_sales_reports THEN days_since_previous_order END)}]}
+        expression: {sql: AVG(CASE WHEN in_sales_reports THEN days_since_previous_order END)}
         description: >
           Average of orders.days_since_previous_order over the repeat orders
           the store's reports count: days from a customer's previous order.
@@ -668,7 +668,7 @@ datasets:
       synonyms: [clients, customer list, customer base, customer records]
     fields:
       - name: source_id
-        expression: {dialects: [{dialect: ANSI_SQL, expression: source_id}]}
+        expression: {sql: source_id}
         description: >
           Store the row comes from: the label the deployment gives it, which
           may name the store (uk_outlet) or not, one value for every row of a
@@ -678,7 +678,7 @@ datasets:
         ai_context:
           synonyms: [store, shop, storefront, store name, webshop]
       - name: customer_id
-        expression: {dialects: [{dialect: ANSI_SQL, expression: customer_id}]}
+        expression: {sql: customer_id}
         description: >
           The customer, as orders.customer_id names them: a Shopify customer
           record, a WooCommerce account, or a WooCommerce guest by email,
@@ -689,7 +689,7 @@ datasets:
         ai_context:
           synonyms: [customer, customer number, client]
       - name: first_order_date
-        expression: {dialects: [{dialect: ANSI_SQL, expression: first_order_date}]}
+        expression: {sql: first_order_date}
         description: >
           Date of the customer's first order (orders.customer_order_number =
           1), placed, in the store's time zone. At WooCommerce the date
@@ -700,7 +700,7 @@ datasets:
         ai_context:
           synonyms: [first purchase date, acquisition date, customer since]
       - name: first_order_month
-        expression: {dialects: [{dialect: ANSI_SQL, expression: "DATE_TRUNC('month', first_order_date)"}]}
+        expression: {sql: "DATE_TRUNC('month', first_order_date)"}
         description: >
           First day of the month of first_order_date: the customer's
           cohort. customers.customer_count by it gives the new customers of
@@ -710,7 +710,7 @@ datasets:
         ai_context:
           synonyms: [cohort, cohort month, acquisition month, first purchase month, month acquired]
       - name: last_order_date
-        expression: {dialects: [{dialect: ANSI_SQL, expression: last_order_date}]}
+        expression: {sql: last_order_date}
         description: >
           Date of the customer's latest order of those counted here,
           placed, in the store's time zone. For customers who have not
@@ -721,7 +721,7 @@ datasets:
         ai_context:
           synonyms: [last purchase date, most recent order, last seen, recency]
       - name: number_of_orders
-        expression: {dialects: [{dialect: ANSI_SQL, expression: number_of_orders}]}
+        expression: {sql: number_of_orders}
         description: >
           The customer's orders counted here: the place of the last
           (orders.customer_order_number), cancelled orders included at
@@ -732,7 +732,7 @@ datasets:
         ai_context:
           synonyms: [purchases per customer, purchase frequency, times bought]
       - name: net_total
-        expression: {dialects: [{dialect: ANSI_SQL, expression: net_total}]}
+        expression: {sql: net_total}
         description: >
           What the customer's orders earned after refunds and cancellations,
           with shipping and tax: orders.net_total of the orders counted here
@@ -746,7 +746,7 @@ datasets:
         ai_context:
           synonyms: [lifetime value, customer value, total spend, LTV, CLV, customer revenue]
       - name: second_order_within_30_days
-        expression: {dialects: [{dialect: ANSI_SQL, expression: second_order_within_30_days}]}
+        expression: {sql: second_order_within_30_days}
         description: >
           Whether the customer's second order came within 30 days of the
           first, counting days between the orders' dates
@@ -761,7 +761,7 @@ datasets:
         ai_context:
           synonyms: [ordered again within 30 days, came back within 30 days, repeat buyer within 30 days]
       - name: second_order_within_60_days
-        expression: {dialects: [{dialect: ANSI_SQL, expression: second_order_within_60_days}]}
+        expression: {sql: second_order_within_60_days}
         description: >
           Whether the customer's second order came within 60 days of the
           first, counting days between the orders' dates
@@ -776,7 +776,7 @@ datasets:
         ai_context:
           synonyms: [ordered again within 60 days, came back within 60 days, repeat buyer within 60 days]
       - name: second_order_within_90_days
-        expression: {dialects: [{dialect: ANSI_SQL, expression: second_order_within_90_days}]}
+        expression: {sql: second_order_within_90_days}
         description: >
           Whether the customer's second order came within 90 days of the
           first, counting days between the orders' dates
@@ -791,7 +791,7 @@ datasets:
         ai_context:
           synonyms: [ordered again within 90 days, came back within 90 days, repeat buyer within 90 days]
       - name: second_order_within_365_days
-        expression: {dialects: [{dialect: ANSI_SQL, expression: second_order_within_365_days}]}
+        expression: {sql: second_order_within_365_days}
         description: >
           Whether the customer's second order came within 365 days of the
           first, counting days between the orders' dates
@@ -807,7 +807,7 @@ datasets:
           synonyms: [ordered again within 365 days, came back within 365 days, repeat buyer within 365 days]
     metrics:
       - name: customer_count
-        expression: {dialects: [{dialect: ANSI_SQL, expression: COUNT(*)}]}
+        expression: {sql: COUNT(*)}
         description: >
           Number of customers. By customers.first_order_month, the new
           customers of each month. Buyers in a period are orders.buyer_count.
@@ -815,7 +815,7 @@ datasets:
         ai_context:
           synonyms: [number of customers, new customers, cohort size, customer base size, unique customers]
       - name: net_amount
-        expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(net_total)}]}
+        expression: {sql: SUM(net_total)}
         description: >
           What the customers' orders earned after refunds and cancellations
           (customers.net_total), over all their orders whenever placed, in
@@ -825,7 +825,7 @@ datasets:
         ai_context:
           synonyms: [customer revenue, cohort revenue, lifetime revenue]
       - name: average_customer_value
-        expression: {dialects: [{dialect: ANSI_SQL, expression: CAST(SUM(net_total) AS DOUBLE) / COUNT(*)}]}
+        expression: {sql: CAST(SUM(net_total) AS DOUBLE) / COUNT(*)}
         description: >
           Net per customer over all their orders: customers.net_amount over
           customers.customer_count. By customers.first_order_month, revenue
@@ -834,7 +834,7 @@ datasets:
         ai_context:
           synonyms: [average lifetime value, average LTV, revenue per customer, average customer spend]
       - name: second_order_rate_30_days
-        expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(CASE WHEN second_order_within_30_days THEN 1 END) * 1.0 / NULLIF(COUNT(second_order_within_30_days), 0)"}]}
+        expression: {sql: "COUNT(CASE WHEN second_order_within_30_days THEN 1 END) * 1.0 / NULLIF(COUNT(second_order_within_30_days), 0)"}
         description: >
           Share of customers whose second order came within 30 days of their
           first, from 0 to 1, among the customers whose 30 days are over
@@ -848,7 +848,7 @@ datasets:
         ai_context:
           synonyms: [30-day repeat purchase rate, 30-day repeat customer rate, 30-day retention, 30-day repurchase rate, share of customers who ordered again within 30 days]
       - name: second_order_rate_60_days
-        expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(CASE WHEN second_order_within_60_days THEN 1 END) * 1.0 / NULLIF(COUNT(second_order_within_60_days), 0)"}]}
+        expression: {sql: "COUNT(CASE WHEN second_order_within_60_days THEN 1 END) * 1.0 / NULLIF(COUNT(second_order_within_60_days), 0)"}
         description: >
           Share of customers whose second order came within 60 days of their
           first, from 0 to 1, among the customers whose 60 days are over
@@ -862,7 +862,7 @@ datasets:
         ai_context:
           synonyms: [60-day repeat purchase rate, 60-day repeat customer rate, 60-day retention, 60-day repurchase rate, share of customers who ordered again within 60 days]
       - name: second_order_rate_90_days
-        expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(CASE WHEN second_order_within_90_days THEN 1 END) * 1.0 / NULLIF(COUNT(second_order_within_90_days), 0)"}]}
+        expression: {sql: "COUNT(CASE WHEN second_order_within_90_days THEN 1 END) * 1.0 / NULLIF(COUNT(second_order_within_90_days), 0)"}
         description: >
           Share of customers whose second order came within 90 days of their
           first, from 0 to 1, among the customers whose 90 days are over
@@ -876,7 +876,7 @@ datasets:
         ai_context:
           synonyms: [90-day repeat purchase rate, 90-day repeat customer rate, 90-day retention, 90-day repurchase rate, share of customers who ordered again within 90 days]
       - name: second_order_rate_365_days
-        expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(CASE WHEN second_order_within_365_days THEN 1 END) * 1.0 / NULLIF(COUNT(second_order_within_365_days), 0)"}]}
+        expression: {sql: "COUNT(CASE WHEN second_order_within_365_days THEN 1 END) * 1.0 / NULLIF(COUNT(second_order_within_365_days), 0)"}
         description: >
           Share of customers whose second order came within 365 days of their
           first, from 0 to 1, among the customers whose 365 days are over
@@ -901,7 +901,7 @@ datasets:
       synonyms: [line items, order items, products sold, items]
     fields:
       - name: source_id
-        expression: {dialects: [{dialect: ANSI_SQL, expression: source_id}]}
+        expression: {sql: source_id}
         description: >
           Store the row comes from: the label the deployment gives it, which
           may name the store (uk_outlet) or not, one value for every row of a
@@ -911,19 +911,19 @@ datasets:
         ai_context:
           synonyms: [store, shop, storefront, store name, webshop]
       - name: line_id
-        expression: {dialects: [{dialect: ANSI_SQL, expression: line_id}]}
+        expression: {sql: line_id}
         description: Identifier of the line in the store.
         datatype: Integer
         ai_context:
           synonyms: [line item id]
       - name: order_id
-        expression: {dialects: [{dialect: ANSI_SQL, expression: order_id}]}
+        expression: {sql: order_id}
         description: Order the line belongs to.
         datatype: Integer
         ai_context:
           synonyms: [order]
       - name: product_id
-        expression: {dialects: [{dialect: ANSI_SQL, expression: product_id}]}
+        expression: {sql: product_id}
         description: >
           The store's product (products.product_id). Empty for an item added
           by hand that is not a product in the catalogue. At WooCommerce a
@@ -933,7 +933,7 @@ datasets:
         ai_context:
           synonyms: [product]
       - name: variant_id
-        expression: {dialects: [{dialect: ANSI_SQL, expression: variant_id}]}
+        expression: {sql: variant_id}
         description: >
           The product's variant, such as a size or colour. Empty for an item
           added by hand.
@@ -942,7 +942,7 @@ datasets:
         ai_context:
           synonyms: [variant, variation]
       - name: sku
-        expression: {dialects: [{dialect: ANSI_SQL, expression: sku}]}
+        expression: {sql: sku}
         description: >
           Stock keeping unit of the variant sold, the store's own code.
           Empty when the store gave the variant none or, at WooCommerce,
@@ -955,26 +955,26 @@ datasets:
         ai_context:
           synonyms: [SKU, article, item code, product code]
       - name: title
-        expression: {dialects: [{dialect: ANSI_SQL, expression: title}]}
+        expression: {sql: title}
         description: Name of the product as it was on the order.
         datatype: String
         dimension: {is_time: false}
         ai_context:
           synonyms: [product name, item name]
       - name: quantity
-        expression: {dialects: [{dialect: ANSI_SQL, expression: quantity}]}
+        expression: {sql: quantity}
         description: Units ordered.
         datatype: Integer
         ai_context:
           synonyms: [units, qty, units ordered]
       - name: current_quantity
-        expression: {dialects: [{dialect: ANSI_SQL, expression: current_quantity}]}
+        expression: {sql: current_quantity}
         description: Units left after refunds, removals and cancellation.
         datatype: Integer
         ai_context:
           synonyms: [units kept, net quantity]
       - name: line_total
-        expression: {dialects: [{dialect: ANSI_SQL, expression: line_total}]}
+        expression: {sql: line_total}
         description: >
           Amount of the line as ordered, before refunds: after all its
           discounts, a share of order-wide discounts included, and without
@@ -985,7 +985,7 @@ datasets:
         ai_context:
           synonyms: [line amount, item revenue]
       - name: returned_quantity
-        expression: {dialects: [{dialect: ANSI_SQL, expression: returned_quantity}]}
+        expression: {sql: returned_quantity}
         description: >
           Units of the line taken back by the order's refunds, whenever they
           were made: a return belongs to the order, not to the day of the
@@ -997,7 +997,7 @@ datasets:
         ai_context:
           synonyms: [units returned, returned units, qty refunded]
       - name: returned_amount
-        expression: {dialects: [{dialect: ANSI_SQL, expression: returned_amount}]}
+        expression: {sql: returned_amount}
         description: >
           Amount of the line taken back by the order's refunds, as
           line_total counts it: after discounts and without tax. It is the
@@ -1029,7 +1029,7 @@ datasets:
       synonyms: [sales by category, category sales, lines by category, product type sales]
     fields:
       - name: source_id
-        expression: {dialects: [{dialect: ANSI_SQL, expression: source_id}]}
+        expression: {sql: source_id}
         description: >
           Store the row comes from: the label the deployment gives it, which
           may name the store (uk_outlet) or not, one value for every row of a
@@ -1039,13 +1039,13 @@ datasets:
         ai_context:
           synonyms: [store, shop, storefront, store name, webshop]
       - name: line_id
-        expression: {dialects: [{dialect: ANSI_SQL, expression: line_id}]}
+        expression: {sql: line_id}
         description: The line of goods (order_lines.line_id).
         datatype: Integer
         ai_context:
           synonyms: [line item id]
       - name: category
-        expression: {dialects: [{dialect: ANSI_SQL, expression: category}]}
+        expression: {sql: category}
         description: >
           Name of the category as the store's owner gave it: at Shopify the
           product type (the "Type" the store's reports group by), at
@@ -1058,7 +1058,7 @@ datasets:
         ai_context:
           synonyms: [product category, product type, type, department]
       - name: category_path
-        expression: {dialects: [{dialect: ANSI_SQL, expression: category_path}]}
+        expression: {sql: category_path}
         description: >
           The category with every category above it, from the top, as the
           store shows it: Clothing > T-Shirts. Each category has a path of
@@ -1071,7 +1071,7 @@ datasets:
         ai_context:
           synonyms: [category, full category, category tree, category hierarchy]
       - name: is_direct
-        expression: {dialects: [{dialect: ANSI_SQL, expression: is_direct}]}
+        expression: {sql: is_direct}
         description: >
           Whether the product is in this category itself, not only in a
           category under it. The category metrics (category_revenue and the
@@ -1087,13 +1087,13 @@ datasets:
         ai_context:
           synonyms: [own category, direct category, without subcategories]
       - name: quantity
-        expression: {dialects: [{dialect: ANSI_SQL, expression: quantity}]}
+        expression: {sql: quantity}
         description: Units of the line ordered (order_lines.quantity).
         datatype: Integer
         ai_context:
           synonyms: [units, qty]
       - name: line_total
-        expression: {dialects: [{dialect: ANSI_SQL, expression: line_total}]}
+        expression: {sql: line_total}
         description: >
           Amount of the line as ordered, before refunds, after discounts and
           without tax (order_lines.line_total).
@@ -1101,13 +1101,13 @@ datasets:
         ai_context:
           synonyms: [line amount]
       - name: returned_quantity
-        expression: {dialects: [{dialect: ANSI_SQL, expression: returned_quantity}]}
+        expression: {sql: returned_quantity}
         description: Units of the line taken back by refunds (order_lines.returned_quantity).
         datatype: Integer
         ai_context:
           synonyms: [units returned]
       - name: returned_amount
-        expression: {dialects: [{dialect: ANSI_SQL, expression: returned_amount}]}
+        expression: {sql: returned_amount}
         description: >
           Amount of the line taken back by refunds, after discounts and
           without tax (order_lines.returned_amount).
@@ -1129,7 +1129,7 @@ datasets:
       synonyms: [sales by brand, brand sales, sales by vendor, lines by brand]
     fields:
       - name: source_id
-        expression: {dialects: [{dialect: ANSI_SQL, expression: source_id}]}
+        expression: {sql: source_id}
         description: >
           Store the row comes from: the label the deployment gives it, which
           may name the store (uk_outlet) or not, one value for every row of a
@@ -1139,13 +1139,13 @@ datasets:
         ai_context:
           synonyms: [store, shop, storefront, store name, webshop]
       - name: line_id
-        expression: {dialects: [{dialect: ANSI_SQL, expression: line_id}]}
+        expression: {sql: line_id}
         description: The line of goods (order_lines.line_id).
         datatype: Integer
         ai_context:
           synonyms: [line item id]
       - name: brand
-        expression: {dialects: [{dialect: ANSI_SQL, expression: brand}]}
+        expression: {sql: brand}
         description: >
           The product's brand as it is now. At Shopify it is the product's
           vendor, "the manufacturer, wholesaler, or other vendor", as the
@@ -1157,13 +1157,13 @@ datasets:
         ai_context:
           synonyms: [vendor, manufacturer, make, label]
       - name: quantity
-        expression: {dialects: [{dialect: ANSI_SQL, expression: quantity}]}
+        expression: {sql: quantity}
         description: Units of the line ordered (order_lines.quantity).
         datatype: Integer
         ai_context:
           synonyms: [units, qty]
       - name: line_total
-        expression: {dialects: [{dialect: ANSI_SQL, expression: line_total}]}
+        expression: {sql: line_total}
         description: >
           Amount of the line as ordered, before refunds, after discounts and
           without tax (order_lines.line_total).
@@ -1171,13 +1171,13 @@ datasets:
         ai_context:
           synonyms: [line amount]
       - name: returned_quantity
-        expression: {dialects: [{dialect: ANSI_SQL, expression: returned_quantity}]}
+        expression: {sql: returned_quantity}
         description: Units of the line taken back by refunds (order_lines.returned_quantity).
         datatype: Integer
         ai_context:
           synonyms: [units returned]
       - name: returned_amount
-        expression: {dialects: [{dialect: ANSI_SQL, expression: returned_amount}]}
+        expression: {sql: returned_amount}
         description: >
           Amount of the line taken back by refunds, after discounts and
           without tax (order_lines.returned_amount).
@@ -1196,7 +1196,7 @@ datasets:
       synonyms: [returns, refunds issued, money back]
     fields:
       - name: source_id
-        expression: {dialects: [{dialect: ANSI_SQL, expression: source_id}]}
+        expression: {sql: source_id}
         description: >
           Store the row comes from: the label the deployment gives it, which
           may name the store (uk_outlet) or not, one value for every row of a
@@ -1206,19 +1206,19 @@ datasets:
         ai_context:
           synonyms: [store, shop, storefront, store name, webshop]
       - name: refund_id
-        expression: {dialects: [{dialect: ANSI_SQL, expression: refund_id}]}
+        expression: {sql: refund_id}
         description: Identifier of the refund in the store.
         datatype: Integer
         ai_context:
           synonyms: [refund]
       - name: order_id
-        expression: {dialects: [{dialect: ANSI_SQL, expression: order_id}]}
+        expression: {sql: order_id}
         description: Order the refund belongs to.
         datatype: Integer
         ai_context:
           synonyms: [order]
       - name: refund_date
-        expression: {dialects: [{dialect: ANSI_SQL, expression: refund_date}]}
+        expression: {sql: refund_date}
         description: >
           Date the refund was made, in the store's time zone: the date the
           store's reports date it by. Shopify: the date it was processed;
@@ -1229,21 +1229,21 @@ datasets:
         ai_context:
           synonyms: [date, return date]
       - name: refund_week
-        expression: {dialects: [{dialect: ANSI_SQL, expression: "DATE_TRUNC('week', refund_date)"}]}
+        expression: {sql: "DATE_TRUNC('week', refund_date)"}
         description: First day (Monday) of the week the refund was made in.
         datatype: Date
         dimension: {is_time: true}
         ai_context:
           synonyms: [week]
       - name: refund_month
-        expression: {dialects: [{dialect: ANSI_SQL, expression: "DATE_TRUNC('month', refund_date)"}]}
+        expression: {sql: "DATE_TRUNC('month', refund_date)"}
         description: First day of the month the refund was made in.
         datatype: Date
         dimension: {is_time: true}
         ai_context:
           synonyms: [month]
       - name: refund_time
-        expression: {dialects: [{dialect: ANSI_SQL, expression: refund_time}]}
+        expression: {sql: refund_time}
         description: >
           Time of refund_date, UTC: when the refund was processed (Shopify)
           or created (WooCommerce).
@@ -1252,7 +1252,7 @@ datasets:
           synonyms: [refund timestamp]
         dimension: {is_time: true}
       - name: refunded_amount
-        expression: {dialects: [{dialect: ANSI_SQL, expression: refunded_amount}]}
+        expression: {sql: refunded_amount}
         description: >
           Money paid back in this refund: goods, shipping and tax, and import
           duties paid back. Gift cards sold and refunded are not in it.
@@ -1275,7 +1275,7 @@ datasets:
       synonyms: [sales over time, sales by date, sales ledger, sales reversals]
     fields:
       - name: source_id
-        expression: {dialects: [{dialect: ANSI_SQL, expression: source_id}]}
+        expression: {sql: source_id}
         description: >
           Store the row comes from: the label the deployment gives it, which
           may name the store (uk_outlet) or not, one value for every row of a
@@ -1285,11 +1285,11 @@ datasets:
         ai_context:
           synonyms: [store, shop, storefront, store name, webshop]
       - name: event_id
-        expression: {dialects: [{dialect: ANSI_SQL, expression: event_id}]}
+        expression: {sql: event_id}
         description: Identifier of the event, its kind and the order's or refund's id, such as order-1001.
         datatype: String
       - name: event_type
-        expression: {dialects: [{dialect: ANSI_SQL, expression: event_type}]}
+        expression: {sql: event_type}
         description: >
           What happened: order (the order counted as a sale), refund, or
           cancellation (Shopify only; WooCommerce's reports leave a
@@ -1300,13 +1300,13 @@ datasets:
         ai_context:
           synonyms: [event kind, sale or reversal]
       - name: order_id
-        expression: {dialects: [{dialect: ANSI_SQL, expression: order_id}]}
+        expression: {sql: order_id}
         description: Order the event belongs to.
         datatype: Integer
         ai_context:
           synonyms: [order]
       - name: event_date
-        expression: {dialects: [{dialect: ANSI_SQL, expression: event_date}]}
+        expression: {sql: event_date}
         description: >
           Date of the event in the store's time zone: orders.order_date for
           an order, the day it was made for a refund or a cancellation. The
@@ -1316,28 +1316,28 @@ datasets:
         ai_context:
           synonyms: [date, day, sales date, report date]
       - name: event_week
-        expression: {dialects: [{dialect: ANSI_SQL, expression: "DATE_TRUNC('week', event_date)"}]}
+        expression: {sql: "DATE_TRUNC('week', event_date)"}
         description: First day (Monday) of the week of event_date.
         datatype: Date
         dimension: {is_time: true}
         ai_context:
           synonyms: [week]
       - name: event_month
-        expression: {dialects: [{dialect: ANSI_SQL, expression: "DATE_TRUNC('month', event_date)"}]}
+        expression: {sql: "DATE_TRUNC('month', event_date)"}
         description: First day of the month of event_date.
         datatype: Date
         dimension: {is_time: true}
         ai_context:
           synonyms: [month]
       - name: event_time
-        expression: {dialects: [{dialect: ANSI_SQL, expression: event_time}]}
+        expression: {sql: event_time}
         description: Time of the event, UTC.
         datatype: DateTimeTz
         dimension: {is_time: true}
         ai_context:
           synonyms: [event timestamp]
       - name: amount
-        expression: {dialects: [{dialect: ANSI_SQL, expression: amount}]}
+        expression: {sql: amount}
         description: >
           Change in sales: the order's total for an order; minus the money
           paid back for a refund; minus the rest of the order's total for a
@@ -1348,7 +1348,7 @@ datasets:
           synonyms: [sales amount, change in sales]
     metrics:
       - name: net_revenue
-        expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(amount)}]}
+        expression: {sql: SUM(amount)}
         description: >
           Sales as the store's reports count them (sales_events.amount):
           orders less everything refunded on them and, at Shopify, less
@@ -1387,7 +1387,7 @@ datasets:
       synonyms: [catalogue, catalog, assortment, product list]
     fields:
       - name: source_id
-        expression: {dialects: [{dialect: ANSI_SQL, expression: source_id}]}
+        expression: {sql: source_id}
         description: >
           Store the row comes from: the label the deployment gives it, which
           may name the store (uk_outlet) or not, one value for every row of a
@@ -1397,13 +1397,13 @@ datasets:
         ai_context:
           synonyms: [store, shop, storefront, store name, webshop]
       - name: product_id
-        expression: {dialects: [{dialect: ANSI_SQL, expression: product_id}]}
+        expression: {sql: product_id}
         description: The store's product (order_lines.product_id).
         datatype: Integer
         ai_context:
           synonyms: [product]
       - name: title
-        expression: {dialects: [{dialect: ANSI_SQL, expression: title}]}
+        expression: {sql: title}
         description: >
           Name of the product as it is now; order_lines.title keeps the name
           it sold under. For sales by product, group by order_lines.title: a
@@ -1413,7 +1413,7 @@ datasets:
         ai_context:
           synonyms: [product name, name]
       - name: status
-        expression: {dialects: [{dialect: ANSI_SQL, expression: status}]}
+        expression: {sql: status}
         description: >
           active when customers can buy it: at Shopify ACTIVE, and UNLISTED
           (sold through a link, hidden from search); at WooCommerce
@@ -1426,7 +1426,7 @@ datasets:
         ai_context:
           synonyms: [product status, published, live]
       - name: last_sold_date
-        expression: {dialects: [{dialect: ANSI_SQL, expression: last_sold_date}]}
+        expression: {sql: last_sold_date}
         description: >
           Latest order date (orders.order_date) of an order with the product
           that the store's reports count and that is not cancelled; a
@@ -1445,7 +1445,7 @@ datasets:
           synonyms: [last sale, last sold, last ordered, date of last sale]
     metrics:
       - name: product_count
-        expression: {dialects: [{dialect: ANSI_SQL, expression: COUNT(*)}]}
+        expression: {sql: COUNT(*)}
         description: >
           Number of products in the catalogue. Filter by products.status =
           'active' for the products customers can buy, and by
@@ -1471,7 +1471,7 @@ datasets:
       synonyms: [products by category, category assortment]
     fields:
       - name: source_id
-        expression: {dialects: [{dialect: ANSI_SQL, expression: source_id}]}
+        expression: {sql: source_id}
         description: >
           Store the row comes from: the label the deployment gives it, which
           may name the store (uk_outlet) or not, one value for every row of a
@@ -1481,13 +1481,13 @@ datasets:
         ai_context:
           synonyms: [store, shop, storefront, store name, webshop]
       - name: product_id
-        expression: {dialects: [{dialect: ANSI_SQL, expression: product_id}]}
+        expression: {sql: product_id}
         description: The product (products.product_id).
         datatype: Integer
         ai_context:
           synonyms: [product]
       - name: category
-        expression: {dialects: [{dialect: ANSI_SQL, expression: category}]}
+        expression: {sql: category}
         description: >
           Name of the category (line_categories.category). Names can repeat
           under different parents: group by category_path.
@@ -1496,7 +1496,7 @@ datasets:
         ai_context:
           synonyms: [product category, product type, type]
       - name: category_path
-        expression: {dialects: [{dialect: ANSI_SQL, expression: category_path}]}
+        expression: {sql: category_path}
         description: >
           The category with every category above it, from the top:
           Clothing > T-Shirts (line_categories.category_path).
@@ -1505,7 +1505,7 @@ datasets:
         ai_context:
           synonyms: [category, full category]
       - name: is_direct
-        expression: {dialects: [{dialect: ANSI_SQL, expression: is_direct}]}
+        expression: {sql: is_direct}
         description: >
           Whether the product is in this category itself, not only in a
           category under it; product_categories.product_count counts only
@@ -1518,7 +1518,7 @@ datasets:
           synonyms: [own category, direct category]
     metrics:
       - name: product_count
-        expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(DISTINCT CASE WHEN is_direct THEN source_id || '/' || CAST(product_id AS VARCHAR) END)"}]}
+        expression: {sql: "COUNT(DISTINCT CASE WHEN is_direct THEN source_id || '/' || CAST(product_id AS VARCHAR) END)"}
         description: >
           Number of products in each category, the products in the category
           itself (product_categories.is_direct): a parent category whose
@@ -1542,7 +1542,7 @@ datasets:
       synonyms: [products by brand, brand assortment]
     fields:
       - name: source_id
-        expression: {dialects: [{dialect: ANSI_SQL, expression: source_id}]}
+        expression: {sql: source_id}
         description: >
           Store the row comes from: the label the deployment gives it, which
           may name the store (uk_outlet) or not, one value for every row of a
@@ -1552,13 +1552,13 @@ datasets:
         ai_context:
           synonyms: [store, shop, storefront, store name, webshop]
       - name: product_id
-        expression: {dialects: [{dialect: ANSI_SQL, expression: product_id}]}
+        expression: {sql: product_id}
         description: The product (products.product_id).
         datatype: Integer
         ai_context:
           synonyms: [product]
       - name: brand
-        expression: {dialects: [{dialect: ANSI_SQL, expression: brand}]}
+        expression: {sql: brand}
         description: >
           The product's brand: the vendor at Shopify, a product brand at
           WooCommerce (line_brands.brand).
@@ -1568,7 +1568,7 @@ datasets:
           synonyms: [vendor, manufacturer, make, label]
     metrics:
       - name: product_count
-        expression: {dialects: [{dialect: ANSI_SQL, expression: "COUNT(DISTINCT source_id || '/' || CAST(product_id AS VARCHAR))"}]}
+        expression: {sql: "COUNT(DISTINCT source_id || '/' || CAST(product_id AS VARCHAR))"}
         description: >
           Number of products of a brand. A WooCommerce product with two
           brands counts in each. Filter by products.status = 'active' for
@@ -1634,19 +1634,19 @@ relationships:
 
 metrics:
   - name: items_sold
-    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN orders.in_sales_reports THEN order_lines.quantity ELSE 0 END)}]}
+    expression: {sql: SUM(CASE WHEN orders.in_sales_reports THEN order_lines.quantity ELSE 0 END)}
     description: Units of goods ordered, before refunds and cancellations.
     datatype: Integer
     ai_context:
       synonyms: [units sold, quantity sold, items ordered]
   - name: items_net
-    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN orders.in_sales_reports THEN order_lines.current_quantity ELSE 0 END)}]}
+    expression: {sql: SUM(CASE WHEN orders.in_sales_reports THEN order_lines.current_quantity ELSE 0 END)}
     description: Units of goods ordered less those refunded, removed or cancelled.
     datatype: Integer
     ai_context:
       synonyms: [net units, units kept, items after returns]
   - name: line_revenue
-    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN orders.in_sales_reports THEN order_lines.line_total ELSE 0 END)}]}
+    expression: {sql: SUM(CASE WHEN orders.in_sales_reports THEN order_lines.line_total ELSE 0 END)}
     description: >
       Revenue of goods as ordered (order_lines.line_total): after
       discounts, without shipping and tax, before refunds, cancelled orders
@@ -1658,7 +1658,7 @@ metrics:
     ai_context:
       synonyms: [product revenue, sales by product, item revenue, SKU revenue]
   - name: items_returned
-    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN orders.in_sales_reports THEN order_lines.returned_quantity ELSE 0 END)}]}
+    expression: {sql: SUM(CASE WHEN orders.in_sales_reports THEN order_lines.returned_quantity ELSE 0 END)}
     description: >
       Units of goods taken back by refunds and, at Shopify, cancellations
       (order_lines.returned_quantity), by the date of the order, whenever
@@ -1669,7 +1669,7 @@ metrics:
     ai_context:
       synonyms: [units returned, returned items, returns in units]
   - name: line_returned_amount
-    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN orders.in_sales_reports THEN order_lines.returned_amount ELSE 0 END)}]}
+    expression: {sql: SUM(CASE WHEN orders.in_sales_reports THEN order_lines.returned_amount ELSE 0 END)}
     description: >
       Goods taken back by refunds and, at Shopify, cancellations
       (order_lines.returned_amount): after discounts and without tax, by
@@ -1679,7 +1679,7 @@ metrics:
     ai_context:
       synonyms: [returns, returned value, value of returned goods]
   - name: line_net_revenue
-    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN orders.in_sales_reports THEN order_lines.line_total - order_lines.returned_amount ELSE 0 END)}]}
+    expression: {sql: SUM(CASE WHEN orders.in_sales_reports THEN order_lines.line_total - order_lines.returned_amount ELSE 0 END)}
     description: >
       Revenue of goods less what was taken back: line_revenue less
       line_returned_amount, by the date of the order. At Shopify a
@@ -1689,7 +1689,7 @@ metrics:
     ai_context:
       synonyms: [net product revenue, net sales of goods, revenue after returns]
   - name: category_items_sold
-    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN orders.in_sales_reports AND line_categories.is_direct THEN line_categories.quantity ELSE 0 END)}]}
+    expression: {sql: SUM(CASE WHEN orders.in_sales_reports AND line_categories.is_direct THEN line_categories.quantity ELSE 0 END)}
     description: >
       Units of goods ordered in each category (line_categories), as
       items_sold, counted in the product's own categories, as
@@ -1699,7 +1699,7 @@ metrics:
     ai_context:
       synonyms: [units sold by category, category units, quantity by category]
   - name: category_revenue
-    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN orders.in_sales_reports AND line_categories.is_direct THEN line_categories.line_total ELSE 0 END)}]}
+    expression: {sql: SUM(CASE WHEN orders.in_sales_reports AND line_categories.is_direct THEN line_categories.line_total ELSE 0 END)}
     description: >
       Revenue of goods in each category, as line_revenue: after discounts,
       without shipping and tax, before refunds, by the date of the order. A
@@ -1718,7 +1718,7 @@ metrics:
     ai_context:
       synonyms: [sales by category, revenue by category, category sales, revenue by product type]
   - name: category_items_returned
-    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN orders.in_sales_reports AND line_categories.is_direct THEN line_categories.returned_quantity ELSE 0 END)}]}
+    expression: {sql: SUM(CASE WHEN orders.in_sales_reports AND line_categories.is_direct THEN line_categories.returned_quantity ELSE 0 END)}
     description: >
       Units taken back in each category, as items_returned: by the date of
       the order, whenever taken back, counted in the product's own
@@ -1729,7 +1729,7 @@ metrics:
     ai_context:
       synonyms: [returns by category, returned units by category]
   - name: category_returned_amount
-    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN orders.in_sales_reports AND line_categories.is_direct THEN line_categories.returned_amount ELSE 0 END)}]}
+    expression: {sql: SUM(CASE WHEN orders.in_sales_reports AND line_categories.is_direct THEN line_categories.returned_amount ELSE 0 END)}
     description: >
       Goods taken back in each category, as line_returned_amount: after
       discounts and without tax, by the date of the order, counted in the
@@ -1738,7 +1738,7 @@ metrics:
     ai_context:
       synonyms: [returns value by category, returned amount by category]
   - name: category_net_revenue
-    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN orders.in_sales_reports AND line_categories.is_direct THEN line_categories.line_total - line_categories.returned_amount ELSE 0 END)}]}
+    expression: {sql: SUM(CASE WHEN orders.in_sales_reports AND line_categories.is_direct THEN line_categories.line_total - line_categories.returned_amount ELSE 0 END)}
     description: >
       Revenue of goods in each category less what was taken back, as
       line_net_revenue, by the date of the order, counted in the product's
@@ -1747,7 +1747,7 @@ metrics:
     ai_context:
       synonyms: [net sales by category, category revenue after returns]
   - name: brand_items_sold
-    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN orders.in_sales_reports THEN line_brands.quantity ELSE 0 END)}]}
+    expression: {sql: SUM(CASE WHEN orders.in_sales_reports THEN line_brands.quantity ELSE 0 END)}
     description: >
       Units of goods ordered of a brand (line_brands), as items_sold. A
       line of a WooCommerce product with two brands counts in each.
@@ -1755,7 +1755,7 @@ metrics:
     ai_context:
       synonyms: [units sold by brand, brand units, units by vendor]
   - name: brand_revenue
-    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN orders.in_sales_reports THEN line_brands.line_total ELSE 0 END)}]}
+    expression: {sql: SUM(CASE WHEN orders.in_sales_reports THEN line_brands.line_total ELSE 0 END)}
     description: >
       Revenue of goods of a brand (line_brands), as line_revenue: after
       discounts, without shipping and tax, before refunds, by the date of
@@ -1765,13 +1765,13 @@ metrics:
     ai_context:
       synonyms: [sales by brand, revenue by brand, brand sales, sales by vendor]
   - name: brand_items_returned
-    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN orders.in_sales_reports THEN line_brands.returned_quantity ELSE 0 END)}]}
+    expression: {sql: SUM(CASE WHEN orders.in_sales_reports THEN line_brands.returned_quantity ELSE 0 END)}
     description: Units of a brand taken back, as items_returned, by the date of the order.
     datatype: Integer
     ai_context:
       synonyms: [returns by brand, returned units by brand]
   - name: brand_returned_amount
-    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN orders.in_sales_reports THEN line_brands.returned_amount ELSE 0 END)}]}
+    expression: {sql: SUM(CASE WHEN orders.in_sales_reports THEN line_brands.returned_amount ELSE 0 END)}
     description: >
       Goods of a brand taken back, as line_returned_amount: after discounts
       and without tax, by the date of the order.
@@ -1779,7 +1779,7 @@ metrics:
     ai_context:
       synonyms: [returns value by brand, returned amount by brand]
   - name: brand_net_revenue
-    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN orders.in_sales_reports THEN line_brands.line_total - line_brands.returned_amount ELSE 0 END)}]}
+    expression: {sql: SUM(CASE WHEN orders.in_sales_reports THEN line_brands.line_total - line_brands.returned_amount ELSE 0 END)}
     description: >
       Revenue of goods of a brand less what was taken back, as
       line_net_revenue, by the date of the order.
@@ -1787,7 +1787,7 @@ metrics:
     ai_context:
       synonyms: [net sales by brand, brand revenue after returns]
   - name: refund_count
-    expression: {dialects: [{dialect: ANSI_SQL, expression: COUNT(CASE WHEN orders.in_sales_reports THEN refunds.refund_id END)}]}
+    expression: {sql: COUNT(CASE WHEN orders.in_sales_reports THEN refunds.refund_id END)}
     description: >
       Number of refunds made; a refund of gift cards alone and the refund
       Shopify records when it cancels an unpaid order, both of amount 0,
@@ -1796,7 +1796,7 @@ metrics:
     ai_context:
       synonyms: [refunds, number of refunds, returns]
   - name: refunds_total
-    expression: {dialects: [{dialect: ANSI_SQL, expression: SUM(CASE WHEN orders.in_sales_reports THEN refunds.refunded_amount ELSE 0 END)}]}
+    expression: {sql: SUM(CASE WHEN orders.in_sales_reports THEN refunds.refunded_amount ELSE 0 END)}
     description: >
       Money paid back, with the tax paid back, by the date the refund was
       made. For refunds by the date of their order, use orders.refunded_amount.
