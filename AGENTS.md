@@ -67,10 +67,13 @@ or in a view over one built table, that table's column. Its default
 is the package's name; CI builds with another label, so no model may
 assume it. In the Ossie models `source_id` is each
 dataset's first field, first in every `primary_key`, on both sides of
-every relationship, and in every `COUNT(DISTINCT ...)` beside the
-counted column: `COUNT(DISTINCT source_id, customer_id)`, never a tuple,
-which counts a NULL as a value. A package's `order_by` and `unique_key`
-leave it out: a database holds one label.
+every relationship, and in every `COUNT(DISTINCT ...)` joined to the
+counted column:
+`COUNT(DISTINCT source_id || '/' || CAST(customer_id AS VARCHAR))`. A
+NULL column makes the joined key NULL, which the count leaves out; a
+tuple would count it as a value. `COUNT(DISTINCT source_id, customer_id)`
+is not standard SQL, and DuckDB rejects it. A package's `order_by` and
+`unique_key` leave `source_id` out: a database holds one label.
 
 A union reads the tables of the databases its variable lists
 (`commerce_union_databases`) and casts nothing. Its macro compares each

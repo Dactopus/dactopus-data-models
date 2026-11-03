@@ -25,9 +25,9 @@ through dactopus-ossie-clickhouse and drops the database. --database names it
 duckdb: loads the tables into DuckDB in memory (--database: a file instead) and asks
 through DuckDB's community extension ossie, which it installs. The extension refuses
 some questions; they are printed as refused, with its reason, and do not count as a
-difference. CI does not run it: the extension is not ours, and with 0.3.0 questions of
-each package differ (COUNT(DISTINCT source_id, x) is not standard SQL, and it leaves
-out the rows a many-to-one relationship finds no match for).
+difference. CI does not run it: the extension is not ours, and with 0.3.0 two questions
+of each package differ: it leaves out the rows a many-to-one relationship finds no
+match for.
 
 Another engine is a class with create(sql), load(table, csv_path) and ask(model, case),
 and an entry in ENGINES.
