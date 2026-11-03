@@ -82,7 +82,7 @@ def clickhouse(query, **params):
 
 
 def references(expression):
-    """The columns an ANSI_SQL expression names, in order: (dataset or None, column).
+    """The columns a `sql` expression names, in order: (dataset or None, column).
 
     Read as Snowflake, which takes DATEDIFF(MINUTE, a, b) as the executor
     does: SQLGlot's default reads the unit as a column and b as the unit.
@@ -96,7 +96,7 @@ def references(expression):
 
 
 def expression(item):
-    return next(d["expression"] for d in item["expression"]["dialects"] if d["dialect"] == "ANSI_SQL")
+    return item["expression"]["sql"]
 
 
 def field_columns(model):
