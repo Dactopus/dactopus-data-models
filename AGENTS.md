@@ -97,10 +97,12 @@ and with one label in a database and each label in one database
 - A metric reads one dataset and goes in that dataset's `metrics`, its
   fields named without the dataset; a count of its rows is `COUNT(*)`.
   The model has no `metrics` of its own: the Ossie spec rejects an
-  aggregate over fields of two datasets (`E_AMBIGUOUS_MEASURE_GRAIN`).
+  aggregate over fields of two datasets (`E_AMBIGUOUS_MEASURE_GRAIN`)
+  and does not expose the model's own metrics in its relational layer.
   A dataset that needs a column of another carries it
-  (`order_lines.in_sales_reports` is the flag of the line's order), and
-  `tests/check_contracts.py` fails on a metric that reads two datasets. A dataset's metric is not named like
+  (`order_lines.in_sales_reports` is the flag of the line's order).
+  `tests/check_contracts.py` fails on a metric that reads two datasets
+  and on a metric of the model. A dataset's metric is not named like
   one of its fields or like a dataset: a count is `<row>_count`
   (`order_count`), a sum of a field `<field>_total` is `<field>_amount`
   (`discount_amount`). Descriptions name a dataset's metric as

@@ -224,8 +224,8 @@ A package states which one it uses and why.
   fields of two datasets (`E_AMBIGUOUS_MEASURE_GRAIN`) and does not
   expose the model's own metrics in its relational layer. A dataset
   that needs a column of another carries it, as `order_lines` carries
-  the flag of its order (`in_sales_reports`).
-  `tests/check_contracts.py` fails on a metric over two datasets.
+  the flag of its order (`in_sales_reports`). `tests/check_contracts.py`
+  fails on a metric over two datasets and on a metric of the model.
 - A metric cannot reference another metric by name; repeat the
   expression.
 - No time grain or derived dimensions: declare one field per grain.

@@ -38,8 +38,9 @@ every key unique in a union. In every Ossie model under entities/,
 source_id comes first in each primary_key and on both sides of each
 relationship: without it a union joins rows across instances, and its
 ai_context.instructions stay within 2,300 characters. No metric reads
-fields of more than one dataset: a dataset carries what its metrics need
-(order_lines.in_sales_reports, the flag of the line's order). No
+fields of more than one dataset, and the model has no metrics of its own:
+a dataset carries what its metrics need (order_lines.in_sales_reports,
+the flag of the line's order). No
 expression of an Ossie model compares a column the packages type Bool
 with a number (is_cancelled = 1): Postgres rejects it. The copies
 of one macro file are the same: macros/freshness.sql in every package,
@@ -345,6 +346,9 @@ def check(packages, unions, built):
             key = dataset.get("primary_key")
             if key and key[0] != "source_id":
                 problems.append(f"{name}: the primary_key of {dataset['name']} must start with source_id: {key}")
+        for metric in model.get("metrics") or []:
+            problems.append(f"{name}: the metric {metric['name']} is on the model; the relational layer of "
+                            f"the Ossie spec shows only the metrics of datasets: put it on the dataset it reads")
         for metric, datasets in multi_dataset_metrics(model_path):
             problems.append(f"{name}: the metric {metric} reads fields of {len(datasets)} datasets, "
                             f"{', '.join(map(str, datasets))}; move what it reads into the columns of "
