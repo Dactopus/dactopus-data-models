@@ -566,9 +566,10 @@ datasets:
       One row per customer with an order the store's report of new and
       returning customers counts (orders.customer_order_number): at Shopify
       any order but a test one, cancelled ones included; at WooCommerce any
-      status but those the report settings exclude, orders on hold included,
-      paid or not, whether or not the sales reports count them
-      (orders.in_sales_reports). A customer record without such an order, a newsletter
+      status but those the report settings exclude (by default pending,
+      cancelled and failed), orders on hold included, paid or not, whether
+      or not the sales reports count them (orders.in_sales_reports). A
+      customer record without such an order, a newsletter
       subscriber or an account that never ordered, has no row. Dates are
       those of these orders, by the date placed in the store's time zone.
       Orders (orders.customer_id) can be grouped or filtered by the fields
