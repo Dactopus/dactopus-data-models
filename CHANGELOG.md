@@ -8,6 +8,17 @@ names the Ossie schema version its models carry.
 
 ## [Unreleased]
 
+### Changed
+
+- The instructions of the three models keep only the rules across their
+  datasets and fit in 2,300 characters (`commerce` had 8,367,
+  `web_analytics` 3,683, `iot` 2,870). dactopus-ossie-clickhouse puts
+  them into its MCP server's instructions, which Claude Code cut at
+  4,096 characters: an agent saw a quarter of the `commerce` rules there.
+  A rule about one dataset, field or metric moved to its description, and
+  one said twice is said once. The tables do not change and no rebuild
+  is needed.
+
 ## [0.11.1] - 2026-11-04
 
 Ossie schema `0.2.0.dev0`. Tested with the same versions as 0.11.0.

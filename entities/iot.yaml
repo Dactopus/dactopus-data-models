@@ -9,46 +9,25 @@ description: >
 ai_context:
   instructions: >
     Every time is UTC and every date is the date in UTC, not the device's
-    local date: a reading near midnight local time can fall on the day before
-    or after. A device is a site, one place with coordinates where a board
-    reports through one or more sensors. Readings are long: one row per
-    sensor, time and measure (readings.measure: pm10, pm2_5, temperature,
-    humidity, pressure). readings.avg_value, readings.min_value and
-    readings.max_value mean something only for one measure at a time: always
-    filter on readings.measure or break the answer down by it, and never
-    average values of different measures together. Units: PM10 and PM2.5 in
-    µg/m³, temperature in °C, relative humidity in %, pressure in Pa (divide
-    by 100 for hPa). Values are as the sensors sent them, not cleaned:
-    humidity of 100 in dew and dust peaks in rain are in the data. An indoor
-    device (devices.is_indoor) measures a room, not the outdoor air. Answer
-    over every device unless asked otherwise; in a per-device answer mark the
+    local date: a reading near midnight local time can fall on the day
+    before or after. A device is a site, one place with coordinates where a
+    board reports through one or more sensors. An indoor device
+    (devices.is_indoor) measures a room, not the outdoor air. Answer over
+    every device unless asked otherwise; in a per-device answer mark the
     indoor ones, and with an average across devices say that indoor ones are
-    included. The network publishes a day's readings the day after, so the
-    latest reading is hours old even for a device that works; where the API's
-    snapshots run, every few minutes, they tell when each site last reported.
-    "Silent", "offline" or "not reporting" means no contact for the stated
-    time before the latest contact in the data (devices.last_contact_time with
-    no dimension), not before now: get that time and
-    devices.minutes_since_last_contact first, then filter
-    devices.last_contact_at below the time minus the period. Name both in the
-    answer ("as of 00:35 UTC, 3 minutes ago"). An age of hours or days means
-    the snapshots are not running: say so, the answer is about that time.
-    One deployment can hold several sensor networks, each under its own
-    source_id, a label the deployment chose, which may name the network or
-    not. When the question names or describes a network in any way (a
-    name, a place, a kind of site such as the city sensors or the lab),
-    first get the labels: devices.device_count by devices.source_id. Take
-    the label that names it; when none clearly matches, list the labels and
-    ask which is meant, and do not answer with another field in its place
-    (devices.is_indoor is a room, not a network). Only a question that
+    included. One deployment can hold several sensor networks, each under
+    its own source_id, a label the deployment chose, which may name the
+    network or not. When the question names or describes a network in any
+    way (a name, a place, a kind of site such as the city sensors or the
+    lab), first get the labels: devices.device_count by devices.source_id.
+    Take the label that names it; when none clearly matches, list the labels
+    and ask which is meant, and do not answer with another field in its
+    place (devices.is_indoor is a room, not a network). Only a question that
     names no network means all of them; answer it without a word about
     networks unless a result shows more than one. devices.device_count adds
-    up across them. Device and sensor ids repeat across networks: with several,
-    group by an id together with devices.source_id and name a device with
-    its network. Each network has its own latest contact: with more than one, get
-    devices.last_contact_time and devices.minutes_since_last_contact by
-    devices.source_id, and filter each network's devices by its own time
-    ((devices.source_id = 'a' AND devices.last_contact_at < ...) OR ...).
+    up across them. Device and sensor ids repeat across networks: with
+    several, group by an id together with devices.source_id and name a
+    device with its network.
 
 datasets:
   - name: readings
@@ -58,7 +37,13 @@ datasets:
       One row per sensor, time and measure: one value of one quantity. A
       sensor gives several measures at once (a BME280 temperature, humidity
       and pressure); each is a row. A measure the sensor could not take is
-      no row.
+      no row. readings.avg_value, min_value and max_value mean something
+      only for one measure at a time: always filter on readings.measure or
+      break the answer down by it, and never average values of different
+      measures together. Units: PM10 and PM2.5 in µg/m³, temperature in °C,
+      relative humidity in %, pressure in Pa (divide by 100 for hPa). Values
+      are as the sensors sent them, not cleaned: humidity of 100 in dew and
+      dust peaks in rain are in the data.
     ai_context:
       synonyms: [measurements, observations, telemetry, sensor data, values]
     fields:
@@ -202,7 +187,21 @@ datasets:
     description: >
       One row per site: a place with coordinates where a board reports
       through one or more sensors. Every site the network listed and every
-      site with a reading, including those that have gone silent.
+      site with a reading, including those that have gone silent. The
+      network publishes a day's readings the day after, so the latest
+      reading is hours old even for a device that works; where the API's
+      snapshots run, every few minutes, they tell when each site last
+      reported. "Silent", "offline" or "not reporting" means no contact for
+      the stated time before the latest contact in the data
+      (devices.last_contact_time with no dimension), not before now: get
+      that time and devices.minutes_since_last_contact first, then filter
+      devices.last_contact_at below the time minus the period. Name both in
+      the answer ("as of 00:35 UTC, 3 minutes ago"). An age of hours or days
+      means the snapshots are not running: say so, the answer is about that
+      time. Each network has its own latest contact: with more than one, get
+      devices.last_contact_time and devices.minutes_since_last_contact by
+      devices.source_id, and filter each network's devices by its own time
+      ((devices.source_id = 'a' AND devices.last_contact_at < ...) OR ...).
     ai_context:
       synonyms: [sites, locations, stations, sensors, devices]
     fields:
@@ -298,8 +297,7 @@ datasets:
           in the API's snapshots, from a sensor of any type, or its latest
           reading, whichever is later. Never empty. Silent sites are those
           whose last contact is older than a time; measure it from the
-          latest contact in the data (see the model's instructions), not
-          from now.
+          latest contact in the data (see devices), not from now.
         datatype: DateTimeTz
         dimension: {is_time: true}
         ai_context:

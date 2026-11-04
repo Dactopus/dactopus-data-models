@@ -137,6 +137,10 @@ For an agent they mean:
 
 - A missing description or `ai_context` is a defect, not a style issue:
   agents answer from them.
+- A rule about one dataset, field or metric goes in its description; the
+  model's `ai_context.instructions` keep only rules across datasets and
+  stay within 2,300 characters (an MCP client cuts the server's
+  instructions, which carry them, at 4,096).
 - If the source data does not settle a choice (which date an order date
   is, which time zone, what identifies a customer), ask; do not pick
   silently.

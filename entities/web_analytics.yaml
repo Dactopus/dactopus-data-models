@@ -8,62 +8,34 @@ description: >
 ai_context:
   instructions: >
     Purchases and revenue here are what web analytics recorded on the site,
-    not the store's orders: they miss purchases made with tracking blocked and
-    may differ from the store's own figures. Say so when someone compares them
-    with sales. One deployment can hold several GA4 properties (sites), each
-    under its own source_id. A property is a label the deployment chose,
-    which may name the site or not; the model knows nothing else of it.
-    When the question names or describes a site in any way (a name, a
-    domain, a kind of site such as the shop or the blog), first get the
-    labels: sessions.session_count by sessions.source_id. Take the label
-    that names the site; when none clearly matches, list the labels and ask
-    which is meant. Only a question that names no site means all of them;
-    answer it without a word about properties unless a result shows more
-    than one.
-    Dates are in each property's own
-    time zone; CURRENT_DATE is the date in the model's time zone, so with
-    properties in several zones, name the date you asked for. GA4 exports
-    each day once, after it is over: usually in the afternoon of the
-    following day in the property's time zone, sometimes later. The days
-    after the latest date with rows (sessions.session_count by
-    sessions.session_date over the last days, for each property) have not
-    been exported or loaded yet: say up to which date the data reaches,
-    and never report those days as days without visits or purchases. The
-    latest date with rows is a whole day: GA4 can still add events that
-    arrive late for up to three days after it, but a low count on that
-    day is its traffic, not a partial export. A user is a
-    browser on a device (GA4 user_pseudo_id), not a person, and is counted
-    within a property: a browser that visited two properties counts in
-    each, so sessions.users adds up across them. The model does not match
-    users across properties: never compare user_pseudo_id values of two
-    properties, and say that how many browsers visited both cannot be
-    answered. Session and user counts
-    are exact; the GA4 interface estimates them, so its numbers can be
-    slightly different. "Conversion rate" without a qualifier means
-    sessions.session_conversion_rate; name the definition in the answer and
-    mention sessions.user_conversion_rate by name, giving its value only if
-    you queried it. purchases.gross_purchase_revenue is GA4's gross purchase
-    revenue: refunds are not subtracted, while GA4's "Purchase revenue"
-    subtracts the refunds the site sent; say so when someone compares it with
-    the GA4 interface. purchases.gross_purchase_revenue,
-    purchases.average_gross_purchase_revenue, purchases.tax and
-    purchases.shipping are in the currency the site sent with each purchase
-    (purchases.currency), which GA4 calls "local currency". Query
-    purchases.gross_purchase_revenue and
-    purchases.average_gross_purchase_revenue with purchases.currency as a
-    dimension. With one currency, answer in it and name its code. With
-    several, give each currency separately and offer
-    purchases.gross_purchase_revenue_usd for a single total; never add up
-    amounts in different currencies. Use purchases.gross_purchase_revenue_usd
-    also when asked for US dollars. Name the currency by the code
-    purchases.currency returns; do not guess a currency sign. When this model
-    is served together with the commerce model, questions about sales,
+    not the store's orders: they miss purchases made with tracking blocked
+    and may differ from the store's own figures. Say so when someone
+    compares them with sales. One deployment can hold several GA4 properties
+    (sites), each under its own source_id, a label the deployment chose,
+    which may name the site or not; the model knows nothing else of it. When
+    the question names or describes a site in any way (a name, a domain, a
+    kind of site such as the shop or the blog), first get the labels:
+    sessions.session_count by sessions.source_id. Take the label that names
+    the site; when none clearly matches, list the labels and ask which is
+    meant. Only a question that names no site means all of them; answer it
+    without a word about properties unless a result shows more than one.
+    Dates are in each property's own time zone; with properties in several
+    zones, name the date you asked for. GA4 exports each day once, after it
+    is over: usually in the afternoon of the following day in the property's
+    time zone, sometimes later. The days after the latest date with rows
+    (sessions.session_count by sessions.session_date over the last days, for
+    each property) have not been exported or loaded yet: say up to which
+    date the data reaches, and never report those days as days without
+    visits or purchases. The latest date with rows is a whole day: GA4 can
+    still add events that arrive late for up to three days after it, but a
+    low count on that day is its traffic, not a partial export. When this
+    model is served together with the commerce model, questions about sales,
     revenue, orders or average order value mean the store's figures there;
     answer them from it alone. Properties and stores have labels of their
-    own, and the model does not link a property to a store. The metrics
-    here answer what web analytics
-    recorded, and a comparison of the two names both; any amount from here
-    goes by purchases.currency or as purchases.gross_purchase_revenue_usd.
+    own, and the model does not link a property to a store. The metrics here
+    answer what web analytics recorded, and a comparison of the two names
+    both; any amount from here goes by purchases.currency or as
+    purchases.gross_purchase_revenue_usd.
 
 datasets:
   - name: sessions
@@ -71,7 +43,9 @@ datasets:
     primary_key: [source_id, session_key]
     description: >
       One row per visit to the site. A session ends after 30 minutes without
-      activity; it belongs to the date it started on.
+      activity; it belongs to the date it started on. Session and user
+      counts are exact; the GA4 interface estimates them, so its numbers can
+      be slightly different.
     ai_context:
       synonyms: [visits, sessions, traffic]
     fields:
@@ -223,9 +197,12 @@ datasets:
       - name: users
         expression: {sql: "COUNT(DISTINCT source_id || '/' || CAST(user_pseudo_id AS VARCHAR))"}
         description: >
-          Number of distinct browsers on devices that visited. Not people: one
-          person on two devices counts twice, and a browser that visited two
-          GA4 properties counts in each.
+          Number of distinct browsers on devices that visited. Not people:
+          one person on two devices counts twice, and a browser that visited
+          two GA4 properties counts in each, so sessions.users adds up
+          across properties. The model does not match users across
+          properties: never compare user_pseudo_id values of two properties,
+          and say that how many browsers visited both cannot be answered.
         datatype: Integer
         ai_context:
           synonyms: [visitors, unique visitors, total users]
@@ -233,7 +210,9 @@ datasets:
         expression: {sql: "COUNT(CASE WHEN has_purchase THEN 1 END) * 1.0 / COUNT(*)"}
         description: >
           Share of visits that included a purchase, from 0 to 1. The default
-          meaning of conversion rate, as in the Shopify dashboard.
+          meaning of conversion rate, as in the Shopify dashboard: name the
+          definition in the answer and mention sessions.user_conversion_rate
+          by name, giving its value only if you queried it.
         datatype: Float
         ai_context:
           synonyms: [conversion rate, conversion, ecommerce conversion rate, session key event rate]
@@ -259,6 +238,17 @@ datasets:
       One row per purchase recorded by web analytics. A thank-you page
       reloaded or opened twice sends the same purchase again; repeats with
       the same transaction id from the same user count once, as in GA4.
+      Amounts (purchases.gross_purchase_revenue,
+      average_gross_purchase_revenue, tax and shipping) are in the currency
+      the site sent with each purchase (purchases.currency), which GA4 calls
+      "local currency". Query them with purchases.currency as a dimension.
+      With one currency, answer in it and name its code. With several, give
+      each currency separately and offer
+      purchases.gross_purchase_revenue_usd for a single total; never add up
+      amounts in different currencies. Use
+      purchases.gross_purchase_revenue_usd also when asked for US dollars.
+      Name the currency by the code purchases.currency returns; do not guess
+      a currency sign.
     ai_context:
       synonyms: [conversions, ecommerce purchases, web purchases]
     fields:
@@ -361,12 +351,14 @@ datasets:
         expression: {sql: SUM(revenue)}
         description: >
           Total value of purchases as the site sent them, in their currency
-          (purchases.currency): GA4's gross purchase revenue. Refunds are not
-          subtracted; GA4's "Purchase revenue" subtracts the refunds the site
-          sent, so it is lower when there were any. Amounts in different
+          (purchases.currency): GA4's gross purchase revenue. Refunds are
+          not subtracted; GA4's "Purchase revenue" subtracts the refunds the
+          site sent, so it is lower when there were any: say so when someone
+          compares it with the GA4 interface. Amounts in different
           currencies are added as they are: break it down by
-          purchases.currency, or use purchases.gross_purchase_revenue_usd for
-          a single total. Purchases the site sent without a value add nothing.
+          purchases.currency, or use purchases.gross_purchase_revenue_usd
+          for a single total. Purchases the site sent without a value add
+          nothing.
         datatype: Float
         ai_context:
           synonyms: [purchase revenue, ecommerce revenue, tracked revenue, web revenue, GA4 revenue]
