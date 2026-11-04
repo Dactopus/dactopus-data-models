@@ -38,7 +38,7 @@ import yaml
 from sqlglot import exp
 
 def expression(item):
-    return next(d["expression"] for d in item["expression"]["dialects"] if d["dialect"] == "ANSI_SQL")
+    return item["expression"]["sql"]
 
 
 def parse(item):

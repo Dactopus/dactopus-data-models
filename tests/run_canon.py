@@ -116,8 +116,9 @@ class DuckDB:
     The extension (0.3.0) does not read the metrics of a dataset (apache/ossie#591), so
     the model is loaded with each of them moved to the model's metrics as
     <dataset>__<metric>: its columns qualified with the dataset, COUNT(*) counted on the
-    dataset's key. The answers name them back. The extension refuses a question it
-    cannot answer with one aggregate per grain or without fan-out (two facts in one
+    dataset's key. The answers name them back. It does not read the `sql` form either, so
+    every expression is written back as an ANSI_SQL dialect. The extension refuses a
+    question it cannot answer with one aggregate per grain or without fan-out (two facts in one
     question, a filter on a dataset that repeats the counted rows, no metric); such a
     question is reported as refused, not as a wrong number. Any other error is one.
     """
@@ -154,18 +155,22 @@ class DuckDB:
         self.metrics = {}
         for dataset in document["datasets"]:
             for metric in dataset.pop("metrics", None) or []:
-                for dialect in metric["expression"]["dialects"]:
-                    expression = sqlglot.parse_one(dialect["expression"])
-                    for star in list(expression.find_all(exp.Star)):
-                        if isinstance(star.parent, exp.Count):
-                            star.replace(exp.column(dataset["primary_key"][-1], dataset["name"]))
-                    for column in expression.find_all(exp.Column):
-                        if not column.table:
-                            column.set("table", exp.to_identifier(dataset["name"]))
-                    dialect["expression"] = expression.sql()
+                expression = sqlglot.parse_one(metric["expression"]["sql"])
+                for star in list(expression.find_all(exp.Star)):
+                    if isinstance(star.parent, exp.Count):
+                        star.replace(exp.column(dataset["primary_key"][-1], dataset["name"]))
+                for column in expression.find_all(exp.Column):
+                    if not column.table:
+                        column.set("table", exp.to_identifier(dataset["name"]))
+                metric["expression"]["sql"] = expression.sql()
                 name = f"{dataset['name']}.{metric['name']}"
                 metric["name"] = self.metrics[name] = f"{dataset['name']}__{metric['name']}"
                 document.setdefault("metrics", []).append(metric)
+        # The extension reads only `dialects`. Remove once it reads `sql`.
+        for item in [*(f for d in document["datasets"] for f in d["fields"]),
+                     *document.get("metrics", [])]:
+            item["expression"] = {"dialects": [{"dialect": "ANSI_SQL",
+                                                "expression": item["expression"]["sql"]}]}
         with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False) as file:
             yaml.safe_dump(document, file, sort_keys=False)
         self.connection.execute("CALL ossie_load(?)", [file.name])

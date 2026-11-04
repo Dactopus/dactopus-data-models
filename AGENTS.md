@@ -92,7 +92,8 @@ and with one label in a database and each label in one database
 ## Model format
 
 - Ossie schema version is pinned to `0.2.0.dev0`. Do not change it.
-- Write expressions in `ANSI_SQL`.
+- Write expressions in `sql`, the spec's portable form (`OSSIE_SQL_2026`);
+  `dialects` only for a vendor variant.
 - A metric that reads one dataset goes in that dataset's `metrics`,
   its fields named without the dataset; a count of its rows is
   `COUNT(*)`. The model's `metrics` holds only metrics over several

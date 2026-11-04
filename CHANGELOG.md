@@ -8,6 +8,25 @@ names the Ossie schema version its models carry.
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-11-04
+
+Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.12.0,
+dbt v2 (`dbt-oss` 2.0.11) and dbt v1 (`dbt-core` 1.11 with
+`dbt-clickhouse` 1.10) on ClickHouse 26.9, the WooCommerce package also
+on 26.7. The models write expressions in the `sql` form, which
+dactopus-ossie-clickhouse reads since 0.11.0: an older version, or an
+Ossie tool that reads only `dialects`, does not load them. No table
+changes and no rebuild is needed.
+
+### Changed
+
+- The models of the three domains write expressions as
+  `expression: {sql: ...}` instead of
+  `expression: {dialects: [{dialect: ANSI_SQL, ...}]}`, the form of the
+  apache/ossie examples and spec since apache/ossie#640. Reading it
+  needs dactopus-ossie-clickhouse 0.11.0 or newer. The numbers of the
+  models do not change and no rebuild is needed.
+
 ## [0.10.0] - 2026-11-03
 
 Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.12.0,
@@ -1066,7 +1085,8 @@ ClickHouse 26.9.
 - Hand-written GA4 rows and the numbers the model must answer over them
   (`tests/ga4`), checked in CI on both dbt versions.
 
-[Unreleased]: https://github.com/Dactopus/dactopus-data-models/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/Dactopus/dactopus-data-models/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/Dactopus/dactopus-data-models/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/Dactopus/dactopus-data-models/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/Dactopus/dactopus-data-models/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/Dactopus/dactopus-data-models/compare/v0.7.2...v0.8.0
