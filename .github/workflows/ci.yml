@@ -18,7 +18,9 @@ jobs:
   # (tests/ask_model.py), or what every job reads (common). Documentation
   # reaches none. The unions job builds every package, so every package
   # reaches it. A pull request is compared with its base branch, a push to
-  # main with the commit before it.
+  # main with the commit before it. A change of text alone (a release's
+  # version line, a model's descriptions) reaches no package or union
+  # job: tests/reach.py reads what changed in the files the filters match.
   # The runner image is pinned, as the ClickHouse releases are: ubuntu-latest
   # moves to the next Ubuntu on GitHub's day, not ours. Dependabot does not
   # bump it; move every job when the pinned image nears its end of life.
@@ -28,23 +30,28 @@ jobs:
       contents: read
       pull-requests: read
     outputs:
-      validate: ${{ steps.filter.outputs.validate }}
-      ga4: ${{ steps.filter.outputs.ga4 }}
-      shopify: ${{ steps.filter.outputs.shopify }}
-      woocommerce: ${{ steps.filter.outputs.woocommerce }}
-      sensor_community: ${{ steps.filter.outputs.sensor_community }}
-      unions: ${{ steps.filter.outputs.unions }}
+      validate: ${{ steps.reach.outputs.validate }}
+      ga4: ${{ steps.reach.outputs.ga4 }}
+      shopify: ${{ steps.reach.outputs.shopify }}
+      woocommerce: ${{ steps.reach.outputs.woocommerce }}
+      sensor_community: ${{ steps.reach.outputs.sensor_community }}
+      unions: ${{ steps.reach.outputs.unions }}
     steps:
+      # The whole history (a few MB), so the commit before a push is there.
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
       - uses: dorny/paths-filter@v4
         id: filter
         with:
           # A file matching a pattern and no negated one counts: a
           # package's README.md is documentation.
           predicate-quantifier: some-with-excludes
+          list-files: json
           filters: |
             common: &common
               - .github/workflows/ci.yml
+              - tests/reach.py
               - tests/profiles.yml
               - tests/check_contracts.py
               - tests/check_deployment.py
@@ -96,6 +103,17 @@ jobs:
               - '!sources/*/README.md'
               - tests/*/fixture.sql
               - tests/check_union.py
+      - uses: astral-sh/setup-uv@v7
+        with:
+          cache-dependency-glob: .github/workflows/ci.yml
+      # A pull request runs on its merge into the base branch: the merge's
+      # first parent is the base as it is now.
+      - name: Leave out changes of text alone
+        id: reach
+        env:
+          FILTERS: ${{ toJSON(steps.filter.outputs) }}
+          BASE: ${{ github.event_name == 'pull_request' && 'HEAD^1' || github.event.before }}
+        run: uv run tests/reach.py "$BASE" HEAD | tee -a "$GITHUB_OUTPUT"
   # A deployment with several packages serves their models as one, and
   # the executor refuses a name defined in two files. No server needed.
   validate:
