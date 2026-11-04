@@ -37,7 +37,9 @@ With one label in each database and the packages' key tests, that keeps
 every key unique in a union. In every Ossie model under entities/,
 source_id comes first in each primary_key and on both sides of each
 relationship: without it a union joins rows across instances, and its
-ai_context.instructions stay within 2,300 characters. No
+ai_context.instructions stay within 2,300 characters. No metric reads
+fields of more than one dataset: a dataset carries what its metrics need
+(order_lines.in_sales_reports, the flag of the line's order). No
 expression of an Ossie model compares a column the packages type Bool
 with a number (is_cancelled = 1): Postgres rejects it. The copies
 of one macro file are the same: macros/freshness.sql in every package,
@@ -170,6 +172,26 @@ def bool_comparisons(model_path, bool_columns):
                and is_bool(column.table or dataset, column.name)
                for pair in sides for column, other in (pair, pair[::-1])):
             found.append((f"{dataset}.{item['name']}" if dataset else item["name"], sql))
+    return found
+
+
+def multi_dataset_metrics(model_path):
+    """The metrics whose expression reads fields of more than one dataset: [(name, [dataset, ...]), ...].
+
+    A metric of a dataset names its own fields bare or with the dataset's
+    name; a metric of the model names every field with its dataset's.
+    """
+    model = yaml.safe_load(model_path.read_text())
+    items = [(d["name"], f"{d['name']}.{m['name']}", m) for d in model["datasets"] for m in d.get("metrics", [])]
+    items += [(None, m["name"], m) for m in model.get("metrics", [])]
+    found = []
+    for dataset, name, metric in items:
+        datasets = []
+        for table, _ in references(expression(metric)):
+            if (table or dataset) not in datasets:
+                datasets.append(table or dataset)
+        if len(datasets) > 1:
+            found.append((name, datasets))
     return found
 
 
@@ -323,6 +345,10 @@ def check(packages, unions, built):
             key = dataset.get("primary_key")
             if key and key[0] != "source_id":
                 problems.append(f"{name}: the primary_key of {dataset['name']} must start with source_id: {key}")
+        for metric, datasets in multi_dataset_metrics(model_path):
+            problems.append(f"{name}: the metric {metric} reads fields of {len(datasets)} datasets, "
+                            f"{', '.join(map(str, datasets))}; move what it reads into the columns of "
+                            f"one dataset and put the metric on that dataset")
         for relationship in model.get("relationships", []):
             if relationship["from_columns"][0] != "source_id" or relationship["to_columns"][0] != "source_id":
                 problems.append(f"{name}: {relationship['name']} must join on source_id first, on both sides")
