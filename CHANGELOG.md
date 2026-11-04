@@ -48,6 +48,15 @@ the commerce model change.
 - `tests/check_contracts.py` fails on a metric that reads fields of more
   than one dataset. `AGENTS.md` and `CONTRIBUTING.md` state the rule,
   and `docs/commerce.md` lists the metrics by dataset.
+- The model instructions said every metric but `orders.all_orders` and
+  `orders.all_orders_total` counts only the orders the store's sales
+  reports count. The metrics of `customers` count the orders the store's
+  customers report counts, which at WooCommerce includes an order on hold
+  that is not paid yet. The
+  instructions and the descriptions of `customers` say so;
+  `CONTRIBUTING.md` and `AGENTS.md` state the rule: a dataset built from
+  orders says which orders it counts, in the model's terms, and then
+  names the store report that counts the same.
 
 ### Added
 
@@ -56,6 +65,21 @@ the commerce model change.
   refund has a flag different from its order's. At WooCommerce they warn
   until `DACTOPUS_STRICT_TESTS=error`, as the package's other tests that
   compare two tables.
+- `line_categories.category_tree_items_sold`, `category_tree_revenue`,
+  `category_tree_items_returned`, `category_tree_returned_amount` and
+  `category_tree_net_revenue`, and
+  `product_categories.category_tree_product_count`: the category metrics
+  over every row of the line or product, the categories above its own
+  included. Filtered by one category (`category_path`), they count the
+  category with its subcategories, each line or product once. The
+  descriptions advised `order_lines.line_revenue` or
+  `products.product_count` filtered by `line_categories.category_path`
+  or `product_categories.category_path` for that: a filter on the many
+  side of a relationship, which dactopus-ossie-clickhouse answers and
+  the Ossie spec's relational and wide-table layers do not express. The
+  advice now names the new metrics; `orders.average_order_value`
+  filtered by a category keeps the old form, which has no other. The
+  tables do not change.
 
 ## [0.11.2] - 2026-11-04
 

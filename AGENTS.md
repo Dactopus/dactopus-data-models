@@ -148,6 +148,12 @@ For an agent they mean:
   stay within 2,300 characters (an MCP client cuts the server's
   instructions, which carry them, at 4,096); `tests/check_contracts.py`
   checks it.
+- A dataset built from orders says in its description which orders it
+  counts, in the model's terms (`orders.status`,
+  `orders.in_sales_reports`, a date), and then names the store report
+  that counts the same: the agent answers from the rule, the client
+  checks the number in the report. Where the stores' reports count
+  differently, the description says so, not the model instructions.
 - If the source data does not settle a choice (which date an order date
   is, which time zone, what identifies a customer), ask; do not pick
   silently.

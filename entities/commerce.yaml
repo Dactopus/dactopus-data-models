@@ -37,11 +37,12 @@ ai_context:
     are in each store's own time zone; with stores in several zones, name
     the date you asked for. Where the stores' reports count differently on
     each platform, descriptions name it; orders.platform gives a store's.
-    Every metric but orders.all_orders and orders.all_orders_total counts
-    only the orders the store's own sales reports count
-    (orders.in_sales_reports). "Sales", "revenue" or "turnover" without a
-    qualifier means sales_events.net_revenue; name its definition in the
-    answer.
+    Every metric but those of customers, orders.all_orders and
+    orders.all_orders_total counts only the orders the store's sales reports
+    count (orders.in_sales_reports); the metrics of customers count the
+    orders of the store's customers report, as its description says. "Sales", "revenue"
+    or "turnover" without a qualifier means sales_events.net_revenue; name
+    its definition in the answer.
 
 datasets:
   - name: orders
@@ -565,8 +566,10 @@ datasets:
       One row per customer with an order the store's report of new and
       returning customers counts (orders.customer_order_number): at Shopify
       any order but a test one, cancelled ones included; at WooCommerce any
-      status but those the report settings exclude, orders on hold included,
-      paid or not. A customer record without such an order, a newsletter
+      status but those the report settings exclude (by default pending,
+      cancelled and failed), orders on hold included, paid or not, whether
+      or not the sales reports count them (orders.in_sales_reports). A
+      customer record without such an order, a newsletter
       subscriber or an account that never ordered, has no row. Dates are
       those of these orders, by the date placed in the store's time zone.
       Orders (orders.customer_id) can be grouped or filtered by the fields
@@ -720,8 +723,10 @@ datasets:
       - name: customer_count
         expression: {sql: COUNT(*)}
         description: >
-          Number of customers. By customers.first_order_month, the new
-          customers of each month. Buyers in a period are orders.buyer_count.
+          Number of customers: those with an order the dataset counts
+          (customers), whether or not the sales reports count it. By
+          customers.first_order_month, the new customers of each month.
+          Buyers in a period are orders.buyer_count.
         datatype: Integer
         ai_context:
           synonyms: [number of customers, new customers, cohort size, customer base size, unique customers]
@@ -729,8 +734,9 @@ datasets:
         expression: {sql: SUM(net_total)}
         description: >
           What the customers' orders earned after refunds and cancellations
-          (customers.net_total), over all their orders whenever placed, in
-          their store's currency. It cannot be grouped by orders.currency or
+          (customers.net_total), over all the orders the dataset counts
+          (customers), whenever placed, in their store's currency. It cannot
+          be grouped by orders.currency or
           orders.platform: over several stores, query it by
           customers.source_id, and each store's currency and platform as
           orders.currency and orders.platform by orders.source_id.
@@ -812,8 +818,12 @@ datasets:
     primary_key: [source_id, line_id]
     description: >
       One row per line of goods in an order: a product, its quantity and
-      amount. Gift cards sold and tips are not lines. Lines of cancelled
-      orders are here; filter by orders.is_cancelled to leave them out.
+      amount. Gift cards sold and tips are not lines. Its metrics count
+      only the lines of orders the store's sales reports count
+      (in_sales_reports, the order's orders.in_sales_reports), as those
+      reports do by product. Lines of cancelled orders are here, and count
+      where the store's reports count the order; filter by
+      orders.is_cancelled to leave them out.
     ai_context:
       synonyms: [line items, order items, products sold, items]
     fields:
@@ -955,9 +965,10 @@ datasets:
           discounts, without shipping and tax, before refunds, cancelled orders
           included where the store's reports count them. Use for revenue by
           product or SKU; by category or brand, use
-          line_categories.category_revenue or line_brands.brand_revenue.
-          Filtered by line_categories.category_path, it is the revenue of that
-          category with its subcategories. By product, group by
+          line_categories.category_revenue or line_brands.brand_revenue; for
+          one category with its subcategories,
+          line_categories.category_tree_revenue filtered by
+          line_categories.category_path. By product, group by
           order_lines.product_id and order_lines.title, not by a field of
           products: a product no longer in the catalogue has none.
         datatype: Decimal
@@ -1007,11 +1018,15 @@ datasets:
       at WooCommerce a product in the trash keeps its categories, though it
       has left the catalogue. Categories are the product's current ones:
       moving a product to another category moves its past sales too, as in
-      the store's reports. Use it for sales and returns by category: the
+      the store's reports. Its metrics count only the lines of orders the
+      store's sales reports count (in_sales_reports). Use it for sales and
+      returns by category: the
       category metrics count a line in its product's own categories
-      (is_direct), and a filter on a category reaches its subcategories
-      through the rows above them. The rows of a line can add up to more
-      than the line.
+      (is_direct), the category tree metrics
+      (line_categories.category_tree_revenue and the others) in the
+      categories above them too, so filtered by one category they count it
+      with its subcategories. The rows of a line can add up to more than
+      the line.
     ai_context:
       synonyms: [sales by category, category sales, lines by category, product type sales]
     fields:
@@ -1060,8 +1075,10 @@ datasets:
         description: >
           The category with every category above it, from the top, as the store
           shows it: Clothing > T-Shirts. Each category has a path of its own:
-          group by it. A filter on it for a metric of order lines, such as
-          order_lines.line_revenue, counts the category with its subcategories.
+          group by it. Filter by it for one category with its subcategories:
+          line_categories.category_tree_revenue and the other category tree
+          metrics count every line in it or in a category under it once. A
+          filter on several paths at once counts a line in two of them twice.
           At Shopify, whose product types have no subcategories, the path is
           the name. Empty for a line without a category.
         datatype: String
@@ -1075,11 +1092,12 @@ datasets:
           category under it. The category metrics
           (line_categories.category_revenue and the others) count only these
           rows, as WooCommerce Analytics' Categories report counts a sale in
-          the product's own categories only. A filter on a category for a
-          metric of order lines, such as order_lines.line_revenue, reaches the
-          other rows too and counts the category with its subcategories, each
-          line once, as WooCommerce Analytics' filter by category does. True
-          for a line without a category, and for every row at Shopify.
+          the product's own categories only. The category tree metrics
+          (line_categories.category_tree_revenue and the others) count the
+          other rows too: filtered by one category, the category with its
+          subcategories, each line once, as WooCommerce Analytics' filter by
+          category does. True for a line without a category, and for every
+          row at Shopify.
         datatype: Boolean
         dimension: {is_time: false}
         ai_context:
@@ -1133,12 +1151,10 @@ datasets:
           (WooCommerce Analytics' Categories) counts it: a parent category
           whose products all sit in subcategories has 0. For one category the
           question names, count it with its subcategories:
-          order_lines.line_revenue, order_lines.items_sold,
-          order_lines.items_returned, order_lines.line_returned_amount or
-          order_lines.line_net_revenue filtered by
-          line_categories.category_path, or category when the question gives
-          the name alone, each line once; line_categories.category_revenue with
-          that filter leaves the subcategories out. The categories add up to
+          line_categories.category_tree_revenue filtered by
+          line_categories.category_path (a name alone can sit under two
+          parents: find its paths first); line_categories.category_revenue
+          with that filter leaves the subcategories out. The categories add up to
           more than order_lines.line_revenue where a product is in several:
           never add them up for a total. WooCommerce Analytics' Categories and
           Products reports also count orders on hold that are not paid yet,
@@ -1153,8 +1169,8 @@ datasets:
           Units taken back in each category, as order_lines.items_returned: by
           the date of the order, whenever taken back, counted in the product's
           own categories, as line_categories.category_revenue. For one category
-          with its subcategories, ask order_lines.items_returned filtered by
-          line_categories.category_path.
+          with its subcategories, line_categories.category_tree_items_returned
+          filtered by line_categories.category_path.
         datatype: Integer
         ai_context:
           synonyms: [returns by category, returned units by category]
@@ -1177,6 +1193,75 @@ datasets:
         datatype: Decimal
         ai_context:
           synonyms: [net sales by category, category revenue after returns]
+      - name: category_tree_items_sold
+        expression: {sql: SUM(CASE WHEN in_sales_reports THEN quantity ELSE 0 END)}
+        description: >
+          Units of goods ordered in a category or in any category under it,
+          as order_lines.items_sold: every row of the line, not only its
+          product's own categories, as line_categories.category_tree_revenue
+          counts them. Filtered by one line_categories.category_path, the
+          category with its subcategories, each line once.
+        datatype: Integer
+        ai_context:
+          synonyms: [units sold in category with subcategories, category tree units, units sold in category and subcategories]
+      - name: category_tree_revenue
+        expression: {sql: SUM(CASE WHEN in_sales_reports THEN line_total ELSE 0 END)}
+        description: >
+          Revenue of goods in a category or in any category under it, as
+          line_categories.category_revenue: after discounts, without shipping
+          and tax, before refunds, by the date of the order. It counts every
+          row of the line, in the categories above its product's own too
+          (line_categories.is_direct or not). Filtered by one
+          line_categories.category_path, it is that category with its
+          subcategories, each line once, as WooCommerce Analytics' filter by
+          category counts it; line_categories.category_revenue with that
+          filter leaves the subcategories out. Filter by the path, not by
+          category: a name can sit under two parents (Accessories under
+          Clothing and under Kitchen), and a filter that matches both paths,
+          like one on several categories at once, counts a line in both of
+          them twice. By category_path, each category has everything under
+          it: the paths overlap, never add them up. WooCommerce Analytics'
+          Products report, filtered by a category, also counts orders on hold
+          that are not paid yet, which this metric leaves out
+          (in_sales_reports): there the report can show more. At Shopify,
+          whose product types have no subcategories, it equals
+          line_categories.category_revenue.
+        datatype: Decimal
+        ai_context:
+          synonyms: [revenue of category with subcategories, category tree revenue, sales in category and subcategories, revenue including subcategories]
+      - name: category_tree_items_returned
+        expression: {sql: SUM(CASE WHEN in_sales_reports THEN returned_quantity ELSE 0 END)}
+        description: >
+          Units taken back in a category or in any category under it, as
+          order_lines.items_returned: by the date of the order, whenever taken
+          back, every row of the line, as line_categories.category_tree_revenue
+          counts them. Filtered by one category, the category with its
+          subcategories, each line once.
+        datatype: Integer
+        ai_context:
+          synonyms: [returns in category with subcategories, category tree returns, returned units including subcategories]
+      - name: category_tree_returned_amount
+        expression: {sql: SUM(CASE WHEN in_sales_reports THEN returned_amount ELSE 0 END)}
+        description: >
+          Goods taken back in a category or in any category under it, as
+          order_lines.line_returned_amount: after discounts and without tax,
+          by the date of the order, every row of the line, as
+          line_categories.category_tree_revenue counts them. Filtered by one
+          category, the category with its subcategories, each line once.
+        datatype: Decimal
+        ai_context:
+          synonyms: [returns value in category with subcategories, returned amount including subcategories]
+      - name: category_tree_net_revenue
+        expression: {sql: SUM(CASE WHEN in_sales_reports THEN line_total - returned_amount ELSE 0 END)}
+        description: >
+          Revenue of goods in a category or in any category under it less
+          what was taken back, as order_lines.line_net_revenue, by the date
+          of the order, every row of the line, as
+          line_categories.category_tree_revenue counts them. Filtered by one
+          category, the category with its subcategories, each line once.
+        datatype: Decimal
+        ai_context:
+          synonyms: [net sales in category with subcategories, category tree net revenue, net revenue including subcategories]
 
   - name: line_brands
     source: line_brands
@@ -1186,7 +1271,9 @@ datasets:
       have several brands, and its line counts in each. A line whose
       product has no brand or has been deleted, or an item added by hand,
       has one row without a brand; at WooCommerce a product in the trash
-      keeps its brands. Brands are the product's current ones. Use it for
+      keeps its brands. Brands are the product's current ones. Its metrics
+      count only the lines of orders the store's sales reports count
+      (in_sales_reports), as the store's report by brand does. Use it for
       sales and returns by brand.
     ai_context:
       synonyms: [sales by brand, brand sales, sales by vendor, lines by brand]
@@ -1310,7 +1397,9 @@ datasets:
       A refund of gift cards alone, or the refund Shopify records when it
       cancels an unpaid order, has an amount of 0, which is not an error.
       Where the platform cannot tell a refunded tip from a refund of goods,
-      as at Shopify, the tip counts as a refund.
+      as at Shopify, the tip counts as a refund. Its metrics count only the
+      refunds of orders the store's sales reports count (in_sales_reports),
+      as those reports count returns.
     ai_context:
       synonyms: [returns, refunds issued, money back]
     fields:
@@ -1662,9 +1751,9 @@ datasets:
         description: >
           Whether the product is in this category itself, not only in a
           category under it; product_categories.product_count counts only
-          these rows. A filter on a category for products.product_count
-          reaches the other rows too and counts the category with its
-          subcategories.
+          these rows. product_categories.category_tree_product_count counts
+          the other rows too: filtered by one category, the products in it or
+          in a category under it, each once.
         datatype: Boolean
         dimension: {is_time: false}
         ai_context:
@@ -1676,14 +1765,31 @@ datasets:
           Number of products in each category, the products in the category
           itself (product_categories.is_direct): a parent category whose
           products all sit in subcategories has 0. For one category with its
-          subcategories, ask products.product_count filtered by
-          product_categories.category_path. A product in two categories
+          subcategories, product_categories.category_tree_product_count
+          filtered by product_categories.category_path. A product in two categories
           counts in each: the categories add up to more than the catalogue.
           Filter by products.status = 'active' for the products customers
           can buy.
         datatype: Integer
         ai_context:
           synonyms: [products in category, number of products by category, category size]
+      - name: category_tree_product_count
+        expression: {sql: "COUNT(DISTINCT source_id || '/' || CAST(product_id AS VARCHAR))"}
+        description: >
+          Number of products in a category or in any category under it: every
+          row, in the categories above the product's own too
+          (product_categories.is_direct or not). Filtered by one category
+          (product_categories.category_path), the products in it with its
+          subcategories, each product once;
+          product_categories.product_count with that filter leaves the
+          subcategories out. By category_path, each category has everything
+          under it: the paths overlap, never add them up. Filter by
+          products.status = 'active' for the products customers can buy. At
+          Shopify, whose product types have no subcategories, it equals
+          product_categories.product_count.
+        datatype: Integer
+        ai_context:
+          synonyms: [products in category with subcategories, category tree size, number of products including subcategories]
 
   - name: product_brands
     source: product_brands

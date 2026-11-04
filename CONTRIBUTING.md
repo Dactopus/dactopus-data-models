@@ -213,6 +213,18 @@ time zone), and Claude Code cuts a server's instructions at 4,096.
 
 A package states which one it uses and why.
 
+**A dataset says which rows it counts, then which report agrees.** The
+agent sees descriptions and the tables, never the store's reports. A
+dataset built from orders states in its description which orders it
+counts, in the model's own terms (`orders.status`,
+`orders.in_sales_reports`, a date), and then names the store report that
+counts the same, so that the client can check the number there and the
+author of a new source knows what to match. Where the stores' reports
+count differently, say so in the description, not in the model
+instructions, which keep the rule across datasets: `customers` counts
+the orders of the store's customers report, the sales metrics those of
+its sales reports.
+
 **dactopus-ossie-clickhouse limits are rules here.**
 - Joins are many-to-one only, on a declared primary or unique key, and
   each dataset has one path from the question's root.

@@ -1,6 +1,6 @@
 # The commerce model
 
-[`entities/commerce.yaml`](../entities/commerce.yaml) has 43 metrics. Each
+[`entities/commerce.yaml`](../entities/commerce.yaml) has 49 metrics. Each
 is on the dataset whose rows it counts, and a question names it as
 `dataset.metric` (`orders.revenue`):
 
@@ -32,8 +32,11 @@ is on the dataset whose rows it counts, and a question names it as
   count on the date of the order.
 - categories (`line_categories`): `category_items_sold`, `category_revenue`,
   `category_items_returned`, `category_returned_amount`,
-  `category_net_revenue`. They break down by `line_categories.category`
-  and `category_path`, and by the order fields above.
+  `category_net_revenue`, and the same five over a category with its
+  subcategories, `category_tree_items_sold` to
+  `category_tree_net_revenue`. They break down by
+  `line_categories.category` and `category_path`, and by the order fields
+  above.
 - brands (`line_brands`): `brand_items_sold`, `brand_revenue`,
   `brand_items_returned`, `brand_returned_amount`, `brand_net_revenue`.
   They break down by `line_brands.brand` and by the order fields above.
@@ -45,8 +48,9 @@ is on the dataset whose rows it counts, and a question names it as
   fields above.
 - the catalog: `products.product_count`, by status (active, draft,
   archived), title and the date of the last sale;
-  `product_categories.product_count` by category and
-  `product_brands.product_count` by brand.
+  `product_categories.product_count` by category,
+  `product_categories.category_tree_product_count` for a category with
+  its subcategories, and `product_brands.product_count` by brand.
 
 A category is the product type at Shopify and a product category at
 WooCommerce, where categories nest; a brand is the vendor at Shopify and
@@ -55,15 +59,22 @@ product moved to another category takes its past sales with it, as in
 the stores' reports. A line counts in every category and brand of its
 product, so they overlap and never add up to a total. The category
 metrics count a line in its product's own categories, as WooCommerce
-Analytics' Categories report does; one category with its subcategories
-is the order lines' metrics filtered by `line_categories.category_path`.
+Analytics' Categories report does; the category tree metrics
+(`category_tree_revenue` and the others) count it in the categories above
+them too, so filtered by one category (`line_categories.category_path`)
+they give that category with its subcategories, each line once.
 Collections and tags are not modelled.
 
-The numbers follow the store's own sales reports: every metric but
-`orders.all_orders` and `orders.all_orders_total` counts only the orders
-those reports count (`orders.in_sales_reports`). Shopify's reports count
-every order; WooCommerce's, by default, paid orders that are not
-cancelled or failed.
+The numbers follow the store's own reports, each dataset its own. The
+metrics of orders and of what is built from them (order lines,
+categories, brands, refunds, sales events) count only the orders the
+store's sales reports count (`orders.in_sales_reports`), but
+`orders.all_orders` and `orders.all_orders_total`. Shopify's reports
+count every order; WooCommerce's, by default, paid orders that are not
+cancelled or failed. Customers follow the store's report of new and
+returning customers, which at WooCommerce counts an order on hold that is
+not paid yet: the metrics of `customers` count it, the sales metrics do
+not, and the dataset's description says so.
 
 "Sales" or "revenue" without a qualifier is `sales_events.net_revenue`:
 orders less refunds and cancellations, with shipping and tax. By
