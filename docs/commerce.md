@@ -73,8 +73,8 @@ store's sales reports count (`orders.in_sales_reports`), but
 count every order; WooCommerce's, by default, paid orders that are not
 cancelled or failed. Customers follow the store's report of new and
 returning customers, which at WooCommerce counts an order on hold that is
-not paid yet: `customers.customer_count` and `customers.net_amount` count
-it, the sales metrics do not, and the dataset's description says so.
+not paid yet: the metrics of `customers` count it, the sales metrics do
+not, and the dataset's description says so.
 
 "Sales" or "revenue" without a qualifier is `sales_events.net_revenue`:
 orders less refunds and cancellations, with shipping and tax. By

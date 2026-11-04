@@ -152,7 +152,8 @@ For an agent they mean:
   counts, in the model's terms (`orders.status`,
   `orders.in_sales_reports`, a date), and then names the store report
   that counts the same: the agent answers from the rule, the client
-  checks the number in the report.
+  checks the number in the report. Where the stores' reports count
+  differently, the description says so, not the model instructions.
 - If the source data does not settle a choice (which date an order date
   is, which time zone, what identifies a customer), ask; do not pick
   silently.
