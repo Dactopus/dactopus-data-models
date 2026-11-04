@@ -306,7 +306,7 @@ descriptions say how:
 
 - **Gross and net sales** in Shopify's reports are goods only.
   `orders.revenue` and `sales_events.net_revenue` add shipping, tax and
-  import duties; `line_revenue` is goods after discounts.
+  import duties; `order_lines.line_revenue` is goods after discounts.
 - **Sales reversals** (formerly returns) in the reports are without tax
   and count a cancelled unpaid order as reversed.
   `orders.refunded_amount` is the money paid back, with its tax; a
@@ -324,11 +324,12 @@ descriptions say how:
   ([#6](https://github.com/Dactopus/dactopus-data-models/issues/6)).
   Tips and gift cards sold are otherwise not sales, as in the reports.
 - **Gift cards** count in the reports' units sold and returned; here a
-  gift card is no product, so `items_sold` and `items_returned` leave it
-  out.
+  gift card is no product, so `order_lines.items_sold` and
+  `order_lines.items_returned` leave it out.
 - **Returns by product, type or vendor**: the reports date a return on
-  the day of the refund, `items_returned` and `line_returned_amount` on
-  the day of the order. Over all time they are equal.
+  the day of the refund, `order_lines.items_returned` and
+  `order_lines.line_returned_amount` on the day of the order. Over all
+  time they are equal.
 - **Average order value by product type**: the reports, filtered by a
   type, count only that type's lines of each order;
   `orders.average_order_value` filtered by a category counts each such

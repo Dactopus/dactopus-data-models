@@ -12,7 +12,16 @@
 {% set ids = woocommerce_changed_orders(in_comment=true) if is_incremental() else none %}
 WITH
 orders AS MATERIALIZED (
-    SELECT id FROM {{ woocommerce_orders('id IN ' ~ ids if ids else 'true') }}
+    SELECT id, status, placed_time FROM {{ woocommerce_orders('id IN ' ~ ids if ids else 'true') }}
+),
+-- When the refunds' orders were paid and completed, for the flag of their
+-- reports (the refund's own operational data, below, holds its shipping).
+order_times AS MATERIALIZED (
+    SELECT
+        order_id,
+        {{ woocommerce_time('date_paid_gmt') }} AS paid_time,
+        {{ woocommerce_time('date_completed_gmt') }} AS completed_time
+    FROM {{ woocommerce_current('wc_order_operational_data', 'id', 'order_id IN (SELECT id FROM orders)') }}
 ),
 refunds AS MATERIALIZED (
     SELECT
@@ -56,6 +65,9 @@ SELECT
     -- Never NULL: the refunds read are those of the orders read. The cast
     -- keeps the key's type when the input's column is Nullable.
     CAST(f.parent_order_id AS UInt64) AS order_id,
+    -- The flag of the refund's order (orders.in_sales_reports), computed
+    -- from the order's own tables: orders.sql reads this table.
+    {{ woocommerce_in_sales_reports('o.status', 'o.placed_time', 'ot.paid_time', 'ot.completed_time') }} AS in_sales_reports,
     -- Date of the refund in the store's time zone.
     toDate(f.refund_time, '{{ var("woocommerce_timezone") }}') AS refund_date,
     toDateTime(f.refund_time, 'UTC') AS refund_time,
@@ -68,6 +80,8 @@ SELECT
     -- from the latest one while the table's comment has no position.
     f.synced_at AS synced_at
 FROM refunds AS f
+INNER JOIN orders AS o ON o.id = f.parent_order_id
+LEFT JOIN order_times AS ot ON ot.order_id = f.parent_order_id
 LEFT JOIN operational AS op ON op.order_id = f.id
 LEFT JOIN quantities AS q ON q.refund_id = f.id
 LEFT JOIN rates AS r ON r.refund_id = f.id

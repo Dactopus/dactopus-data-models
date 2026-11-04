@@ -7,6 +7,7 @@
 SELECT
     l.source_id AS source_id,
     l.line_id AS line_id,
+    l.in_sales_reports AS in_sales_reports,
     b.brand AS brand,
     l.quantity AS quantity,
     l.line_total AS line_total,
