@@ -4,7 +4,7 @@ name: web_analytics
 description: >
   Website behaviour of an online store: events, sessions and the purchases
   web analytics recorded. Built from Google Analytics 4 (GA4) by the
-  sources/ga4 package.
+  GA4 source package.
 ai_context:
   instructions: >
     Purchases and revenue here are what web analytics recorded on the site,

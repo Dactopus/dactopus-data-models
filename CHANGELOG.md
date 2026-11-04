@@ -8,6 +8,16 @@ names the Ossie schema version its models carry.
 
 ## [Unreleased]
 
+## [0.11.1] - 2026-11-04
+
+Ossie schema `0.2.0.dev0`. Tested with the same versions as 0.11.0.
+
+### Changed
+
+- The descriptions of the three models name the source packages without
+  repository paths (`sources/shopify` and the like). The tables do not
+  change and no rebuild is needed.
+
 ## [0.11.0] - 2026-11-04
 
 Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.12.0,
@@ -1085,7 +1095,8 @@ ClickHouse 26.9.
 - Hand-written GA4 rows and the numbers the model must answer over them
   (`tests/ga4`), checked in CI on both dbt versions.
 
-[Unreleased]: https://github.com/Dactopus/dactopus-data-models/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/Dactopus/dactopus-data-models/compare/v0.11.1...HEAD
+[0.11.1]: https://github.com/Dactopus/dactopus-data-models/compare/v0.11.0...v0.11.1
 [0.11.0]: https://github.com/Dactopus/dactopus-data-models/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/Dactopus/dactopus-data-models/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/Dactopus/dactopus-data-models/compare/v0.8.0...v0.9.0

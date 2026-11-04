@@ -5,7 +5,7 @@ description: >
   Devices that measure the environment and their readings: particulate
   matter, temperature, humidity and air pressure. A reference domain,
   built from the public data of Sensor.Community, a citizen network of
-  air quality sensors, by the sources/sensor_community package.
+  air quality sensors, by the Sensor.Community source package.
 ai_context:
   instructions: >
     Every time is UTC and every date is the date in UTC, not the device's
