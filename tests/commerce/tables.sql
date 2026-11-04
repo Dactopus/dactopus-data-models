@@ -50,6 +50,7 @@ CREATE TABLE order_lines (
     source_id VARCHAR NOT NULL,
     line_id BIGINT NOT NULL,
     order_id BIGINT NOT NULL,
+    in_sales_reports BOOLEAN NOT NULL,
     product_id BIGINT,
     variant_id BIGINT,
     sku VARCHAR,
@@ -64,6 +65,7 @@ CREATE TABLE order_lines (
 CREATE TABLE line_categories (
     source_id VARCHAR NOT NULL,
     line_id BIGINT NOT NULL,
+    in_sales_reports BOOLEAN NOT NULL,
     category VARCHAR,
     category_path VARCHAR,
     is_direct BOOLEAN NOT NULL,
@@ -76,6 +78,7 @@ CREATE TABLE line_categories (
 CREATE TABLE line_brands (
     source_id VARCHAR NOT NULL,
     line_id BIGINT NOT NULL,
+    in_sales_reports BOOLEAN NOT NULL,
     brand VARCHAR,
     quantity BIGINT NOT NULL,
     line_total DECIMAL(38, 8) NOT NULL,
@@ -87,6 +90,7 @@ CREATE TABLE refunds (
     source_id VARCHAR NOT NULL,
     refund_id BIGINT NOT NULL,
     order_id BIGINT NOT NULL,
+    in_sales_reports BOOLEAN NOT NULL,
     refund_date DATE NOT NULL,
     refund_time TIMESTAMP WITH TIME ZONE NOT NULL,
     refunded_amount DECIMAL(38, 8) NOT NULL

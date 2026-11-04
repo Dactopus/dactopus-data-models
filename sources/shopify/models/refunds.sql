@@ -12,6 +12,9 @@ SELECT
     {{ shopify_source_id() }} AS source_id,
     r.id AS refund_id,
     r.order_id AS order_id,
+    -- Shopify's sales reports count every order, as orders.sql says
+    -- (orders.in_sales_reports).
+    true AS in_sales_reports,
     -- processedAt in the shop's time zone, the date Shopify's sales reports
     -- count the refund on; a refund imported with a past processedAt was
     -- created on the day of the import (input.sql).

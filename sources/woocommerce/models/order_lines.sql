@@ -7,7 +7,16 @@
 {% set ids = woocommerce_changed_orders(products=true) if is_incremental() else none %}
 WITH
 orders AS MATERIALIZED (
-    SELECT id, synced_at FROM {{ woocommerce_orders('id IN ' ~ ids if ids else 'true') }}
+    SELECT id, status, placed_time, synced_at FROM {{ woocommerce_orders('id IN ' ~ ids if ids else 'true') }}
+),
+-- When the orders were paid and completed, for the flag of their reports.
+-- The order itself reads them in orders.sql, which reads this table.
+order_times AS MATERIALIZED (
+    SELECT
+        order_id,
+        {{ woocommerce_time('date_paid_gmt') }} AS paid_time,
+        {{ woocommerce_time('date_completed_gmt') }} AS completed_time
+    FROM {{ woocommerce_current('wc_order_operational_data', 'id', 'order_id IN (SELECT id FROM orders)') }}
 ),
 -- The orders' refunds, for what each refunded of a line.
 refunds AS MATERIALIZED (
@@ -55,6 +64,10 @@ SELECT
     {{ woocommerce_source_id() }} AS source_id,
     i.order_item_id AS line_id,
     i.order_id AS order_id,
+    -- The flag of the line's order (orders.in_sales_reports), computed from
+    -- the order's own tables: orders.sql reads this table, so it cannot be
+    -- read here.
+    {{ woocommerce_in_sales_reports('o.status', 'o.placed_time', 'ot.paid_time', 'ot.completed_time') }} AS in_sales_reports,
     nullIf(m.product_id, 0) AS product_id,
     nullIf(m.variation_id, 0) AS variant_id,
     -- The line keeps no SKU: its product's current one, the variation's
@@ -86,6 +99,7 @@ SELECT
     o.synced_at AS synced_at
 FROM items AS i
 INNER JOIN orders AS o ON o.id = i.order_id
+LEFT JOIN order_times AS ot ON ot.order_id = i.order_id
 LEFT JOIN item_meta AS m ON m.order_item_id = i.order_item_id
 LEFT JOIN refunded AS rf ON rf.order_item_id = i.order_item_id
 LEFT JOIN products AS p ON p.product_id = m.product_id

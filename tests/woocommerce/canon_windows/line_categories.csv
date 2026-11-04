@@ -1,74 +1,74 @@
-source_id,line_id,category,category_path,is_direct,quantity,line_total,returned_quantity,returned_amount
-woocommerce,1,Accessories,Kitchen & Dining > Accessories,true,2,40,0,0
-woocommerce,1,Gifts,Gifts,true,2,40,0,0
-woocommerce,1,Kitchen & Dining,Kitchen & Dining,true,2,40,0,0
-woocommerce,2,Clothing,Clothing,false,1,30,0,0
-woocommerce,2,T-Shirts,Clothing > T-Shirts,true,1,30,0,0
-woocommerce,6,Uncategorized,Uncategorized,true,3,15,0,0
-woocommerce,8,\N,\N,true,1,25,0,0
-woocommerce,10,Clothing,Clothing,false,2,54,1,27
-woocommerce,10,T-Shirts,Clothing > T-Shirts,true,2,54,1,27
-woocommerce,14,Accessories,Kitchen & Dining > Accessories,true,1,20,0,0
-woocommerce,14,Gifts,Gifts,true,1,20,0,0
-woocommerce,14,Kitchen & Dining,Kitchen & Dining,true,1,20,0,0
-woocommerce,15,Accessories,Kitchen & Dining > Accessories,true,2,40,1,20
-woocommerce,15,Gifts,Gifts,true,2,40,1,20
-woocommerce,15,Kitchen & Dining,Kitchen & Dining,true,2,40,1,20
-woocommerce,16,Clothing,Clothing,false,1,30,0,0
-woocommerce,16,T-Shirts,Clothing > T-Shirts,true,1,30,0,0
-woocommerce,17,Accessories,Kitchen & Dining > Accessories,true,1,20,0,0
-woocommerce,17,Gifts,Gifts,true,1,20,0,0
-woocommerce,17,Kitchen & Dining,Kitchen & Dining,true,1,20,0,0
-woocommerce,22,Clothing,Clothing,false,1,31.818182,0,0
-woocommerce,22,T-Shirts,Clothing > T-Shirts,true,1,31.818182,0,0
-woocommerce,24,Accessories,Kitchen & Dining > Accessories,true,1,20,1,20
-woocommerce,24,Gifts,Gifts,true,1,20,1,20
-woocommerce,24,Kitchen & Dining,Kitchen & Dining,true,1,20,1,20
-woocommerce,28,Clothing,Clothing,false,2,60,0,0
-woocommerce,28,T-Shirts,Clothing > T-Shirts,true,2,60,0,0
-woocommerce,29,Uncategorized,Uncategorized,true,2,10,0,0
-woocommerce,34,Accessories,Kitchen & Dining > Accessories,true,2,50,0,0
-woocommerce,34,Gifts,Gifts,true,2,50,0,0
-woocommerce,34,Kitchen & Dining,Kitchen & Dining,true,2,50,0,0
-woocommerce,37,Accessories,Kitchen & Dining > Accessories,true,1,20,0,0
-woocommerce,37,Gifts,Gifts,true,1,20,0,0
-woocommerce,37,Kitchen & Dining,Kitchen & Dining,true,1,20,0,0
-woocommerce,38,Accessories,Kitchen & Dining > Accessories,true,1,20,0,0
-woocommerce,38,Gifts,Gifts,true,1,20,0,0
-woocommerce,38,Kitchen & Dining,Kitchen & Dining,true,1,20,0,0
-woocommerce,2001,Accessories,Kitchen & Dining > Accessories,true,1,20,0,0
-woocommerce,2001,Gifts,Gifts,true,1,20,0,0
-woocommerce,2001,Kitchen & Dining,Kitchen & Dining,true,1,20,0,0
-woocommerce,2002,Accessories,Kitchen & Dining > Accessories,true,1,20,0,0
-woocommerce,2002,Gifts,Gifts,true,1,20,0,0
-woocommerce,2002,Kitchen & Dining,Kitchen & Dining,true,1,20,0,0
-woocommerce,2003,Accessories,Kitchen & Dining > Accessories,true,1,20,0,0
-woocommerce,2003,Gifts,Gifts,true,1,20,0,0
-woocommerce,2003,Kitchen & Dining,Kitchen & Dining,true,1,20,0,0
-woocommerce,2004,Accessories,Kitchen & Dining > Accessories,true,1,20,0,0
-woocommerce,2004,Gifts,Gifts,true,1,20,0,0
-woocommerce,2004,Kitchen & Dining,Kitchen & Dining,true,1,20,0,0
-woocommerce,2005,Accessories,Kitchen & Dining > Accessories,true,1,20,0,0
-woocommerce,2005,Gifts,Gifts,true,1,20,0,0
-woocommerce,2005,Kitchen & Dining,Kitchen & Dining,true,1,20,0,0
-woocommerce,2006,Accessories,Kitchen & Dining > Accessories,true,1,20,0,0
-woocommerce,2006,Gifts,Gifts,true,1,20,0,0
-woocommerce,2006,Kitchen & Dining,Kitchen & Dining,true,1,20,0,0
-woocommerce,2007,Accessories,Kitchen & Dining > Accessories,true,1,20,0,0
-woocommerce,2007,Gifts,Gifts,true,1,20,0,0
-woocommerce,2007,Kitchen & Dining,Kitchen & Dining,true,1,20,0,0
-woocommerce,2008,Accessories,Kitchen & Dining > Accessories,true,1,20,0,0
-woocommerce,2008,Gifts,Gifts,true,1,20,0,0
-woocommerce,2008,Kitchen & Dining,Kitchen & Dining,true,1,20,0,0
-woocommerce,2009,Accessories,Kitchen & Dining > Accessories,true,1,20,0,0
-woocommerce,2009,Gifts,Gifts,true,1,20,0,0
-woocommerce,2009,Kitchen & Dining,Kitchen & Dining,true,1,20,0,0
-woocommerce,2010,Accessories,Kitchen & Dining > Accessories,true,1,20,0,0
-woocommerce,2010,Gifts,Gifts,true,1,20,0,0
-woocommerce,2010,Kitchen & Dining,Kitchen & Dining,true,1,20,0,0
-woocommerce,2011,Accessories,Kitchen & Dining > Accessories,true,1,20,0,0
-woocommerce,2011,Gifts,Gifts,true,1,20,0,0
-woocommerce,2011,Kitchen & Dining,Kitchen & Dining,true,1,20,0,0
-woocommerce,2012,Accessories,Kitchen & Dining > Accessories,true,1,20,0,0
-woocommerce,2012,Gifts,Gifts,true,1,20,0,0
-woocommerce,2012,Kitchen & Dining,Kitchen & Dining,true,1,20,0,0
+source_id,line_id,in_sales_reports,category,category_path,is_direct,quantity,line_total,returned_quantity,returned_amount
+woocommerce,1,true,Accessories,Kitchen & Dining > Accessories,true,2,40,0,0
+woocommerce,1,true,Gifts,Gifts,true,2,40,0,0
+woocommerce,1,true,Kitchen & Dining,Kitchen & Dining,true,2,40,0,0
+woocommerce,2,true,Clothing,Clothing,false,1,30,0,0
+woocommerce,2,true,T-Shirts,Clothing > T-Shirts,true,1,30,0,0
+woocommerce,6,false,Uncategorized,Uncategorized,true,3,15,0,0
+woocommerce,8,true,\N,\N,true,1,25,0,0
+woocommerce,10,true,Clothing,Clothing,false,2,54,1,27
+woocommerce,10,true,T-Shirts,Clothing > T-Shirts,true,2,54,1,27
+woocommerce,14,false,Accessories,Kitchen & Dining > Accessories,true,1,20,0,0
+woocommerce,14,false,Gifts,Gifts,true,1,20,0,0
+woocommerce,14,false,Kitchen & Dining,Kitchen & Dining,true,1,20,0,0
+woocommerce,15,false,Accessories,Kitchen & Dining > Accessories,true,2,40,1,20
+woocommerce,15,false,Gifts,Gifts,true,2,40,1,20
+woocommerce,15,false,Kitchen & Dining,Kitchen & Dining,true,2,40,1,20
+woocommerce,16,false,Clothing,Clothing,false,1,30,0,0
+woocommerce,16,false,T-Shirts,Clothing > T-Shirts,true,1,30,0,0
+woocommerce,17,true,Accessories,Kitchen & Dining > Accessories,true,1,20,0,0
+woocommerce,17,true,Gifts,Gifts,true,1,20,0,0
+woocommerce,17,true,Kitchen & Dining,Kitchen & Dining,true,1,20,0,0
+woocommerce,22,true,Clothing,Clothing,false,1,31.818182,0,0
+woocommerce,22,true,T-Shirts,Clothing > T-Shirts,true,1,31.818182,0,0
+woocommerce,24,true,Accessories,Kitchen & Dining > Accessories,true,1,20,1,20
+woocommerce,24,true,Gifts,Gifts,true,1,20,1,20
+woocommerce,24,true,Kitchen & Dining,Kitchen & Dining,true,1,20,1,20
+woocommerce,28,true,Clothing,Clothing,false,2,60,0,0
+woocommerce,28,true,T-Shirts,Clothing > T-Shirts,true,2,60,0,0
+woocommerce,29,true,Uncategorized,Uncategorized,true,2,10,0,0
+woocommerce,34,true,Accessories,Kitchen & Dining > Accessories,true,2,50,0,0
+woocommerce,34,true,Gifts,Gifts,true,2,50,0,0
+woocommerce,34,true,Kitchen & Dining,Kitchen & Dining,true,2,50,0,0
+woocommerce,37,false,Accessories,Kitchen & Dining > Accessories,true,1,20,0,0
+woocommerce,37,false,Gifts,Gifts,true,1,20,0,0
+woocommerce,37,false,Kitchen & Dining,Kitchen & Dining,true,1,20,0,0
+woocommerce,38,false,Accessories,Kitchen & Dining > Accessories,true,1,20,0,0
+woocommerce,38,false,Gifts,Gifts,true,1,20,0,0
+woocommerce,38,false,Kitchen & Dining,Kitchen & Dining,true,1,20,0,0
+woocommerce,2001,true,Accessories,Kitchen & Dining > Accessories,true,1,20,0,0
+woocommerce,2001,true,Gifts,Gifts,true,1,20,0,0
+woocommerce,2001,true,Kitchen & Dining,Kitchen & Dining,true,1,20,0,0
+woocommerce,2002,true,Accessories,Kitchen & Dining > Accessories,true,1,20,0,0
+woocommerce,2002,true,Gifts,Gifts,true,1,20,0,0
+woocommerce,2002,true,Kitchen & Dining,Kitchen & Dining,true,1,20,0,0
+woocommerce,2003,true,Accessories,Kitchen & Dining > Accessories,true,1,20,0,0
+woocommerce,2003,true,Gifts,Gifts,true,1,20,0,0
+woocommerce,2003,true,Kitchen & Dining,Kitchen & Dining,true,1,20,0,0
+woocommerce,2004,true,Accessories,Kitchen & Dining > Accessories,true,1,20,0,0
+woocommerce,2004,true,Gifts,Gifts,true,1,20,0,0
+woocommerce,2004,true,Kitchen & Dining,Kitchen & Dining,true,1,20,0,0
+woocommerce,2005,true,Accessories,Kitchen & Dining > Accessories,true,1,20,0,0
+woocommerce,2005,true,Gifts,Gifts,true,1,20,0,0
+woocommerce,2005,true,Kitchen & Dining,Kitchen & Dining,true,1,20,0,0
+woocommerce,2006,false,Accessories,Kitchen & Dining > Accessories,true,1,20,0,0
+woocommerce,2006,false,Gifts,Gifts,true,1,20,0,0
+woocommerce,2006,false,Kitchen & Dining,Kitchen & Dining,true,1,20,0,0
+woocommerce,2007,true,Accessories,Kitchen & Dining > Accessories,true,1,20,0,0
+woocommerce,2007,true,Gifts,Gifts,true,1,20,0,0
+woocommerce,2007,true,Kitchen & Dining,Kitchen & Dining,true,1,20,0,0
+woocommerce,2008,true,Accessories,Kitchen & Dining > Accessories,true,1,20,0,0
+woocommerce,2008,true,Gifts,Gifts,true,1,20,0,0
+woocommerce,2008,true,Kitchen & Dining,Kitchen & Dining,true,1,20,0,0
+woocommerce,2009,false,Accessories,Kitchen & Dining > Accessories,true,1,20,0,0
+woocommerce,2009,false,Gifts,Gifts,true,1,20,0,0
+woocommerce,2009,false,Kitchen & Dining,Kitchen & Dining,true,1,20,0,0
+woocommerce,2010,true,Accessories,Kitchen & Dining > Accessories,true,1,20,0,0
+woocommerce,2010,true,Gifts,Gifts,true,1,20,0,0
+woocommerce,2010,true,Kitchen & Dining,Kitchen & Dining,true,1,20,0,0
+woocommerce,2011,true,Accessories,Kitchen & Dining > Accessories,true,1,20,0,0
+woocommerce,2011,true,Gifts,Gifts,true,1,20,0,0
+woocommerce,2011,true,Kitchen & Dining,Kitchen & Dining,true,1,20,0,0
+woocommerce,2012,true,Accessories,Kitchen & Dining > Accessories,true,1,20,0,0
+woocommerce,2012,true,Gifts,Gifts,true,1,20,0,0
+woocommerce,2012,true,Kitchen & Dining,Kitchen & Dining,true,1,20,0,0

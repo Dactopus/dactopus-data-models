@@ -453,7 +453,7 @@ datasets:
         description: >
           Money paid back on orders, with the tax paid back, by the date of
           the order, whenever the refund was made. For refunds by the date
-          they were made, use refunds_total. Not the "sales reversals"
+          they were made, use refunds.refunds_total. Not the "sales reversals"
           (formerly "returns") of store reports, which are without tax and
           count a cancelled unpaid order as value removed;
           sales_events.net_revenue already leaves that order out.
@@ -461,7 +461,7 @@ datasets:
         ai_context:
           synonyms: [refunded on orders, returns of these orders]
       - name: refund_rate
-        expression: {sql: CAST(SUM(CASE WHEN in_sales_reports THEN refunded_total ELSE 0 END) AS DOUBLE) / CAST(SUM(CASE WHEN in_sales_reports THEN total ELSE 0 END) AS DOUBLE)}
+        expression: {sql: "CAST(SUM(CASE WHEN in_sales_reports THEN refunded_total ELSE 0 END) AS DOUBLE) / NULLIF(CAST(SUM(CASE WHEN in_sales_reports THEN total ELSE 0 END) AS DOUBLE), 0)"}
         description: >
           Share of revenue paid back, from 0 to 1: orders.refunded_amount over
           orders.revenue, cancelled orders in both where the store's reports
@@ -470,7 +470,7 @@ datasets:
         ai_context:
           synonyms: [return rate, refund share, refund percentage]
       - name: average_order_value
-        expression: {sql: CAST(SUM(CASE WHEN in_sales_reports THEN subtotal ELSE 0 END) AS DOUBLE) / COUNT(CASE WHEN in_sales_reports THEN order_id END)}
+        expression: {sql: "CAST(SUM(CASE WHEN in_sales_reports THEN subtotal ELSE 0 END) AS DOUBLE) / NULLIF(COUNT(CASE WHEN in_sales_reports THEN order_id END), 0)"}
         description: >
           Goods after discounts per order (orders.subtotal over
           orders.order_count): without shipping, tax and import duties, before
@@ -480,17 +480,17 @@ datasets:
           it, so it matches the store's dashboard. It is not orders.revenue
           over orders.order_count, which would add shipping and tax. Filter by
           orders.is_cancelled = false to leave cancelled orders out. Filtered
-          by a category (line_categories), it is the average of the orders
-          with a line in it, each order once with all its goods, as
-          WooCommerce Analytics' Orders report filtered by a category. Shopify's
-          sales report filtered by product type counts only the lines of
-          that type in those orders, so its number is lower wherever an order
-          holds other goods too.
+          by a category (line_categories), it is the average of the orders with
+          a line in it, each order once with all its goods, as WooCommerce
+          Analytics' Orders report filtered by a category. Shopify's sales
+          report filtered by product type counts only the lines of that type in
+          those orders, so its number is lower wherever an order holds other
+          goods too.
         datatype: Float
         ai_context:
           synonyms: [AOV, average order, average check, average basket value, average transaction value]
       - name: items_per_order
-        expression: {sql: SUM(CASE WHEN in_sales_reports THEN item_quantity ELSE 0 END) * 1.0 / COUNT(CASE WHEN in_sales_reports THEN order_id END)}
+        expression: {sql: "SUM(CASE WHEN in_sales_reports THEN item_quantity ELSE 0 END) * 1.0 / NULLIF(COUNT(CASE WHEN in_sales_reports THEN order_id END), 0)"}
         description: >
           Average units of goods per order, as placed, before refunds, over
           the same orders as orders.average_order_value. Filter by
@@ -536,7 +536,7 @@ datasets:
         ai_context:
           synonyms: [buyers, purchasers, active customers, customers who bought, customers who ordered, shoppers in a period]
       - name: repeat_order_share
-        expression: {sql: "COUNT(CASE WHEN in_sales_reports AND new_vs_repeat = 'repeat' THEN 1 END) * 1.0 / COUNT(CASE WHEN in_sales_reports THEN customer_order_number END)"}
+        expression: {sql: "COUNT(CASE WHEN in_sales_reports AND new_vs_repeat = 'repeat' THEN 1 END) * 1.0 / NULLIF(COUNT(CASE WHEN in_sales_reports THEN customer_order_number END), 0)"}
         description: >
           Share of orders that were a customer's second or later, from 0 to 1,
           among orders with a customer and a place in its sequence
@@ -839,6 +839,17 @@ datasets:
         datatype: Integer
         ai_context:
           synonyms: [order]
+      - name: in_sales_reports
+        expression: {sql: in_sales_reports}
+        description: >
+          Whether the store's own sales reports count the order the line
+          belongs to: the flag of that order, defined at
+          orders.in_sales_reports. The metrics of order_lines count only
+          these rows.
+        datatype: Boolean
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [counted in reports, counted as a sale, in store reports]
       - name: product_id
         expression: {sql: product_id}
         description: >
@@ -924,6 +935,65 @@ datasets:
         datatype: Decimal
         ai_context:
           synonyms: [returns, returned value, value of returns]
+    metrics:
+      - name: items_sold
+        expression: {sql: SUM(CASE WHEN in_sales_reports THEN quantity ELSE 0 END)}
+        description: Units of goods ordered, before refunds and cancellations.
+        datatype: Integer
+        ai_context:
+          synonyms: [units sold, quantity sold, items ordered]
+      - name: items_net
+        expression: {sql: SUM(CASE WHEN in_sales_reports THEN current_quantity ELSE 0 END)}
+        description: Units of goods ordered less those refunded, removed or cancelled.
+        datatype: Integer
+        ai_context:
+          synonyms: [net units, units kept, items after returns]
+      - name: line_revenue
+        expression: {sql: SUM(CASE WHEN in_sales_reports THEN line_total ELSE 0 END)}
+        description: >
+          Revenue of goods as ordered (order_lines.line_total): after
+          discounts, without shipping and tax, before refunds, cancelled orders
+          included where the store's reports count them. Use for revenue by
+          product or SKU; by category or brand, use
+          line_categories.category_revenue or line_brands.brand_revenue.
+          Filtered by line_categories.category_path, it is the revenue of that
+          category with its subcategories. By product, group by
+          order_lines.product_id and order_lines.title, not by a field of
+          products: a product no longer in the catalogue has none.
+        datatype: Decimal
+        ai_context:
+          synonyms: [product revenue, sales by product, item revenue, SKU revenue]
+      - name: items_returned
+        expression: {sql: SUM(CASE WHEN in_sales_reports THEN returned_quantity ELSE 0 END)}
+        description: >
+          Units of goods taken back by refunds and, at Shopify, cancellations
+          (order_lines.returned_quantity), by the date of the order, whenever
+          taken back. Units removed by editing the order are not in it, though
+          order_lines.items_net leaves them out: order_lines.items_sold less
+          order_lines.items_returned can be more than order_lines.items_net.
+        datatype: Integer
+        ai_context:
+          synonyms: [units returned, returned items, returns in units]
+      - name: line_returned_amount
+        expression: {sql: SUM(CASE WHEN in_sales_reports THEN returned_amount ELSE 0 END)}
+        description: >
+          Goods taken back by refunds and, at Shopify, cancellations
+          (order_lines.returned_amount): after discounts and without tax, by
+          the date of the order, whenever taken back. Not the money paid back
+          (refunds.refunds_total), which has tax and shipping in it.
+        datatype: Decimal
+        ai_context:
+          synonyms: [returns, returned value, value of returned goods]
+      - name: line_net_revenue
+        expression: {sql: SUM(CASE WHEN in_sales_reports THEN line_total - returned_amount ELSE 0 END)}
+        description: >
+          Revenue of goods less what was taken back: order_lines.line_revenue
+          less order_lines.line_returned_amount, by the date of the order. At
+          Shopify a cancelled order's goods are taken back whole; units removed
+          by editing the order stay in it unless a refund took them back.
+        datatype: Decimal
+        ai_context:
+          synonyms: [net product revenue, net sales of goods, revenue after returns]
 
   - name: line_categories
     source: line_categories
@@ -961,6 +1031,17 @@ datasets:
         datatype: Integer
         ai_context:
           synonyms: [line item id]
+      - name: in_sales_reports
+        expression: {sql: in_sales_reports}
+        description: >
+          Whether the store's own sales reports count the order the line
+          belongs to: the flag of that order, defined at
+          orders.in_sales_reports. The metrics of line_categories count only
+          these rows.
+        datatype: Boolean
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [counted in reports, counted as a sale, in store reports]
       - name: category
         expression: {sql: category}
         description: >
@@ -977,10 +1058,10 @@ datasets:
       - name: category_path
         expression: {sql: category_path}
         description: >
-          The category with every category above it, from the top, as the
-          store shows it: Clothing > T-Shirts. Each category has a path of
-          its own: group by it. A filter on it for a metric of order lines,
-          such as line_revenue, counts the category with its subcategories.
+          The category with every category above it, from the top, as the store
+          shows it: Clothing > T-Shirts. Each category has a path of its own:
+          group by it. A filter on it for a metric of order lines, such as
+          order_lines.line_revenue, counts the category with its subcategories.
           At Shopify, whose product types have no subcategories, the path is
           the name. Empty for a line without a category.
         datatype: String
@@ -991,14 +1072,14 @@ datasets:
         expression: {sql: is_direct}
         description: >
           Whether the product is in this category itself, not only in a
-          category under it. The category metrics (category_revenue and the
-          others) count only these rows, as WooCommerce Analytics'
-          Categories report counts a sale in the product's own categories
-          only. A filter on a category for a metric of order lines, such as
-          line_revenue, reaches the other rows too and counts the category
-          with its subcategories, each line once, as WooCommerce Analytics'
-          filter by category does. True for a line without a category, and
-          for every row at Shopify.
+          category under it. The category metrics
+          (line_categories.category_revenue and the others) count only these
+          rows, as WooCommerce Analytics' Categories report counts a sale in
+          the product's own categories only. A filter on a category for a
+          metric of order lines, such as order_lines.line_revenue, reaches the
+          other rows too and counts the category with its subcategories, each
+          line once, as WooCommerce Analytics' filter by category does. True
+          for a line without a category, and for every row at Shopify.
         datatype: Boolean
         dimension: {is_time: false}
         ai_context:
@@ -1031,6 +1112,71 @@ datasets:
         datatype: Decimal
         ai_context:
           synonyms: [returns]
+    metrics:
+      - name: category_items_sold
+        expression: {sql: SUM(CASE WHEN in_sales_reports AND is_direct THEN quantity ELSE 0 END)}
+        description: >
+          Units of goods ordered in each category (line_categories), as
+          order_lines.items_sold, counted in the product's own categories, as
+          line_categories.category_revenue. The categories add up to more than
+          order_lines.items_sold where a product is in several.
+        datatype: Integer
+        ai_context:
+          synonyms: [units sold by category, category units, quantity by category]
+      - name: category_revenue
+        expression: {sql: SUM(CASE WHEN in_sales_reports AND is_direct THEN line_total ELSE 0 END)}
+        description: >
+          Revenue of goods in each category, as order_lines.line_revenue: after
+          discounts, without shipping and tax, before refunds, by the date of
+          the order. A line counts in its product's own categories
+          (line_categories.is_direct), as the store's category report
+          (WooCommerce Analytics' Categories) counts it: a parent category
+          whose products all sit in subcategories has 0. For one category the
+          question names, count it with its subcategories:
+          order_lines.line_revenue, order_lines.items_sold,
+          order_lines.items_returned, order_lines.line_returned_amount or
+          order_lines.line_net_revenue filtered by
+          line_categories.category_path, or category when the question gives
+          the name alone, each line once; line_categories.category_revenue with
+          that filter leaves the subcategories out. The categories add up to
+          more than order_lines.line_revenue where a product is in several:
+          never add them up for a total. WooCommerce Analytics' Categories and
+          Products reports also count orders on hold that are not paid yet,
+          which its Revenue and Orders reports and these metrics leave out:
+          there the reports can show more.
+        datatype: Decimal
+        ai_context:
+          synonyms: [sales by category, revenue by category, category sales, revenue by product type]
+      - name: category_items_returned
+        expression: {sql: SUM(CASE WHEN in_sales_reports AND is_direct THEN returned_quantity ELSE 0 END)}
+        description: >
+          Units taken back in each category, as order_lines.items_returned: by
+          the date of the order, whenever taken back, counted in the product's
+          own categories, as line_categories.category_revenue. For one category
+          with its subcategories, ask order_lines.items_returned filtered by
+          line_categories.category_path.
+        datatype: Integer
+        ai_context:
+          synonyms: [returns by category, returned units by category]
+      - name: category_returned_amount
+        expression: {sql: SUM(CASE WHEN in_sales_reports AND is_direct THEN returned_amount ELSE 0 END)}
+        description: >
+          Goods taken back in each category, as
+          order_lines.line_returned_amount: after discounts and without tax, by
+          the date of the order, counted in the product's own categories, as
+          line_categories.category_revenue.
+        datatype: Decimal
+        ai_context:
+          synonyms: [returns value by category, returned amount by category]
+      - name: category_net_revenue
+        expression: {sql: SUM(CASE WHEN in_sales_reports AND is_direct THEN line_total - returned_amount ELSE 0 END)}
+        description: >
+          Revenue of goods in each category less what was taken back, as
+          order_lines.line_net_revenue, by the date of the order, counted in
+          the product's own categories, as line_categories.category_revenue.
+        datatype: Decimal
+        ai_context:
+          synonyms: [net sales by category, category revenue after returns]
 
   - name: line_brands
     source: line_brands
@@ -1061,6 +1207,17 @@ datasets:
         datatype: Integer
         ai_context:
           synonyms: [line item id]
+      - name: in_sales_reports
+        expression: {sql: in_sales_reports}
+        description: >
+          Whether the store's own sales reports count the order the line
+          belongs to: the flag of that order, defined at
+          orders.in_sales_reports. The metrics of line_brands count only
+          these rows.
+        datatype: Boolean
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [counted in reports, counted as a sale, in store reports]
       - name: brand
         expression: {sql: brand}
         description: >
@@ -1101,6 +1258,49 @@ datasets:
         datatype: Decimal
         ai_context:
           synonyms: [returns]
+    metrics:
+      - name: brand_items_sold
+        expression: {sql: SUM(CASE WHEN in_sales_reports THEN quantity ELSE 0 END)}
+        description: >
+          Units of goods ordered of a brand (line_brands), as
+          order_lines.items_sold. A line of a WooCommerce product with two
+          brands counts in each.
+        datatype: Integer
+        ai_context:
+          synonyms: [units sold by brand, brand units, units by vendor]
+      - name: brand_revenue
+        expression: {sql: SUM(CASE WHEN in_sales_reports THEN line_total ELSE 0 END)}
+        description: >
+          Revenue of goods of a brand (line_brands), as
+          order_lines.line_revenue: after discounts, without shipping and tax,
+          before refunds, by the date of the order. A line of a WooCommerce
+          product with two brands counts in each, so the brands can add up to
+          more than order_lines.line_revenue: never add them up for a total.
+        datatype: Decimal
+        ai_context:
+          synonyms: [sales by brand, revenue by brand, brand sales, sales by vendor]
+      - name: brand_items_returned
+        expression: {sql: SUM(CASE WHEN in_sales_reports THEN returned_quantity ELSE 0 END)}
+        description: Units of a brand taken back, as order_lines.items_returned, by the date of the order.
+        datatype: Integer
+        ai_context:
+          synonyms: [returns by brand, returned units by brand]
+      - name: brand_returned_amount
+        expression: {sql: SUM(CASE WHEN in_sales_reports THEN returned_amount ELSE 0 END)}
+        description: >
+          Goods of a brand taken back, as order_lines.line_returned_amount:
+          after discounts and without tax, by the date of the order.
+        datatype: Decimal
+        ai_context:
+          synonyms: [returns value by brand, returned amount by brand]
+      - name: brand_net_revenue
+        expression: {sql: SUM(CASE WHEN in_sales_reports THEN line_total - returned_amount ELSE 0 END)}
+        description: >
+          Revenue of goods of a brand less what was taken back, as
+          order_lines.line_net_revenue, by the date of the order.
+        datatype: Decimal
+        ai_context:
+          synonyms: [net sales by brand, brand revenue after returns]
 
   - name: refunds
     source: refunds
@@ -1136,6 +1336,17 @@ datasets:
         datatype: Integer
         ai_context:
           synonyms: [order]
+      - name: in_sales_reports
+        expression: {sql: in_sales_reports}
+        description: >
+          Whether the store's own sales reports count the order the refund
+          belongs to: the flag of that order, defined at
+          orders.in_sales_reports. The metrics of refunds count only
+          these rows.
+        datatype: Boolean
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [counted in reports, counted as a sale, in store reports]
       - name: refund_date
         expression: {sql: refund_date}
         description: >
@@ -1178,6 +1389,26 @@ datasets:
         datatype: Decimal
         ai_context:
           synonyms: [refund amount, amount returned]
+    metrics:
+      - name: refund_count
+        expression: {sql: COUNT(CASE WHEN in_sales_reports THEN refund_id END)}
+        description: >
+          Number of refunds made; a refund of gift cards alone and the refund
+          Shopify records when it cancels an unpaid order, both of amount 0,
+          included.
+        datatype: Integer
+        ai_context:
+          synonyms: [refunds, number of refunds, returns]
+      - name: refunds_total
+        expression: {sql: SUM(CASE WHEN in_sales_reports THEN refunded_amount ELSE 0 END)}
+        description: >
+          Money paid back, with the tax paid back, by the date the refund was
+          made. For refunds by the date of their order, use
+          orders.refunded_amount. "Refunds in September" means
+          refunds.refunds_total by refunds.refund_month.
+        datatype: Decimal
+        ai_context:
+          synonyms: [refunded, refunds issued, money returned, returns amount]
 
   - name: sales_events
     source: sales_events
@@ -1285,7 +1516,7 @@ datasets:
           orders.refunded_amount: at Shopify a cancelled order with nothing
           refunded is left out whole. Not the "net sales" of store reports,
           which are goods only, without shipping and tax: for goods use
-          line_revenue.
+          order_lines.line_revenue.
         datatype: Decimal
         ai_context:
           synonyms: [sales, revenue, turnover, income, sales after refunds, total sales]
@@ -1378,8 +1609,8 @@ datasets:
 
   # No key, on purpose: with one, a filter on product_categories would reach
   # order_lines through products, a second way to sales by category that
-  # leaves out the products no longer in the catalogue (#43). The same for
-  # product_brands.
+  # leaves out the products no longer in the catalogue
+  # (Dactopus/dactopus-data-models#43). The same for product_brands.
   - name: product_categories
     source: product_categories
     description: >
@@ -1554,182 +1785,3 @@ relationships:
     to: products
     from_columns: [source_id, product_id]
     to_columns: [source_id, product_id]
-
-metrics:
-  - name: items_sold
-    expression: {sql: SUM(CASE WHEN orders.in_sales_reports THEN order_lines.quantity ELSE 0 END)}
-    description: Units of goods ordered, before refunds and cancellations.
-    datatype: Integer
-    ai_context:
-      synonyms: [units sold, quantity sold, items ordered]
-  - name: items_net
-    expression: {sql: SUM(CASE WHEN orders.in_sales_reports THEN order_lines.current_quantity ELSE 0 END)}
-    description: Units of goods ordered less those refunded, removed or cancelled.
-    datatype: Integer
-    ai_context:
-      synonyms: [net units, units kept, items after returns]
-  - name: line_revenue
-    expression: {sql: SUM(CASE WHEN orders.in_sales_reports THEN order_lines.line_total ELSE 0 END)}
-    description: >
-      Revenue of goods as ordered (order_lines.line_total): after discounts,
-      without shipping and tax, before refunds, cancelled orders included
-      where the store's reports count them. Use for revenue by product or
-      SKU; by category or brand, use category_revenue or brand_revenue.
-      Filtered by line_categories.category_path, it is the revenue of that
-      category with its subcategories. By product, group by
-      order_lines.product_id and order_lines.title, not by a field of
-      products: a product no longer in the catalogue has none.
-    datatype: Decimal
-    ai_context:
-      synonyms: [product revenue, sales by product, item revenue, SKU revenue]
-  - name: items_returned
-    expression: {sql: SUM(CASE WHEN orders.in_sales_reports THEN order_lines.returned_quantity ELSE 0 END)}
-    description: >
-      Units of goods taken back by refunds and, at Shopify, cancellations
-      (order_lines.returned_quantity), by the date of the order, whenever
-      taken back. Units removed by editing the order are not in it, though
-      items_net leaves them out: items_sold less items_returned can be more
-      than items_net.
-    datatype: Integer
-    ai_context:
-      synonyms: [units returned, returned items, returns in units]
-  - name: line_returned_amount
-    expression: {sql: SUM(CASE WHEN orders.in_sales_reports THEN order_lines.returned_amount ELSE 0 END)}
-    description: >
-      Goods taken back by refunds and, at Shopify, cancellations
-      (order_lines.returned_amount): after discounts and without tax, by
-      the date of the order, whenever taken back. Not the money paid back
-      (refunds_total), which has tax and shipping in it.
-    datatype: Decimal
-    ai_context:
-      synonyms: [returns, returned value, value of returned goods]
-  - name: line_net_revenue
-    expression: {sql: SUM(CASE WHEN orders.in_sales_reports THEN order_lines.line_total - order_lines.returned_amount ELSE 0 END)}
-    description: >
-      Revenue of goods less what was taken back: line_revenue less
-      line_returned_amount, by the date of the order. At Shopify a
-      cancelled order's goods are taken back whole; units removed by editing
-      the order stay in it unless a refund took them back.
-    datatype: Decimal
-    ai_context:
-      synonyms: [net product revenue, net sales of goods, revenue after returns]
-  - name: category_items_sold
-    expression: {sql: SUM(CASE WHEN orders.in_sales_reports AND line_categories.is_direct THEN line_categories.quantity ELSE 0 END)}
-    description: >
-      Units of goods ordered in each category (line_categories), as
-      items_sold, counted in the product's own categories, as
-      category_revenue. The categories add up to more than items_sold where
-      a product is in several.
-    datatype: Integer
-    ai_context:
-      synonyms: [units sold by category, category units, quantity by category]
-  - name: category_revenue
-    expression: {sql: SUM(CASE WHEN orders.in_sales_reports AND line_categories.is_direct THEN line_categories.line_total ELSE 0 END)}
-    description: >
-      Revenue of goods in each category, as line_revenue: after discounts,
-      without shipping and tax, before refunds, by the date of the order. A
-      line counts in its product's own categories
-      (line_categories.is_direct), as the store's category report
-      (WooCommerce Analytics' Categories) counts it: a parent category whose
-      products all sit in subcategories has 0. For one category the question
-      names, count it with its subcategories: line_revenue, items_sold,
-      items_returned, line_returned_amount or line_net_revenue filtered by
-      line_categories.category_path, or category when the question gives the
-      name alone, each line once; category_revenue with that filter leaves
-      the subcategories out. The categories add up to more than line_revenue
-      where a product is in several: never add them up for a total.
-      WooCommerce Analytics' Categories and Products reports also count
-      orders on hold that are not paid yet, which its Revenue and Orders
-      reports and these metrics leave out: there the reports can show more.
-    datatype: Decimal
-    ai_context:
-      synonyms: [sales by category, revenue by category, category sales, revenue by product type]
-  - name: category_items_returned
-    expression: {sql: SUM(CASE WHEN orders.in_sales_reports AND line_categories.is_direct THEN line_categories.returned_quantity ELSE 0 END)}
-    description: >
-      Units taken back in each category, as items_returned: by the date of
-      the order, whenever taken back, counted in the product's own
-      categories, as category_revenue. For one category with its
-      subcategories, ask items_returned filtered by
-      line_categories.category_path.
-    datatype: Integer
-    ai_context:
-      synonyms: [returns by category, returned units by category]
-  - name: category_returned_amount
-    expression: {sql: SUM(CASE WHEN orders.in_sales_reports AND line_categories.is_direct THEN line_categories.returned_amount ELSE 0 END)}
-    description: >
-      Goods taken back in each category, as line_returned_amount: after
-      discounts and without tax, by the date of the order, counted in the
-      product's own categories, as category_revenue.
-    datatype: Decimal
-    ai_context:
-      synonyms: [returns value by category, returned amount by category]
-  - name: category_net_revenue
-    expression: {sql: SUM(CASE WHEN orders.in_sales_reports AND line_categories.is_direct THEN line_categories.line_total - line_categories.returned_amount ELSE 0 END)}
-    description: >
-      Revenue of goods in each category less what was taken back, as
-      line_net_revenue, by the date of the order, counted in the product's
-      own categories, as category_revenue.
-    datatype: Decimal
-    ai_context:
-      synonyms: [net sales by category, category revenue after returns]
-  - name: brand_items_sold
-    expression: {sql: SUM(CASE WHEN orders.in_sales_reports THEN line_brands.quantity ELSE 0 END)}
-    description: >
-      Units of goods ordered of a brand (line_brands), as items_sold. A
-      line of a WooCommerce product with two brands counts in each.
-    datatype: Integer
-    ai_context:
-      synonyms: [units sold by brand, brand units, units by vendor]
-  - name: brand_revenue
-    expression: {sql: SUM(CASE WHEN orders.in_sales_reports THEN line_brands.line_total ELSE 0 END)}
-    description: >
-      Revenue of goods of a brand (line_brands), as line_revenue: after
-      discounts, without shipping and tax, before refunds, by the date of
-      the order. A line of a WooCommerce product with two brands counts in
-      each, so the brands can add up to more than line_revenue: never add
-      them up for a total.
-    datatype: Decimal
-    ai_context:
-      synonyms: [sales by brand, revenue by brand, brand sales, sales by vendor]
-  - name: brand_items_returned
-    expression: {sql: SUM(CASE WHEN orders.in_sales_reports THEN line_brands.returned_quantity ELSE 0 END)}
-    description: Units of a brand taken back, as items_returned, by the date of the order.
-    datatype: Integer
-    ai_context:
-      synonyms: [returns by brand, returned units by brand]
-  - name: brand_returned_amount
-    expression: {sql: SUM(CASE WHEN orders.in_sales_reports THEN line_brands.returned_amount ELSE 0 END)}
-    description: >
-      Goods of a brand taken back, as line_returned_amount: after discounts
-      and without tax, by the date of the order.
-    datatype: Decimal
-    ai_context:
-      synonyms: [returns value by brand, returned amount by brand]
-  - name: brand_net_revenue
-    expression: {sql: SUM(CASE WHEN orders.in_sales_reports THEN line_brands.line_total - line_brands.returned_amount ELSE 0 END)}
-    description: >
-      Revenue of goods of a brand less what was taken back, as
-      line_net_revenue, by the date of the order.
-    datatype: Decimal
-    ai_context:
-      synonyms: [net sales by brand, brand revenue after returns]
-  - name: refund_count
-    expression: {sql: COUNT(CASE WHEN orders.in_sales_reports THEN refunds.refund_id END)}
-    description: >
-      Number of refunds made; a refund of gift cards alone and the refund
-      Shopify records when it cancels an unpaid order, both of amount 0,
-      included.
-    datatype: Integer
-    ai_context:
-      synonyms: [refunds, number of refunds, returns]
-  - name: refunds_total
-    expression: {sql: SUM(CASE WHEN orders.in_sales_reports THEN refunds.refunded_amount ELSE 0 END)}
-    description: >
-      Money paid back, with the tax paid back, by the date the refund was
-      made. For refunds by the date of their order, use
-      orders.refunded_amount. "Refunds in September" means refunds_total by
-      refunds.refund_month.
-    datatype: Decimal
-    ai_context:
-      synonyms: [refunded, refunds issued, money returned, returns amount]

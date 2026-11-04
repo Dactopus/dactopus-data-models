@@ -205,8 +205,9 @@ date and whether the reports count it match.
 `sales_events.net_revenue` by `sales_events.event_month` equals the
 reports' total sales for every month, and `orders.order_count`,
 `orders.average_order_value`, `orders.items_per_order`,
-`orders.discount_amount`, `items_net`, refunds by month, each order's new
-or returning and the customers' total spend equal the reports' numbers.
+`orders.discount_amount`, `order_lines.items_net`, refunds by month, each
+order's new or returning and the customers' total spend equal the
+reports' numbers.
 `orders.average_order_value` filtered by a category equals the Orders
 report filtered by it, subcategories included. After a refund, a deleted
 order and a new one, an incremental run matches a full rebuild and the
@@ -215,7 +216,7 @@ descriptions say how:
 
 - **Net sales** in the reports are goods after refunds, without shipping
   and tax. `sales_events.net_revenue` is the reports' total sales;
-  `line_revenue` is goods after discounts, before refunds.
+  `order_lines.line_revenue` is goods after discounts, before refunds.
 - **Shipping and tax** in the reports are net of what was refunded, in
   the month of the refund; `orders.shipping_amount` and
   `orders.tax_amount` are as on the order.

@@ -10,6 +10,7 @@
 SELECT
     l.source_id AS source_id,
     l.line_id AS line_id,
+    l.in_sales_reports AS in_sales_reports,
     c.category AS category,
     c.category_path AS category_path,
     -- The product is in the category itself, not only in one under it.

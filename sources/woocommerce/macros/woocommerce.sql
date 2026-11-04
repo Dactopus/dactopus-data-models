@@ -21,6 +21,27 @@
 if(ifNull(toUnixTimestamp64Micro({{ column }}), 0) <= 0, NULL, toTimeZone({{ column }}, 'UTC'))
 {%- endmacro %}
 
+{# The time the store's reports date an order by (woocommerce_date_type),
+   from the order's times: the given expressions of the time placed, paid
+   and completed. #}
+{% macro woocommerce_report_time(placed_time, paid_time, completed_time) -%}
+{%- set report_times = {'date_created': placed_time, 'date_paid': paid_time, 'date_completed': completed_time} -%}
+{%- if var('woocommerce_date_type') not in report_times -%}
+{{ exceptions.raise_compiler_error("woocommerce_date_type must be date_paid, date_created or date_completed") }}
+{%- endif -%}
+{{ report_times[var('woocommerce_date_type')] }}
+{%- endmacro %}
+
+{# Whether the store's reports count an order: its status is not one they
+   leave out (woocommerce_excluded_statuses), and it has its report date
+   (woocommerce_report_time). order_lines and refunds carry the flag of
+   their order, computed here from the order's own tables, as orders reads
+   their tables. #}
+{% macro woocommerce_in_sales_reports(status, placed_time, paid_time, completed_time) -%}
+toBool(NOT has({{ woocommerce_strings(var('woocommerce_excluded_statuses')) }}, {{ status }})
+       AND {{ woocommerce_report_time(placed_time, paid_time, completed_time) }} IS NOT NULL)
+{%- endmacro %}
+
 {# A list of strings as a ClickHouse array. #}
 {% macro woocommerce_strings(values) -%}
 CAST([{% for v in values %}'{{ v }}'{% if not loop.last %}, {% endif %}{% endfor %}], 'Array(String)')

@@ -8,6 +8,55 @@ names the Ossie schema version its models carry.
 
 ## [Unreleased]
 
+`order_lines`, `line_categories`, `line_brands` and `refunds` of both
+packages and of the commerce union gain a column: an incremental run
+stops on the changed schema, and a deployment runs
+`dbt build --full-refresh` once. No input table changes. Metric names of
+the commerce model change.
+
+### Changed
+
+- The 18 commerce metrics that read order lines, their categories and
+  brands, or refunds together with `orders.in_sales_reports` are metrics
+  of those datasets, as the Ossie spec requires: it rejects an aggregate
+  over fields of two datasets, and its relational layer does not expose
+  the metrics of the model itself. A question names them
+  `dataset.metric`, and result columns are named so too. This breaks
+  saved questions, dashboards and agent prompts that ask for the old
+  names; the numbers are unchanged:
+
+  | Old | New |
+  | --- | --- |
+  | `items_sold`, `items_net`, `line_revenue`, `items_returned`, `line_returned_amount`, `line_net_revenue` | the same name on `order_lines`: `order_lines.line_revenue` |
+  | `category_items_sold`, `category_revenue`, `category_items_returned`, `category_returned_amount`, `category_net_revenue` | the same name on `line_categories`: `line_categories.category_revenue` |
+  | `brand_items_sold`, `brand_revenue`, `brand_items_returned`, `brand_returned_amount`, `brand_net_revenue` | the same name on `line_brands`: `line_brands.brand_revenue` |
+  | `refund_count`, `refunds_total` | the same name on `refunds`: `refunds.refunds_total` |
+
+  The model has no metrics of its own any more.
+- `order_lines`, `line_categories`, `line_brands` and `refunds` carry
+  `in_sales_reports` (`Bool`), the flag of the line's or refund's order
+  (`orders.in_sales_reports`), so that the metrics above count the rows
+  of one dataset. At Shopify it is true. At WooCommerce the packages
+  compute it from the order's status, time placed and payment and
+  completion dates, by the formula of `orders` that now sits in the
+  macros `woocommerce_report_time` and `woocommerce_in_sales_reports`.
+  The commerce union lists the column too.
+- `orders.refund_rate`, `orders.average_order_value`,
+  `orders.items_per_order` and `orders.repeat_order_share` divide by
+  `NULLIF(..., 0)`: a question that matches no counted order gets NULL,
+  where it divided by zero.
+- `tests/check_contracts.py` fails on a metric that reads fields of more
+  than one dataset. `AGENTS.md` and `CONTRIBUTING.md` state the rule,
+  and `docs/commerce.md` lists the metrics by dataset.
+
+### Added
+
+- Tests `order_lines_in_sales_reports_match_orders` and
+  `refunds_in_sales_reports_match_orders` in both packages: no line or
+  refund has a flag different from its order's. At WooCommerce they warn
+  until `DACTOPUS_STRICT_TESTS=error`, as the package's other tests that
+  compare two tables.
+
 ## [0.11.2] - 2026-11-04
 
 Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.13.0,

@@ -40,6 +40,9 @@ SELECT
     {{ shopify_source_id() }} AS source_id,
     l.id AS line_id,
     l.order_id AS order_id,
+    -- Shopify's sales reports count every order, as orders.sql says
+    -- (orders.in_sales_reports).
+    true AS in_sales_reports,
     o.updated_at AS order_updated_at,
     toDate(o.processed_at, '{{ var("shopify_timezone") }}') AS order_date,
     l.product_id AS product_id,

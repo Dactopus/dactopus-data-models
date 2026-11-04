@@ -83,6 +83,7 @@ models:
               arguments:
                 to: ref('orders')
                 field: order_id
+      - {name: in_sales_reports, data_type: Bool}
       - {name: product_id, data_type: "Nullable(UInt64)"}
       - {name: variant_id, data_type: "Nullable(UInt64)"}
       - {name: sku, data_type: "Nullable(String)"}
@@ -110,6 +111,7 @@ models:
               arguments:
                 to: ref('orders')
                 field: order_id
+      - {name: in_sales_reports, data_type: Bool}
       - {name: refund_date, data_type: Date, data_tests: [not_null]}
       - {name: refund_time, data_type: "DateTime('UTC')"}
       - {name: refunded_amount, data_type: "Decimal(38, 8)"}
@@ -164,6 +166,7 @@ models:
               arguments:
                 to: ref('order_lines')
                 field: line_id
+      - {name: in_sales_reports, data_type: Bool}
       - {name: category, data_type: "Nullable(String)"}
       - {name: category_path, data_type: "Nullable(String)"}
       - {name: is_direct, data_type: Bool}
@@ -183,6 +186,7 @@ models:
               arguments:
                 to: ref('order_lines')
                 field: line_id
+      - {name: in_sales_reports, data_type: Bool}
       - {name: brand, data_type: "Nullable(String)"}
       - {name: quantity, data_type: Int64}
       - {name: line_total, data_type: "Decimal(38, 8)"}

@@ -9,11 +9,7 @@
 -- (https://github.com/woocommerce/woocommerce/blob/trunk/plugins/woocommerce/src/Internal/DataStores/Orders/OrdersTableDataStore.php),
 -- statuses (https://woocommerce.com/document/managing-orders/order-statuses/),
 -- Analytics settings (https://woocommerce.com/document/woocommerce-analytics/).
-{% set report_times = {'date_created': 'o.placed_time', 'date_paid': 'op.paid_time', 'date_completed': 'op.completed_time'} %}
-{% if var('woocommerce_date_type') not in report_times %}
-{{ exceptions.raise_compiler_error("woocommerce_date_type must be date_paid, date_created or date_completed") }}
-{% endif %}
-{% set report_time = report_times[var('woocommerce_date_type')] %}
+{% set report_time = woocommerce_report_time('o.placed_time', 'op.paid_time', 'op.completed_time') %}
 {% set excluded = woocommerce_strings(var('woocommerce_excluded_statuses')) %}
 {% set number_key = var('woocommerce_order_number_meta_key') %}
 {% set core_statuses = "('pending', 'on-hold', 'processing', 'completed', 'cancelled', 'refunded', 'failed')" %}
@@ -186,7 +182,7 @@ SELECT
     op.completed_time AS completed_time,
     -- Whether the store's reports count the order: its status is not one
     -- they leave out, and it has its report date.
-    toBool(NOT has({{ excluded }}, o.status) AND {{ report_time }} IS NOT NULL) AS in_sales_reports,
+    {{ woocommerce_in_sales_reports('o.status', 'o.placed_time', 'op.paid_time', 'op.completed_time') }} AS in_sales_reports,
     o.status AS status,
     CAST(o.customer_id AS Nullable(Int64)) AS customer_id,
     o.customer_email AS customer_email,
