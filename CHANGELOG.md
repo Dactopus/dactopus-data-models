@@ -8,6 +8,11 @@ names the Ossie schema version its models carry.
 
 ## [Unreleased]
 
+## [0.11.2] - 2026-11-04
+
+Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.13.0,
+the other versions as in 0.11.0.
+
 ### Changed
 
 - The instructions of the three models keep only the rules across their
@@ -1111,7 +1116,8 @@ ClickHouse 26.9.
 - Hand-written GA4 rows and the numbers the model must answer over them
   (`tests/ga4`), checked in CI on both dbt versions.
 
-[Unreleased]: https://github.com/Dactopus/dactopus-data-models/compare/v0.11.1...HEAD
+[Unreleased]: https://github.com/Dactopus/dactopus-data-models/compare/v0.11.2...HEAD
+[0.11.2]: https://github.com/Dactopus/dactopus-data-models/compare/v0.11.1...v0.11.2
 [0.11.1]: https://github.com/Dactopus/dactopus-data-models/compare/v0.11.0...v0.11.1
 [0.11.0]: https://github.com/Dactopus/dactopus-data-models/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/Dactopus/dactopus-data-models/compare/v0.9.0...v0.10.0
