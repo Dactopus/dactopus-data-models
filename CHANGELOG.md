@@ -8,6 +8,14 @@ names the Ossie schema version its models carry.
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-11-04
+
+Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.13.0
+(the canon and the blind questions) and 0.12.0 (CI), dbt v2 (`dbt-oss`
+2.0.11) and dbt v1 (`dbt-core` 1.11 with `dbt-clickhouse` 1.10) on
+ClickHouse 26.9, the WooCommerce package also on 26.7. Needs
+`dbt build --full-refresh` once.
+
 `order_lines`, `line_categories`, `line_brands` and `refunds` of both
 packages and of the commerce union gain a column: an incremental run
 stops on the changed schema, and a deployment runs
