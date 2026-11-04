@@ -75,6 +75,22 @@ line_item_id IN (SELECT id FROM {{ source('shopify_raw', 'order_lines') }} WHERE
 {{- return(r.columns[0].values()[0] if r.columns[0].values() else '') -}}
 {%- endmacro %}
 
+{# A setting's value in the form the check compares: a list sorted, with
+   its items as strings (the order of excluded statuses means nothing),
+   a dict with its values as strings, a scalar as a string (a value given
+   as "2" is the 2 the table recorded). #}
+{% macro shopify_setting_value(value) -%}
+{%- if value is mapping -%}
+{%- set d = {} -%}
+{%- for k, v in value.items() -%}{%- do d.update({k | string: v | string}) -%}{%- endfor -%}
+{{- return(d) -}}
+{%- elif value is iterable and value is not string -%}
+{{- return(value | map('string') | sort | list) -}}
+{%- else -%}
+{{- return(value | string) -}}
+{%- endif -%}
+{%- endmacro %}
+
 {# Pre-hook of an incremental model: stops a run whose table was built with
    other settings (shopify_settings) than this run has, or by a release
    that did not record them, before it reads or rewrites a row. A full
@@ -87,12 +103,12 @@ line_item_id IN (SELECT id FROM {{ source('shopify_raw', 'order_lines') }} WHERE
 {%- set differ = [] -%}
 {%- if built is mapping -%}
 {%- for name, value in settings.items() -%}
-{%- if built.get(name) != value -%}
+{%- if shopify_setting_value(built.get(name)) != shopify_setting_value(value) -%}
 {%- do differ.append(name ~ " was " ~ tojson(built.get(name)) ~ ", is " ~ tojson(value)) -%}
 {%- endif -%}
 {%- endfor -%}
 {%- else -%}
-{%- do differ.append("it records none: a release before this one built it") -%}
+{%- do differ.append("it records no settings this release reads: a release before this one built it, or its comment was changed by hand") -%}
 {%- endif -%}
 {%- if differ -%}
 {{ exceptions.raise_compiler_error(this ~ " was not built with the settings of this run (" ~ differ | join("; ") ~ "): run dbt build --full-refresh once (package README, Changing a setting)") }}

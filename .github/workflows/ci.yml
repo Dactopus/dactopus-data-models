@@ -432,15 +432,14 @@ jobs:
       # one stops the run before it reads or deletes a row of orders,
       # order_lines or refunds (shopify_check_settings), with a message
       # that names the variable and --full-refresh. The one-label tests
-      # are the second line: they hold every table, also the ones the
-      # run builds whole.
+      # stay and hold the tables the run builds whole; this step does not
+      # reach them.
       - name: Label of the store
         run: |
           if ${DBT_BUILD/store_ny/Store-ny} > label.txt 2>&1; then cat label.txt; exit 1; fi
           grep -q 'shopify_source_id must be 1 to 64 characters' label.txt
           if ${DBT_BUILD/store_ny/store_la} > label.txt 2>&1; then cat label.txt; exit 1; fi
-          grep -q 'shopify_source_id was "store_ny", is "store_la"' label.txt
-          grep -q 'run dbt build --full-refresh once' label.txt
+          grep -q 'shopify_source_id was "store_ny", is "store_la"): run dbt build --full-refresh once' label.txt
 
       # The variables the built rows depend on (shopify_settings) are
       # recorded in the comment of orders, order_lines and refunds. A run
@@ -808,15 +807,14 @@ jobs:
       # one stops the run before it reads or deletes a row of orders,
       # order_lines or refunds (woocommerce_check_settings), with a
       # message that names the variable and --full-refresh. The one-label
-      # tests are the second line: they hold every table, also the ones
-      # the run builds whole.
+      # tests stay and hold the tables the run builds whole; this step
+      # does not reach them.
       - name: Label of the store
         run: |
           if ${DBT_BUILD/store_wc/Store-wc} > label.txt 2>&1; then cat label.txt; exit 1; fi
           grep -q 'woocommerce_source_id must be 1 to 64 characters' label.txt
           if ${DBT_BUILD/store_wc/store_eu} > label.txt 2>&1; then cat label.txt; exit 1; fi
-          grep -q 'woocommerce_source_id was "store_wc", is "store_eu"' label.txt
-          grep -q 'run dbt build --full-refresh once' label.txt
+          grep -q 'woocommerce_source_id was "store_wc", is "store_eu"): run dbt build --full-refresh once' label.txt
 
       # The variables the built rows depend on (woocommerce_settings) are
       # recorded in the comment of orders, order_lines and refunds. A run

@@ -219,11 +219,12 @@ The three tables record the values they were built with in their
 comments (`built with {...}`, after the sync position of `refunds`), and
 an incremental run that finds other values stops before it reads or
 deletes a row of them, naming each variable with its old and new value.
-The tables a run builds whole, such as `products` and `customers`, may
-already have taken the new values when it stops; the full refresh brings
-all of them in line and records the new ones. A table built by a release before 0.12.0
-records none, so its first run stops the same way; the full refresh that
-release needs for its new column covers it. `woocommerce_input_database`,
+The tables a run builds whole before it reaches them,
+`product_categories_all` and `product_brands_all`, may already carry the
+new label when it stops; the full refresh brings all of them in line and
+records the new values. A table built by release 0.11.2 or earlier
+records none, so its first run stops the same way; the full refresh the
+next release needs for its new column covers it. `woocommerce_input_database`,
 `woocommerce_table_prefix` and `woocommerce_lookback_days` can change in
 any run.
 

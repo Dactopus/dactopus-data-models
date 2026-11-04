@@ -79,8 +79,9 @@ tables of two stores, each built with its own label, keep their orders
 and customers apart. A new label needs `dbt build --full-refresh`, as
 the settings below do: an incremental run over tables built under
 another label stops before it reads or deletes a row of the three
-incremental tables, with a message that says so. The packages' tests that every row carries one label stay as the
-second line.
+incremental tables, with a message that says so. The packages' tests
+that every row carries one label stay and hold the tables a run builds
+whole.
 
 Each package's `deployment.yml` lists what a deployment sets and reads:
 the Ossie model its tables serve, the variables above by their role
@@ -114,9 +115,10 @@ them in line. The variables:
 
 The input database, the table prefix and the lookback days only say
 where and how far a run reads: the values of the rows built stay what
-they were, and the three change in any run. A table built by a release before 0.12.0 records no values,
-and its first run stops the same way; the full refresh that release
-needs for its new columns covers it. The GA4 and Sensor.Community
+they were, and the three change in any run. A table built by release
+0.11.2 or earlier records no values, and its first run stops the same
+way; the full refresh the next release needs for its new columns covers
+it. The GA4 and Sensor.Community
 packages record none; their label is held by the one-label tests alone.
 
 Point dactopus-ossie-clickhouse at your target's database

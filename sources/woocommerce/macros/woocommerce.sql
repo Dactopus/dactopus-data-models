@@ -283,6 +283,22 @@ ALTER TABLE {{ this }} MODIFY COMMENT '{{ segments | join('; ') | replace('\\', 
 {{- return(settings) -}}
 {%- endmacro %}
 
+{# A setting's value in the form the check compares: a list sorted, with
+   its items as strings (the order of excluded statuses means nothing),
+   a dict with its values as strings, a scalar as a string (a value given
+   as "2" is the 2 the table recorded). #}
+{% macro woocommerce_setting_value(value) -%}
+{%- if value is mapping -%}
+{%- set d = {} -%}
+{%- for k, v in value.items() -%}{%- do d.update({k | string: v | string}) -%}{%- endfor -%}
+{{- return(d) -}}
+{%- elif value is iterable and value is not string -%}
+{{- return(value | map('string') | sort | list) -}}
+{%- else -%}
+{{- return(value | string) -}}
+{%- endif -%}
+{%- endmacro %}
+
 {# Stops an incremental run whose table was built with other settings
    (woocommerce_settings) than this run has, or by a release that did not
    record them, before a pre-hook deletes rows or rewrites the comment.
@@ -296,12 +312,12 @@ ALTER TABLE {{ this }} MODIFY COMMENT '{{ segments | join('; ') | replace('\\', 
 {%- set differ = [] -%}
 {%- if built is mapping -%}
 {%- for name, value in settings.items() -%}
-{%- if built.get(name) != value -%}
+{%- if woocommerce_setting_value(built.get(name)) != woocommerce_setting_value(value) -%}
 {%- do differ.append(name ~ " was " ~ tojson(built.get(name)) ~ ", is " ~ tojson(value)) -%}
 {%- endif -%}
 {%- endfor -%}
 {%- else -%}
-{%- do differ.append("it records none: a release before this one built it") -%}
+{%- do differ.append("it records no settings this release reads: a release before this one built it, or its comment was changed by hand") -%}
 {%- endif -%}
 {%- if differ -%}
 {{ exceptions.raise_compiler_error(this ~ " was not built with the settings of this run (" ~ differ | join("; ") ~ "): run dbt build --full-refresh once (package README, Changing a setting)") }}
