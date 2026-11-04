@@ -7,7 +7,7 @@ description: >
   store's customers, with their first and last orders; and the store's
   catalogue of products, with their categories and brands. Built
   from the store's own data by the source package of its platform, such
-  as sources/shopify or sources/woocommerce.
+  as a Shopify or WooCommerce package.
 ai_context:
   instructions: >
     Amounts are in the store's currency, one per store (orders.currency); name
