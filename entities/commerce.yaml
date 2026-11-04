@@ -39,8 +39,7 @@ ai_context:
     each platform, descriptions name it; orders.platform gives a store's.
     Every metric but orders.all_orders and orders.all_orders_total counts
     only the orders the store's own sales reports count
-    (orders.in_sales_reports); for the others, such as orders awaiting
-    payment, use those two. "Sales", "revenue" or "turnover" without a
+    (orders.in_sales_reports). "Sales", "revenue" or "turnover" without a
     qualifier means sales_events.net_revenue; name its definition in the
     answer.
 
@@ -167,14 +166,12 @@ datasets:
       - name: in_sales_reports
         expression: {sql: in_sales_reports}
         description: >
-          Whether the store's own sales reports count the order. Every metric
-          but orders.all_orders and orders.all_orders_total counts only these
-          orders. Shopify's reports count every order, cancelled and unpaid
-          ones included. WooCommerce's reports leave out orders in the
-          statuses their settings exclude (pending, cancelled and failed by
-          default) and orders without the date they go by (the date of payment
-          by default, so unpaid orders too); the package repeats the store's
-          settings.
+          Whether the store's own sales reports count the order. Shopify's
+          reports count every order, cancelled and unpaid ones included.
+          WooCommerce's reports leave out orders in the statuses their
+          settings exclude (pending, cancelled and failed by default) and
+          orders without the date they go by (the date of payment by default,
+          so unpaid orders too); the package repeats the store's settings.
         datatype: Boolean
         dimension: {is_time: false}
         ai_context:
@@ -195,9 +192,7 @@ datasets:
         expression: {sql: currency}
         description: >
           Currency of every amount of the order: the store's currency (ISO
-          4217 code, such as USD), one per store. Stores in different
-          currencies can share a deployment: amounts by currency, never
-          added up across currencies.
+          4217 code, such as USD), one per store.
         datatype: String
         dimension: {is_time: false}
         ai_context:
@@ -206,9 +201,7 @@ datasets:
         expression: {sql: platform}
         description: >
           Platform of the store the order comes from, shopify or
-          woocommerce: one per store. Where the store's reports count
-          differently on each (which orders count, the date an order goes
-          by), the descriptions name the platform.
+          woocommerce: one per store.
         datatype: String
         dimension: {is_time: false}
         ai_context:
