@@ -87,23 +87,23 @@ cases:
   # 500 is not there. In UTC September and October would be 76.95 and
   # 255. By created_at, 1008's refund would be October's: September 2,
   # 270, October 3, 61.95.
-  - metrics: [refund_count, refunds_total]
+  - metrics: [refunds.refund_count, refunds.refunds_total]
     dimensions: [refunds.refund_month]
     order: [refunds.refund_month]
     expected:
-      - {refund_month: "2026-08-01", refund_count: 1, refunds_total: 0}
-      - {refund_month: "2026-09-01", refund_count: 3, refunds_total: 286.95}
-      - {refund_month: "2026-10-01", refund_count: 2, refunds_total: 45}
+      - {refund_month: "2026-08-01", refunds.refund_count: 1, refunds.refunds_total: 0}
+      - {refund_month: "2026-09-01", refunds.refund_count: 3, refunds.refunds_total: 286.95}
+      - {refund_month: "2026-10-01", refunds.refund_count: 2, refunds.refunds_total: 45}
   # The same refunds by the month of their order, through the order: 1001's
   # gift card in August; 1004's 45, 1005's 60, 1006's 210, 1008's 16.95
   # and 1010's 0 in September, as orders.refunded_amount by order month.
   # October's 1011 and 1012 have none.
-  - metrics: [refund_count, refunds_total]
+  - metrics: [refunds.refund_count, refunds.refunds_total]
     dimensions: [orders.order_month]
     order: [orders.order_month]
     expected:
-      - {order_month: "2026-08-01", refund_count: 1, refunds_total: 0}
-      - {order_month: "2026-09-01", refund_count: 5, refunds_total: 331.95}
+      - {order_month: "2026-08-01", refunds.refund_count: 1, refunds.refunds_total: 0}
+      - {order_month: "2026-09-01", refunds.refund_count: 5, refunds.refunds_total: 331.95}
   # Sales by the month they happened, as Shopify's reports count them:
   # each order in its month, each refund and cancel in its own. August
   # 1001 110 + 1002 80 + 1003 30 (1001's gift card refund is 0) = 220.
@@ -242,29 +242,29 @@ cases:
   # The gift card and the tip are not lines (20 items, 1223 with them);
   # 1003's download, a custom item without product, tax or shipping like
   # the tip, is (17 items and 1156 if it were dropped too).
-  - metrics: [items_sold, items_net, line_revenue]
+  - metrics: [order_lines.items_sold, order_lines.items_net, order_lines.line_revenue]
     expected:
-      - {items_sold: 18, items_net: 14, line_revenue: 1186}
+      - {order_lines.items_sold: 18, order_lines.items_net: 14, order_lines.line_revenue: 1186}
   # Top SKU by items: TEE-M 2 (1001) + 2 (1004); the test order's 10
   # would make it 14.
-  - metrics: [items_sold]
+  - metrics: [order_lines.items_sold]
     dimensions: [order_lines.sku]
-    order: ["items_sold desc"]
+    order: ["order_lines.items_sold desc"]
     limit: 1
     expected:
-      - {sku: "TEE-M", items_sold: 4}
+      - {sku: "TEE-M", order_lines.items_sold: 4}
   # Top SKU by revenue: JACKET 200 (1006, refunded: revenue as placed),
   # TEE-COTTON 190 (1012, without its duties) and TEE-M 100 + (100 - 10),
   # tied and ordered by SKU, HOODIE (100 - 19) + 100.
-  - metrics: [line_revenue]
+  - metrics: [order_lines.line_revenue]
     dimensions: [order_lines.sku]
-    order: ["line_revenue desc", order_lines.sku]
+    order: ["order_lines.line_revenue desc", order_lines.sku]
     limit: 4
     expected:
-      - {sku: "JACKET", line_revenue: 200}
-      - {sku: "TEE-COTTON", line_revenue: 190}
-      - {sku: "TEE-M", line_revenue: 190}
-      - {sku: "HOODIE", line_revenue: 181}
+      - {sku: "JACKET", order_lines.line_revenue: 200}
+      - {sku: "TEE-COTTON", order_lines.line_revenue: 190}
+      - {sku: "TEE-M", order_lines.line_revenue: 190}
+      - {sku: "HOODIE", order_lines.line_revenue: 181}
   # Products. Lines as in line_revenue above, each in its product's latest
   # type and vendor; a product type has no subcategories, so every
   # category is direct. Returns are the refund lines' subtotal, by the
@@ -274,9 +274,11 @@ cases:
   # package's unit test covers it, no refund here has tax inside).
   # Returned: 1004's T-shirt 45, 1005's Cap 60 (refund) and 1010's Cap 60
   # (cancel), 1006's Jacket 200: 4 items, 365; net 1186 - 365 = 821.
-  - metrics: [items_returned, line_returned_amount, line_net_revenue]
+  - metrics: [order_lines.items_returned, order_lines.line_returned_amount,
+              order_lines.line_net_revenue]
     expected:
-      - {items_returned: 4, line_returned_amount: 365, line_net_revenue: 821}
+      - {order_lines.items_returned: 4, order_lines.line_returned_amount: 365,
+         order_lines.line_net_revenue: 821}
   # By category (product_type): Apparel 101 T-shirt 100 + 90, 104 Hoodie
   # 81 + 100, 106 Jacket 200, 108 Socks 40, 110 Cotton T-shirt 190 = 801
   # over 11 items, 1 T-shirt (45) and the Jacket (200) returned: 2 items,
@@ -285,62 +287,74 @@ cases:
   # 30 and 1007's Gift wrap 20 (no product) = 260 over 5 items, 2
   # returned for 120. 801 + 125 + 260 = 1186, as line_revenue: a product
   # has one type. Read with 101's earlier type, Tops would have 190.
-  - metrics: [category_items_sold, category_revenue, category_items_returned,
-              category_returned_amount, category_net_revenue]
+  - metrics: [line_categories.category_items_sold, line_categories.category_revenue,
+              line_categories.category_items_returned, line_categories.category_returned_amount,
+              line_categories.category_net_revenue]
     dimensions: [line_categories.category_path]
     order: [line_categories.category_path]
     expected:
-      - {category_path: "Apparel", category_items_sold: 11, category_revenue: 801,
-         category_items_returned: 2, category_returned_amount: 245, category_net_revenue: 556}
-      - {category_path: "Kitchen", category_items_sold: 2, category_revenue: 125,
-         category_items_returned: 0, category_returned_amount: 0, category_net_revenue: 125}
-      - {category_path: null, category_items_sold: 5, category_revenue: 260,
-         category_items_returned: 2, category_returned_amount: 120, category_net_revenue: 140}
+      - {category_path: "Apparel", line_categories.category_items_sold: 11,
+         line_categories.category_revenue: 801, line_categories.category_items_returned: 2,
+         line_categories.category_returned_amount: 245, line_categories.category_net_revenue: 556}
+      - {category_path: "Kitchen", line_categories.category_items_sold: 2,
+         line_categories.category_revenue: 125, line_categories.category_items_returned: 0,
+         line_categories.category_returned_amount: 0, line_categories.category_net_revenue: 125}
+      - {category_path: null, line_categories.category_items_sold: 5,
+         line_categories.category_revenue: 260, line_categories.category_items_returned: 2,
+         line_categories.category_returned_amount: 120, line_categories.category_net_revenue: 140}
   # September by category: Apparel 90 + 81 + 200 + 100 = 471 (5 items),
   # Kitchen 45, none 60 + 60 + 20 + 90 = 230; 746, September's orders less
   # shipping, tax and the tip.
-  - metrics: [category_revenue, category_items_sold]
+  - metrics: [line_categories.category_revenue, line_categories.category_items_sold]
     dimensions: [line_categories.category_path]
     filters: ["orders.order_month = DATE '2026-09-01'"]
     order: [line_categories.category_path]
     expected:
-      - {category_path: "Apparel", category_revenue: 471, category_items_sold: 5}
-      - {category_path: "Kitchen", category_revenue: 45, category_items_sold: 1}
-      - {category_path: null, category_revenue: 230, category_items_sold: 4}
+      - {category_path: "Apparel", line_categories.category_revenue: 471,
+         line_categories.category_items_sold: 5}
+      - {category_path: "Kitchen", line_categories.category_revenue: 45,
+         line_categories.category_items_sold: 1}
+      - {category_path: null, line_categories.category_revenue: 230,
+         line_categories.category_items_sold: 4}
   # By brand (vendor): Acme 101 190, 105 120, 108 40, 110 190 = 540 over
   # 10 items, 3 returned for 165; Northwind 104 181, 106 200 = 381 over 3,
   # 1 returned for 200; dactopus-dev, the store's own name, 102 125 over 2;
   # none 107 90, 30, 20 = 140 over 3. Were the Hoodie's version of
   # September 1 read (same updated_at, earlier load), Acme would have 721
   # and Northwind 200.
-  - metrics: [brand_items_sold, brand_revenue, brand_items_returned, brand_returned_amount,
-              brand_net_revenue]
+  - metrics: [line_brands.brand_items_sold, line_brands.brand_revenue,
+              line_brands.brand_items_returned, line_brands.brand_returned_amount,
+              line_brands.brand_net_revenue]
     dimensions: [line_brands.brand]
     order: [line_brands.brand]
     expected:
-      - {brand: "Acme", brand_items_sold: 10, brand_revenue: 540, brand_items_returned: 3,
-         brand_returned_amount: 165, brand_net_revenue: 375}
-      - {brand: "Northwind", brand_items_sold: 3, brand_revenue: 381, brand_items_returned: 1,
-         brand_returned_amount: 200, brand_net_revenue: 181}
-      - {brand: "dactopus-dev", brand_items_sold: 2, brand_revenue: 125, brand_items_returned: 0,
-         brand_returned_amount: 0, brand_net_revenue: 125}
-      - {brand: null, brand_items_sold: 3, brand_revenue: 140, brand_items_returned: 0,
-         brand_returned_amount: 0, brand_net_revenue: 140}
+      - {brand: "Acme", line_brands.brand_items_sold: 10, line_brands.brand_revenue: 540,
+         line_brands.brand_items_returned: 3, line_brands.brand_returned_amount: 165,
+         line_brands.brand_net_revenue: 375}
+      - {brand: "Northwind", line_brands.brand_items_sold: 3, line_brands.brand_revenue: 381,
+         line_brands.brand_items_returned: 1, line_brands.brand_returned_amount: 200,
+         line_brands.brand_net_revenue: 181}
+      - {brand: "dactopus-dev", line_brands.brand_items_sold: 2, line_brands.brand_revenue: 125,
+         line_brands.brand_items_returned: 0, line_brands.brand_returned_amount: 0,
+         line_brands.brand_net_revenue: 125}
+      - {brand: null, line_brands.brand_items_sold: 3, line_brands.brand_revenue: 140,
+         line_brands.brand_items_returned: 0, line_brands.brand_returned_amount: 0,
+         line_brands.brand_net_revenue: 140}
   # Brand by month: Acme August 100, September 90 + 60 + 60 = 210,
   # October 40 + 190 = 230; Northwind September 381, October none;
   # dactopus-dev August 80, September 45; none August 30, September 110.
-  - metrics: [brand_revenue]
+  - metrics: [line_brands.brand_revenue]
     dimensions: [line_brands.brand, orders.order_month]
     order: [line_brands.brand, orders.order_month]
     expected:
-      - {brand: "Acme", order_month: "2026-08-01", brand_revenue: 100}
-      - {brand: "Acme", order_month: "2026-09-01", brand_revenue: 210}
-      - {brand: "Acme", order_month: "2026-10-01", brand_revenue: 230}
-      - {brand: "Northwind", order_month: "2026-09-01", brand_revenue: 381}
-      - {brand: "dactopus-dev", order_month: "2026-08-01", brand_revenue: 80}
-      - {brand: "dactopus-dev", order_month: "2026-09-01", brand_revenue: 45}
-      - {brand: null, order_month: "2026-08-01", brand_revenue: 30}
-      - {brand: null, order_month: "2026-09-01", brand_revenue: 110}
+      - {brand: "Acme", order_month: "2026-08-01", line_brands.brand_revenue: 100}
+      - {brand: "Acme", order_month: "2026-09-01", line_brands.brand_revenue: 210}
+      - {brand: "Acme", order_month: "2026-10-01", line_brands.brand_revenue: 230}
+      - {brand: "Northwind", order_month: "2026-09-01", line_brands.brand_revenue: 381}
+      - {brand: "dactopus-dev", order_month: "2026-08-01", line_brands.brand_revenue: 80}
+      - {brand: "dactopus-dev", order_month: "2026-09-01", line_brands.brand_revenue: 45}
+      - {brand: null, order_month: "2026-08-01", line_brands.brand_revenue: 30}
+      - {brand: null, order_month: "2026-09-01", line_brands.brand_revenue: 110}
   # Average order value of the orders with an Apparel line, each order
   # once, all of its goods: 1001 100, 1004 171 (a Hoodie and two
   # T-shirts), 1006 200, 1007 120 (the Gift wrap included), 1011 40, 1012
@@ -370,13 +384,13 @@ cases:
   # Jacket 200 over 1; empty 107 Blanket 90 (deleted), 1003's Field
   # guide 30 and 1007's Gift wrap 20 (no product) = 140 over 3. 1186 in
   # all, as line_revenue: no line is lost or counted twice.
-  - metrics: [line_revenue, items_sold]
+  - metrics: [order_lines.line_revenue, order_lines.items_sold]
     dimensions: [products.status]
     order: [products.status]
     expected:
-      - {status: "active", line_revenue: 846, items_sold: 14}
-      - {status: "archived", line_revenue: 200, items_sold: 1}
-      - {status: null, line_revenue: 140, items_sold: 3}
+      - {status: "active", order_lines.line_revenue: 846, order_lines.items_sold: 14}
+      - {status: "archived", order_lines.line_revenue: 200, order_lines.items_sold: 1}
+      - {status: null, order_lines.line_revenue: 140, order_lines.items_sold: 3}
   # Active by category: Apparel 5 (101, 103, 104, 108, 110), Home 1 (112,
   # unlisted), Kitchen 1 (102); the Cap (105) has no type and no row.
   - metrics: [product_categories.product_count]

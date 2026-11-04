@@ -108,12 +108,12 @@ cases:
   # 29.70) on October 5. 904 (107, 22, September 10) is a refund of an
   # order the reports leave out, and they leave it out too: with it
   # September would be 2 refunds, 55.
-  - metrics: [refund_count, refunds_total]
+  - metrics: [refunds.refund_count, refunds.refunds_total]
     dimensions: [refunds.refund_month]
     order: [refunds.refund_month]
     expected:
-      - {refund_month: "2026-09-01", refund_count: 1, refunds_total: 33}
-      - {refund_month: "2026-10-01", refund_count: 2, refunds_total: 34.7}
+      - {refund_month: "2026-09-01", refunds.refund_count: 1, refunds.refunds_total: 33}
+      - {refund_month: "2026-10-01", refunds.refund_count: 2, refunds.refunds_total: 34.7}
   # Payment state of every row. Paid: 101, 103, 109, 110, 113 (its
   # earlier version, processing without a payment date, would be unpaid),
   # 117. Partially refunded: 104, 112, and 107, paid before it was
@@ -181,21 +181,22 @@ cases:
   # 20 + 31.818182 + 20 + 60 + 10 + 50 (117's 45 EUR) = 340.818182; the
   # orders' subtotal is 338.82 with 109's fees of -2.
   # orders.items_per_order is 15 / 9 written out in full precision
-  - metrics: [items_sold, items_net, line_revenue, orders.items_per_order]
+  - metrics: [order_lines.items_sold, order_lines.items_net, order_lines.line_revenue,
+              orders.items_per_order]
     expected:
-      - {items_sold: 15, items_net: 13, line_revenue: 340.818182,
-         orders.items_per_order: 1.6666666666666667}
+      - {order_lines.items_sold: 15, order_lines.items_net: 13,
+         order_lines.line_revenue: 340.818182, orders.items_per_order: 1.6666666666666667}
   # Top SKU by items: MUG 2 (101) + 1 (109) + 1 (111) + 2 (117) = 6. A
   # line keeps no SKU; it gets its product's current one, the variation's
   # for a tee: TEE-M 4, TEE-L 2. The sticker has none and the cap was
   # deleted: 3 items without a SKU.
-  - metrics: [items_sold]
+  - metrics: [order_lines.items_sold]
     dimensions: [order_lines.sku]
-    order: ["items_sold desc"]
+    order: ["order_lines.items_sold desc"]
     limit: 2
     expected:
-      - {sku: "MUG", items_sold: 6}
-      - {sku: "TEE-M", items_sold: 4}
+      - {sku: "MUG", order_lines.items_sold: 6}
+      - {sku: "TEE-M", order_lines.items_sold: 4}
   # By shipping country: CA 110 46; DE 117 66; US 101, 103, 104, 109, 111,
   # 113 = 271.70; no shipping address 112 (billing only), 66.
   - metrics: [orders.order_count, orders.revenue]
@@ -228,9 +229,11 @@ cases:
   # are the refunds' lines (904's, of cancelled 107, left out with its
   # order), by the month of the order: 104's tee 27 and 111's mug 20, 2
   # items, 47; net 340.818182 - 47 = 293.818182.
-  - metrics: [items_returned, line_returned_amount, line_net_revenue]
+  - metrics: [order_lines.items_returned, order_lines.line_returned_amount,
+              order_lines.line_net_revenue]
     expected:
-      - {items_returned: 2, line_returned_amount: 47, line_net_revenue: 293.818182}
+      - {order_lines.items_returned: 2, order_lines.line_returned_amount: 47,
+         order_lines.line_net_revenue: 293.818182}
   # By category, the product's own ones, as Analytics' Categories report
   # counts them, without a filter; a category is told apart by its path,
   # as two are named Accessories. Gifts, Kitchen & Dining and Kitchen &
@@ -249,27 +252,34 @@ cases:
   # Gifts would have 140 over 8 items; joined on term_id, the Sticker
   # pack's 10 would be in Accessories and no other line would have a
   # category.
-  - metrics: [category_items_sold, category_revenue, category_items_returned,
-              category_returned_amount, category_net_revenue]
+  - metrics: [line_categories.category_items_sold, line_categories.category_revenue,
+              line_categories.category_items_returned, line_categories.category_returned_amount,
+              line_categories.category_net_revenue]
     dimensions: [line_categories.category_path]
     order: [line_categories.category_path]
     expected:
-      - {category_path: "Clothing", category_items_sold: 0, category_revenue: 0,
-         category_items_returned: 0, category_returned_amount: 0, category_net_revenue: 0}
-      - {category_path: "Clothing > T-Shirts", category_items_sold: 6,
-         category_revenue: 175.818182, category_items_returned: 1, category_returned_amount: 27,
-         category_net_revenue: 148.818182}
-      - {category_path: "Gifts", category_items_sold: 6, category_revenue: 130,
-         category_items_returned: 1, category_returned_amount: 20, category_net_revenue: 110}
-      - {category_path: "Kitchen & Dining", category_items_sold: 6, category_revenue: 130,
-         category_items_returned: 1, category_returned_amount: 20, category_net_revenue: 110}
-      - {category_path: "Kitchen & Dining > Accessories", category_items_sold: 6,
-         category_revenue: 130, category_items_returned: 1, category_returned_amount: 20,
-         category_net_revenue: 110}
-      - {category_path: "Uncategorized", category_items_sold: 2, category_revenue: 10,
-         category_items_returned: 0, category_returned_amount: 0, category_net_revenue: 10}
-      - {category_path: null, category_items_sold: 1, category_revenue: 25,
-         category_items_returned: 0, category_returned_amount: 0, category_net_revenue: 25}
+      - {category_path: "Clothing", line_categories.category_items_sold: 0,
+         line_categories.category_revenue: 0, line_categories.category_items_returned: 0,
+         line_categories.category_returned_amount: 0, line_categories.category_net_revenue: 0}
+      - {category_path: "Clothing > T-Shirts", line_categories.category_items_sold: 6,
+         line_categories.category_revenue: 175.818182, line_categories.category_items_returned: 1,
+         line_categories.category_returned_amount: 27,
+         line_categories.category_net_revenue: 148.818182}
+      - {category_path: "Gifts", line_categories.category_items_sold: 6,
+         line_categories.category_revenue: 130, line_categories.category_items_returned: 1,
+         line_categories.category_returned_amount: 20, line_categories.category_net_revenue: 110}
+      - {category_path: "Kitchen & Dining", line_categories.category_items_sold: 6,
+         line_categories.category_revenue: 130, line_categories.category_items_returned: 1,
+         line_categories.category_returned_amount: 20, line_categories.category_net_revenue: 110}
+      - {category_path: "Kitchen & Dining > Accessories", line_categories.category_items_sold: 6,
+         line_categories.category_revenue: 130, line_categories.category_items_returned: 1,
+         line_categories.category_returned_amount: 20, line_categories.category_net_revenue: 110}
+      - {category_path: "Uncategorized", line_categories.category_items_sold: 2,
+         line_categories.category_revenue: 10, line_categories.category_items_returned: 0,
+         line_categories.category_returned_amount: 0, line_categories.category_net_revenue: 10}
+      - {category_path: null, line_categories.category_items_sold: 1,
+         line_categories.category_revenue: 25, line_categories.category_items_returned: 0,
+         line_categories.category_returned_amount: 0, line_categories.category_net_revenue: 25}
   # One category with its subcategories, as Analytics' filter by category
   # takes them: the lines' metrics filtered by the category, each line
   # once. Clothing the Tee through T-Shirts, 175.818182 over 6 items, 1
@@ -277,62 +287,72 @@ cases:
   # net 110, not 260 over 12 for its two categories there. Read with
   # T-Shirts' parent before September 10 (none), or with the parent
   # matched to term_taxonomy_id, Clothing would have nothing.
-  - metrics: [items_sold, line_revenue, items_returned, line_returned_amount, line_net_revenue]
+  - metrics: [order_lines.items_sold, order_lines.line_revenue, order_lines.items_returned,
+              order_lines.line_returned_amount, order_lines.line_net_revenue]
     filters: ["line_categories.category_path = 'Clothing'"]
     expected:
-      - {items_sold: 6, line_revenue: 175.818182, items_returned: 1, line_returned_amount: 27,
-         line_net_revenue: 148.818182}
-  - metrics: [items_sold, line_revenue, line_net_revenue]
+      - {order_lines.items_sold: 6, order_lines.line_revenue: 175.818182,
+         order_lines.items_returned: 1, order_lines.line_returned_amount: 27,
+         order_lines.line_net_revenue: 148.818182}
+  - metrics: [order_lines.items_sold, order_lines.line_revenue, order_lines.line_net_revenue]
     filters: ["line_categories.category_path = 'Kitchen & Dining'"]
     expected:
-      - {items_sold: 6, line_revenue: 130, line_net_revenue: 110}
+      - {order_lines.items_sold: 6, order_lines.line_revenue: 130,
+         order_lines.line_net_revenue: 110}
   # September by category: Gifts, Kitchen & Dining and its Accessories
   # 109's 20 + 111's 20 = 40, net 20 each; T-Shirts 104's 54 + 110's
   # 31.818182 = 85.818182, net 58.818182; Clothing, above T-Shirts, 0.
-  - metrics: [category_revenue, category_net_revenue]
+  - metrics: [line_categories.category_revenue, line_categories.category_net_revenue]
     dimensions: [line_categories.category_path]
     filters: ["orders.order_month = DATE '2026-09-01'"]
     order: [line_categories.category_path]
     expected:
-      - {category_path: "Clothing", category_revenue: 0, category_net_revenue: 0}
-      - {category_path: "Clothing > T-Shirts", category_revenue: 85.818182,
-         category_net_revenue: 58.818182}
-      - {category_path: "Gifts", category_revenue: 40, category_net_revenue: 20}
-      - {category_path: "Kitchen & Dining", category_revenue: 40, category_net_revenue: 20}
-      - {category_path: "Kitchen & Dining > Accessories", category_revenue: 40,
-         category_net_revenue: 20}
+      - {category_path: "Clothing", line_categories.category_revenue: 0,
+         line_categories.category_net_revenue: 0}
+      - {category_path: "Clothing > T-Shirts", line_categories.category_revenue: 85.818182,
+         line_categories.category_net_revenue: 58.818182}
+      - {category_path: "Gifts", line_categories.category_revenue: 40,
+         line_categories.category_net_revenue: 20}
+      - {category_path: "Kitchen & Dining", line_categories.category_revenue: 40,
+         line_categories.category_net_revenue: 20}
+      - {category_path: "Kitchen & Dining > Accessories", line_categories.category_revenue: 40,
+         line_categories.category_net_revenue: 20}
   # By brand: Acme the Tee and the Sticker pack, 175.818182 + 10 =
   # 185.818182 over 8 items, 1 returned for 27; Northwind the Tee,
   # 175.818182 over 6, 1 returned for 27; none the Mug and the Cap, 130 +
   # 25 = 155 over 7, 1 returned for 20. Beta, deleted, has nothing; read
   # with it, it would have the Tee's 175.818182.
-  - metrics: [brand_items_sold, brand_revenue, brand_items_returned, brand_returned_amount,
-              brand_net_revenue]
+  - metrics: [line_brands.brand_items_sold, line_brands.brand_revenue,
+              line_brands.brand_items_returned, line_brands.brand_returned_amount,
+              line_brands.brand_net_revenue]
     dimensions: [line_brands.brand]
     order: [line_brands.brand]
     expected:
-      - {brand: "Acme", brand_items_sold: 8, brand_revenue: 185.818182, brand_items_returned: 1,
-         brand_returned_amount: 27, brand_net_revenue: 158.818182}
-      - {brand: "Northwind", brand_items_sold: 6, brand_revenue: 175.818182,
-         brand_items_returned: 1, brand_returned_amount: 27, brand_net_revenue: 148.818182}
-      - {brand: null, brand_items_sold: 7, brand_revenue: 155, brand_items_returned: 1,
-         brand_returned_amount: 20, brand_net_revenue: 135}
+      - {brand: "Acme", line_brands.brand_items_sold: 8, line_brands.brand_revenue: 185.818182,
+         line_brands.brand_items_returned: 1, line_brands.brand_returned_amount: 27,
+         line_brands.brand_net_revenue: 158.818182}
+      - {brand: "Northwind", line_brands.brand_items_sold: 6, line_brands.brand_revenue: 175.818182,
+         line_brands.brand_items_returned: 1, line_brands.brand_returned_amount: 27,
+         line_brands.brand_net_revenue: 148.818182}
+      - {brand: null, line_brands.brand_items_sold: 7, line_brands.brand_revenue: 155,
+         line_brands.brand_items_returned: 1, line_brands.brand_returned_amount: 20,
+         line_brands.brand_net_revenue: 135}
   # Brand by month: Acme August 30 (101's tee), September 85.818182,
   # October 60 + 10 = 70; Northwind August 30, September 85.818182,
   # October 60; none August 40 + 25 = 65, September 40, October 50.
-  - metrics: [brand_revenue]
+  - metrics: [line_brands.brand_revenue]
     dimensions: [line_brands.brand, orders.order_month]
     order: [line_brands.brand, orders.order_month]
     expected:
-      - {brand: "Acme", order_month: "2026-08-01", brand_revenue: 30}
-      - {brand: "Acme", order_month: "2026-09-01", brand_revenue: 85.818182}
-      - {brand: "Acme", order_month: "2026-10-01", brand_revenue: 70}
-      - {brand: "Northwind", order_month: "2026-08-01", brand_revenue: 30}
-      - {brand: "Northwind", order_month: "2026-09-01", brand_revenue: 85.818182}
-      - {brand: "Northwind", order_month: "2026-10-01", brand_revenue: 60}
-      - {brand: null, order_month: "2026-08-01", brand_revenue: 65}
-      - {brand: null, order_month: "2026-09-01", brand_revenue: 40}
-      - {brand: null, order_month: "2026-10-01", brand_revenue: 50}
+      - {brand: "Acme", order_month: "2026-08-01", line_brands.brand_revenue: 30}
+      - {brand: "Acme", order_month: "2026-09-01", line_brands.brand_revenue: 85.818182}
+      - {brand: "Acme", order_month: "2026-10-01", line_brands.brand_revenue: 70}
+      - {brand: "Northwind", order_month: "2026-08-01", line_brands.brand_revenue: 30}
+      - {brand: "Northwind", order_month: "2026-09-01", line_brands.brand_revenue: 85.818182}
+      - {brand: "Northwind", order_month: "2026-10-01", line_brands.brand_revenue: 60}
+      - {brand: null, order_month: "2026-08-01", line_brands.brand_revenue: 65}
+      - {brand: null, order_month: "2026-09-01", line_brands.brand_revenue: 40}
+      - {brand: null, order_month: "2026-10-01", line_brands.brand_revenue: 50}
   # Average order value of the orders with a line in Gifts, each order
   # once, all of its goods: the Mug's orders 101 70 (its tee included),
   # 109 18 (with its fees), 111 20, 117 50 = 158 over 4; counted once per
@@ -364,12 +384,12 @@ cases:
   # the Sticker pack 10 over 2 (in the trash, so out of the catalog,
   # though line_categories keeps it in Uncategorized) and the Cap 25
   # over 1 (deleted) = 35 over 3. 340.818182 in all, as line_revenue.
-  - metrics: [line_revenue, items_sold]
+  - metrics: [order_lines.line_revenue, order_lines.items_sold]
     dimensions: [products.status]
     order: [products.status]
     expected:
-      - {status: "active", line_revenue: 305.818182, items_sold: 12}
-      - {status: null, line_revenue: 35, items_sold: 3}
+      - {status: "active", order_lines.line_revenue: 305.818182, order_lines.items_sold: 12}
+      - {status: null, order_lines.line_revenue: 35, order_lines.items_sold: 3}
   # Active by category: Clothing 0 (its products are in its
   # subcategories), Clothing > Accessories 1 (15), Clothing > T-Shirts 1
   # (12), Gifts 2 (11, 15), Kitchen & Dining 1 (11), Kitchen & Dining >
