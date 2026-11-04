@@ -389,14 +389,11 @@ jobs:
       # holds it to the package and the built tables, and counts the rows
       # whose date is not the day of their time in the build's zone: none
       # after builds in one zone. A run in another zone without
-      # --full-refresh rebuilds only the orders and refunds loaded since
-      # the last run, and the rest keep New York's days, with no dbt test
-      # failing. Over the fixture loaded at once, with 1012 (a guest's,
-      # on one day in both zones) loaded again now, a build in New York
-      # and a run in UTC leave 1003, at 02:00 UTC, on New York's day: the
-      # count must find it and the check fail on orders, not for another
-      # reason. (The refund of 1006, also at 02:00 UTC, is loaded last in
-      # the fixture and so reread.)
+      # --full-refresh stops (shopify_check_settings) and leaves the
+      # tables as New York built them, so the check, which the run did
+      # not change, finds 1003, at 02:00 UTC, on New York's day and fails
+      # on orders, not for another reason. A full refresh in UTC builds
+      # them whole, and the check passes.
       - name: Check deployment.yml, in one zone and in two
         run: |
           q() { curl -sf http://127.0.0.1:8123/ --data-binary "$1"; }
@@ -407,13 +404,15 @@ jobs:
               q "CREATE TABLE shopify_zones.$t AS shopify_fixture.$t"
               q "INSERT INTO shopify_zones.$t SELECT * FROM shopify_fixture.$t"
           done
-          q "INSERT INTO shopify_zones.orders SELECT * REPLACE (now64(6) AS loaded_at) FROM shopify_fixture.orders WHERE id = 1012"
           ZONES=${DBT_BUILD/'"shopify_input"'/'"shopify_zones"'}
           CLICKHOUSE_DATABASE=analytics_zones $ZONES --full-refresh
-          CLICKHOUSE_DATABASE=analytics_zones ${ZONES/America\/New_York/UTC}
+          if CLICKHOUSE_DATABASE=analytics_zones ${ZONES/America\/New_York/UTC} > zones.txt 2>&1; then cat zones.txt; exit 1; fi
+          grep -q 'shopify_timezone was "America/New_York", is "UTC"' zones.txt
           if CLICKHOUSE_DATABASE=analytics_zones uv run tests/check_deployment.py sources/shopify --time-zone UTC > zones.txt; then cat zones.txt; exit 1; fi
           cat zones.txt
           grep -q '^FAIL orders was not built in UTC' zones.txt
+          CLICKHOUSE_DATABASE=analytics_zones ${ZONES/America\/New_York/UTC} --full-refresh
+          CLICKHOUSE_DATABASE=analytics_zones uv run tests/check_deployment.py sources/shopify --time-zone UTC
       - name: Check column contracts and the built tables
         run: uv run tests/check_contracts.py --built sources/shopify
       - name: Validate the Ossie model against the built tables
@@ -430,13 +429,58 @@ jobs:
       # CI's builds give one other than the package's default, and the
       # one-label tests hold every table to it. A label the package does not
       # accept stops the build; a new label over tables built under the old
-      # one fails those tests, with a message that names --full-refresh.
+      # one stops the run before it reads or deletes a row of orders,
+      # order_lines or refunds (shopify_check_settings), with a message
+      # that names the variable and --full-refresh. The one-label tests
+      # stay and hold the tables the run builds whole; this step does not
+      # reach them.
       - name: Label of the store
         run: |
           if ${DBT_BUILD/store_ny/Store-ny} > label.txt 2>&1; then cat label.txt; exit 1; fi
           grep -q 'shopify_source_id must be 1 to 64 characters' label.txt
           if ${DBT_BUILD/store_ny/store_la} > label.txt 2>&1; then cat label.txt; exit 1; fi
-          grep -q 'run dbt build --full-refresh once after changing shopify_source_id' label.txt
+          grep -q 'shopify_source_id was "store_ny", is "store_la"): run dbt build --full-refresh once' label.txt
+
+      # The variables the built rows depend on (shopify_settings) are
+      # recorded in the comment of orders, order_lines and refunds. A run
+      # that changes one stops before it reads or deletes a row of these
+      # tables, and names it, so their rows stay as they were (the sums
+      # below); a full refresh records the new value and the next run
+      # goes on.
+      - name: Settings the built rows depend on
+        run: |
+          q() { curl -sf http://127.0.0.1:8123/ --data-binary "$1"; }
+          run() { CLICKHOUSE_DATABASE=analytics_settings "$@"; }
+          # with_vars <variable>=<JSON value>...: the build command with these variables set
+          with_vars() { python3 - "$DBT_BUILD" "$@" <<'EOF'
+          import json, sys
+          words = sys.argv[1].split()
+          values = json.loads(words[-1])
+          for pair in sys.argv[2:]:
+              name, value = pair.split("=", 1)
+              values[name] = json.loads(value)
+          print(" ".join(words[:-1] + [json.dumps(values, separators=(",", ":"))]))
+          EOF
+          }
+          # stops <variable> <JSON value>: the run stops, naming the variable and no other
+          stops() {
+              if run $(with_vars "$1=$2") > settings.txt 2>&1; then cat settings.txt; exit 1; fi
+              grep -q "($1 was [^;]*): run dbt build --full-refresh once" settings.txt
+          }
+          sums() { for t in orders order_lines refunds; do
+              q "SELECT '$t', count(), groupBitXor(cityHash64(toString(tuple(*)))) FROM analytics_settings.$t FORMAT TSV"; done; }
+          run $DBT_BUILD
+          run $DBT_BUILD                 # unchanged settings
+          sums > before.txt
+          stops shopify_timezone '"UTC"'
+          stops shopify_source_id '"store_la"'
+          sums > after.txt
+          diff before.txt after.txt
+          CHANGED=$(with_vars shopify_timezone='"UTC"' shopify_source_id='"store_la"')
+          run $CHANGED --full-refresh
+          run $CHANGED
+          if run $DBT_BUILD > settings.txt 2>&1; then cat settings.txt; exit 1; fi
+          grep -q 'shopify_timezone was "UTC", is "America/New_York"' settings.txt
   woocommerce:
     runs-on: ubuntu-24.04
     needs: changes
@@ -613,10 +657,14 @@ jobs:
           test "$(q "SELECT count() FROM analytics.order_lines WHERE order_id = 103 AND sku IS NULL")" = 1
           late wc_orders "$(v 'IN (295, 306)')"
           q "DELETE FROM woocommerce_input.wp_2_wc_orders WHERE id = 114 AND $(v '= 0')"
-          # A run of orders that fails after its pre-hooks (a time zone
-          # ClickHouse rejects), leaving 114's row deleted: the next run
-          # must still find customer 1 in orders__changed.
-          if ${DBT_BUILD/New_York/Nowhere} --select orders; then exit 1; fi
+          # A run of orders that fails after its pre-hooks (an order in
+          # another currency that no rate converts, woocommerce_amount),
+          # leaving 114's row deleted: the next run must still find
+          # customer 1 in orders__changed. The order is deleted again after.
+          q "INSERT INTO woocommerce_input.wp_2_wc_orders SELECT * REPLACE (9901 AS id, 'JPY' AS currency, now64(9) AS _peerdb_synced_at)
+             FROM (SELECT * FROM woocommerce_fixture.wp_2_wc_orders WHERE id = 101 AND status = 'wc-processing')"
+          if $DBT_BUILD --select orders; then exit 1; fi
+          q "DELETE FROM woocommerce_input.wp_2_wc_orders WHERE id = 9901"
           test "$(q "EXISTS TABLE analytics.orders__changed")" = 1
           $DBT_BUILD                 # an order moved to a guest and trashed
           test "$(q "EXISTS TABLE analytics.orders__changed")" = 0
@@ -625,9 +673,12 @@ jobs:
           same
           # refunds keeps where its next window starts in its table's
           # comment (woocommerce_reading), not in its rows: the latest sync
-          # it read, in UTC on a server that is not.
-          test "$(q "SELECT comment FROM system.tables WHERE database = 'analytics' AND name = 'refunds'")" = \
-               "read through $(q "SELECT toString(toTimeZone(max(_peerdb_synced_at), 'UTC')) FROM woocommerce_input.wp_2_wc_orders") UTC"
+          # it read, in UTC on a server that is not. The comment also holds
+          # the settings the table was built with, after the position
+          # (woocommerce_settings); orders has them alone.
+          test "$(q "SELECT extract(comment, '^read through ([^;]+) UTC; built with ') FROM system.tables WHERE database = 'analytics' AND name = 'refunds'")" = \
+               "$(q "SELECT toString(toTimeZone(max(_peerdb_synced_at), 'UTC')) FROM woocommerce_input.wp_2_wc_orders")"
+          test "$(q "SELECT JSONExtractString(extract(comment, '^built with (.*)$'), 'woocommerce_timezone') FROM system.tables WHERE database = 'analytics' AND name = 'orders'")" = America/New_York
           uv run tests/woocommerce/check_numbers.py
           OSSIE_CLICKHOUSE_URL=http://127.0.0.1:8123/analytics_full uv run tests/woocommerce/check_numbers.py
           # Nullable columns but the keys and CDC's own; empty times, the
@@ -712,12 +763,11 @@ jobs:
       # holds it to the package and the built tables, and counts the rows
       # whose date is not the day of their time in the build's zone: none
       # after builds in one zone. A run in another zone without
-      # --full-refresh rebuilds only the orders synced since the last run,
-      # and the rest keep New York's days, with no dbt test failing. Over
-      # the fixture synced at once, with a version of guest 112 (on one
-      # day in both zones) synced again now, a build in New York and a run
-      # in UTC leave 103, paid at 02:10 UTC, on New York's day: the count
-      # must find it and the check fail on orders, not for another reason.
+      # --full-refresh stops (woocommerce_check_settings) and leaves the
+      # tables as New York built them, so the check, which the run did
+      # not change, finds 103, paid at 02:10 UTC, on New York's day and
+      # fails on orders, not for another reason. A full refresh in UTC
+      # builds them whole, and the check passes.
       - name: Check deployment.yml, in one zone and in two
         run: |
           q() { curl -sf http://127.0.0.1:8123/ --data-binary "$1"; }
@@ -729,13 +779,15 @@ jobs:
               q "CREATE TABLE woocommerce_zones.wp_2_$t AS woocommerce_fixture.wp_2_$t"
               q "INSERT INTO woocommerce_zones.wp_2_$t SELECT * FROM woocommerce_fixture.wp_2_$t"
           done
-          q "INSERT INTO woocommerce_zones.wp_2_wc_orders SELECT * REPLACE (now64(9) AS _peerdb_synced_at) FROM woocommerce_fixture.wp_2_wc_orders WHERE _peerdb_version = 275"
           ZONES=${DBT_BUILD/'"woocommerce_input"'/'"woocommerce_zones"'}
           CLICKHOUSE_DATABASE=analytics_zones $ZONES --full-refresh
-          CLICKHOUSE_DATABASE=analytics_zones ${ZONES/America\/New_York/UTC}
+          if CLICKHOUSE_DATABASE=analytics_zones ${ZONES/America\/New_York/UTC} > zones.txt 2>&1; then cat zones.txt; exit 1; fi
+          grep -q 'woocommerce_timezone was "America/New_York", is "UTC"' zones.txt
           if CLICKHOUSE_DATABASE=analytics_zones uv run tests/check_deployment.py sources/woocommerce --time-zone UTC > zones.txt; then cat zones.txt; exit 1; fi
           cat zones.txt
           grep -q '^FAIL orders was not built in UTC' zones.txt
+          CLICKHOUSE_DATABASE=analytics_zones ${ZONES/America\/New_York/UTC} --full-refresh
+          CLICKHOUSE_DATABASE=analytics_zones uv run tests/check_deployment.py sources/woocommerce --time-zone UTC
       - name: Check column contracts and the built tables
         run: uv run tests/check_contracts.py --built sources/woocommerce
       - name: Validate the Ossie model against the built tables
@@ -752,13 +804,68 @@ jobs:
       # CI's builds give one other than the package's default, and the
       # one-label tests hold every table to it. A label the package does not
       # accept stops the build; a new label over tables built under the old
-      # one fails those tests, with a message that names --full-refresh.
+      # one stops the run before it reads or deletes a row of orders,
+      # order_lines or refunds (woocommerce_check_settings), with a
+      # message that names the variable and --full-refresh. The one-label
+      # tests stay and hold the tables the run builds whole; this step
+      # does not reach them.
       - name: Label of the store
         run: |
           if ${DBT_BUILD/store_wc/Store-wc} > label.txt 2>&1; then cat label.txt; exit 1; fi
           grep -q 'woocommerce_source_id must be 1 to 64 characters' label.txt
           if ${DBT_BUILD/store_wc/store_eu} > label.txt 2>&1; then cat label.txt; exit 1; fi
-          grep -q 'run dbt build --full-refresh once after changing woocommerce_source_id' label.txt
+          grep -q 'woocommerce_source_id was "store_wc", is "store_eu"): run dbt build --full-refresh once' label.txt
+
+      # The variables the built rows depend on (woocommerce_settings) are
+      # recorded in the comment of orders, order_lines and refunds. A run
+      # that changes one stops before it reads or deletes a row of these
+      # tables, and names it, so their rows stay as they were (the sums
+      # below); a full refresh records the new values and the next run
+      # goes on.
+      # The currency is only stopped on: the fixture's orders are in USD,
+      # and a store in EUR with no rate for them fails its build.
+      - name: Settings the built rows depend on
+        run: |
+          q() { curl -sf http://127.0.0.1:8123/ --data-binary "$1"; }
+          run() { CLICKHOUSE_DATABASE=analytics_settings "$@"; }
+          # with_vars <variable>=<JSON value>...: the build command with these variables set
+          with_vars() { python3 - "$DBT_BUILD" "$@" <<'EOF'
+          import json, sys
+          words = sys.argv[1].split()
+          values = json.loads(words[-1])
+          for pair in sys.argv[2:]:
+              name, value = pair.split("=", 1)
+              values[name] = json.loads(value)
+          print(" ".join(words[:-1] + [json.dumps(values, separators=(",", ":"))]))
+          EOF
+          }
+          # stops <variable> <JSON value>: the run stops, naming the variable and no other
+          stops() {
+              if run $(with_vars "$1=$2") > settings.txt 2>&1; then cat settings.txt; exit 1; fi
+              grep -q "($1 was [^;]*): run dbt build --full-refresh once" settings.txt
+          }
+          sums() { for t in orders order_lines refunds; do
+              q "SELECT '$t', count(), groupBitXor(cityHash64(toString(tuple(*)))) FROM analytics_settings.$t FORMAT TSV"; done; }
+          run $DBT_BUILD
+          run $DBT_BUILD                 # unchanged settings
+          sums > before.txt
+          stops woocommerce_timezone '"UTC"'
+          stops woocommerce_currency '"EUR"'
+          stops woocommerce_source_id '"store_eu"'
+          stops woocommerce_date_type '"date_created"'
+          stops woocommerce_excluded_statuses '["pending","cancelled","failed","on-hold"]'
+          stops woocommerce_order_statuses '{"shipped":"completed"}'
+          stops woocommerce_price_decimals 3
+          stops woocommerce_order_number_meta_key '"_order_number"'
+          sums > after.txt
+          diff before.txt after.txt
+          CHANGED=$(with_vars woocommerce_timezone='"UTC"' woocommerce_source_id='"store_eu"' woocommerce_date_type='"date_created"' \
+              woocommerce_excluded_statuses='["pending","cancelled","failed","on-hold"]' woocommerce_order_statuses='{"shipped":"completed"}' \
+              woocommerce_price_decimals=3 woocommerce_order_number_meta_key='"_order_number"')
+          run $CHANGED --full-refresh
+          run $CHANGED
+          if run $DBT_BUILD > settings.txt 2>&1; then cat settings.txt; exit 1; fi
+          grep -q 'woocommerce_timezone was "UTC", is "America/New_York"' settings.txt
   sensor_community:
     runs-on: ubuntu-24.04
     needs: changes

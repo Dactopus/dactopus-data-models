@@ -11,11 +11,21 @@ names the Ossie schema version its models carry.
 `order_lines`, `line_categories`, `line_brands` and `refunds` of both
 packages and of the commerce union gain a column: an incremental run
 stops on the changed schema, and a deployment runs
-`dbt build --full-refresh` once. No input table changes. Metric names of
-the commerce model change.
+`dbt build --full-refresh` once. The same full refresh records the
+settings the new check below needs. No input table changes. Metric names
+of the commerce model change.
 
 ### Changed
 
+- `orders`, `order_lines` and `refunds` of the Shopify and WooCommerce
+  packages built by an earlier release record no settings, so their
+  first incremental run stops with the message of the check below. The
+  full refresh this release needs for the new columns builds them anew
+  and records the settings, so one `dbt build --full-refresh` covers
+  both.
+- The dbt user needs `ALTER MODIFY COMMENT` on `orders`, `order_lines`
+  and `refunds` of both packages. The WooCommerce package needed it on
+  `refunds` already.
 - The 18 commerce metrics that read order lines, their categories and
   brands, or refunds together with `orders.in_sales_reports` are metrics
   of those datasets, as the Ossie spec requires: it rejects an aggregate
@@ -60,6 +70,28 @@ the commerce model change.
 
 ### Added
 
+- An incremental run of the Shopify and WooCommerce packages stops, before
+  it reads or deletes a row of `orders`, `order_lines` or `refunds`, when
+  the variables that decide the values of the rows already built differ
+  from the ones the tables were built with.
+  Until now a changed variable rebuilt only the orders the run reread and
+  left the others as they were, a mixture that no test caught (the
+  one-label tests caught a new label, after the run had rewritten rows).
+  The message names the table, each differing variable with its old and
+  new value, and asks for `dbt build --full-refresh` once. Guarded at
+  Shopify: `shopify_timezone`, `shopify_source_id`. At WooCommerce:
+  `woocommerce_timezone`, `woocommerce_date_type`,
+  `woocommerce_excluded_statuses`, `woocommerce_order_statuses`,
+  `woocommerce_currency`, `woocommerce_price_decimals`,
+  `woocommerce_order_number_meta_key`, `woocommerce_source_id`. The input
+  database, the table prefix and the lookback days are not guarded.
+- The values are kept in the comment of `orders`, `order_lines` and
+  `refunds`, as `built with {...}` (JSON, keys in alphabetical order),
+  written after a first build or a full refresh. At WooCommerce the
+  comment of `refunds` also holds its sync position, and each macro
+  that writes the comment keeps the segments it does not own
+  (`woocommerce_set_comment`). The README of each package has a section,
+  Changing a setting.
 - Tests `order_lines_in_sales_reports_match_orders` and
   `refunds_in_sales_reports_match_orders` in both packages: no line or
   refund has a flag different from its order's. At WooCommerce they warn

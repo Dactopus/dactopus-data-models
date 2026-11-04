@@ -51,6 +51,87 @@ line_item_id IN (SELECT id FROM {{ source('shopify_raw', 'order_lines') }} WHERE
  WHERE loaded_at >= (SELECT max(loaded_at) - INTERVAL {{ var('shopify_lookback_days') }} DAY FROM {{ this }}))
 {%- endmacro %}
 
+{# The variables the values of the rows already built depend on, with their
+   values in this run: a change of either leaves an incremental run
+   rebuilding the orders and refunds it rereads by the new setting and
+   keeping the rest by the old one, and no test fails (the one-label test
+   fails, but after the run has rewritten rows). Not listed: the input
+   database, which names where the same rows are read from, and the
+   lookback, which only widens a window. #}
+{% macro shopify_settings() -%}
+{%- set settings = {} -%}
+{%- for name in ['shopify_source_id', 'shopify_timezone'] -%}
+{%- do settings.update({name: var(name)}) -%}
+{%- endfor -%}
+{{- return(settings) -}}
+{%- endmacro %}
+
+{# The settings an incremental model's table was built with: the comment of
+   the table is "built with <JSON>", written by shopify_save_settings; ''
+   for a table without it. #}
+{% macro shopify_recorded_settings() -%}
+{%- set r = run_query("SELECT extract(comment, '^built with (.*)$') FROM system.tables WHERE database = '"
+                      ~ this.schema ~ "' AND name = '" ~ this.identifier ~ "'") -%}
+{{- return(r.columns[0].values()[0] if r.columns[0].values() else '') -}}
+{%- endmacro %}
+
+{# A setting's value in the form the check compares: a list sorted, with
+   its items as strings (the order of excluded statuses means nothing),
+   a dict with its values as strings, a scalar as a string (a value given
+   as "2" is the 2 the table recorded). #}
+{% macro shopify_setting_value(value) -%}
+{%- if value is mapping -%}
+{%- set d = {} -%}
+{%- for k, v in value.items() -%}{%- do d.update({k | string: v | string}) -%}{%- endfor -%}
+{{- return(d) -}}
+{%- elif value is iterable and value is not string -%}
+{{- return(value | map('string') | sort | list) -}}
+{%- else -%}
+{{- return(value | string) -}}
+{%- endif -%}
+{%- endmacro %}
+
+{# Pre-hook of an incremental model: stops a run whose table was built with
+   other settings (shopify_settings) than this run has, or by a release
+   that did not record them, before it reads or rewrites a row. A full
+   refresh builds the table anew and records the settings. #}
+{% macro shopify_check_settings() -%}
+{%- if execute and is_incremental() -%}
+{%- set settings = shopify_settings() -%}
+{%- set recorded = shopify_recorded_settings() -%}
+{%- set built = fromjson(recorded, none) if recorded else none -%}
+{%- set differ = [] -%}
+{%- if built is mapping -%}
+{%- for name, value in settings.items() -%}
+{%- if shopify_setting_value(built.get(name)) != shopify_setting_value(value) -%}
+{%- do differ.append(name ~ " was " ~ tojson(built.get(name)) ~ ", is " ~ tojson(value)) -%}
+{%- endif -%}
+{%- endfor -%}
+{%- else -%}
+{%- do differ.append("it records no settings this release reads: a release before this one built it, or its comment was changed by hand") -%}
+{%- endif -%}
+{%- if differ -%}
+{{ exceptions.raise_compiler_error(this ~ " was not built with the settings of this run (" ~ differ | join("; ") ~ "): run dbt build --full-refresh once (package README, Changing a setting)") }}
+{%- endif -%}
+{%- else -%}
+SELECT 1
+{%- endif -%}
+{%- endmacro %}
+
+{# Post-hook: a table just built, whole or by a full refresh, records the
+   settings it was built with. An incremental run changes nothing: its
+   pre-hook has found them the same. is_incremental() cannot tell a first
+   build here: the table exists by now, and dbt v2 answers true where v1
+   answers false (a full refresh: false in both). The two signs are
+   should_full_refresh() and a table that records nothing. #}
+{% macro shopify_save_settings() -%}
+{%- if execute and (should_full_refresh() or not shopify_recorded_settings()) -%}
+ALTER TABLE {{ this }} MODIFY COMMENT '{{ ("built with " ~ tojson(shopify_settings(), sort_keys=true)) | replace('\\', '\\\\') | replace("'", "\\'") }}'
+{%- else -%}
+SELECT 1
+{%- endif -%}
+{%- endmacro %}
+
 {# The label of the store, which every row carries as source_id:
    the variable shopify_source_id, 1 to 64 of a-z, 0-9 and _. Tables of
    several deployments add up and join by it. A view over a built table

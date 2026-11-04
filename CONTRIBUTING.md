@@ -304,9 +304,10 @@ the answers with numbers derived by hand from those rows. Every job then
 checks `deployment.yml`, the contracts against the built tables, the
 Ossie model against them and `dbt source freshness`, and builds under a
 label other than the package's default. The Shopify and WooCommerce jobs
-also check the retention windows (`windows.sql`) and a build in two time
-zones, and that the canonical tables of the build are the CSV files in
-`tests/<source>/canon*`, over which `tests/run_canon.py` asks the
+also check the retention windows (`windows.sql`), a build in two time
+zones and that a changed setting stops an incremental run (the variables
+listed in `docs/deployment.md`), and that the canonical tables of the
+build are the CSV files in `tests/<source>/canon*`, over which `tests/run_canon.py` asks the
 questions again with no dbt; the WooCommerce job runs on ClickHouse 26.7 and 26.9. The unions
 job builds every package into databases of its own, builds the three
 unions over them and compares each label's answers with its database's
