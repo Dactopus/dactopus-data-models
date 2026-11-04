@@ -17,6 +17,11 @@ Ossie schema `0.2.0.dev0`. Tested with the same versions as 0.11.0.
 - The descriptions of the three models name the source packages without
   repository paths (`sources/shopify` and the like). The tables do not
   change and no rebuild is needed.
+- CI leaves a change of text alone out of the package and union jobs: a
+  `dbt_project.yml` whose only changed line is its `version:`, an entity
+  whose `description` and `ai_context` alone changed
+  (`tests/reach.py`). The validate job still runs on any change to an
+  entity. A release's version lines no longer run every package.
 
 ## [0.11.0] - 2026-11-04
 

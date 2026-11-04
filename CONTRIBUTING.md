@@ -290,9 +290,12 @@ two files.
 
 A job runs when a file it reads changed: its package, its entity, its
 `tests/<source>/` and `tests/ask_model.py`, or what every job reads
-(`ci.yml`, `tests/profiles.yml`, the `check_*.py` scripts); the filters
-are in `ci.yml`. The unions job runs on a change to any package, the
-validate job on a change to any entity. Documentation reaches no job. The
+(`ci.yml`, `tests/profiles.yml`, `tests/reach.py`, the `check_*.py`
+scripts); the filters are in `ci.yml`. The unions job runs on a change
+to any package, the validate job on a change to any entity. Documentation
+reaches no job, and a change of text alone no package or union job: a
+`dbt_project.yml` whose only changed line is its `version:`, an entity
+whose `description` and `ai_context` alone changed (`tests/reach.py`). The
 check `main` requires is `CI passed`, which fails when a job failed or
 was cancelled and passes otherwise, also when every job was skipped.
 
