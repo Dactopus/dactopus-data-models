@@ -1,6 +1,6 @@
 {{ config(unique_key='order_id', order_by='(order_date, order_id)',
           pre_hook=["{{ woocommerce_keep_changed() }}", "{{ woocommerce_delete_removed() }}"],
-          post_hook="{{ woocommerce_drop_changed() }}") }}
+          post_hook=["{{ woocommerce_drop_changed() }}", "{{ woocommerce_save_settings() }}"]) }}
 -- One row per order, in its current state (input.sql). The numbers follow
 -- the store's own reports, WooCommerce Analytics, under the settings the
 -- package's variables repeat (dbt_project.yml): which date an order is

@@ -44,7 +44,7 @@ is in UTC and orders near midnight fall on the wrong day. WooCommerce
 also needs the store's currency, and its report settings where they
 differ from WooCommerce's (the WooCommerce package's [Your store](../sources/woocommerce/README.md#your-store), step 4). The WooCommerce package
 needs ClickHouse 26.7 or later, and its dbt user needs
-`ALTER MODIFY COMMENT` on `refunds` (the WooCommerce package's [Your store](../sources/woocommerce/README.md#your-store), step 5).
+`ALTER MODIFY COMMENT` on `orders`, `order_lines` and `refunds` (the WooCommerce package's [Your store](../sources/woocommerce/README.md#your-store), step 5), and the Shopify package's dbt user the same on its three incremental tables (`orders`, `order_lines`, `refunds`).
 
 ```yaml
 vars:
@@ -76,9 +76,11 @@ is the package's name (`shopify`). A label is 1 to 64 of `a-z`, `0-9`
 and `_`; the build stops on any other. The Ossie models put `source_id`
 first in the key of every dataset that has one and join on it, so the
 tables of two stores, each built with its own label, keep their orders
-and customers apart. A new label needs `dbt build --full-refresh`: an
-incremental run labels only the rows it rebuilds, and the package's
-tests then fail with a message that says so.
+and customers apart. A new label needs `dbt build --full-refresh`, as
+the settings below do: an incremental run over tables built under
+another label stops before it reads or deletes a row of the three
+incremental tables, with a message that says so. The packages' tests that every row carries one label stay as the
+second line.
 
 Each package's `deployment.yml` lists what a deployment sets and reads:
 the Ossie model its tables serve, the variables above by their role
@@ -88,14 +90,34 @@ is the day of. A tool that deploys the packages reads it in place of
 this section. A package's days are in the zone of the variable with the
 role `time_zone` (Shopify, WooCommerce), in the `zone` the package fixes
 (Sensor.Community: UTC), or in the source's own zone, which only the
-deployment knows (GA4: neither key). A change of `shopify_timezone` or
-`woocommerce_timezone` needs `dbt build --full-refresh`: an incremental
-run rebuilds only the orders and refunds loaded since the last one, the
-rest keep the days of the old zone, and no dbt test fails. `uv run
+deployment knows (GA4: neither key). `uv run
 tests/check_deployment.py sources/shopify --time-zone <zone>` counts the
 rows whose date is not the day of their time in the zone: none in a table
 built whole in it. For a package with `zone` the check runs without
 `--time-zone`.
+
+An incremental run rebuilds only the orders and refunds the input
+changed, and the rest keep the values they were built with. A variable
+that decides those values therefore needs `dbt build --full-refresh`
+once when it changes. `orders`, `order_lines` and `refunds` of the
+Shopify and WooCommerce packages keep the values they were built with in
+their table comments, and a run that changes one without the full
+refresh stops before it reads or deletes a row of them, naming the
+variable with its old and new value. The tables a run builds whole may
+have taken the new values by then, and the full refresh brings all of
+them in line. The variables:
+
+| Package | Variables |
+| --- | --- |
+| Shopify | `shopify_timezone`, `shopify_source_id` |
+| WooCommerce | `woocommerce_timezone`, `woocommerce_source_id`, `woocommerce_currency`, `woocommerce_price_decimals`, `woocommerce_date_type`, `woocommerce_excluded_statuses`, `woocommerce_order_statuses`, `woocommerce_order_number_meta_key` |
+
+The input database, the table prefix and the lookback days only say
+where and how far a run reads: the values of the rows built stay what
+they were, and the three change in any run. A table built by a release before 0.12.0 records no values,
+and its first run stops the same way; the full refresh that release
+needs for its new columns covers it. The GA4 and Sensor.Community
+packages record none; their label is held by the one-label tests alone.
 
 Point dactopus-ossie-clickhouse at your target's database
 (`--url http://host:8123/<database>`, or `https://` over TLS) and take

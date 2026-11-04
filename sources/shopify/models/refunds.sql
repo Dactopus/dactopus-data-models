@@ -1,4 +1,5 @@
-{{ config(unique_key='refund_id', order_by='(refund_date, refund_id)') }}
+{{ config(unique_key='refund_id', order_by='(refund_date, refund_id)',
+          pre_hook="{{ shopify_check_settings() }}", post_hook="{{ shopify_save_settings() }}") }}
 -- One row per refund, its latest version (input.sql). Refunds of test
 -- orders are left out. The amount is what was paid back: refunded lines,
 -- shipping and adjustments together (totalRefundedSet), less gift cards

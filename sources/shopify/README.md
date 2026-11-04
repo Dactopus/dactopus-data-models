@@ -288,6 +288,30 @@ dactopus-ossie-clickhouse, as in the README's [Quick start](../../README.md#quic
    input tables.
 
 
+## Changing a setting
+
+`orders`, `order_lines` and `refunds` are incremental: a run rebuilds
+only what the input changed and keeps the other rows as they were built.
+Two variables decide the values of the rows already built, so a change
+of either needs `dbt build --full-refresh` once:
+
+- `shopify_timezone`: the day of every order and refund.
+- `shopify_source_id`: the `source_id` of every row.
+
+The three tables record the values they were built with in their
+comments (`built with {...}`), and an incremental run that finds other
+values stops before it reads or deletes a row of them, naming each
+variable with its old and new value. The tables a run builds whole, such
+as `products` and `customers`, may already have taken the new values
+when it stops; the full refresh brings all of them in line and records
+the new ones. A table built
+by a release before 0.12.0 records none, so its first run stops the same
+way; the full refresh that release needs for its new column covers it.
+The dbt user needs `ALTER MODIFY COMMENT` on the three tables (part of
+`ALTER TABLE`). `shopify_input_database` and `shopify_lookback_days` can
+change in any run.
+
+
 ## Known differences from Shopify's reports
 
 The package is checked against a store's reports.

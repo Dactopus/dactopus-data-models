@@ -188,12 +188,44 @@ Cloud's CDC, runs PeerDB but is not checked yet.
    `woocommerce_lookback_days` (default 3) before the latest sync it has
    seen. `refunds` has no row for an order without refunds, so it keeps
    that sync in its table's comment, rewritten on each run; the dbt user
-   needs `ALTER MODIFY COMMENT` on it (part of `ALTER TABLE`). `orders`
+   needs `ALTER MODIFY COMMENT` on it and on `orders` and `order_lines`,
+   which keep the settings they were built with in theirs (Changing a
+   setting, below; the privilege is part of `ALTER TABLE`). `orders`
    keeps the orders a run rereads in `orders__changed` and drops it at
    the end; a run that fails leaves it, and the next run rereads its
    orders too.
    `dbt source freshness` warns when CDC has not synced
    an order for a day; a store without an order in a day warns too.
+
+
+## Changing a setting
+
+`orders`, `order_lines` and `refunds` are incremental: a run rebuilds
+only the orders the input changed and keeps the other rows as they were
+built. Eight variables decide the values of the rows already built, so a
+change of any of them needs `dbt build --full-refresh` once:
+
+- `woocommerce_timezone`: the day of every order and refund.
+- `woocommerce_date_type` and `woocommerce_excluded_statuses`: which
+  orders the reports count, and the date they count them on.
+- `woocommerce_order_statuses`: the core status of an order in a plugin's
+  status.
+- `woocommerce_currency` and `woocommerce_price_decimals`: the amounts
+  converted from another currency.
+- `woocommerce_order_number_meta_key`: the number an order shows.
+- `woocommerce_source_id`: the `source_id` of every row.
+
+The three tables record the values they were built with in their
+comments (`built with {...}`, after the sync position of `refunds`), and
+an incremental run that finds other values stops before it reads or
+deletes a row of them, naming each variable with its old and new value.
+The tables a run builds whole, such as `products` and `customers`, may
+already have taken the new values when it stops; the full refresh brings
+all of them in line and records the new ones. A table built by a release before 0.12.0
+records none, so its first run stops the same way; the full refresh that
+release needs for its new column covers it. `woocommerce_input_database`,
+`woocommerce_table_prefix` and `woocommerce_lookback_days` can change in
+any run.
 
 
 ## Known differences from WooCommerce Analytics

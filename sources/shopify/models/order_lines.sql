@@ -1,4 +1,5 @@
-{{ config(unique_key='order_id', order_by='(order_date, order_id, line_id)') }}
+{{ config(unique_key='order_id', order_by='(order_date, order_id, line_id)',
+          pre_hook="{{ shopify_check_settings() }}", post_hook="{{ shopify_save_settings() }}") }}
 -- One row per line of an order: the lines of the order's latest version
 -- (input.sql), each as last loaded: the goods sold. Lines of test orders
 -- are left out, and so are gift cards sold and the tip (see orders.sql).
