@@ -168,7 +168,6 @@ class DuckDB:
                 document.setdefault("metrics", []).append(metric)
         # The extension reads only `dialects`. Remove once it reads `sql`.
         for item in [*(f for d in document["datasets"] for f in d["fields"]),
-                     *(m for d in document["datasets"] for m in d.get("metrics") or []),
                      *document.get("metrics", [])]:
             item["expression"] = {"dialects": [{"dialect": "ANSI_SQL",
                                                 "expression": item["expression"]["sql"]}]}

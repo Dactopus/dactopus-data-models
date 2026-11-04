@@ -172,10 +172,11 @@ does not belong here.
 
 **Format.** Ossie schema `0.2.0.dev0`, the only version the upstream
 schema accepts today. Write expressions in `sql`, the spec's portable form
-(`OSSIE_SQL_2026`); `dialects` only for a vendor variant. Mapping, refresh and checks live in the
-package's dbt project, not in the Ossie files, so entities stay plain Ossie
-that any Ossie tool reads. The only extension used is dactopus-ossie-clickhouse's
-`CLICKHOUSE` namespace and its `dedup` key.
+(`OSSIE_SQL_2026`); `dialects` only for a vendor variant. Mapping, refresh
+and checks live in the package's dbt project, not in the Ossie files, so
+entities stay plain Ossie that any Ossie tool reads. The only extension
+used is dactopus-ossie-clickhouse's `CLICKHOUSE` namespace and its `dedup`
+key.
 
 **The canon is selected, not designed.** A field that at least two
 sources provide goes into the canonical entity. A source that has less
