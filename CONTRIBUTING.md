@@ -203,8 +203,9 @@ one dataset, field or metric goes in that object's description, never in
 both places; `list_model` shows the descriptions of datasets and metrics,
 `describe_object` those of fields. The instructions stay within 2,300
 characters: dactopus-ossie-clickhouse puts them into its MCP server's
-instructions after a preamble of 1,764, and Claude Code cuts a server's
-instructions at 4,096.
+instructions after a preamble of about 1,780 (it names the model and its
+time zone), and Claude Code cuts a server's instructions at 4,096.
+`uv run tests/check_contracts.py` checks the limit.
 
 **Name the "obvious" choices.** Models break on what looks obvious:
 - Order date: placed, paid or shipped? Store time zone or UTC?

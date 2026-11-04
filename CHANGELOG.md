@@ -22,7 +22,8 @@ the other versions as in 0.11.0.
   4,096 characters: an agent saw a quarter of the `commerce` rules there.
   A rule about one dataset, field or metric moved to its description, and
   one said twice is said once. The tables do not change and no rebuild
-  is needed.
+  is needed. `tests/check_contracts.py` fails on instructions over 2,300
+  characters.
 
 ## [0.11.1] - 2026-11-04
 

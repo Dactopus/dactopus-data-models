@@ -36,7 +36,8 @@ that each label is in one database (<domain>_union_distinct_source_ids).
 With one label in each database and the packages' key tests, that keeps
 every key unique in a union. In every Ossie model under entities/,
 source_id comes first in each primary_key and on both sides of each
-relationship: without it a union joins rows across instances. No
+relationship: without it a union joins rows across instances, and its
+ai_context.instructions stay within 2,300 characters. No
 expression of an Ossie model compares a column the packages type Bool
 with a number (is_cancelled = 1): Postgres rejects it. The copies
 of one macro file are the same: macros/freshness.sql in every package,
@@ -63,6 +64,10 @@ from sqlglot import exp
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 LABEL_TYPE = "LowCardinality(String)"
+# dactopus-ossie-clickhouse puts a model's instructions into its MCP
+# server's instructions after a preamble of about 1,780 characters,
+# and Claude Code cuts a server's instructions at 4,096.
+INSTRUCTIONS_LIMIT = 2300
 
 
 def clickhouse(query, **params):
@@ -309,6 +314,11 @@ def check(packages, unions, built):
     for model_path in sorted((ROOT / "entities").glob("*.yaml")):
         model = yaml.safe_load(model_path.read_text())
         name = f"entities/{model_path.name}"
+        instructions = (model.get("ai_context") or {}).get("instructions") or ""
+        if len(instructions) > INSTRUCTIONS_LIMIT:
+            problems.append(f"{name}: ai_context.instructions has {len(instructions)} characters, more than "
+                            f"{INSTRUCTIONS_LIMIT}; move the rules about one dataset, field or metric "
+                            f"into its description")
         for dataset in model["datasets"]:
             key = dataset.get("primary_key")
             if key and key[0] != "source_id":
