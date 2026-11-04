@@ -302,6 +302,23 @@ cases:
       - {category_path: null, line_categories.category_items_sold: 5,
          line_categories.category_revenue: 260, line_categories.category_items_returned: 2,
          line_categories.category_returned_amount: 120, line_categories.category_net_revenue: 140}
+  # The category tree metrics equal them: Shopify's product types have no
+  # subcategories, so every row is the product's own type.
+  - metrics: [line_categories.category_tree_items_sold, line_categories.category_tree_revenue,
+              line_categories.category_tree_items_returned, line_categories.category_tree_returned_amount,
+              line_categories.category_tree_net_revenue]
+    dimensions: [line_categories.category_path]
+    order: [line_categories.category_path]
+    expected:
+      - {category_path: "Apparel", line_categories.category_tree_items_sold: 11,
+         line_categories.category_tree_revenue: 801, line_categories.category_tree_items_returned: 2,
+         line_categories.category_tree_returned_amount: 245, line_categories.category_tree_net_revenue: 556}
+      - {category_path: "Kitchen", line_categories.category_tree_items_sold: 2,
+         line_categories.category_tree_revenue: 125, line_categories.category_tree_items_returned: 0,
+         line_categories.category_tree_returned_amount: 0, line_categories.category_tree_net_revenue: 125}
+      - {category_path: null, line_categories.category_tree_items_sold: 5,
+         line_categories.category_tree_revenue: 260, line_categories.category_tree_items_returned: 2,
+         line_categories.category_tree_returned_amount: 120, line_categories.category_tree_net_revenue: 140}
   # September by category: Apparel 90 + 81 + 200 + 100 = 471 (5 items),
   # Kitchen 45, none 60 + 60 + 20 + 90 = 230; 746, September's orders less
   # shipping, tax and the tip.

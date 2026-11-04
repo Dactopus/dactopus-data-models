@@ -10,7 +10,11 @@
 -- where woocommerce_date_type says so. net_total is what the customer's
 -- numbered orders earned after refunds, as the Customers report's total
 -- spend counts it: an order on hold counts there, though not in the
--- reports' net sales.
+-- reports' net sales. The report's data store counts a customer's orders
+-- and total spend over wc_order_stats rows that are orders, in any status
+-- but the excluded ones
+-- (https://github.com/woocommerce/woocommerce/blob/trunk/plugins/woocommerce/src/Admin/API/Reports/Customers/DataStore.php,
+-- get_countable_customer_order_predicate and the status filter).
 -- Rebuilt from orders on every run: one narrow read, and a customer cannot
 -- drift from their orders, or keep a row when an order moves away.
 SELECT

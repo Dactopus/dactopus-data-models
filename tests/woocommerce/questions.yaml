@@ -299,6 +299,46 @@ cases:
     expected:
       - {order_lines.items_sold: 6, order_lines.line_revenue: 130,
          order_lines.line_net_revenue: 110}
+  # The same with the category tree metrics, which read line_categories
+  # alone: filtered by one category, each line in it or under it once,
+  # the numbers of the two questions above.
+  - metrics: [line_categories.category_tree_items_sold, line_categories.category_tree_revenue,
+              line_categories.category_tree_items_returned,
+              line_categories.category_tree_returned_amount, line_categories.category_tree_net_revenue]
+    filters: ["line_categories.category_path = 'Clothing'"]
+    expected:
+      - {line_categories.category_tree_items_sold: 6, line_categories.category_tree_revenue: 175.818182,
+         line_categories.category_tree_items_returned: 1,
+         line_categories.category_tree_returned_amount: 27,
+         line_categories.category_tree_net_revenue: 148.818182}
+  - metrics: [line_categories.category_tree_items_sold, line_categories.category_tree_revenue,
+              line_categories.category_tree_net_revenue]
+    filters: ["line_categories.category_path = 'Kitchen & Dining'"]
+    expected:
+      - {line_categories.category_tree_items_sold: 6, line_categories.category_tree_revenue: 130,
+         line_categories.category_tree_net_revenue: 110}
+  # By path, each category with everything under it: Clothing now has the
+  # Tee's 6 and 175.818182 through T-Shirts; Kitchen & Dining the Mug once,
+  # though it is in Kitchen & Dining and in its Accessories.
+  - metrics: [line_categories.category_tree_items_sold, line_categories.category_tree_revenue,
+              line_categories.category_tree_net_revenue]
+    dimensions: [line_categories.category_path]
+    order: [line_categories.category_path]
+    expected:
+      - {category_path: "Clothing", line_categories.category_tree_items_sold: 6,
+         line_categories.category_tree_revenue: 175.818182, line_categories.category_tree_net_revenue: 148.818182}
+      - {category_path: "Clothing > T-Shirts", line_categories.category_tree_items_sold: 6,
+         line_categories.category_tree_revenue: 175.818182, line_categories.category_tree_net_revenue: 148.818182}
+      - {category_path: "Gifts", line_categories.category_tree_items_sold: 6,
+         line_categories.category_tree_revenue: 130, line_categories.category_tree_net_revenue: 110}
+      - {category_path: "Kitchen & Dining", line_categories.category_tree_items_sold: 6,
+         line_categories.category_tree_revenue: 130, line_categories.category_tree_net_revenue: 110}
+      - {category_path: "Kitchen & Dining > Accessories", line_categories.category_tree_items_sold: 6,
+         line_categories.category_tree_revenue: 130, line_categories.category_tree_net_revenue: 110}
+      - {category_path: "Uncategorized", line_categories.category_tree_items_sold: 2,
+         line_categories.category_tree_revenue: 10, line_categories.category_tree_net_revenue: 10}
+      - {category_path: null, line_categories.category_tree_items_sold: 1,
+         line_categories.category_tree_revenue: 25, line_categories.category_tree_net_revenue: 25}
   # September by category: Gifts, Kitchen & Dining and its Accessories
   # 109's 20 + 111's 20 = 40, net 20 each; T-Shirts 104's 54 + 110's
   # 31.818182 = 85.818182, net 58.818182; Clothing, above T-Shirts, 0.
@@ -417,6 +457,24 @@ cases:
               "product_categories.category_path = 'Kitchen & Dining'"]
     expected:
       - {products.product_count: 1}
+  # The same with the category tree count, which reads product_categories
+  # alone, and by path: Clothing 2 (12, 15), Kitchen & Dining 1 (the Mug,
+  # 11, once).
+  - metrics: [product_categories.category_tree_product_count]
+    filters: ["products.status = 'active'", "product_categories.category_path = 'Clothing'"]
+    expected:
+      - {product_categories.category_tree_product_count: 2}
+  - metrics: [product_categories.category_tree_product_count]
+    dimensions: [product_categories.category_path]
+    filters: ["products.status = 'active'"]
+    order: [product_categories.category_path]
+    expected:
+      - {category_path: "Clothing", product_categories.category_tree_product_count: 2}
+      - {category_path: "Clothing > Accessories", product_categories.category_tree_product_count: 1}
+      - {category_path: "Clothing > T-Shirts", product_categories.category_tree_product_count: 1}
+      - {category_path: "Gifts", product_categories.category_tree_product_count: 2}
+      - {category_path: "Kitchen & Dining", product_categories.category_tree_product_count: 1}
+      - {category_path: "Kitchen & Dining > Accessories", product_categories.category_tree_product_count: 1}
   # By brand: Acme the Tee and the Tote (the Sticker pack is in the
   # trash), Northwind the Tee.
   - metrics: [product_brands.product_count]
