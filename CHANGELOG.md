@@ -8,6 +8,11 @@ names the Ossie schema version its models carry.
 
 ## [Unreleased]
 
+### Changed
+
+- CI installs dactopus-ossie-clickhouse 0.14.0 from PyPI instead of 0.12.0 from
+  git.
+
 ## [0.12.0] - 2026-11-04
 
 Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.13.0
