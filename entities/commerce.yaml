@@ -31,18 +31,18 @@ ai_context:
     and platforms and ask which is meant; do not pick a store by its
     currency or platform otherwise. A question that names no store means all
     of them: say nothing of stores unless a result shows more than one. A
-    store missing from a result has a zero there and is still one of the
-    stores. Identifiers (order_id, customer_id, product_id) repeat across
-    stores: with several, group or filter by one with its source_id. Dates
-    are in each store's own time zone; with stores in several zones, name
-    the date you asked for. Where the stores' reports count differently on
-    each platform, descriptions name it; orders.platform gives a store's.
-    Every metric but those of customers, orders.all_orders and
-    orders.all_orders_total counts only the orders the store's sales reports
-    count (orders.in_sales_reports); the metrics of customers count the
-    orders of the store's customers report, as its description says. "Sales", "revenue"
-    or "turnover" without a qualifier means sales_events.net_revenue; name
-    its definition in the answer.
+    store missing from a result has zero count or sum there, no ratio or
+    average, and is still one of the stores. Identifiers (order_id,
+    customer_id, product_id) repeat across stores: with several, group or
+    filter by one with its source_id. Dates are in each store's own time
+    zone; with stores in several zones, name the date you asked for. Where the
+    stores' reports count differently on each platform, descriptions name it;
+    orders.platform gives a store's. Every metric but those of customers,
+    orders.all_orders and orders.all_orders_total counts only the orders the
+    store's sales reports count (orders.in_sales_reports); the metrics of
+    customers count the orders of the store's customers report, as its
+    description says. "Sales", "revenue" or "turnover" without a qualifier means
+    sales_events.net_revenue; name its definition in the answer.
 
 datasets:
   - name: orders
