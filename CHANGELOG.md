@@ -12,6 +12,10 @@ names the Ossie schema version its models carry.
 
 - CI installs dactopus-ossie-clickhouse 0.14.0 from PyPI instead of 0.12.0 from
   git.
+- The commerce model's instructions no longer tell an agent that a store
+  missing from a result has a zero for a ratio or an average, such as the
+  average order value or the refund rate: it has a zero count or sum there
+  and no ratio or average.
 
 ## [0.12.0] - 2026-11-04
 
