@@ -1,5 +1,5 @@
 name: dactopus_iot_union
-version: "0.12.1"
+version: "0.12.2"
 profile: dactopus
 model-paths: ["models"]
 macro-paths: ["macros"]

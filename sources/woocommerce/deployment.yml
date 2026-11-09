@@ -11,7 +11,7 @@ vars:
 # column. `time` is the column whose day `date` is, in the zone of
 # woocommerce_timezone (order_time is the time the reports date the order
 # by, woocommerce_date_type). orders and refunds are incremental: a run
-# after the zone changed stops (woocommerce_check_settings), and a
+# after the zone changed stops (macros/settings.sql), and a
 # --full-refresh builds them in the new one; a row where `date` is not
 # the day of `time` in the zone is one built in another. `gap: true`: a
 # day without rows is a finding there.

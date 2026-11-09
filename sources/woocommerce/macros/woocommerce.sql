@@ -235,108 +235,28 @@ if({{ rate }}.rate_fox, {{ woocommerce_convert(total, rate) }},
    separated by "; ", in this order, and each macro changes the segments
    it owns and leaves the others (woocommerce_set_comment):
    "read through <time> UTC", "reading through <time> UTC" (refunds only)
-   and "built with <JSON>", the settings the table was built with
-   (woocommerce_settings). This macro returns the time of a position
-   segment, "read" or "reading", or '' without one. #}
+   and "built with <JSON>", the settings the table was built with, which
+   the settings guard writes (macros/settings.sql). This macro returns the
+   time of a position segment, "read" or "reading", or '' without one. #}
 {% macro woocommerce_comment_position(field) -%}
 {%- set r = run_query("SELECT extract(comment, '(?:^|; )" ~ field ~ " through ([^;]+) UTC') FROM system.tables WHERE database = '"
                       ~ this.schema ~ "' AND name = '" ~ this.identifier ~ "'") -%}
 {{- return(r.columns[0].values()[0] if r.columns[0].values() else '') -}}
 {%- endmacro %}
 
-{# The settings segment of the table's comment, the JSON after "built with
-   ", or '' without one. It is the last segment: the JSON may hold any
-   character, so the segment runs to the end of the comment. #}
-{% macro woocommerce_comment_built() -%}
-{%- set r = run_query("SELECT extract(comment, '(?:^|; )built with (.*)$') FROM system.tables WHERE database = '"
-                      ~ this.schema ~ "' AND name = '" ~ this.identifier ~ "'") -%}
-{{- return(r.columns[0].values()[0] if r.columns[0].values() else '') -}}
-{%- endmacro %}
-
-{# The statement that changes the segments of the table's comment named in
-   `changes`, a dict of read, reading and built (the position times and the
-   settings JSON), and keeps the others; '' removes a segment. The only
-   place that writes the comment. #}
+{# The statement that changes the position segments of the table's comment
+   named in `changes`, a dict of read and reading, and keeps the others;
+   '' removes a segment. The only place in the package that writes the
+   comment; the settings guard writes the last segment. #}
 {% macro woocommerce_set_comment(changes) -%}
 {%- set parts = {'read': woocommerce_comment_position('read'), 'reading': woocommerce_comment_position('reading'),
-                 'built': woocommerce_comment_built()} -%}
+                 'built': dactopus_recorded_settings()} -%}
 {%- do parts.update(changes) -%}
 {%- set segments = [] -%}
 {%- if parts['read'] -%}{%- do segments.append('read through ' ~ parts['read'] ~ ' UTC') -%}{%- endif -%}
 {%- if parts['reading'] -%}{%- do segments.append('reading through ' ~ parts['reading'] ~ ' UTC') -%}{%- endif -%}
 {%- if parts['built'] -%}{%- do segments.append('built with ' ~ parts['built']) -%}{%- endif -%}
 ALTER TABLE {{ this }} MODIFY COMMENT '{{ segments | join('; ') | replace('\\', '\\\\') | replace("'", "\\'") }}'
-{%- endmacro %}
-
-{# The variables the values of the rows already built depend on, with their
-   values in this run: a change of any of them leaves an incremental run
-   rebuilding the orders it rereads by the new setting and keeping the
-   rest by the old one, and no test fails. Not listed: the input database
-   and the table prefix, which name where the same rows are read from, and
-   the lookback, which only widens a window. #}
-{% macro woocommerce_settings() -%}
-{%- set settings = {} -%}
-{%- for name in ['woocommerce_currency', 'woocommerce_date_type', 'woocommerce_excluded_statuses', 'woocommerce_order_number_meta_key',
-                 'woocommerce_order_statuses', 'woocommerce_price_decimals', 'woocommerce_source_id', 'woocommerce_timezone'] -%}
-{%- do settings.update({name: var(name)}) -%}
-{%- endfor -%}
-{{- return(settings) -}}
-{%- endmacro %}
-
-{# A setting's value in the form the check compares: a list sorted, with
-   its items as strings (the order of excluded statuses means nothing),
-   a dict with its values as strings, a scalar as a string (a value given
-   as "2" is the 2 the table recorded). #}
-{% macro woocommerce_setting_value(value) -%}
-{%- if value is mapping -%}
-{%- set d = {} -%}
-{%- for k, v in value.items() -%}{%- do d.update({k | string: v | string}) -%}{%- endfor -%}
-{{- return(d) -}}
-{%- elif value is iterable and value is not string -%}
-{{- return(value | map('string') | sort | list) -}}
-{%- else -%}
-{{- return(value | string) -}}
-{%- endif -%}
-{%- endmacro %}
-
-{# Stops an incremental run whose table was built with other settings
-   (woocommerce_settings) than this run has, or by a release that did not
-   record them, before a pre-hook deletes rows or rewrites the comment.
-   A full refresh builds the table anew and records the settings
-   (woocommerce_save_settings). #}
-{% macro woocommerce_check_settings() -%}
-{%- if execute and is_incremental() -%}
-{%- set settings = woocommerce_settings() -%}
-{%- set recorded = woocommerce_comment_built() -%}
-{%- set built = fromjson(recorded, none) if recorded else none -%}
-{%- set differ = [] -%}
-{%- if built is mapping -%}
-{%- for name, value in settings.items() -%}
-{%- if woocommerce_setting_value(built.get(name)) != woocommerce_setting_value(value) -%}
-{%- do differ.append(name ~ " was " ~ tojson(built.get(name)) ~ ", is " ~ tojson(value)) -%}
-{%- endif -%}
-{%- endfor -%}
-{%- else -%}
-{%- do differ.append("it records no settings this release reads: a release before this one built it, or its comment was changed by hand") -%}
-{%- endif -%}
-{%- if differ -%}
-{{ exceptions.raise_compiler_error(this ~ " was not built with the settings of this run (" ~ differ | join("; ") ~ "): run dbt build --full-refresh once (package README, Changing a setting)") }}
-{%- endif -%}
-{%- endif -%}
-{%- endmacro %}
-
-{# Post-hook: a table just built, whole or by a full refresh, records the
-   settings it was built with. An incremental run changes nothing: its
-   pre-hook has found them the same. is_incremental() cannot tell a first
-   build here: the table exists by now, and dbt v2 answers true where v1
-   answers false (a full refresh: false in both). The two signs are
-   should_full_refresh() and a table that records nothing. #}
-{% macro woocommerce_save_settings() -%}
-{%- if execute and (should_full_refresh() or not woocommerce_comment_built()) -%}
-{{ woocommerce_set_comment({'built': tojson(woocommerce_settings(), sort_keys=true)}) }}
-{%- else -%}
-SELECT 1
-{%- endif -%}
 {%- endmacro %}
 
 {# Stops an incremental run whose table has other columns than the model's
@@ -360,15 +280,8 @@ SELECT 1
 {%- endif -%}
 {%- endmacro %}
 
-{# What every pre-hook of an incremental model checks first: the table
-   has the columns and was built with the settings of this run. #}
-{% macro woocommerce_check_built() -%}
-{{- woocommerce_check_columns() -}}
-{{- woocommerce_check_settings() -}}
-{%- endmacro %}
-
 {% macro woocommerce_reading() -%}
-{{- woocommerce_check_built() -}}
+{{- woocommerce_check_columns() -}}
 {%- if execute and is_incremental() -%}
 {%- set latest = run_query("SELECT toString(toTimeZone(max(_peerdb_synced_at), 'UTC')) FROM "
                            ~ source('woocommerce_raw', 'wc_orders')).columns[0].values()[0] -%}
@@ -416,7 +329,7 @@ SELECT 1
    refunds is not in the new rows, and delete+insert replaces only the
    orders that are. #}
 {% macro woocommerce_delete_changed(products=false, in_comment=false) -%}
-{{- woocommerce_check_built() -}}
+{{- woocommerce_check_columns() -}}
 {%- if is_incremental() -%}
 DELETE FROM {{ this }} WHERE order_id IN {{ woocommerce_changed_orders(products, in_comment) }}
 {%- else -%}
@@ -442,7 +355,7 @@ SELECT 1
 {%- endmacro %}
 
 {% macro woocommerce_keep_changed() -%}
-{{- woocommerce_check_built() -}}
+{{- woocommerce_check_columns() -}}
 {%- if is_incremental() -%}
 {%- set left = execute and run_query("EXISTS TABLE " ~ woocommerce_changed_table()).columns[0].values()[0] -%}
 CREATE OR REPLACE TABLE {{ woocommerce_changed_table() }} ENGINE = MergeTree ORDER BY tuple() AS
@@ -465,7 +378,7 @@ SELECT 1
    orders that are no longer orders (woocommerce_delete_changed). The
    others stay: delete+insert replaces them. #}
 {% macro woocommerce_delete_removed() -%}
-{{- woocommerce_check_built() -}}
+{{- woocommerce_check_columns() -}}
 {%- if is_incremental() -%}
 {%- set changed = "(SELECT order_id FROM " ~ woocommerce_changed_table() ~ ")" -%}
 DELETE FROM {{ this }} WHERE order_id IN {{ changed }}

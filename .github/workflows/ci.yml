@@ -56,6 +56,7 @@ jobs:
               - tests/check_contracts.py
               - tests/check_deployment.py
               - tests/check_freshness.py
+              - tests/check_settings.py
             validate:
               - *common
               - entities/**
@@ -219,18 +220,21 @@ jobs:
       # Every row carries the label the build was given (ga4_source_id).
       # CI's builds give one other than the package's default, and the
       # one-label tests hold every table to it. A label the package does not
-      # accept stops the build; a new label over tables built under the old
-      # one fails those tests, with a message that names --full-refresh.
+      # accept stops the build; a new label over the incremental tables
+      # stops the run (the next step).
       - name: Label of the property
         run: |
           if ${DBT_BUILD/property_a/Property-a} > label.txt 2>&1; then cat label.txt; exit 1; fi
           grep -q 'ga4_source_id must be 1 to 64 characters' label.txt
-          # No lookback: the run rebuilds the fixture's last day only, and its
-          # first keeps the old label. With the default 3 days it would
-          # relabel both, and the table would hold one label again.
-          if ${DBT_BUILD/'"ga4_source_id":"property_a"'/'"ga4_source_id":"property_b","ga4_lookback_days":0'} > label.txt 2>&1
-          then cat label.txt; exit 1; fi
-          grep -q 'run dbt build --full-refresh once after changing ga4_source_id' label.txt
+      # The settings guard (macros/settings.sql): the variables the built
+      # rows depend on (meta.guarded_vars) are recorded in the comment of
+      # each incremental table. A run that changes one stops before it
+      # reads or deletes a row and names it; a full refresh records the new
+      # values (tests/check_settings.py).
+      - name: Settings the built rows depend on
+        run: |
+          CLICKHOUSE_DATABASE=analytics_settings uv run tests/check_settings.py sources/ga4 \
+              --change ga4_source_id='"property_b"' -- $DBT_BUILD
   shopify:
     runs-on: ubuntu-24.04
     needs: changes
@@ -389,7 +393,7 @@ jobs:
       # holds it to the package and the built tables, and counts the rows
       # whose date is not the day of their time in the build's zone: none
       # after builds in one zone. A run in another zone without
-      # --full-refresh stops (shopify_check_settings) and leaves the
+      # --full-refresh stops (macros/settings.sql) and leaves the
       # tables as New York built them, so the check, which the run did
       # not change, finds 1003, at 02:00 UTC, on New York's day and fails
       # on orders, not for another reason. A full refresh in UTC builds
@@ -428,59 +432,22 @@ jobs:
       # Every row carries the label the build was given (shopify_source_id).
       # CI's builds give one other than the package's default, and the
       # one-label tests hold every table to it. A label the package does not
-      # accept stops the build; a new label over tables built under the old
-      # one stops the run before it reads or deletes a row of orders,
-      # order_lines or refunds (shopify_check_settings), with a message
-      # that names the variable and --full-refresh. The one-label tests
-      # stay and hold the tables the run builds whole; this step does not
-      # reach them.
+      # accept stops the build; a new label over the incremental tables
+      # stops the run (the next step).
       - name: Label of the store
         run: |
           if ${DBT_BUILD/store_ny/Store-ny} > label.txt 2>&1; then cat label.txt; exit 1; fi
           grep -q 'shopify_source_id must be 1 to 64 characters' label.txt
-          if ${DBT_BUILD/store_ny/store_la} > label.txt 2>&1; then cat label.txt; exit 1; fi
-          grep -q 'shopify_source_id was "store_ny", is "store_la"): run dbt build --full-refresh once' label.txt
 
-      # The variables the built rows depend on (shopify_settings) are
-      # recorded in the comment of orders, order_lines and refunds. A run
-      # that changes one stops before it reads or deletes a row of these
-      # tables, and names it, so their rows stay as they were (the sums
-      # below); a full refresh records the new value and the next run
-      # goes on.
+      # The settings guard (macros/settings.sql): the variables the built
+      # rows depend on (meta.guarded_vars) are recorded in the comment of
+      # each incremental table. A run that changes one stops before it
+      # reads or deletes a row and names it; a full refresh records the new
+      # values (tests/check_settings.py).
       - name: Settings the built rows depend on
         run: |
-          q() { curl -sf http://127.0.0.1:8123/ --data-binary "$1"; }
-          run() { CLICKHOUSE_DATABASE=analytics_settings "$@"; }
-          # with_vars <variable>=<JSON value>...: the build command with these variables set
-          with_vars() { python3 - "$DBT_BUILD" "$@" <<'EOF'
-          import json, sys
-          words = sys.argv[1].split()
-          values = json.loads(words[-1])
-          for pair in sys.argv[2:]:
-              name, value = pair.split("=", 1)
-              values[name] = json.loads(value)
-          print(" ".join(words[:-1] + [json.dumps(values, separators=(",", ":"))]))
-          EOF
-          }
-          # stops <variable> <JSON value>: the run stops, naming the variable and no other
-          stops() {
-              if run $(with_vars "$1=$2") > settings.txt 2>&1; then cat settings.txt; exit 1; fi
-              grep -q "($1 was [^;]*): run dbt build --full-refresh once" settings.txt
-          }
-          sums() { for t in orders order_lines refunds; do
-              q "SELECT '$t', count(), groupBitXor(cityHash64(toString(tuple(*)))) FROM analytics_settings.$t FORMAT TSV"; done; }
-          run $DBT_BUILD
-          run $DBT_BUILD                 # unchanged settings
-          sums > before.txt
-          stops shopify_timezone '"UTC"'
-          stops shopify_source_id '"store_la"'
-          sums > after.txt
-          diff before.txt after.txt
-          CHANGED=$(with_vars shopify_timezone='"UTC"' shopify_source_id='"store_la"')
-          run $CHANGED --full-refresh
-          run $CHANGED
-          if run $DBT_BUILD > settings.txt 2>&1; then cat settings.txt; exit 1; fi
-          grep -q 'shopify_timezone was "UTC", is "America/New_York"' settings.txt
+          CLICKHOUSE_DATABASE=analytics_settings uv run tests/check_settings.py sources/shopify \
+              --change shopify_timezone='"UTC"' --change shopify_source_id='"store_la"' -- $DBT_BUILD
   woocommerce:
     runs-on: ubuntu-24.04
     needs: changes
@@ -675,7 +642,7 @@ jobs:
           # comment (woocommerce_reading), not in its rows: the latest sync
           # it read, in UTC on a server that is not. The comment also holds
           # the settings the table was built with, after the position
-          # (woocommerce_settings); orders has them alone.
+          # (macros/settings.sql); orders has them alone.
           test "$(q "SELECT extract(comment, '^read through ([^;]+) UTC; built with ') FROM system.tables WHERE database = 'analytics' AND name = 'refunds'")" = \
                "$(q "SELECT toString(toTimeZone(max(_peerdb_synced_at), 'UTC')) FROM woocommerce_input.wp_2_wc_orders")"
           test "$(q "SELECT JSONExtractString(extract(comment, '^built with (.*)$'), 'woocommerce_timezone') FROM system.tables WHERE database = 'analytics' AND name = 'orders'")" = America/New_York
@@ -763,7 +730,7 @@ jobs:
       # holds it to the package and the built tables, and counts the rows
       # whose date is not the day of their time in the build's zone: none
       # after builds in one zone. A run in another zone without
-      # --full-refresh stops (woocommerce_check_settings) and leaves the
+      # --full-refresh stops (macros/settings.sql) and leaves the
       # tables as New York built them, so the check, which the run did
       # not change, finds 103, paid at 02:10 UTC, on New York's day and
       # fails on orders, not for another reason. A full refresh in UTC
@@ -803,69 +770,29 @@ jobs:
       # Every row carries the label the build was given (woocommerce_source_id).
       # CI's builds give one other than the package's default, and the
       # one-label tests hold every table to it. A label the package does not
-      # accept stops the build; a new label over tables built under the old
-      # one stops the run before it reads or deletes a row of orders,
-      # order_lines or refunds (woocommerce_check_settings), with a
-      # message that names the variable and --full-refresh. The one-label
-      # tests stay and hold the tables the run builds whole; this step
-      # does not reach them.
+      # accept stops the build; a new label over the incremental tables
+      # stops the run (the next step).
       - name: Label of the store
         run: |
           if ${DBT_BUILD/store_wc/Store-wc} > label.txt 2>&1; then cat label.txt; exit 1; fi
           grep -q 'woocommerce_source_id must be 1 to 64 characters' label.txt
-          if ${DBT_BUILD/store_wc/store_eu} > label.txt 2>&1; then cat label.txt; exit 1; fi
-          grep -q 'woocommerce_source_id was "store_wc", is "store_eu"): run dbt build --full-refresh once' label.txt
 
-      # The variables the built rows depend on (woocommerce_settings) are
-      # recorded in the comment of orders, order_lines and refunds. A run
-      # that changes one stops before it reads or deletes a row of these
-      # tables, and names it, so their rows stay as they were (the sums
-      # below); a full refresh records the new values and the next run
-      # goes on.
+      # The settings guard (macros/settings.sql): the variables the built
+      # rows depend on (meta.guarded_vars) are recorded in the comment of
+      # each incremental table. A run that changes one stops before it
+      # reads or deletes a row and names it; a full refresh records the new
+      # values (tests/check_settings.py).
       # The currency is only stopped on: the fixture's orders are in USD,
       # and a store in EUR with no rate for them fails its build.
       - name: Settings the built rows depend on
         run: |
-          q() { curl -sf http://127.0.0.1:8123/ --data-binary "$1"; }
-          run() { CLICKHOUSE_DATABASE=analytics_settings "$@"; }
-          # with_vars <variable>=<JSON value>...: the build command with these variables set
-          with_vars() { python3 - "$DBT_BUILD" "$@" <<'EOF'
-          import json, sys
-          words = sys.argv[1].split()
-          values = json.loads(words[-1])
-          for pair in sys.argv[2:]:
-              name, value = pair.split("=", 1)
-              values[name] = json.loads(value)
-          print(" ".join(words[:-1] + [json.dumps(values, separators=(",", ":"))]))
-          EOF
-          }
-          # stops <variable> <JSON value>: the run stops, naming the variable and no other
-          stops() {
-              if run $(with_vars "$1=$2") > settings.txt 2>&1; then cat settings.txt; exit 1; fi
-              grep -q "($1 was [^;]*): run dbt build --full-refresh once" settings.txt
-          }
-          sums() { for t in orders order_lines refunds; do
-              q "SELECT '$t', count(), groupBitXor(cityHash64(toString(tuple(*)))) FROM analytics_settings.$t FORMAT TSV"; done; }
-          run $DBT_BUILD
-          run $DBT_BUILD                 # unchanged settings
-          sums > before.txt
-          stops woocommerce_timezone '"UTC"'
-          stops woocommerce_currency '"EUR"'
-          stops woocommerce_source_id '"store_eu"'
-          stops woocommerce_date_type '"date_created"'
-          stops woocommerce_excluded_statuses '["pending","cancelled","failed","on-hold"]'
-          stops woocommerce_order_statuses '{"shipped":"completed"}'
-          stops woocommerce_price_decimals 3
-          stops woocommerce_order_number_meta_key '"_order_number"'
-          sums > after.txt
-          diff before.txt after.txt
-          CHANGED=$(with_vars woocommerce_timezone='"UTC"' woocommerce_source_id='"store_eu"' woocommerce_date_type='"date_created"' \
-              woocommerce_excluded_statuses='["pending","cancelled","failed","on-hold"]' woocommerce_order_statuses='{"shipped":"completed"}' \
-              woocommerce_price_decimals=3 woocommerce_order_number_meta_key='"_order_number"')
-          run $CHANGED --full-refresh
-          run $CHANGED
-          if run $DBT_BUILD > settings.txt 2>&1; then cat settings.txt; exit 1; fi
-          grep -q 'woocommerce_timezone was "UTC", is "America/New_York"' settings.txt
+          CLICKHOUSE_DATABASE=analytics_settings uv run tests/check_settings.py sources/woocommerce \
+              --change woocommerce_timezone='"UTC"' --change woocommerce_source_id='"store_eu"' \
+              --change woocommerce_date_type='"date_created"' \
+              --change woocommerce_excluded_statuses='["pending","cancelled","failed","on-hold"]' \
+              --change woocommerce_order_statuses='{"shipped":"completed"}' --change woocommerce_price_decimals=3 \
+              --change woocommerce_order_number_meta_key='"_order_number"' --stop-only woocommerce_currency='"EUR"' \
+              -- $DBT_BUILD
   sensor_community:
     runs-on: ubuntu-24.04
     needs: changes
@@ -1009,14 +936,21 @@ jobs:
       # Every row carries the label the build was given (sensor_community_source_id).
       # CI's builds give one other than the package's default, and the
       # one-label tests hold every table to it. A label the package does not
-      # accept stops the build; a new label over tables built under the old
-      # one fails those tests, with a message that names --full-refresh.
+      # accept stops the build; a new label over the incremental tables
+      # stops the run (the next step).
       - name: Label of the network
         run: |
           if ${DBT_BUILD/network_a/Network-a} > label.txt 2>&1; then cat label.txt; exit 1; fi
           grep -q 'sensor_community_source_id must be 1 to 64 characters' label.txt
-          if ${DBT_BUILD/network_a/network_b} > label.txt 2>&1; then cat label.txt; exit 1; fi
-          grep -q 'run dbt build --full-refresh once after changing sensor_community_source_id' label.txt
+      # The settings guard (macros/settings.sql): the variables the built
+      # rows depend on (meta.guarded_vars) are recorded in the comment of
+      # each incremental table. A run that changes one stops before it
+      # reads or deletes a row and names it; a full refresh records the new
+      # values (tests/check_settings.py).
+      - name: Settings the built rows depend on
+        run: |
+          CLICKHOUSE_DATABASE=analytics_settings uv run tests/check_settings.py sources/sensor_community \
+              --change sensor_community_source_id='"network_b"' -- $DBT_BUILD
   unions:
     runs-on: ubuntu-24.04
     needs: changes

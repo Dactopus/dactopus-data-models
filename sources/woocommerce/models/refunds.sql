@@ -1,6 +1,6 @@
 {{ config(unique_key='order_id', order_by='(refund_date, refund_id)',
           pre_hook=["{{ woocommerce_reading() }}", "{{ woocommerce_delete_changed(in_comment=true) }}"],
-          post_hook=["{{ woocommerce_read() }}", "{{ woocommerce_save_settings() }}"]) }}
+          post_hook="{{ woocommerce_read() }}") }}
 -- One row per refund of an order, in its current state (input.sql). A
 -- refund is a row of wc_orders of type shop_order_refund, its order in
 -- parent_order_id, made through the store's admin or a payment gateway

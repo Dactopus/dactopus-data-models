@@ -10,7 +10,7 @@ vars:
 # The built tables a deployment counts rows per day in, by `date`, a Date
 # column. `time` is the column whose day `date` is, in the zone of
 # shopify_timezone. orders and refunds are incremental: a run after the
-# zone changed stops (shopify_check_settings), and a --full-refresh builds
+# zone changed stops (macros/settings.sql), and a --full-refresh builds
 # them in the new one; a row where `date` is not the day of `time` in the
 # zone is one built in another.
 # `gap: true`: a day without rows is a finding there.

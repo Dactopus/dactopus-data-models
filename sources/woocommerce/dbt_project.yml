@@ -1,5 +1,5 @@
 name: dactopus_woocommerce
-version: "0.12.1"
+version: "0.12.2"
 profile: dactopus
 model-paths: ["models"]
 macro-paths: ["macros"]
@@ -57,3 +57,23 @@ models:
     # with an error rather than leave the old table: run it once with
     # --full-refresh, as the CHANGELOG says.
     +on_schema_change: fail
+    # The settings guard (macros/settings.sql): an incremental run whose
+    # table was built with other values of guarded_vars stops before it
+    # reads or deletes a row, and a full refresh records the new ones. Each
+    # variable of vars above is in guarded_vars, with its default there
+    # too, or in free_vars, which any run may change: they name where the
+    # same rows are read from, or only widen the window a run rereads
+    # (tests/check_contracts.py).
+    +pre-hook: "{{ dactopus_check_settings() }}"
+    +post-hook: "{{ dactopus_save_settings() }}"
+    +meta:
+      guarded_vars:
+        woocommerce_currency: ""
+        woocommerce_date_type: date_paid
+        woocommerce_excluded_statuses: [pending, cancelled, failed]
+        woocommerce_order_number_meta_key: ""
+        woocommerce_order_statuses: {}
+        woocommerce_price_decimals: 2
+        woocommerce_source_id: woocommerce
+        woocommerce_timezone: UTC
+      free_vars: [woocommerce_input_database, woocommerce_table_prefix, woocommerce_lookback_days]

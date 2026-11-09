@@ -57,6 +57,8 @@ release it builds on; older releases are untested.
       macros/<source>.sql     SQL the package's models share
       macros/freshness.sql    `dbt source freshness` on dbt v2, the same
                               file in every package
+      macros/settings.sql     the settings guard of the incremental models,
+                              the same file in every package
       models/<entity>.sql     one model per entity, named after it; a table
                               behind an entity's model that is no entity
                               itself is <entity>_<part>.sql
@@ -102,6 +104,8 @@ release it builds on; older releases are untested.
     tests/check_deployment.py checks the deployment.yml of each package and
                               union against it and its built tables
     tests/check_freshness.py  checks the ages `dbt source freshness` reports
+    tests/check_settings.py   checks that a changed setting stops an
+                              incremental run of a package
     tests/check_union.py      checks a union's answers against those of the
                               databases it adds up
     tests/profiles.yml        the dbt profile CI and the checks build with;
@@ -303,10 +307,11 @@ over unchanged input, and with `--full-refresh`. After each build
 the answers with numbers derived by hand from those rows. Every job then
 checks `deployment.yml`, the contracts against the built tables, the
 Ossie model against them and `dbt source freshness`, and builds under a
-label other than the package's default. The Shopify and WooCommerce jobs
-also check the retention windows (`windows.sql`), a build in two time
-zones and that a changed setting stops an incremental run (the variables
-listed in `docs/deployment.md`), and that the canonical tables of the
+label other than the package's default, and that a changed setting
+stops an incremental run (`tests/check_settings.py`, the variables listed
+in `docs/deployment.md`). The Shopify and WooCommerce jobs also check
+the retention windows (`windows.sql`), a build in two time zones, and
+that the canonical tables of the
 build are the CSV files in `tests/<source>/canon*`, over which `tests/run_canon.py` asks the
 questions again with no dbt; the WooCommerce job runs on ClickHouse 26.7 and 26.9. The unions
 job builds every package into databases of its own, builds the three
@@ -356,6 +361,16 @@ project in `sources/<source>/`, laid out as in [Layout](#layout):
 - `models/sources.yml` and `macros/freshness.sql`: the input tables as a
   dbt source with their freshness; the macro file is the same in every
   package.
+- `macros/settings.sql` and the hooks and `+meta` of `dbt_project.yml`, as
+  in the other packages, for a package with an incremental model or a
+  time zone: the settings guard. Each variable in `vars` goes into
+  `meta.guarded_vars`, with its default, when the rows already built
+  depend on its value, or into `meta.free_vars`, when any run may change
+  it; the variables of the `time_zone` and `source_id` roles are guarded.
+  A release that starts to guard a variable keeps its default to what the
+  rows were built with before. `tests/check_contracts.py` checks it, and
+  the package's CI job runs `tests/check_settings.py` with another value
+  of each guarded variable.
 - `deployment.yml`: the Ossie model, the variables by their role and the
   tables counted per day. A package whose model fixes the zone of its
   days (`toDate(..., 'UTC')`) declares it as `zone`, without the role

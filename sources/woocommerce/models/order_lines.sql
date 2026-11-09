@@ -1,6 +1,5 @@
 {{ config(unique_key='order_id', order_by='(order_id, line_id)',
-          pre_hook="{{ woocommerce_delete_changed(products=true) }}",
-          post_hook="{{ woocommerce_save_settings() }}") }}
+          pre_hook="{{ woocommerce_delete_changed(products=true) }}") }}
 -- One row per line of an order: its items of type line_item, the goods
 -- sold, in their current state (input.sql). Shipping, fees, coupons and tax
 -- are items of other types. Keyed by order_id for refreshing: an order's

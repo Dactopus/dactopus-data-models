@@ -8,6 +8,61 @@ names the Ossie schema version its models carry.
 
 ## [Unreleased]
 
+## [0.12.2] - 2026-11-09
+
+Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.14.0,
+dbt v2 (`dbt-oss` 2.0.11) and dbt v1 (`dbt-core` 1.11 with
+`dbt-clickhouse` 1.10) on ClickHouse 26.9, the WooCommerce package also on
+26.7.
+
+The GA4 and Sensor.Community packages need `dbt build --full-refresh`
+once: their incremental tables record their label from this release on,
+and a table built by an earlier one records none, so its first
+incremental run stops and asks for it. The Shopify and WooCommerce
+packages need none: their tables keep the record 0.12.0 wrote.
+
+### Changed
+
+- One settings guard for every package: `macros/settings.sql`, the same
+  file in each, run on all models from the package's `dbt_project.yml`
+  (`+pre-hook`, `+post-hook`), ahead of a model's own hooks on dbt v1 and
+  v2; it does nothing on a model that is not incremental. The variables
+  it guards are `meta.guarded_vars` there, with their defaults, and the
+  variables any run may change are `meta.free_vars`. It replaces the
+  Shopify macros `shopify_settings`, `shopify_check_settings` and
+  `shopify_save_settings` and the WooCommerce macros
+  `woocommerce_settings`, `woocommerce_check_settings`,
+  `woocommerce_save_settings` and `woocommerce_check_built`. The record
+  and the message stay as they were.
+- The incremental tables of the GA4 package (`events`, `sessions`,
+  `purchases`) and of the Sensor.Community package (`readings`) record
+  `ga4_source_id` and `sensor_community_source_id`: a run with another
+  label stops before it reads or deletes a row, where the one-label tests
+  caught it after the run had rewritten rows. Their dbt user needs
+  `ALTER MODIFY COMMENT` on these tables. Their READMEs have a section,
+  Changing a setting.
+- A variable a later release starts to guard is read as its default from
+  a table whose record lacks it: only a deployment that set another value
+  builds anew.
+- The phrase of the message, `was not built with the settings of this
+  run`, is what a tool that deploys the packages can tell the stop by
+  (`docs/deployment.md`); a change of it will be in this changelog.
+
+### Added
+
+- `tests/check_contracts.py` fails on a package with an incremental model
+  or a time zone that does not run the guard from its `dbt_project.yml`,
+  on a copy of `macros/settings.sql` that differs, on a variable of
+  `vars` in neither `meta.guarded_vars` nor `meta.free_vars`, on a
+  default there other than the one in `vars`, and on a `time_zone` or
+  `source_id` variable that is not guarded.
+- `tests/check_settings.py` runs a package's build with another value of
+  each guarded variable and checks that the run stops with the message,
+  names that variable alone and leaves the tables as they were; that a
+  record without a variable reads it as its default; and that a full
+  refresh records the new values. The CI job of every package runs it in
+  place of steps of its own.
+
 ## [0.12.1] - 2026-11-07
 
 Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.14.0,
@@ -1246,7 +1301,8 @@ ClickHouse 26.9.
 - Hand-written GA4 rows and the numbers the model must answer over them
   (`tests/ga4`), checked in CI on both dbt versions.
 
-[Unreleased]: https://github.com/Dactopus/dactopus-data-models/compare/v0.12.1...HEAD
+[Unreleased]: https://github.com/Dactopus/dactopus-data-models/compare/v0.12.2...HEAD
+[0.12.2]: https://github.com/Dactopus/dactopus-data-models/compare/v0.12.1...v0.12.2
 [0.12.1]: https://github.com/Dactopus/dactopus-data-models/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/Dactopus/dactopus-data-models/compare/v0.11.2...v0.12.0
 [0.11.2]: https://github.com/Dactopus/dactopus-data-models/compare/v0.11.1...v0.11.2

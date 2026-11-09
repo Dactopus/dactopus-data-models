@@ -116,6 +116,25 @@ the README's [Quick start](../../README.md#quick-start), and the
    export of your own property takes the property's ([docs/deployment.md](../../docs/deployment.md)).
 
 
+## Changing a setting
+
+`events`, `sessions` and `purchases` are incremental: a run rebuilds the
+days from `ga4_lookback_days` (default 3) before the latest one it has
+built on, and keeps the other rows as they were built.
+`ga4_source_id`, the `source_id` of every row, decides the values of the
+rows already built, so a change of it needs `dbt build --full-refresh`
+once.
+
+The three tables record the label they were built with in their
+comments (`built with {...}`), and an incremental run that finds another
+one stops before it reads or deletes a row of them, naming the variable
+with its old and new value. The full refresh records the new label. A
+table built by release 0.12.1 or earlier records none, so its first run
+stops the same way. The dbt user needs `ALTER MODIFY COMMENT` on the
+three tables (part of `ALTER TABLE`). `ga4_input_database` and
+`ga4_lookback_days` can change in any run.
+
+
 ## Known differences from the GA4 interface
 
 Numbers from the model and from the GA4 interface can differ for reasons

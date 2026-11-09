@@ -87,7 +87,18 @@ does not test keys: each package tests the key of each dataset without
 and with one label in a database and each label in one database
 (`<domain>_union_distinct_source_ids`), the key is unique in the union.
 `macros/union.sql` is the same file in every union, and
-`macros/freshness.sql` in every package; change all copies at once.
+`macros/freshness.sql` and `macros/settings.sql` in every package; change
+all copies at once.
+
+A package variable goes into `meta.guarded_vars` of its `dbt_project.yml`,
+with its default, when the rows already built depend on its value: a
+change then stops an incremental run (`macros/settings.sql`). Any other
+goes into `meta.free_vars`. `tests/check_contracts.py` fails on a
+variable in neither, and the package's CI job gives
+`tests/check_settings.py` another value of each guarded one. A release
+that starts to guard a variable keeps its default to what the rows were
+built with before: a table that does not record the variable reads it as
+its default.
 
 ## Model format
 
