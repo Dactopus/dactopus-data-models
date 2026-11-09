@@ -21,8 +21,9 @@ value, as JSON:
 
 --stop-only takes a value the input cannot be built with (a currency it
 has no rate for): the run must stop on it, and the full refresh leaves it
-out. The build goes into $CLICKHOUSE_DATABASE, which must not exist or be
-one this check built: its first build is incremental where tables exist.
+out. The build goes into $CLICKHOUSE_DATABASE, which must not exist: the
+check leaves it built with the changed values, and a second check there
+stops on its first build.
 The check, in order:
 
 1. The build, and the build again with the same values, pass.
@@ -173,19 +174,24 @@ def main():
         sys.exit(f"FAIL the runs that stopped changed {', '.join(tables)}")
     print(f"ok   {', '.join(tables)} unchanged")
 
-    # A record without a variable: one this build gives its default, one it does not.
-    table = tables[0]
-    kept = record(database, table)
-    for name in [next((n for n in guarded if same(values[n], guarded[n])), None),
-                 next((n for n in guarded if not same(values[n], guarded[n])), None)]:
+    # A record without a variable, in every table: one this build gives its
+    # default, one it does not. The record is rewritten after the comment's
+    # other segments, which stay.
+    kept = {table: record(database, table) for table in tables}
+    for default, name in [(True, next((n for n in guarded if same(values[n], guarded[n])), None)),
+                          (False, next((n for n in guarded if not same(values[n], guarded[n])), None))]:
         if name is None:
+            print(f"skip a record without a variable this build gives {'its' if default else 'another value than its'} "
+                  f"default: it gives none")
             continue
-        set_record(database, table, {k: v for k, v in kept.items() if k != name})
-        if same(values[name], guarded[name]):
+        for table in tables:
+            set_record(database, table, {k: v for k, v in kept[table].items() if k != name})
+        if default:
             passes(command, first, f"a record without {name}, which this build gives its default")
         else:
             stops(command, first, name, f"a record without {name}, which this build gives another value than its default")
-        set_record(database, table, kept)
+        for table in tables:
+            set_record(database, table, kept[table])
 
     changed = {**first, **changes}
     passes(command, changed, "a full refresh with the changed values", "--full-refresh")

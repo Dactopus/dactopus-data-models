@@ -78,8 +78,8 @@ first in the key of every dataset that has one and join on it, so the
 tables of two stores, each built with its own label, keep their orders
 and customers apart. A new label needs `dbt build --full-refresh`, as
 the settings below do: an incremental run over tables built under
-another label stops before it reads or deletes a row of the three
-incremental tables, with a message that says so. The packages' tests
+another label stops before it reads or deletes a row of any
+incremental table, with a message that says so. The packages' tests
 that every row carries one label stay and hold the tables a run builds
 whole.
 

@@ -68,6 +68,9 @@
    to what the earlier release did. Only a deployment that sets another
    value then builds anew. #}
 {% macro dactopus_check_settings() -%}
+{%- if dactopus_guards() and not dactopus_guarded_vars() -%}
+{{ exceptions.raise_compiler_error(this ~ " is incremental, and meta.guarded_vars names no variable: the package's dbt_project.yml lists them, and a project that installs the package must not replace its meta") }}
+{%- endif -%}
 {%- if dactopus_guards() and is_incremental() -%}
 {%- set defaults = dactopus_guarded_vars() -%}
 {%- set recorded = dactopus_recorded_settings() -%}
