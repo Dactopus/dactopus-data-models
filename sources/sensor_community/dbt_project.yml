@@ -25,3 +25,16 @@ models:
     # with an error rather than leave the old table: run it once with
     # --full-refresh, as the CHANGELOG says.
     +on_schema_change: fail
+    # The settings guard (macros/settings.sql): an incremental run whose
+    # table was built with other values of guarded_vars stops before it
+    # reads or deletes a row, and a full refresh records the new ones. Each
+    # variable of vars above is in guarded_vars, with its default there
+    # too, or in free_vars, which any run may change: they name where the
+    # same rows are read from, or only widen the window a run rereads
+    # (tests/check_contracts.py).
+    +pre-hook: "{{ dactopus_check_settings() }}"
+    +post-hook: "{{ dactopus_save_settings() }}"
+    +meta:
+      guarded_vars:
+        sensor_community_source_id: sensor_community
+      free_vars: [sensor_community_input_database, sensor_community_lookback_days]

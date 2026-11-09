@@ -1,5 +1,4 @@
-{{ config(unique_key='order_id', order_by='(order_date, order_id)',
-          pre_hook="{{ shopify_check_settings() }}", post_hook="{{ shopify_save_settings() }}") }}
+{{ config(unique_key='order_id', order_by='(order_date, order_id)') }}
 -- One row per order: the latest version of each order (input.sql), test
 -- orders left out.
 --
