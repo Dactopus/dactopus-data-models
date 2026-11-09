@@ -42,9 +42,14 @@ fields of more than one dataset, and the model has no metrics of its own:
 a dataset carries what its metrics need (order_lines.in_sales_reports,
 the flag of the line's order). No
 expression of an Ossie model compares a column the packages type Bool
-with a number (is_cancelled = 1): Postgres rejects it. The copies
-of one macro file are the same: macros/freshness.sql in every package,
-macros/union.sql in every union. With --built
+with a number (is_cancelled = 1): Postgres rejects it. A package with
+an incremental model, or with a time_zone in deployment.yml, runs the
+settings guard (macros/settings.sql) on all its models, from its
+dbt_project.yml; each of its variables is guarded (meta.guarded_vars,
+with its default) or free (meta.free_vars), and the variables of the
+time_zone and source_id roles are guarded. The copies of one macro file
+are the same: macros/freshness.sql and macros/settings.sql in every
+package, macros/union.sql in every union. With --built
 <package or union>, also checks its tables and views in
 $CLICKHOUSE_DATABASE against its contracts, column by column in order:
 dbt checks the types of a view but keeps the order of its SELECT.
@@ -56,6 +61,7 @@ dactopus), as for the packages.
 import argparse
 import os
 import pathlib
+import re
 import sys
 import urllib.error
 import urllib.parse
@@ -230,6 +236,71 @@ def model_tests(project):
     return tests
 
 
+def materializations(package):
+    """{model: its materialization}: the project's +materialized, unless the model's config() or schema.yml sets one."""
+    project = yaml.safe_load((package / "dbt_project.yml").read_text())
+    default = project["models"][project["name"]].get("+materialized", "view")
+    schema = yaml.safe_load((package / "models" / "schema.yml").read_text())
+    configured = {m["name"]: (m.get("config") or {}).get("materialized") for m in schema["models"]}
+    found = {}
+    for path in sorted((package / "models").glob("*.sql")):
+        match = re.search(r"\bmaterialized\s*=\s*['\"](\w+)['\"]", path.read_text())
+        found[path.stem] = match.group(1) if match else configured.get(path.stem) or default
+    return found
+
+
+def incremental_models(package):
+    return [m for m, kind in materializations(package).items() if kind == "incremental"]
+
+
+def hooks(config, name):
+    """The hooks of a dbt_project.yml level, as a list: +pre-hook or +post-hook, a string or a list."""
+    value = config.get(f"+{name}") or []
+    return [value] if isinstance(value, str) else list(value)
+
+
+def deployment_roles(package):
+    """{role: variable} from the package's deployment.yml."""
+    return yaml.safe_load((package / "deployment.yml").read_text()).get("vars") or {}
+
+
+def needs_settings_guard(package):
+    """Whether the package runs the settings guard: it has an incremental model, or a time zone."""
+    return bool(incremental_models(package)) or "time_zone" in deployment_roles(package)
+
+
+def check_settings_guard(package, project):
+    """Problems of the package's settings guard (macros/settings.sql), [] for a package that needs none."""
+    name = package.name
+    if not needs_settings_guard(package):
+        return []
+    roles = deployment_roles(package)
+    problems = []
+    config = project["models"][project["name"]]
+    for hook, call in (("pre-hook", "dactopus_check_settings()"), ("post-hook", "dactopus_save_settings()")):
+        if not any(call in h for h in hooks(config, hook)):
+            problems.append(f"{name}: dbt_project.yml must set +{hook}: \"{{{{ {call} }}}}\" for all models "
+                            f"(macros/settings.sql)")
+    meta = config.get("+meta") or {}
+    guarded, free = meta.get("guarded_vars") or {}, meta.get("free_vars") or []
+    defaults = project.get("vars") or {}
+    for variable, default in defaults.items():
+        if (variable in guarded) == (variable in free):
+            problems.append(f"{name}: the variable {variable} must be in either meta.guarded_vars, if the rows "
+                            f"already built depend on its value, or meta.free_vars, if any run may change it "
+                            f"(dbt_project.yml)")
+        elif variable in guarded and guarded[variable] != default:
+            problems.append(f"{name}: meta.guarded_vars gives {variable} the default {guarded[variable]!r}; "
+                            f"vars gives {default!r}")
+    for variable in [*guarded, *free]:
+        if variable not in defaults:
+            problems.append(f"{name}: meta.guarded_vars or meta.free_vars names {variable}, which is not in vars")
+    for role in ("time_zone", "source_id"):
+        if role in roles and roles[role] not in guarded:
+            problems.append(f"{name}: the variable of the {role} role, {roles[role]}, must be in meta.guarded_vars")
+    return problems
+
+
 def check_built(name, models, declared):
     """Problems of the project's tables and views in $CLICKHOUSE_DATABASE against its contracts."""
     problems = []
@@ -274,6 +345,7 @@ def check(packages, unions, built):
                     or f"{name}_one_source_id" not in labels[model]:
                 problems.append(f"{name}: {model} must start with source_id {LABEL_TYPE}, "
                                 f"tested by {name}_one_source_id")
+        problems += check_settings_guard(package, project)
         model_file = yaml.safe_load((package / "deployment.yml").read_text())["model"]
         for table, columns in canonical_columns(ROOT / model_file).items():
             if table not in declared:
@@ -367,7 +439,8 @@ def check(packages, unions, built):
             problems.append(f"{model_file}: {item} compares a Bool column with a number, which Postgres "
                             f"rejects; write the column alone: {sql}")
     # Copies of one file, kept in each project so that each installs alone.
-    for projects, macro in ((packages, "freshness.sql"), (unions, "union.sql")):
+    guarded = [p for p in packages if needs_settings_guard(p) or (p / "macros" / "settings.sql").is_file()]
+    for projects, macro in ((packages, "freshness.sql"), (guarded, "settings.sql"), (unions, "union.sql")):
         texts = {(p / "macros" / macro).read_bytes() if (p / "macros" / macro).is_file() else None for p in projects}
         if None in texts or len(texts) > 1:
             problems.append(f"macros/{macro} must be the same file in each of "
