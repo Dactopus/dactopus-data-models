@@ -70,12 +70,14 @@ def passes(command, values, what, *extra):
     print(f"ok   {what}")
 
 
-def stops(command, values, variable, what):
-    """The run stops with the guard's message, naming the variable and no other."""
+def stops(command, values, variable, what, alone=True):
+    """The run stops with the guard's message, naming the variable, and with alone no other."""
     passed, output = build(command, values)
     if passed:
         sys.exit(f"{output}\nFAIL {what}: the build passed")
-    if not re.search(rf"{PHRASE} \({re.escape(variable)} was [^;)]*\): run dbt build --full-refresh once", output):
+    others = "" if alone else r"(?:[^()]*; )?"
+    tail = r"\): run dbt build --full-refresh once" if alone else r"[;)]"
+    if not re.search(rf"{PHRASE} \({others}{re.escape(variable)} was [^;)]*{tail}", output):
         sys.exit(f"{output}\nFAIL {what}: the build failed, but not with \"{PHRASE} ({variable} was ...)\"")
     print(f"ok   {what}")
 
@@ -191,7 +193,7 @@ def main():
     records(database, tables, expected)
     passes(command, changed, "an incremental run with the changed values")
     name = next(iter(changes))
-    stops(command, first, name, f"a run with the first values stops on {name}")
+    stops(command, first, name, f"a run with the first values stops on {name}", alone=False)
 
 
 if __name__ == "__main__":
