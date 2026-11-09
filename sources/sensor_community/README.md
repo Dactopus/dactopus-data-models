@@ -255,3 +255,23 @@ You need ClickHouse, dbt, dactopus-ossie-clickhouse and
    ```
 
    On Linux, yesterday is `$(date -u -d yesterday +%F)`.
+
+
+## Changing a setting
+
+`readings` is incremental: a run rebuilds the sensor-days loaded in the
+`sensor_community_lookback_days` (default 3) days before the latest load
+it has seen, and keeps the other rows as they were built.
+`sensor_community_source_id`, the `source_id` of every row, decides the
+values of the rows already built, so a change of it needs
+`dbt build --full-refresh` once.
+
+`readings` records the label it was built with in its comment
+(`built with {...}`), and an incremental run that finds another one
+stops before it reads or deletes a row, naming the variable with its old
+and new value; `devices_archive`, which reads it, is not built then.
+The full refresh records the new label. A `readings` built by release 0.12.1 or earlier
+records none, so its first run stops the same way. The dbt user needs
+`ALTER MODIFY COMMENT` on `readings` (part of `ALTER TABLE`).
+`sensor_community_input_database` and `sensor_community_lookback_days`
+can change in any run.

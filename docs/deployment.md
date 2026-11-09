@@ -44,7 +44,7 @@ is in UTC and orders near midnight fall on the wrong day. WooCommerce
 also needs the store's currency, and its report settings where they
 differ from WooCommerce's (the WooCommerce package's [Your store](../sources/woocommerce/README.md#your-store), step 4). The WooCommerce package
 needs ClickHouse 26.7 or later, and its dbt user needs
-`ALTER MODIFY COMMENT` on `orders`, `order_lines` and `refunds` (the WooCommerce package's [Your store](../sources/woocommerce/README.md#your-store), step 5), and the Shopify package's dbt user the same on its three incremental tables (`orders`, `order_lines`, `refunds`).
+`ALTER MODIFY COMMENT` on `orders`, `order_lines` and `refunds` (the WooCommerce package's [Your store](../sources/woocommerce/README.md#your-store), step 5). The dbt user of every package needs the same on its incremental tables: `orders`, `order_lines` and `refunds` of Shopify, `events`, `sessions` and `purchases` of GA4, `readings` of Sensor.Community.
 
 ```yaml
 vars:
@@ -97,29 +97,40 @@ rows whose date is not the day of their time in the zone: none in a table
 built whole in it. For a package with `zone` the check runs without
 `--time-zone`.
 
-An incremental run rebuilds only the orders and refunds the input
-changed, and the rest keep the values they were built with. A variable
-that decides those values therefore needs `dbt build --full-refresh`
-once when it changes. `orders`, `order_lines` and `refunds` of the
-Shopify and WooCommerce packages keep the values they were built with in
-their table comments, and a run that changes one without the full
-refresh stops before it reads or deletes a row of them, naming the
-variable with its old and new value. The tables a run builds whole may
-have taken the new values by then, and the full refresh brings all of
-them in line. The variables:
+An incremental run rebuilds only the rows the input changed, and the
+rest keep the values they were built with. A variable that decides
+those values therefore needs `dbt build --full-refresh` once when it
+changes. Every incremental table of every package keeps the values it
+was built with in its table comment, and a run that changes one without
+the full refresh stops before it reads or deletes a row of it, with the
+message
+
+```text
+<table> was not built with the settings of this run (<variable> was <old>, is <new>; ...): run dbt build --full-refresh once (package README, Changing a setting)
+```
+
+The phrase `was not built with the settings of this run` stays the same
+from release to release, and a tool that deploys the packages can tell
+the stop by it; a change of it is in the CHANGELOG. The tables a run
+builds whole may have taken the new values by then, and the full
+refresh brings all of them in line. The variables, each package's
+`meta.guarded_vars` in its `dbt_project.yml`:
 
 | Package | Variables |
 | --- | --- |
 | Shopify | `shopify_timezone`, `shopify_source_id` |
 | WooCommerce | `woocommerce_timezone`, `woocommerce_source_id`, `woocommerce_currency`, `woocommerce_price_decimals`, `woocommerce_date_type`, `woocommerce_excluded_statuses`, `woocommerce_order_statuses`, `woocommerce_order_number_meta_key` |
+| GA4 | `ga4_source_id` |
+| Sensor.Community | `sensor_community_source_id` |
 
 The input database, the table prefix and the lookback days only say
 where and how far a run reads: the values of the rows built stay what
-they were, and the three change in any run. A table built by release
-0.11.2 or earlier records no values, and its first run stops the same
-way; the full refresh the next release needs for its new columns covers
-it. The GA4 and Sensor.Community
-packages record none; their label is held by the one-label tests alone.
+they were, and the three change in any run (`meta.free_vars`). A table
+that records no values stops its first run the same way: one of Shopify
+or WooCommerce built by release 0.11.2 or earlier, and one of GA4 or
+Sensor.Community built by 0.12.1 or earlier. A variable that a later
+release starts to record is read as its default from a table that does
+not record it, so only a deployment that set another value builds anew.
 
 Point dactopus-ossie-clickhouse at your target's database
 (`--url http://host:8123/<database>`, or `https://` over TLS) and take
