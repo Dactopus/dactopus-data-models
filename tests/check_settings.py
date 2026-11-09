@@ -47,7 +47,6 @@ import pathlib
 import re
 import subprocess
 import sys
-import urllib.request
 
 import yaml
 
@@ -124,12 +123,7 @@ def set_record(database, table, values):
     kept = re.sub(r"(?:^|; )built with .*$", "", comment(database, table))
     text = (kept + "; " if kept else "") + "built with " + json.dumps(values, sort_keys=True)
     text = text.replace("\\", "\\\\").replace("'", "\\'")
-    request = urllib.request.Request(
-        f"http://{os.environ.get('CLICKHOUSE_HOST', 'localhost')}:{os.environ.get('CLICKHOUSE_PORT', '8123')}/",
-        f"ALTER TABLE {database}.{table} MODIFY COMMENT '{text}'".encode(),
-        headers={"X-ClickHouse-User": os.environ.get("CLICKHOUSE_USER", "default"),
-                 "X-ClickHouse-Key": os.environ.get("CLICKHOUSE_PASSWORD", "")})
-    urllib.request.urlopen(request).read()
+    clickhouse(f"ALTER TABLE {database}.{table} MODIFY COMMENT '{text}'", statement=True)
 
 
 def main():
@@ -160,6 +154,8 @@ def main():
     if not tables:
         sys.exit(f"{args.package} has no incremental model")
     database = os.environ.get("CLICKHOUSE_DATABASE", "dactopus")
+    if clickhouse("EXISTS DATABASE {db:Identifier}", db=database)[0][0] != "0":
+        sys.exit(f"the database {database} exists: the check builds into a new one; drop it or set CLICKHOUSE_DATABASE")
     first = json.loads(command[command.index("--vars") + 1])
     values = {name: first.get(name, default) for name, default in guarded.items()}
 

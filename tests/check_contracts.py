@@ -79,12 +79,15 @@ LABEL_TYPE = "LowCardinality(String)"
 INSTRUCTIONS_LIMIT = 2300
 
 
-def clickhouse(query, **params):
-    """Run a query with {name:Type} parameters; return the rows, each a list of columns."""
+def clickhouse(query, *, statement=False, **params):
+    """Run a query with {name:Type} parameters; return the rows, each a list of columns.
+
+    A statement that returns no rows (ALTER) is sent without FORMAT TSV.
+    """
     query_string = urllib.parse.urlencode({f"param_{name}": value for name, value in params.items()})
     url = (f"http://{os.environ.get('CLICKHOUSE_HOST', 'localhost')}:"
            f"{os.environ.get('CLICKHOUSE_PORT', '8123')}/?{query_string}")
-    request = urllib.request.Request(url, (query + " FORMAT TSV").encode(), headers={
+    request = urllib.request.Request(url, (query if statement else query + " FORMAT TSV").encode(), headers={
         "X-ClickHouse-User": os.environ.get("CLICKHOUSE_USER", "default"),
         "X-ClickHouse-Key": os.environ.get("CLICKHOUSE_PASSWORD", "")})
     try:
