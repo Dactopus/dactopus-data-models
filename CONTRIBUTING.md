@@ -4,6 +4,10 @@ Bug reports, questions about a mapping, new source packages and pull
 requests are welcome. Everything in this repository is in English: models,
 descriptions, SQL comments, commit messages, issues.
 
+Questions about using it and ideas go to
+[Discussions](https://github.com/orgs/Dactopus/discussions); issues are for
+bugs and concrete changes.
+
 ## Reporting a wrong number
 
 The failure this project guards against is a model that builds, passes its
