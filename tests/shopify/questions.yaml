@@ -548,7 +548,8 @@ cases:
       - {first_order_month: "2026-08-01", order_month: "2026-10-01", orders.buyer_count: 1}
       - {first_order_month: "2026-09-01", order_month: "2026-09-01", orders.buyer_count: 1}
       - {first_order_month: null, order_month: "2026-08-01", orders.buyer_count: 0}
-      - {first_order_month: null, order_month: "2026-10-01", orders.buyer_count: 0}  # Discount codes: 1004 used FALL10, 1008 SEPT10 and FALL10, 1011
+      - {first_order_month: null, order_month: "2026-10-01", orders.buyer_count: 0}
+  # Discount codes: 1004 used FALL10, 1008 SEPT10 and FALL10, 1011
   # FREESHIP. An order with two codes counts whole under each. FALL10: 2
   # orders, 181 + 169.50 = 350.50, discounts 29 + 15 = 44, both orders
   # customer 1's (1004 after its move). SEPT10: 1008 alone, 169.50, its

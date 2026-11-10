@@ -9,8 +9,7 @@ is on the dataset whose rows it counts, and a question names it as
   `items_per_order`, `discount_amount`, `shipping_amount`, `tax_amount`,
   `buyer_count`, `repeat_order_share`, `average_days_between_orders`.
   They break down by the order's date, week, month and day of the
-  week; payment and
-  fulfillment status, cancelled or not, counted in the store's reports
+  week; payment and fulfillment status, cancelled or not, counted in the store's reports
   or not, channel, currency and the store's platform; shipping country,
   region and city; new or repeat customer, the order's place among its customer's orders,
   days since the customer's previous order and months since their

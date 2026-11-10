@@ -597,7 +597,8 @@ cases:
       - {first_order_month: "2026-08-01", order_month: "2026-10-01", orders.buyer_count: 2}
       - {first_order_month: "2026-09-01", order_month: "2026-09-01", orders.buyer_count: 0}
       - {first_order_month: "2026-09-01", order_month: "2026-10-01", orders.buyer_count: 1}
-      - {first_order_month: null, order_month: "2026-09-01", orders.buyer_count: 0}  # Discount codes: 104 alone used a coupon, save10, which WooCommerce
+      - {first_order_month: null, order_month: "2026-09-01", orders.buyer_count: 0}
+  # Discount codes: 104 alone used a coupon, save10, which WooCommerce
   # keeps in lower case: 1 order, 70.40, its discount 6, customer 1.
   - metrics: [order_discount_codes.code_order_count, order_discount_codes.code_revenue,
               order_discount_codes.code_discount_amount, order_discount_codes.code_buyer_count,

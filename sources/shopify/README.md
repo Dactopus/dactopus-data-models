@@ -4,8 +4,8 @@ Maps a Shopify store's orders and catalog, read from the
 [GraphQL Admin API](https://shopify.dev/docs/api/admin-graphql), onto the
 `commerce` entities: `orders`, `order_lines`, `refunds`, `sales_events`,
 `customers`, `products`, `line_categories`, `line_brands`,
-`order_discount_codes`, `product_categories` and `product_brands`. What the model answers and
-how it defines sales, categories and customers:
+`order_discount_codes`, `product_categories` and `product_brands`. What
+the model answers and how it defines sales, categories and customers:
 [docs/commerce.md](../../docs/commerce.md). Installing the package in a
 dbt project, time zones and several stores:
 [docs/deployment.md](../../docs/deployment.md).
