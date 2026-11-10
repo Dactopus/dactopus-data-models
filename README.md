@@ -38,7 +38,7 @@ purchase followed from GA4 to an AI agent's answer.
 | Source | Entities | Guide |
 | --- | --- | --- |
 | GA4 (BigQuery export) | `events`, `sessions`, `purchases` | [sources/ga4](sources/ga4/README.md) |
-| Shopify (GraphQL Admin API) | `orders`, `order_lines`, `refunds`, `sales_events`, `customers`, `products`, `line_categories`, `line_brands`, `product_categories`, `product_brands` | [sources/shopify](sources/shopify/README.md) |
+| Shopify (GraphQL Admin API) | `orders`, `order_lines`, `refunds`, `sales_events`, `customers`, `products`, `line_categories`, `line_brands`, `order_discount_codes`, `product_categories`, `product_brands` | [sources/shopify](sources/shopify/README.md) |
 | WooCommerce (the store's MySQL tables through CDC) | the same as Shopify | [sources/woocommerce](sources/woocommerce/README.md) |
 | Sensor.Community (the archive's files and the API's snapshots) | `devices`, `readings`; the reference domain | [sources/sensor_community](sources/sensor_community/README.md) |
 

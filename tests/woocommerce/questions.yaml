@@ -598,6 +598,32 @@ cases:
       - {first_order_month: "2026-09-01", order_month: "2026-09-01", orders.buyer_count: 0}
       - {first_order_month: "2026-09-01", order_month: "2026-10-01", orders.buyer_count: 1}
       - {first_order_month: null, order_month: "2026-09-01", orders.buyer_count: 0}
+  # Discount codes: 104 alone used a coupon, save10, which WooCommerce
+  # keeps in lower case: 1 order, 70.40, its discount 6, customer 1.
+  - metrics: [order_discount_codes.code_order_count, order_discount_codes.code_revenue,
+              order_discount_codes.code_discount_amount, order_discount_codes.code_buyer_count,
+              order_discount_codes.code_count]
+    dimensions: [order_discount_codes.discount_code]
+    expected:
+      - {discount_code: "save10", order_discount_codes.code_order_count: 1,
+         order_discount_codes.code_revenue: 70.4, order_discount_codes.code_discount_amount: 6,
+         order_discount_codes.code_buyer_count: 1, order_discount_codes.code_count: 1}
+  # Orders the reports count by the day of the week, 1 Monday to 7 Sunday.
+  # Monday: 101 (August 10) and 103 (August 31). Tuesday: 110 (September
+  # 15) and 113 (October 6). Wednesday: 104 (September 2). Thursday: 112
+  # (October 1). Friday: 117 (October 9). Saturday: 109 (September 12).
+  # Sunday: 111 (September 20).
+  - metrics: [orders.order_count]
+    dimensions: [orders.order_weekday]
+    order: [orders.order_weekday]
+    expected:
+      - {order_weekday: 1, orders.order_count: 2}
+      - {order_weekday: 2, orders.order_count: 2}
+      - {order_weekday: 3, orders.order_count: 1}
+      - {order_weekday: 4, orders.order_count: 1}
+      - {order_weekday: 5, orders.order_count: 1}
+      - {order_weekday: 6, orders.order_count: 1}
+      - {order_weekday: 7, orders.order_count: 1}
 window_cases:
   # Retention windows, asked with --windows over a database of their own:
   # the fixture and tests/woocommerce/windows.sql synced at once, with no

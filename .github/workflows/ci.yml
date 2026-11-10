@@ -315,7 +315,7 @@ jobs:
           late() { q "INSERT INTO shopify_input.$1 SELECT * REPLACE (now64(6) AS loaded_at) FROM shopify_fixture.$1 WHERE $2"; }
           # tables <database>: a checksum of each table
           tables() { for t in orders order_lines refunds sales_events products product_categories_all product_brands_all \
-                  product_categories product_brands line_categories line_brands customers; do
+                  product_categories product_brands line_categories line_brands order_discount_codes customers; do
               q "SELECT '$t', count(), groupBitXor(cityHash64(toString(tuple(*)))) FROM $1.$t FORMAT TSV"; done; }
           same() {
               CLICKHOUSE_DATABASE=analytics_full $DBT_BUILD --full-refresh
@@ -550,7 +550,7 @@ jobs:
           # time, and customers' retention windows close by the last one:
           # all the other tables' columns count.
           tables() { for t in orders order_lines refunds sales_events products product_categories_all product_brands_all \
-                  product_categories product_brands line_categories line_brands customers; do
+                  product_categories product_brands line_categories line_brands order_discount_codes customers; do
               case $t in orders|order_lines|refunds) c=${2:-*} ;; customers) c=${3:-*} ;; *) c='*' ;; esac
               q "SELECT '$t', count(), groupBitXor(cityHash64(toString(tuple($c)))) FROM $1.$t FORMAT TSV"; done; }
           same() {
@@ -1086,14 +1086,14 @@ jobs:
         run: |
           q() { curl -sf http://127.0.0.1:8123/ --data-binary "$1"; }
           q "CREATE DATABASE analytics_copy"
-          for t in orders customers order_lines line_categories line_brands refunds sales_events products product_categories product_brands; do
+          for t in orders customers order_lines line_categories line_brands order_discount_codes refunds sales_events products product_categories product_brands; do
               q "CREATE VIEW analytics_copy.$t AS SELECT * FROM analytics_woo_a.$t"
           done
           twice() { CLICKHOUSE_DATABASE=analytics_twice $DBT build --project-dir unions/commerce --profiles-dir tests "$@"; }
           if twice --vars '{"commerce_union_databases":["analytics_woo_a","analytics_copy"]}' > union.txt 2>&1; then cat union.txt; exit 1; fi
           grep -q 'a source_id is in more than one database of commerce_union_databases' union.txt
           q "CREATE DATABASE analytics_old"
-          for t in customers order_lines line_categories line_brands refunds sales_events products product_categories product_brands; do
+          for t in customers order_lines line_categories line_brands order_discount_codes refunds sales_events products product_categories product_brands; do
               q "CREATE VIEW analytics_old.$t AS SELECT * FROM analytics_woo_b.$t"
           done
           q "CREATE VIEW analytics_old.orders AS SELECT * REPLACE (CAST(total AS Decimal(26, 8)) AS total,

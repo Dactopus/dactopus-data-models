@@ -4,8 +4,8 @@ Maps a Shopify store's orders and catalog, read from the
 [GraphQL Admin API](https://shopify.dev/docs/api/admin-graphql), onto the
 `commerce` entities: `orders`, `order_lines`, `refunds`, `sales_events`,
 `customers`, `products`, `line_categories`, `line_brands`,
-`product_categories` and `product_brands`. What the model answers and
-how it defines sales, categories and customers:
+`order_discount_codes`, `product_categories` and `product_brands`. What
+the model answers and how it defines sales, categories and customers:
 [docs/commerce.md](../../docs/commerce.md). Installing the package in a
 dbt project, time zones and several stores:
 [docs/deployment.md](../../docs/deployment.md).
@@ -355,6 +355,14 @@ descriptions say how:
   the day of the refund, `order_lines.items_returned` and
   `order_lines.line_returned_amount` on the day of the order. Over all
   time they are equal.
+- **Sales by discount**: the report counts an order's goods under the
+  discount on them, without shipping, so a code that only takes off
+  shipping, such as free shipping, has no orders there (FREESHIP on the
+  development store). `order_discount_codes.code_revenue` is the whole
+  total of each order with the code, shipping included, and
+  `order_discount_codes.code_discount_amount` the order's whole discount:
+  they match the report's total sales and discounts on an order with one
+  code, no other discount and no shipping.
 - **Average order value by product type**: the reports, filtered by a
   type, count only that type's lines of each order;
   `orders.average_order_value` filtered by a category counts each such

@@ -81,6 +81,15 @@ models:
       - {name: line_total, data_type: "Decimal(38, 8)"}
       - {name: returned_quantity, data_type: Int64}
       - {name: returned_amount, data_type: "Decimal(38, 8)"}
+  - name: order_discount_codes
+    columns:
+      - {name: source_id, data_type: "LowCardinality(String)", data_tests: [commerce_union_distinct_source_ids]}
+      - {name: order_id, data_type: UInt64}
+      - {name: discount_code, data_type: String}
+      - {name: in_sales_reports, data_type: Bool}
+      - {name: customer_id, data_type: "Nullable(Int64)"}
+      - {name: total, data_type: "Decimal(38, 8)"}
+      - {name: discount_total, data_type: "Decimal(38, 8)"}
   - name: refunds
     columns:
       - {name: source_id, data_type: "LowCardinality(String)", data_tests: [commerce_union_distinct_source_ids]}

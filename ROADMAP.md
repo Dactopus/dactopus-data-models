@@ -28,12 +28,18 @@ hand-written rows, and properties outside UTC are not tested at all.
 
 ## Later
 
-### Discount codes
+### What each discount code took off
 
-Which code brought the revenue: each order with each discount code it
-used. Today `orders` has the number of codes and the discount amount
-only. The Shopify input already reads the order's codes; WooCommerce
-keeps coupons as items of the order.
+`order_discount_codes` gives each code the whole discount of its orders.
+A code's own amount needs the order's discount applications at Shopify,
+a new input column, and the coupon item's `discount_amount` at
+WooCommerce.
+
+### Payment method and billing country
+
+How customers paid, and where the payer is, as Shopify's reports by
+payment method and by billing location and WooCommerce's order fields
+give them. WooCommerce's input has both; Shopify's needs new columns.
 
 ### Advertising: Google Ads and Meta Ads
 

@@ -8,6 +8,25 @@ names the Ossie schema version its models carry.
 
 ## [Unreleased]
 
+Run `dbt build` of the Shopify or WooCommerce package once before
+serving the model: it creates the view `order_discount_codes`, and until
+then dactopus-ossie-clickhouse serves the model without that dataset. A
+union is built after every package it reads. No `--full-refresh` is
+needed.
+
+### Added
+
+- `commerce.yaml`: `order_discount_codes`, each order with each discount
+  code used on it (a discount code at Shopify, a coupon at WooCommerce),
+  and its metrics `code_order_count`, `code_revenue`,
+  `code_discount_amount`, `code_buyer_count` and `code_count`, by
+  `order_discount_codes.discount_code` and by the fields of `orders`.
+  An order with two codes counts whole under each: the discount of an
+  order is not split between its codes. Both packages build the table as
+  a view over `orders`, and the `commerce` union reads it.
+- `orders.order_weekday`, the day of the week of the order's date, 1
+  Monday to 7 Sunday.
+
 ## [0.12.2] - 2026-11-09
 
 Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.14.0,

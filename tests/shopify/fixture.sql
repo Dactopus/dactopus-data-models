@@ -116,7 +116,8 @@ INSERT INTO {db:Identifier}.orders VALUES
 -- amounts are the shop's USD. Imported with processed_at September 12,
 -- created October 2: a September order, and customer 1's third order by
 -- processed_at, before 1007 (September 15); by created_at it would be
--- the fourth. SEPT10 takes 10% off:
+-- the fourth. SEPT10 takes 10% off (FALL10, entered with it, is on the
+-- order and took nothing more: an order with two codes):
 -- 11.30 and 5.65, tax included; 10 and 5 without (113 / 1.13 = 100 less
 -- the line's 90, 56.50 / 1.13 = 50 less 45). Line tax on what is left: 101.70 * 13/113
 -- = 11.70, 50.85 * 13/113 = 5.85. Shipping 16.95 is taxed too, 1.95
@@ -126,7 +127,7 @@ INSERT INTO {db:Identifier}.orders VALUES
 -- is the order's 169.50 - 19.50 tax = 150.
 (1008, '#1008', '2026-10-02 10:00:00', '2026-09-12 15:00:00', '2026-10-02 10:00:00', NULL, NULL, false,
  1, 'alice@example.com', 'USD', 'CAD', 'PAID', 'UNFULFILLED', 'dactopus-import', true,
- 169.50, 16.95, 1.95, 19.50, 0, 169.50, 0, 0, 0, ['SEPT10'], 'CA', 'ON', 'Toronto', 'M5V 2T6', '2026-10-04 00:00:00'),
+ 169.50, 16.95, 1.95, 19.50, 0, 169.50, 0, 0, 0, ['SEPT10', 'FALL10'], 'CA', 'ON', 'Toronto', 'M5V 2T6', '2026-10-04 00:00:00'),
 
 -- 1009: a test order (Bogus Gateway), refunded the next day, customer 4's
 -- only order. Neither the order, its line nor its refund count anywhere,
@@ -270,7 +271,7 @@ INSERT INTO {db:Identifier}.refund_lines VALUES
 INSERT INTO {db:Identifier}.orders VALUES
 (1008, '#1008', '2026-10-02 10:00:00', '2026-09-12 15:00:00', '2026-10-04 05:00:00', NULL, NULL, false,
  1, 'alice@example.com', 'USD', 'CAD', 'PARTIALLY_REFUNDED', 'UNFULFILLED', 'dactopus-import', true,
- 169.50, 16.95, 1.95, 19.50, 16.95, 152.55, 0, 0, 0, ['SEPT10'], 'CA', 'ON', 'Toronto', 'M5V 2T6', '2026-10-04 06:00:00');
+ 169.50, 16.95, 1.95, 19.50, 16.95, 152.55, 0, 0, 0, ['SEPT10', 'FALL10'], 'CA', 'ON', 'Toronto', 'M5V 2T6', '2026-10-04 06:00:00');
 
 INSERT INTO {db:Identifier}.order_lines VALUES
 (81,  1008, '2026-10-04 05:00:00', 107, 1071, 'BLANKET', 'Blanket',     NULL,  1,  1,  113,   113,   11.30, 11.70, 0.13,  true,  true,  false, '2026-10-04 06:00:01'),

@@ -102,6 +102,17 @@ datasets:
         dimension: {is_time: true}
         ai_context:
           synonyms: [week]
+      - name: order_weekday
+        expression: {sql: "DATEDIFF(day, DATE_TRUNC('week', order_date), order_date) + 1"}
+        description: >
+          Day of the week of order_date, as a number: 1 Monday, 2 Tuesday,
+          3 Wednesday, 4 Thursday, 5 Friday, 6 Saturday, 7 Sunday. Name the
+          days in the answer. Group by it to compare the days of the week
+          over any period.
+        datatype: Integer
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [day of week, weekday, day of the week, busiest day, weekend]
       - name: order_month
         expression: {sql: "DATE_TRUNC('month', order_date)"}
         description: >
@@ -326,7 +337,9 @@ datasets:
           synonyms: [basket size, units in order, items in order, number of items]
       - name: discount_code_count
         expression: {sql: discount_code_count}
-        description: Number of discount codes applied to the order; 0 when none.
+        description: >
+          Number of discount codes applied to the order; 0 when none. The
+          codes themselves are in order_discount_codes.
         datatype: Integer
         dimension: {is_time: false}
         ai_context:
@@ -1389,6 +1402,145 @@ datasets:
         ai_context:
           synonyms: [net sales by brand, brand revenue after returns]
 
+  - name: order_discount_codes
+    source: order_discount_codes
+    primary_key: [source_id, order_id, discount_code]
+    description: >
+      One row for each order and each discount code used on it, with the
+      order's customer and amounts. An order with two codes has two rows
+      and counts under each; an order without a code has none, so the codes
+      never add up to a total over orders: orders with and without a code
+      are counted by orders.discount_code_count. A discount the store
+      applies by itself, without a code (an automatic discount, a sale
+      price), is no row here. Its metrics count only the orders the store's
+      sales reports count (in_sales_reports); WooCommerce Analytics'
+      Coupons report counts orders by coupon. Shopify's sales report by
+      discount counts an order's goods under the discount on them, without
+      shipping, so a code that only takes off shipping has no orders there.
+      Use it for orders, customers and amounts by discount code.
+    ai_context:
+      synonyms: [discount codes, coupons, coupon codes, promo codes, sales by discount code, coupon usage]
+    fields:
+      - name: source_id
+        expression: {sql: source_id}
+        description: >
+          Store the row comes from: the label the deployment gives it, which
+          may name the store (uk_outlet) or not, one value for every row of a
+          store. Group by it to answer per store or to compare stores.
+        datatype: String
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [store, shop, storefront, store name, webshop]
+      - name: order_id
+        expression: {sql: order_id}
+        description: The order the code was used on (orders.order_id).
+        datatype: Integer
+        ai_context:
+          synonyms: [order]
+      - name: discount_code
+        expression: {sql: discount_code}
+        description: >
+          The discount code as the store recorded it on the order: a
+          discount code at Shopify, a coupon code at WooCommerce, which
+          keeps coupon codes in lower case. A discount staff typed into a
+          Shopify order by hand is there under its title, such as "Custom
+          discount". A code is the store's own text, and the same code in
+          two stores is two codes.
+        datatype: String
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [coupon, coupon code, promo code, promotion code, voucher, discount code]
+      - name: in_sales_reports
+        expression: {sql: in_sales_reports}
+        description: >
+          Whether the store's own sales reports count the order: the flag of
+          that order, defined at orders.in_sales_reports. The metrics of
+          order_discount_codes count only these rows.
+        datatype: Boolean
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [counted in reports, counted as a sale, in store reports]
+      - name: customer_id
+        expression: {sql: customer_id}
+        description: >
+          The customer who placed the order (orders.customer_id); empty
+          where the order has none.
+        datatype: Integer
+        ai_context:
+          synonyms: [customer, buyer]
+      - name: total
+        expression: {sql: total}
+        description: Total of the order as placed, before refunds (orders.total).
+        datatype: Decimal
+        ai_context:
+          synonyms: [order total, order amount]
+      - name: discount_total
+        expression: {sql: discount_total}
+        description: >
+          Discounts of the whole order (orders.discount_total): every code
+          used on it and any discount without a code, not this code's share.
+        datatype: Decimal
+        ai_context:
+          synonyms: [order discount]
+    metrics:
+      - name: code_order_count
+        expression: {sql: COUNT(CASE WHEN in_sales_reports THEN order_id END)}
+        description: >
+          Orders a discount code was used on, counted as orders.order_count.
+          By order_discount_codes.discount_code it is how many times each
+          code was used; an order with two codes counts under each. Without
+          that dimension it counts uses, not orders: for the orders with any
+          code, filter orders.order_count by orders.discount_code_count > 0.
+          WooCommerce Analytics' Coupons report counts these orders by
+          coupon (orders). Shopify's sales report by discount has no orders
+          for a code that only takes off shipping, such as free shipping.
+        datatype: Integer
+        ai_context:
+          synonyms: [uses of a code, times used, coupon usage, orders by discount code, redemptions]
+      - name: code_revenue
+        expression: {sql: SUM(CASE WHEN in_sales_reports THEN total ELSE 0 END)}
+        description: >
+          Total of the orders a discount code was used on, as orders.revenue:
+          as placed, before refunds, with shipping and tax. An order with two
+          codes counts whole under each, so never add the codes up for a
+          total. Shopify's sales report by discount leaves shipping out of a
+          code's total sales.
+        datatype: Decimal
+        ai_context:
+          synonyms: [revenue by discount code, sales by coupon, sales by discount code]
+      - name: code_discount_amount
+        expression: {sql: SUM(CASE WHEN in_sales_reports THEN discount_total ELSE 0 END)}
+        description: >
+          Discounts of the orders a discount code was used on, as
+          orders.discount_amount. It is the whole discount of each such
+          order: where an order used two codes, or a code together with a
+          discount without a code, the amount is not split and counts under
+          each code. Say so when you report what a code took off. The
+          stores' reports by code (Shopify's sales report by discount,
+          WooCommerce Analytics' Coupons report, amount discounted) match it
+          on an order with one code and no other discount; on other orders
+          they can differ.
+        datatype: Decimal
+        ai_context:
+          synonyms: [discount by code, amount discounted by coupon, how much a code took off]
+      - name: code_buyer_count
+        expression: {sql: "COUNT(DISTINCT CASE WHEN in_sales_reports THEN source_id || '/' || CAST(customer_id AS VARCHAR) END)"}
+        description: >
+          Customers who used a discount code, counted as orders.buyer_count:
+          each customer once, orders without a customer left out.
+        datatype: Integer
+        ai_context:
+          synonyms: [customers by discount code, customers who used a coupon, buyers by code]
+      - name: code_count
+        expression: {sql: "COUNT(DISTINCT CASE WHEN in_sales_reports THEN source_id || '/' || discount_code END)"}
+        description: >
+          Different discount codes used, each once. By orders.customer_id it
+          is how many different codes each customer used; by a month, how
+          many codes were in use.
+        datatype: Integer
+        ai_context:
+          synonyms: [number of codes, distinct codes, different coupons used]
+
   - name: refunds
     source: refunds
     primary_key: [source_id, refund_id]
@@ -1874,6 +2026,13 @@ relationships:
     to_columns: [source_id, line_id]
     ai_context:
       synonyms: [brands by month, orders with a brand]
+  - name: order_discount_codes_to_orders
+    from: order_discount_codes
+    to: orders
+    from_columns: [source_id, order_id]
+    to_columns: [source_id, order_id]
+    ai_context:
+      synonyms: [codes by month, codes by channel, orders with a code]
   - name: order_lines_to_products
     from: order_lines
     to: products
