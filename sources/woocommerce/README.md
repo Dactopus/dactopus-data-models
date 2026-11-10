@@ -273,6 +273,10 @@ descriptions say how:
 - **Test orders** are not marked in WooCommerce and count as orders.
 - **Fulfillment**: WooCommerce (11.2) keeps no shipments of its own by
   default; a completed order is fulfilled and any other unfulfilled.
+- **Coupons**: the Coupons report's amount discounted is what each
+  coupon took off; `order_discount_codes.code_discount_amount` is the
+  whole discount of each order with the coupon, so the two match on an
+  order with one coupon and no other discount.
 - **Categories and products**: the Categories and Products reports also
   count orders on hold that are not paid yet, which the Revenue and
   Orders reports and the model leave out under the default date type.

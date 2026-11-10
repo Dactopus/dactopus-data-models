@@ -1413,9 +1413,11 @@ datasets:
       are counted by orders.discount_code_count. A discount the store
       applies by itself, without a code (an automatic discount, a sale
       price), is no row here. Its metrics count only the orders the store's
-      sales reports count (in_sales_reports), as the store's report by
-      discount code or coupon does. Use it for orders, customers and
-      amounts by discount code.
+      sales reports count (in_sales_reports); WooCommerce Analytics'
+      Coupons report counts orders by coupon. Shopify's sales report by
+      discount counts an order's goods under the discount on them, without
+      shipping, so a code that only takes off shipping has no orders there.
+      Use it for orders, customers and amounts by discount code.
     ai_context:
       synonyms: [discount codes, coupons, coupon codes, promo codes, sales by discount code, coupon usage]
     fields:
@@ -1489,6 +1491,9 @@ datasets:
           code was used; an order with two codes counts under each. Without
           that dimension it counts uses, not orders: for the orders with any
           code, filter orders.order_count by orders.discount_code_count > 0.
+          WooCommerce Analytics' Coupons report counts these orders by
+          coupon (orders). Shopify's sales report by discount has no orders
+          for a code that only takes off shipping, such as free shipping.
         datatype: Integer
         ai_context:
           synonyms: [uses of a code, times used, coupon usage, orders by discount code, redemptions]
@@ -1498,7 +1503,8 @@ datasets:
           Total of the orders a discount code was used on, as orders.revenue:
           as placed, before refunds, with shipping and tax. An order with two
           codes counts whole under each, so never add the codes up for a
-          total.
+          total. Shopify's sales report by discount leaves shipping out of a
+          code's total sales.
         datatype: Decimal
         ai_context:
           synonyms: [revenue by discount code, sales by coupon, sales by discount code]
@@ -1509,7 +1515,11 @@ datasets:
           orders.discount_amount. It is the whole discount of each such
           order: where an order used two codes, or a code together with a
           discount without a code, the amount is not split and counts under
-          each code. Say so when you report what a code took off.
+          each code. Say so when you report what a code took off. The
+          stores' reports by code (Shopify's sales report by discount,
+          WooCommerce Analytics' Coupons report, amount discounted) match it
+          on an order with one code and no other discount; on other orders
+          they can differ.
         datatype: Decimal
         ai_context:
           synonyms: [discount by code, amount discounted by coupon, how much a code took off]

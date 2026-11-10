@@ -46,7 +46,8 @@ is on the dataset whose rows it counts, and a question names it as
   `order_discount_codes.discount_code` and by the order fields above. An
   order with two codes counts whole under each, and its discount is not
   split between them; a discount the store applies without a code is no
-  code.
+  code. Shopify's sales report by discount counts a code's goods without
+  shipping, so a code that only takes off shipping has no orders there.
 - refunds (`refunds`): `refund_count`, `refunds_total`. They break
   down by the refund's own date, week and month, and by the order fields
   above.
