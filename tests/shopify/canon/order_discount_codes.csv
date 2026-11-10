@@ -1,0 +1,5 @@
+source_id,order_id,discount_code,in_sales_reports,customer_id,total,discount_total
+shopify,1004,FALL10,true,1,181,29
+shopify,1008,FALL10,true,1,169.5,15
+shopify,1008,SEPT10,true,1,169.5,15
+shopify,1011,FREESHIP,true,2,40,0

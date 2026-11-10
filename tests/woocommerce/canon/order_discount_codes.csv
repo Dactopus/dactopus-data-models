@@ -1,0 +1,2 @@
+source_id,order_id,discount_code,in_sales_reports,customer_id,total,discount_total
+woocommerce,104,save10,true,1,70.4,6

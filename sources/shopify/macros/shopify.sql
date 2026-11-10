@@ -78,3 +78,11 @@ SELECT 1 FROM (
 )
 WHERE other != 0
 {%- endtest %}
+
+{# Rows that repeat a key of several columns: the test of such a key. #}
+{% test shopify_unique_key(model, columns) -%}
+SELECT {{ columns | join(', ') }}, count() AS rows
+FROM {{ model }}
+GROUP BY {{ columns | join(', ') }}
+HAVING rows > 1
+{%- endtest %}

@@ -86,6 +86,16 @@ CREATE TABLE line_brands (
     returned_amount DECIMAL(38, 8) NOT NULL
 );
 
+CREATE TABLE order_discount_codes (
+    source_id VARCHAR NOT NULL,
+    order_id BIGINT NOT NULL,
+    discount_code VARCHAR NOT NULL,
+    in_sales_reports BOOLEAN NOT NULL,
+    customer_id BIGINT,
+    total DECIMAL(38, 8) NOT NULL,
+    discount_total DECIMAL(38, 8) NOT NULL
+);
+
 CREATE TABLE refunds (
     source_id VARCHAR NOT NULL,
     refund_id BIGINT NOT NULL,

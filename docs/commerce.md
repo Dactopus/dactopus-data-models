@@ -8,7 +8,8 @@ is on the dataset whose rows it counts, and a question names it as
   `refunded_amount`, `refund_rate`, `average_order_value`,
   `items_per_order`, `discount_amount`, `shipping_amount`, `tax_amount`,
   `buyer_count`, `repeat_order_share`, `average_days_between_orders`.
-  They break down by the order's date, week and month; payment and
+  They break down by the order's date, week, month and day of the
+  week; payment and
   fulfillment status, cancelled or not, counted in the store's reports
   or not, channel, currency and the store's platform; shipping country,
   region and city; new or repeat customer, the order's place among its customer's orders,
@@ -40,6 +41,13 @@ is on the dataset whose rows it counts, and a question names it as
 - brands (`line_brands`): `brand_items_sold`, `brand_revenue`,
   `brand_items_returned`, `brand_returned_amount`, `brand_net_revenue`.
   They break down by `line_brands.brand` and by the order fields above.
+- discount codes (`order_discount_codes`): `code_order_count`,
+  `code_revenue`, `code_discount_amount`, `code_buyer_count`,
+  `code_count`. They break down by
+  `order_discount_codes.discount_code` and by the order fields above. An
+  order with two codes counts whole under each, and its discount is not
+  split between them; a discount the store applies without a code is no
+  code.
 - refunds (`refunds`): `refund_count`, `refunds_total`. They break
   down by the refund's own date, week and month, and by the order fields
   above.

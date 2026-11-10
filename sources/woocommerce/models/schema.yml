@@ -185,6 +185,26 @@ models:
       - {name: returned_quantity, data_type: Int64}
       - {name: returned_amount, data_type: "Decimal(38, 8)"}
       - {name: current_quantity, data_type: Int64}
+  - name: order_discount_codes
+    data_tests:
+      - woocommerce_unique_key:
+          arguments:
+            columns: [order_id, discount_code]
+    columns:
+      - {name: source_id, data_type: "LowCardinality(String)", data_tests: [woocommerce_one_source_id]}
+      - name: order_id
+        data_type: UInt64
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('orders')
+                field: order_id
+      - {name: discount_code, data_type: String, data_tests: [not_null]}
+      - {name: in_sales_reports, data_type: Bool}
+      - {name: customer_id, data_type: "Nullable(Int64)"}
+      - {name: total, data_type: "Decimal(38, 8)"}
+      - {name: discount_total, data_type: "Decimal(38, 8)"}
   - name: sales_events
     columns:
       - {name: source_id, data_type: "LowCardinality(String)", data_tests: [woocommerce_one_source_id]}

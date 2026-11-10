@@ -548,7 +548,64 @@ cases:
       - {first_order_month: "2026-08-01", order_month: "2026-10-01", orders.buyer_count: 1}
       - {first_order_month: "2026-09-01", order_month: "2026-09-01", orders.buyer_count: 1}
       - {first_order_month: null, order_month: "2026-08-01", orders.buyer_count: 0}
-      - {first_order_month: null, order_month: "2026-10-01", orders.buyer_count: 0}
+      - {first_order_month: null, order_month: "2026-10-01", orders.buyer_count: 0}  # Discount codes: 1004 used FALL10, 1008 SEPT10 and FALL10, 1011
+  # FREESHIP. An order with two codes counts whole under each. FALL10: 2
+  # orders, 181 + 169.50 = 350.50, discounts 29 + 15 = 44, both orders
+  # customer 1's (1004 after its move). SEPT10: 1008 alone, 169.50, its
+  # whole discount 15, which FALL10 counts too. FREESHIP: 1011, 40, and 0,
+  # as free shipping is no discount of the lines.
+  - metrics: [order_discount_codes.code_order_count, order_discount_codes.code_revenue,
+              order_discount_codes.code_discount_amount, order_discount_codes.code_buyer_count]
+    dimensions: [order_discount_codes.discount_code]
+    order: [order_discount_codes.discount_code]
+    expected:
+      - {discount_code: "FALL10", order_discount_codes.code_order_count: 2,
+         order_discount_codes.code_revenue: 350.5, order_discount_codes.code_discount_amount: 44,
+         order_discount_codes.code_buyer_count: 1}
+      - {discount_code: "FREESHIP", order_discount_codes.code_order_count: 1,
+         order_discount_codes.code_revenue: 40, order_discount_codes.code_discount_amount: 0,
+         order_discount_codes.code_buyer_count: 1}
+      - {discount_code: "SEPT10", order_discount_codes.code_order_count: 1,
+         order_discount_codes.code_revenue: 169.5, order_discount_codes.code_discount_amount: 15,
+         order_discount_codes.code_buyer_count: 1}
+  # Without the code as a dimension the count is uses, 4, over 3 orders;
+  # the codes in use are 3, the customers 2: customer 1 (1004, 1008) and
+  # customer 2 (1011).
+  - metrics: [order_discount_codes.code_order_count, order_discount_codes.code_count,
+              order_discount_codes.code_buyer_count]
+    expected:
+      - {order_discount_codes.code_order_count: 4, order_discount_codes.code_count: 3,
+         order_discount_codes.code_buyer_count: 2}
+  # Different codes per customer, through the order: customer 1 used FALL10
+  # (twice) and SEPT10, customer 2 FREESHIP. By the month of the order:
+  # September FALL10 and SEPT10, October FREESHIP.
+  - metrics: [order_discount_codes.code_count]
+    dimensions: [orders.customer_id]
+    order: [orders.customer_id]
+    expected:
+      - {customer_id: 1, order_discount_codes.code_count: 2}
+      - {customer_id: 2, order_discount_codes.code_count: 1}
+  - metrics: [order_discount_codes.code_count, order_discount_codes.code_order_count]
+    dimensions: [orders.order_month]
+    order: [orders.order_month]
+    expected:
+      - {order_month: "2026-09-01", order_discount_codes.code_count: 2, order_discount_codes.code_order_count: 3}
+      - {order_month: "2026-10-01", order_discount_codes.code_count: 1, order_discount_codes.code_order_count: 1}
+  # Orders by the day of the week, 1 Monday to 7 Sunday. Monday: 1001
+  # (August 10) and 1003 (August 31). Tuesday: 1005 (September 8) and 1007
+  # (September 15). Thursday: 1002 (August 20) and 1006 (September 10).
+  # Friday: 1010 (September 25) and 1011 (October 2). Saturday: 1004
+  # (September 5), 1008 (September 12) and 1012 (October 3). None on a
+  # Wednesday or a Sunday.
+  - metrics: [orders.order_count]
+    dimensions: [orders.order_weekday]
+    order: [orders.order_weekday]
+    expected:
+      - {order_weekday: 1, orders.order_count: 2}
+      - {order_weekday: 2, orders.order_count: 2}
+      - {order_weekday: 4, orders.order_count: 2}
+      - {order_weekday: 5, orders.order_count: 2}
+      - {order_weekday: 6, orders.order_count: 3}
 window_cases:
   # Retention windows, asked with --windows over a database of their own:
   # the fixture and tests/shopify/windows.sql loaded at once, with no row
