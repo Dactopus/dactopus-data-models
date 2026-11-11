@@ -26,6 +26,13 @@ needed.
   a view over `orders`, and the `commerce` union reads it.
 - `orders.order_weekday`, the day of the week of the order's date, 1
   Monday to 7 Sunday.
+- `evals/`: questions a store owner asks an AI agent over the commerce
+  model, by difficulty, each with the queries of the model that give its
+  expected answer or a rubric of what a right answer says.
+  `evals/reference.py` works out the expected answers over a
+  deployment's databases for a given day, `evals/grade.py` grades an
+  agent's answers against them, and `tests/check_evals.py` works them
+  out over the canonical tables in CI.
 
 ## [0.12.2] - 2026-11-09
 

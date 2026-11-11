@@ -1,0 +1,43 @@
+# A deployment to ask the questions over: the canonical tables of the Shopify and
+# WooCommerce packages (tests/<package>/canon), as tests/check_evals.py loads them.
+# Copy it for your own deployment and name your databases and parameters.
+
+# The model the agent is asked through, relative to this file.
+models: [../entities/commerce.yaml]
+# The zone the executor serves the model in (OSSIE_CLICKHOUSE_TIME_ZONE).
+time_zone: America/New_York
+
+# Parameters of the question texts and queries, for every database; a database's own
+# params replace them.
+params:
+  # A month whose new customers the second-order questions ask about.
+  cohort_month: "2026-08-01"
+
+# The databases the agent is asked over. stores: how many stores the database holds.
+# provides: what its data has, which a question can require:
+#   shopify, woocommerce    the platform of a database with one store
+#   nested_categories       categories with subcategories, parent_category one of them
+#   two_currencies          two stores in different currencies
+#   two_platforms           a Shopify store and a WooCommerce store
+#   labels                  labels of stores; with `labels: named` store_named is the
+#                           label that store_word names, with `labels: opaque` no label
+#                           names a store
+databases:
+  - name: evals_shopify
+    stores: 1
+    provides: [shopify]
+    params: {category: Apparel}
+  - name: evals_woocommerce
+    stores: 1
+    provides: [woocommerce, nested_categories]
+    params: {category: Gifts, parent_category: Clothing}
+  - name: evals_named
+    stores: 2
+    labels: named
+    provides: [two_currencies, two_platforms, labels]
+    params: {store_a: shop_us, store_b: woo_eu, store_word: US, store_named: shop_us, shopify_store: shop_us}
+  - name: evals_opaque
+    stores: 2
+    labels: opaque
+    provides: [two_currencies, two_platforms, labels]
+    params: {store_a: brand_a, store_b: brand_b, store_word: US, store_named: brand_a, shopify_store: brand_a}

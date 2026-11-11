@@ -169,6 +169,9 @@ The same walk, and then your own store or property, for each source:
   with `tests/run_canon.py` on ClickHouse (DuckDB in part, over a copy
   of the model its extension can read)
   ([CONTRIBUTING.md](CONTRIBUTING.md#checks-before-a-pull-request)).
+- Checking an AI agent over your own data: questions a store owner
+  asks, their expected answers worked out over your databases, and a
+  grader ([evals/README.md](evals/README.md)).
 - Layout, what a source package is, out of scope, authoring rules and
   the checks before a pull request: [CONTRIBUTING.md](CONTRIBUTING.md).
 - Changes by release: [CHANGELOG.md](CHANGELOG.md).

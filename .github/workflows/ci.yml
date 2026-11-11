@@ -81,6 +81,10 @@ jobs:
               - tests/canon.py
               - tests/export_canon.py
               - tests/run_canon.py
+              - tests/woocommerce/canon/**
+              - tests/check_evals.py
+              - evals/**
+              - '!evals/README.md'
             woocommerce:
               - *common
               - sources/woocommerce/**
@@ -392,6 +396,12 @@ jobs:
           CLICKHOUSE_DATABASE=analytics_windows uv run tests/export_canon.py shopify --windows --check
           uv run tests/run_canon.py shopify --engine clickhouse --database analytics_canon_files
           uv run tests/run_canon.py shopify --windows --engine clickhouse --database analytics_canon_files_windows
+      # The question set (evals/commerce.yaml) asks its expected answers of
+      # the model over the canonical tables of both packages, alone and as two
+      # stores of a union: a metric, field or filter of a question that the
+      # model or the executor no longer takes fails here.
+      - name: Work out the question set's expected answers
+        run: uv run tests/check_evals.py --prefix evals_${{ matrix.dbt.name }}_
       # deployment.yml names what a deployment sets and reads; the check
       # holds it to the package and the built tables, and counts the rows
       # whose date is not the day of their time in the build's zone: none

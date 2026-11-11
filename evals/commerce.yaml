@@ -1,0 +1,557 @@
+# Questions a store owner asks an agent that answers through dactopus-ossie-clickhouse
+# over the commerce model, and how to tell a right answer from a wrong one.
+#
+# A question has:
+#   id         a stable name
+#   type       the difficulty it tests (see README.md)
+#   question   the text the agent gets; {name} is a parameter of the deployment
+#              (deployment.example.yaml), {name:%B} a date parameter as a month name
+#   stores     1: asked of a database with one store; 2: of a union of two stores
+#   requires   what the deployment's data must hold for the question to test anything
+#   expect     the numbers a right answer states: queries of the model, in the form
+#              of `dactopus-ossie-clickhouse query` (metrics, dimensions, filters,
+#              order, limit). Every metric value of every row must be in the answer,
+#              and every text value of a dimension other than source_id.
+#              CURRENT_DATE is the day the agent was asked, in the deployment's zone.
+#              A query with `numbers: false` asks only for its text values, such as
+#              each store's currency.
+#   alternatives  other readings of the question, each a list of queries like expect;
+#              an answer that states any one of them is right
+#   forbid     queries whose numbers must not be in the answer, such as a sum of
+#              amounts in two currencies
+#   rubric     what a right answer says, for a reviewing model; with expect, both hold
+#   if_empty   what a right answer says when every expected query returns no row or
+#              only empty values; by default, that there is none
+#   labels     for a question about one store: the rubric where the labels name no
+#              store (opaque); where they do (named), expect holds
+#
+# The model is the reference: expect names its metrics, so a change of a metric's
+# definition moves the expected numbers with it. tests/check_evals.py runs every query
+# over the canonical tables.
+
+questions:
+  # Total
+  - id: net-sales-all-time
+    type: total
+    candidate: true
+    question: How much money did the store make in total since we opened?
+    stores: 1
+    expect:
+      - metrics: [sales_events.net_revenue]
+        dimensions: [orders.currency]
+
+  - id: orders-and-average-order-value
+    type: total
+    candidate: true
+    question: How many orders have we received in total, and what is the average order value?
+    stores: 1
+    expect:
+      - metrics: [orders.order_count]
+      - metrics: [orders.average_order_value]
+        dimensions: [orders.currency]
+
+  - id: refunds-all-time
+    type: total
+    candidate: true
+    question: How much have we refunded to customers in total, and across how many orders?
+    stores: 1
+    expect:
+      - metrics: [orders.refunded_amount]
+        dimensions: [orders.currency]
+      - metrics: [orders.order_count]
+        filters: ["orders.refunded_total > 0"]
+
+  # Breakdown
+  - id: top-customers-by-revenue
+    type: breakdown
+    candidate: true
+    question: Who are our top 10 customers by revenue?
+    stores: 1
+    expect:
+      - metrics: [customers.net_amount]
+        dimensions: [customers.customer_id]
+        order: [customers.net_amount desc]
+        limit: 10
+    alternatives:
+      - - metrics: [sales_events.net_revenue]
+          dimensions: [orders.customer_id]
+          order: [sales_events.net_revenue desc]
+          limit: 10
+
+  - id: top-products-last-month
+    type: breakdown
+    candidate: true
+    question: top 10 products by revenue last month
+    stores: 1
+    expect:
+      - metrics: [order_lines.line_revenue]
+        dimensions: [order_lines.title]
+        filters: ["orders.order_date >= DATE_TRUNC('MONTH', CURRENT_DATE) - INTERVAL '1' MONTH",
+                  "orders.order_date < DATE_TRUNC('MONTH', CURRENT_DATE)"]
+        order: [order_lines.line_revenue desc]
+        limit: 10
+    alternatives:
+      - - metrics: [order_lines.line_net_revenue]
+          dimensions: [order_lines.title]
+          filters: ["orders.order_date >= DATE_TRUNC('MONTH', CURRENT_DATE) - INTERVAL '1' MONTH",
+                    "orders.order_date < DATE_TRUNC('MONTH', CURRENT_DATE)"]
+          order: [order_lines.line_net_revenue desc]
+          limit: 10
+
+  - id: orders-and-sales-by-month
+    type: breakdown
+    candidate: true
+    question: How many orders and how much in sales did I get each month this year?
+    stores: 1
+    expect:
+      - metrics: [orders.order_count]
+        dimensions: [orders.order_month]
+        filters: ["orders.order_date >= DATE_TRUNC('YEAR', CURRENT_DATE)"]
+      - metrics: [sales_events.net_revenue]
+        dimensions: [sales_events.event_month]
+        filters: ["sales_events.event_date >= DATE_TRUNC('YEAR', CURRENT_DATE)"]
+    alternatives:
+      - - metrics: [orders.order_count]
+          dimensions: [orders.order_month]
+          filters: ["orders.order_date >= DATE_TRUNC('YEAR', CURRENT_DATE)"]
+        - metrics: [sales_events.net_revenue]
+          dimensions: [orders.order_month]
+          filters: ["orders.order_date >= DATE_TRUNC('YEAR', CURRENT_DATE)"]
+
+  - id: orders-by-weekday
+    type: breakdown
+    candidate: true
+    question: How many orders did we get on each day of the week, and which day is the strongest?
+    stores: 1
+    expect:
+      - metrics: [orders.order_count]
+        dimensions: [orders.order_weekday]
+    rubric: >-
+      Names the days of the week (Monday, Tuesday, ...), not their numbers, and
+      names the day with the most orders as the strongest.
+
+  # Period counted from today
+  - id: new-customers-last-month
+    type: relative_period
+    candidate: true
+    question: How many new customers did I get last month?
+    stores: 1
+    expect:
+      - metrics: [customers.customer_count]
+        filters: ["customers.first_order_month = DATE_TRUNC('MONTH', CURRENT_DATE) - INTERVAL '1' MONTH"]
+
+  - id: orders-last-7-days-vs-previous
+    type: relative_period
+    candidate: true
+    question: How many orders did we get in the last 7 days compared with the 7 days before that?
+    stores: 1
+    expect:
+      - metrics: [orders.order_count]
+        filters: ["orders.order_date >= CURRENT_DATE - INTERVAL '6' DAY"]
+      - metrics: [orders.order_count]
+        filters: ["orders.order_date >= CURRENT_DATE - INTERVAL '13' DAY",
+                  "orders.order_date < CURRENT_DATE - INTERVAL '6' DAY"]
+    alternatives:
+      # Seven whole days, today left out.
+      - - metrics: [orders.order_count]
+          filters: ["orders.order_date >= CURRENT_DATE - INTERVAL '7' DAY",
+                    "orders.order_date < CURRENT_DATE"]
+        - metrics: [orders.order_count]
+          filters: ["orders.order_date >= CURRENT_DATE - INTERVAL '14' DAY",
+                    "orders.order_date < CURRENT_DATE - INTERVAL '7' DAY"]
+
+  - id: sales-year-to-date-vs-last-year
+    type: relative_period
+    candidate: true
+    question: What is our revenue so far this year compared with the same period last year?
+    stores: 1
+    expect:
+      - metrics: [sales_events.net_revenue]
+        dimensions: [orders.currency]
+        filters: ["sales_events.event_date >= DATE_TRUNC('YEAR', CURRENT_DATE)"]
+      - metrics: [sales_events.net_revenue]
+        dimensions: [orders.currency]
+        filters: ["sales_events.event_date >= DATE_TRUNC('YEAR', CURRENT_DATE) - INTERVAL '1' YEAR",
+                  "sales_events.event_date <= CURRENT_DATE - INTERVAL '1' YEAR"]
+    if_empty: >-
+      Gives this year's sales and says there were no sales in the same period last
+      year (or that the data starts this year).
+
+  # Several stores and currencies
+  - id: sales-yesterday-two-currencies
+    type: stores_currencies
+    candidate: true
+    question: how much did we sell yesterday?
+    stores: 2
+    requires: [two_currencies]
+    expect:
+      - metrics: [sales_events.net_revenue]
+        dimensions: [orders.source_id, orders.currency]
+        filters: ["sales_events.event_date = CURRENT_DATE - INTERVAL '1' DAY"]
+    forbid:
+      - metrics: [sales_events.net_revenue]
+        filters: ["sales_events.event_date = CURRENT_DATE - INTERVAL '1' DAY"]
+    rubric: >-
+      Gives each store's sales in its own currency, with the currency's code. Never
+      adds the amounts of the two currencies up or converts one into the other. A
+      store with no sales yesterday may be shown as zero.
+
+  - id: top-products-two-currencies
+    type: stores_currencies
+    candidate: true
+    question: top 5 products overall this year
+    stores: 2
+    requires: [two_currencies]
+    expect:
+      - metrics: [order_lines.items_sold]
+        dimensions: [orders.source_id, order_lines.title]
+        filters: ["orders.order_date >= DATE_TRUNC('YEAR', CURRENT_DATE)"]
+        order: [order_lines.items_sold desc]
+        limit: 5
+    alternatives:
+      # Each store's top 5 by revenue, in its currency.
+      - - metrics: [order_lines.line_revenue]
+          dimensions: [orders.source_id, orders.currency, order_lines.title]
+          filters: ["orders.order_date >= DATE_TRUNC('YEAR', CURRENT_DATE)", "orders.source_id = '{store_a}'"]
+          order: [order_lines.line_revenue desc]
+          limit: 5
+        - metrics: [order_lines.line_revenue]
+          dimensions: [orders.source_id, orders.currency, order_lines.title]
+          filters: ["orders.order_date >= DATE_TRUNC('YEAR', CURRENT_DATE)", "orders.source_id = '{store_b}'"]
+          order: [order_lines.line_revenue desc]
+          limit: 5
+    rubric: >-
+      Ranks products by units across the stores, or ranks them by revenue within
+      each store in its own currency. Never ranks products of different currencies
+      together by an amount.
+
+  - id: which-store-more-money
+    type: stores_currencies
+    candidate: true
+    question: which store is making more money this year?
+    stores: 2
+    requires: [two_currencies]
+    expect:
+      - metrics: [sales_events.net_revenue]
+        dimensions: [orders.source_id, orders.currency]
+        filters: ["sales_events.event_date >= DATE_TRUNC('YEAR', CURRENT_DATE)"]
+    rubric: >-
+      Gives each store's sales this year in its own currency and says that amounts in
+      different currencies cannot be compared without an exchange rate, which the
+      model does not have. Fails if it names one store as making more money, gives a
+      ratio, or converts one currency into the other.
+
+  - id: average-customer-value-two-currencies
+    type: stores_currencies
+    candidate: true
+    question: What's the average lifetime value of a customer across both stores?
+    stores: 2
+    requires: [two_currencies]
+    expect:
+      - metrics: [customers.average_customer_value]
+        dimensions: [customers.source_id]
+      # Each store's currency, which the answer names; the counts need not be stated.
+      - metrics: [orders.order_count]
+        dimensions: [orders.source_id, orders.currency]
+        numbers: false
+    forbid:
+      - metrics: [customers.average_customer_value]
+    rubric: >-
+      Gives the average customer value of each store separately, each in its
+      store's currency. Fails if it gives one average over both stores.
+
+  # Not in the model
+  - id: revenue-by-collection
+    type: not_in_model
+    candidate: true
+    question: What was our revenue by collection?
+    stores: 1
+    rubric: >-
+      Says the model has no collections and gives no revenue split by collection.
+      It may offer categories or brands, if it says they are not collections.
+
+  - id: billing-countries
+    type: not_in_model
+    candidate: true
+    question: Where are my customers' billing countries or regions, and how much did each buy?
+    stores: 1
+    rubric: >-
+      Says the model has no billing address. Fails if it presents shipping countries
+      as billing countries; it may offer shipping countries if it says they are where
+      orders ship, not where customers are billed.
+
+  - id: payment-methods
+    type: not_in_model
+    candidate: true
+    question: How much did customers pay through each payment method, and how has that changed over time?
+    stores: 1
+    rubric: >-
+      Says the model has no payment methods and gives no split by payment method.
+
+  - id: customers-of-both-stores
+    type: not_in_model
+    candidate: true
+    question: how many customers bought from both stores?
+    stores: 2
+    rubric: >-
+      Says customers are not matched across stores (a customer id belongs to one
+      store), so the number cannot be found. Fails if it gives a number of
+      customers who bought from both.
+
+  # Absence
+  - id: customers-inactive-90-days
+    type: absence
+    candidate: true
+    question: How many customers haven't bought anything in more than 90 days?
+    stores: 1
+    expect:
+      - metrics: [customers.customer_count]
+        filters: ["customers.last_order_date < CURRENT_DATE - INTERVAL '90' DAY"]
+    alternatives:
+      - - metrics: [customers.customer_count]
+          filters: ["customers.last_order_date <= CURRENT_DATE - INTERVAL '90' DAY"]
+
+  - id: products-unsold-90-days
+    type: absence
+    candidate: true
+    question: anything in my store that hasn't sold a single unit in the last 90 days?
+    stores: 1
+    expect:
+      - metrics: [products.product_count]
+        dimensions: [products.title]
+        filters: ["products.last_sold_date IS NULL OR products.last_sold_date < CURRENT_DATE - INTERVAL '89' DAY"]
+    alternatives:
+      - - metrics: [products.product_count]
+          dimensions: [products.title]
+          filters: ["products.status = 'active'",
+                    "products.last_sold_date IS NULL OR products.last_sold_date < CURRENT_DATE - INTERVAL '89' DAY"]
+
+  - id: products-never-sold
+    type: absence
+    candidate: true
+    question: Which products have never been ordered, ever?
+    stores: 1
+    expect:
+      - metrics: [products.product_count]
+        dimensions: [products.title]
+        filters: ["products.last_sold_date IS NULL"]
+
+  - id: sold-last-year-not-this-year
+    type: absence
+    candidate: true
+    question: What was I selling last year that hasn't sold at all this year?
+    stores: 1
+    expect:
+      - metrics: [products.product_count]
+        dimensions: [products.title]
+        filters: ["products.last_sold_date >= DATE_TRUNC('YEAR', CURRENT_DATE) - INTERVAL '1' YEAR",
+                  "products.last_sold_date < DATE_TRUNC('YEAR', CURRENT_DATE)"]
+
+  # Share or ratio
+  - id: second-order-rate-of-cohort
+    type: ratio
+    candidate: true
+    question: What share of the customers we won in {cohort_month:%B} bought again within 90 days?
+    stores: 1
+    expect:
+      - metrics: [customers.second_order_rate_90_days]
+        filters: ["customers.first_order_month = DATE '{cohort_month}'"]
+    if_empty: >-
+      Says the 90 days are not over yet for that month's customers, so the share is
+      not known; gives no share of its own.
+
+  - id: share-of-repeat-customers
+    type: ratio
+    candidate: true
+    question: what % of my customers have bought more than once?
+    stores: 1
+    expect:
+      - metrics: [customers.customer_count]
+      - metrics: [customers.customer_count]
+        filters: ["customers.number_of_orders > 1"]
+    rubric: >-
+      Gives the number of all customers and of those who bought more than once, and
+      says the model has no metric for this share. Fails if it states a percentage it
+      computed itself from the two numbers.
+
+  - id: refund-rate-by-product
+    type: ratio
+    candidate: true
+    question: Show me refund rate by product for this year. Anything above 10%?
+    stores: 1
+    expect:
+      - metrics: [order_lines.line_revenue, order_lines.line_returned_amount]
+        dimensions: [order_lines.title]
+        filters: ["orders.order_date >= DATE_TRUNC('YEAR', CURRENT_DATE)"]
+    rubric: >-
+      Gives each product's revenue and the amount taken back, and says the model has
+      no refund rate per product. Fails if it states rates per product that it
+      computed itself or judges which products are above 10% from such rates.
+
+  - id: sales-this-month-vs-last
+    type: ratio
+    candidate: true
+    question: How does this month's revenue compare with last month's, in amount and percent?
+    stores: 1
+    expect:
+      - metrics: [sales_events.net_revenue]
+        dimensions: [orders.currency, sales_events.event_month]
+        filters: ["sales_events.event_date >= DATE_TRUNC('MONTH', CURRENT_DATE) - INTERVAL '1' MONTH"]
+    rubric: >-
+      Gives this month's and last month's sales, and says the model gives no change
+      between them. Fails if it states a difference or a percentage it computed
+      itself.
+
+  # Unclear store
+  - id: named-store-sales-last-month
+    type: unclear_store
+    candidate: true
+    question: "{store_word} store revenue last month"
+    stores: 2
+    requires: [labels]
+    expect:
+      - metrics: [sales_events.net_revenue]
+        dimensions: [orders.currency]
+        filters: ["orders.source_id = '{store_named}'",
+                  "sales_events.event_date >= DATE_TRUNC('MONTH', CURRENT_DATE) - INTERVAL '1' MONTH",
+                  "sales_events.event_date < DATE_TRUNC('MONTH', CURRENT_DATE)"]
+    labels:
+      opaque: >-
+        Lists the stores with their currencies and platforms and asks which one is
+        meant. Fails if it answers for a store it picked by currency, platform or a
+        guess.
+
+  - id: main-store
+    type: unclear_store
+    candidate: true
+    question: what's the average order value on the main store?
+    stores: 2
+    rubric: >-
+      Asks which store is the main one, listing the stores. Fails if it answers for
+      a store it chose itself. Giving every store's value and asking which is meant
+      is right.
+
+  - id: the-other-store
+    type: unclear_store
+    candidate: true
+    question: how many repeat customers do we have on the other one?
+    stores: 2
+    rubric: >-
+      Asks which store is meant ("the other one" has no earlier store to refer to).
+      Fails if it answers for a store it chose itself. Giving every store's number
+      and asking which is meant is right.
+
+  - id: platform-store-market
+    type: unclear_store
+    candidate: true
+    question: the shopify one in europe?
+    stores: 2
+    requires: [two_platforms]
+    rubric: >-
+      Names the store on Shopify by its label and says the model does not know
+      which market or country a store sells in; it may offer the countries orders
+      ship to. Fails if it says the Shopify store is or is not in Europe, or infers
+      a market from a currency.
+
+  # Counting rule
+  - id: cancelled-orders-rule
+    type: counting_rule
+    candidate: true
+    question: Do cancelled orders count in my sales numbers on {shopify_store}?
+    stores: 2
+    requires: [two_platforms]
+    rubric: >-
+      Says that on this store, which is on Shopify, cancelled orders count in the
+      number of orders and in orders as placed, the way Shopify's reports count
+      them, and that net sales leave them out. Fails if it says cancelled orders are
+      in no number, or gives WooCommerce's rule for this store.
+
+  - id: order-date-rule
+    type: counting_rule
+    candidate: true
+    question: Is an order counted on the day it was placed or the day it was paid? Same for both stores?
+    stores: 2
+    requires: [two_platforms]
+    rubric: >-
+      Says the Shopify store dates an order by the day it was placed, and the
+      WooCommerce store by the day it was paid by default (its report settings
+      decide), so the two stores differ. Fails if it says both use the same date.
+
+  - id: discount-report-match
+    type: counting_rule
+    candidate: true
+    question: >-
+      I want to compare your numbers with the Discounts report in my Shopify
+      Analytics. How many orders used a discount code so far, and will the total
+      discount amount match what the report shows?
+    stores: 1
+    requires: [shopify]
+    expect:
+      - metrics: [orders.order_count]
+        filters: ["orders.discount_code_count > 0"]
+      - metrics: [orders.discount_amount]
+        dimensions: [orders.currency]
+        filters: ["orders.discount_code_count > 0"]
+    rubric: >-
+      Says the report matches on orders with one code and no other discount and can
+      differ on others (two codes on an order, a code together with an automatic
+      discount, a code that only takes off shipping). Fails if it promises the
+      numbers match without a condition.
+
+  # Filter through a related table
+  - id: aov-of-orders-with-category
+    type: related_filter
+    candidate: true
+    question: What is the average order value of orders with products from the {category} category?
+    stores: 1
+    expect:
+      - metrics: [orders.average_order_value]
+        dimensions: [orders.currency]
+        filters: ["line_categories.category_path = '{category}'"]
+    alternatives:
+      - - metrics: [orders.average_order_value]
+          dimensions: [orders.currency]
+          filters: ["line_categories.category = '{category}'"]
+
+  - id: buyers-of-category
+    type: related_filter
+    candidate: true
+    question: How many customers bought something from the {category} category?
+    stores: 1
+    expect:
+      - metrics: [orders.buyer_count]
+        filters: ["line_categories.category_path = '{category}'"]
+    alternatives:
+      - - metrics: [orders.buyer_count]
+          filters: ["line_categories.category = '{category}'"]
+
+  - id: category-with-subcategories-this-year
+    type: related_filter
+    candidate: true
+    question: How much did we make from {parent_category} this year, including everything in its subcategories?
+    stores: 1
+    requires: [nested_categories]
+    expect:
+      - metrics: [line_categories.category_tree_revenue]
+        dimensions: [orders.currency]
+        filters: ["line_categories.category_path = '{parent_category}'",
+                  "orders.order_date >= DATE_TRUNC('YEAR', CURRENT_DATE)"]
+    alternatives:
+      - - metrics: [line_categories.category_tree_net_revenue]
+          dimensions: [orders.currency]
+          filters: ["line_categories.category_path = '{parent_category}'",
+                    "orders.order_date >= DATE_TRUNC('YEAR', CURRENT_DATE)"]
+
+  - id: category-without-subcategories-last-month
+    type: related_filter
+    candidate: true
+    question: >-
+      How many units of just the {parent_category} category itself did we sell last
+      month, not counting anything from its subcategories?
+    stores: 1
+    requires: [nested_categories]
+    expect:
+      - metrics: [line_categories.category_items_sold]
+        filters: ["line_categories.category_path = '{parent_category}'",
+                  "orders.order_date >= DATE_TRUNC('MONTH', CURRENT_DATE) - INTERVAL '1' MONTH",
+                  "orders.order_date < DATE_TRUNC('MONTH', CURRENT_DATE)"]

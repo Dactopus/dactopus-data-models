@@ -86,6 +86,15 @@ release it builds on; older releases are untested.
       models/schema.yml       the view's columns and types (the dbt
                               contract): those the Ossie model reads, no
                               others; its tests
+    evals/<domain>.yaml       questions a store owner asks an agent, each
+                              with the queries of the model that give its
+                              expected answer, or a rubric of what a right
+                              answer says
+    evals/reference.py        works out the expected answers over a
+                              deployment's databases
+    evals/grade.py            grades an agent's answers against them
+    evals/deployment.example.yaml
+                              the canonical tables as a deployment
     tests/<source>/           hand-written input rows (fixture.sql, and
                               windows.sql for the retention windows) and
                               the numbers the model must answer over them
@@ -112,6 +121,9 @@ release it builds on; older releases are untested.
                               incremental run of a package
     tests/check_union.py      checks a union's answers against those of the
                               databases it adds up
+    tests/check_evals.py      works out the expected answers of the
+                              questions for an agent over the canonical
+                              tables
     tests/profiles.yml        the dbt profile CI and the checks build with;
                               a package ships none
     docs/<domain>.md          what each Ossie model answers and its limits
