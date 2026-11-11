@@ -134,9 +134,9 @@ its default.
   Nullable fails the build: do not turn it into 0 with `assumeNotNull`
   alone.
 - Entities are plain Ossie. Mapping, refresh and checks belong in the
-  package's dbt project, never in `nonportable_extensions`. The only
-  extension used is dactopus-ossie-clickhouse's `CLICKHOUSE` namespace,
-  for its `dedup` key.
+  package's dbt project, never in `nonportable_extensions`. The models
+  use no extension; the only one allowed is dactopus-ossie-clickhouse's
+  `CLICKHOUSE` namespace, for its `dedup` key.
 - Models must work within dactopus-ossie-clickhouse limits: many-to-one
   joins on a declared primary or unique key, one path from a question's
   root to each dataset; a metric reads one fact table (two facts meet
