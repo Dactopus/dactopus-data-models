@@ -34,15 +34,15 @@ one (the variable lets the passwordless `default` user connect over the
 network):
 
 ```bash
-docker run -d --name ch -p 8123:8123 -p 9000:9000 -e CLICKHOUSE_SKIP_USER_SETUP=1 clickhouse/clickhouse-server:26.9
+docker run -d --name ch -p 8123:8123 -p 9000:9000 -e CLICKHOUSE_SKIP_USER_SETUP=1 clickhouse/clickhouse-server:26.8
 pip install dbt-oss                     # dbt v2; or dbt-core~=1.11 with dbt-clickhouse (v1)
 pip install "dactopus-ossie-clickhouse[mcp]"
 ```
 
 Add the dbt profile of the README's [Quick start](README.md#quick-start)
 and build a package over its fixture as the Quick start does. CI runs on
-ClickHouse 26.9, and the WooCommerce package on 26.7 as well, the oldest
-release it builds on; older releases are untested.
+ClickHouse 26.8, the LTS release, and the unions job builds every package
+again on the latest release, 26.10; older releases are untested.
 
 ## Layout
 
@@ -86,6 +86,18 @@ release it builds on; older releases are untested.
       models/schema.yml       the view's columns and types (the dbt
                               contract): those the Ossie model reads, no
                               others; its tests
+    evals/<domain>.yaml       questions a store owner asks an agent, each
+                              with the queries of the model that give its
+                              expected answer, or a rubric of what a right
+                              answer says
+    evals/reference.py        works out the expected answers over a
+                              deployment's databases
+    evals/grade.py            grades an agent's answers against them
+    evals/deployment.commerce.example.yaml
+                              the canonical tables as a deployment
+    evals/deployment.<domain>.example.yaml
+                              web_analytics and iot: the tables CI builds
+                              from the fixture as a deployment
     tests/<source>/           hand-written input rows (fixture.sql, and
                               windows.sql for the retention windows) and
                               the numbers the model must answer over them
@@ -112,6 +124,11 @@ release it builds on; older releases are untested.
                               incremental run of a package
     tests/check_union.py      checks a union's answers against those of the
                               databases it adds up
+    tests/check_evals.py      works out the expected answers of the
+                              questions for an agent over the canonical
+                              tables, and over the tables CI builds from
+                              the GA4 and Sensor.Community fixtures
+    tests/check_grade.py      checks evals/grade.py on hand-written answers
     tests/profiles.yml        the dbt profile CI and the checks build with;
                               a package ships none
     docs/<domain>.md          what each Ossie model answers and its limits
@@ -291,6 +308,17 @@ package or a model:
    `dactopus-ossie-clickhouse serve` (MCP), in fresh sessions, with more
    than one AI model, and compare every number in the answers with the
    hand-written queries.
+8. A change to a metric, field or relationship the questions of
+   `evals/<domain>.yaml` read, or to a question, passes
+   `uv run tests/check_evals.py`, which works out the expected answers of
+   `evals/commerce.yaml` over the canonical tables; the GA4 and
+   Sensor.Community jobs of CI work out those of `evals/web_analytics.yaml`
+   and `evals/iot.yaml` over the tables they build from the fixture
+   (`uv run tests/check_evals.py <domain> --from <database>`). The
+   questions also check agents over a build of your own
+   (`evals/README.md`).
+   A change to `evals/grade.py` passes `uv run tests/check_grade.py`,
+   with a case for what it changes.
 
 ```bash
 dbt build --project-dir sources/ga4 --profiles-dir tests      # models and tests
@@ -317,8 +345,8 @@ in `docs/deployment.md`). The Shopify and WooCommerce jobs also check
 the retention windows (`windows.sql`), a build in two time zones, and
 that the canonical tables of the
 build are the CSV files in `tests/<source>/canon*`, over which `tests/run_canon.py` asks the
-questions again with no dbt; the WooCommerce job runs on ClickHouse 26.7 and 26.9. The unions
-job builds every package into databases of its own, builds the three
+questions again with no dbt. The unions
+job builds every package, on the latest ClickHouse, into databases of its own, builds the three
 unions over them and compares each label's answers with its database's
 (`tests/check_union.py`); a user with `SELECT` on the unions' databases
 alone gets the models' answers and is refused the packages' tables. The

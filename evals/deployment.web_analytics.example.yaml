@@ -1,0 +1,48 @@
+# A deployment to ask the questions of web_analytics.yaml over: the tables the GA4
+# package's CI job builds from tests/ga4/fixture.sql, as tests/check_evals.py copies them.
+# Copy it for your own deployment and name your databases and parameters.
+
+# The model the agent is asked through, relative to this file.
+models: [../entities/web_analytics.yaml]
+# The zone the executor serves the model in (OSSIE_CLICKHOUSE_TIME_ZONE).
+time_zone: UTC
+
+# Parameters of the question texts, queries and rubrics, for every database; a
+# database's own params replace them.
+params:
+  # A month and a week (its Monday) of the data.
+  month: "2025-03-01"
+  week: "2025-02-24"
+  # The words the questions name the sites by, and the labels they name.
+  shop_word: merch
+  blog_word: blog
+
+# The databases the agent is asked over. stores: how many GA4 properties (sites) the
+# database holds. provides: what its data has, which a question can require:
+#   purchase_currencies     purchases in more than one currency
+#   export_lag              the latest day exported is before yesterday; latest_day is
+#                           that day
+#   labels                  labels of sites; with `labels: named` site_shop is the label
+#                           that shop_word names and site_blog the one blog_word names,
+#                           with `labels: opaque` no label names a site
+# site_shop and site_blog are the two sites of a database with two.
+databases:
+  - name: evals_web
+    stores: 1
+    provides: [purchase_currencies]
+  # The property less its latest day.
+  - name: evals_web_lag
+    stores: 1
+    provides: [export_lag]
+    params: {latest_day: "2025-03-01"}
+  # The property, and again less its latest day.
+  - name: evals_web_named
+    stores: 2
+    labels: named
+    provides: [labels]
+    params: {site_shop: merch_store, site_blog: blog}
+  - name: evals_web_opaque
+    stores: 2
+    labels: opaque
+    provides: [labels]
+    params: {site_shop: property_a, site_blog: property_b}

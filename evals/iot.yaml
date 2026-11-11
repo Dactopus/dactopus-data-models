@@ -1,0 +1,154 @@
+# Questions the owner of a sensor network asks an agent that answers through
+# dactopus-ossie-clickhouse over the IoT model, and how to tell a right answer from a
+# wrong one.
+#
+# The format is that of commerce.yaml; stores counts the sensor networks of a
+# database, and labels says whether their labels name the networks. Parameters
+# (deployment.iot.example.yaml) fill the question, its queries and its rubric.
+
+questions:
+  # Total
+  - id: average-pm25-all-sensors
+    type: total
+    question: what's the average PM2.5 across all sensors?
+    stores: 1
+    expect:
+      - metrics: [readings.avg_value]
+        filters: ["readings.measure = 'pm2_5'"]
+
+  # Breakdown
+  - id: highest-pm10-of-day-and-device
+    type: breakdown
+    question: highest PM10 reading on {reading_day:%-d %b %Y} and which device
+    stores: 1
+    expect:
+      - metrics: [readings.max_value]
+        dimensions: [readings.device_id]
+        filters: ["readings.measure = 'pm10'", "readings.reading_date = DATE '{reading_day}'"]
+        order: [readings.max_value desc]
+        limit: 1
+    rubric: Names the device the highest reading came from, by its id.
+
+  - id: pressure-in-hpa-by-day
+    type: breakdown
+    question: show me pressure in hPa, avg by day for {month:%B}
+    stores: 1
+    expect:
+      # The model's values are in Pa; the answer states them in hPa.
+      - metrics: [readings.avg_value]
+        dimensions: [readings.reading_date]
+        filters: ["readings.measure = 'pressure'", "readings.reading_month = DATE '{month}'"]
+        scale: 0.01
+    rubric: Gives the values in hPa. Fails if it labels values in Pa as hPa.
+
+  - id: latest-data-each-sensor
+    type: breakdown
+    question: whats the latest data from each sensor
+    stores: 2
+    expect:
+      - metrics: [readings.last_reading_time]
+        dimensions: [readings.source_id, readings.sensor_id]
+    rubric: >-
+      Lists each sensor or device with its network and the time of its latest
+      reading, in UTC. Fails if it names a sensor or a device without its network:
+      their ids repeat across networks.
+
+  # Several networks
+  - id: device-count-two-networks
+    type: stores_currencies
+    question: how many devices do we have in total?
+    stores: 2
+    requires: [repeated_ids]
+    expect:
+      - metrics: [devices.device_count]
+    rubric: Fails if it says a device id that appears in two networks is one device.
+
+  - id: particulates-last-week-named-networks
+    type: stores_currencies
+    question: avg PM2.5 and PM10 last week, {city_word} vs {lab_word}
+    stores: 2
+    requires: [labels]
+    expect:
+      # Monday to Sunday of last week.
+      - metrics: [readings.avg_value]
+        dimensions: [readings.source_id, readings.measure]
+        filters: ["readings.measure IN ('pm2_5', 'pm10')",
+                  "readings.reading_date >= DATE_TRUNC('WEEK', CURRENT_DATE) - INTERVAL '7' DAY",
+                  "readings.reading_date < DATE_TRUNC('WEEK', CURRENT_DATE)"]
+    alternatives:
+      # The last seven days, today included, as the server writes them.
+      - - metrics: [readings.avg_value]
+          dimensions: [readings.source_id, readings.measure]
+          filters: ["readings.measure IN ('pm2_5', 'pm10')",
+                    "readings.reading_date >= CURRENT_DATE - INTERVAL '6' DAY"]
+    rubric: >-
+      Gives PM2.5 and PM10 for each network separately. Fails if it averages the two
+      measures together.
+    labels:
+      opaque: >-
+        Lists the networks' labels and asks which ones are the {city_word} and the
+        {lab_word}. Fails if it answers for networks it picked itself.
+
+  # Absence
+  - id: sensors-stopped-reporting
+    type: absence
+    question: which sensors stopped reporting?
+    stores: 2
+    rubric: >-
+      Measures silence from each network's own latest contact
+      (devices.last_contact_time by network) and names that time, or says the
+      networks share one; where the question gives no period, either names the
+      period it takes as silent or lists each device's time since that contact
+      and asks for one. Names each device with its network (a list that says it
+      holds for each network, whose rows are the same, does). Where the latest
+      contact is hours or days old, says the snapshots are not running. Fails if
+      it measures silence from the current time, from one contact across
+      networks, or names a device without its network. Giving how long ago that
+      latest contact was, counted from now, is right: it shows the data's age.
+
+  # Unclear network
+  - id: pm25-downtown-now
+    type: unclear_store
+    question: what's the average PM2.5 downtown right now?
+    stores: 2
+    requires: [labels]
+    rubric: >-
+      Takes the {city_word} network, saying so, or asks which network or which sites
+      are meant; says the latest readings are hours old (the archive publishes a day
+      the day after) and, where it gives a value, names the time of the data it
+      uses. Fails if it presents a value as of now, or picks the devices by whether
+      they are indoors (devices.is_indoor) in place of a network; saying that a
+      device it used is outdoors is no such pick.
+    labels:
+      opaque: >-
+        Lists the networks' labels and asks which one is downtown. Fails if it answers
+        for a network it picked itself or picks devices by whether they are indoors.
+
+  - id: lab-vs-outside-temperature
+    type: unclear_store
+    question: compare the {lab_word} sensors to the outside ones on temperature
+    stores: 2
+    requires: [labels]
+    expect:
+      - metrics: [readings.avg_value]
+        dimensions: [readings.source_id]
+        filters: ["readings.measure = 'temperature'"]
+    alternatives:
+      # "The outside ones" as the outdoor devices (devices.is_indoor), which the
+      # answer says.
+      - - metrics: [readings.avg_value]
+          filters: ["readings.measure = 'temperature'", "readings.source_id = '{net_lab}'"]
+        - metrics: [readings.avg_value]
+          filters: ["readings.measure = 'temperature'", "devices.is_indoor = false"]
+    rubric: >-
+      Compares the {lab_word} network with the other network, or with the outdoor
+      devices (devices.is_indoor), saying that it read "the outside ones" so and
+      offering the other network as the other reading. Fails if it takes the
+      outdoor devices without saying so, or compares devices within the
+      {lab_word} network only.
+    labels:
+      opaque: >-
+        Lists the networks' labels and asks which one is the {lab_word}. It may also
+        give the indoor and outdoor devices' values if it says that is another
+        reading of "the outside ones". Fails if it answers for networks it picked
+        itself, or compares indoor and outdoor devices without saying so.
