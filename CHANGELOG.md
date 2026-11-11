@@ -38,7 +38,8 @@ needed.
   with `--no-judge`), and
   `tests/check_evals.py` works them out in CI: over the canonical tables
   for commerce, over the tables the GA4 and Sensor.Community jobs build
-  from their fixtures for the others.
+  from their fixtures for the others; `tests/check_grade.py` checks the
+  grader on hand-written answers.
 
 ### Changed
 

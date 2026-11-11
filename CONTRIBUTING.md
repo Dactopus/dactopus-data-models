@@ -128,6 +128,7 @@ again on the latest release, 26.10; older releases are untested.
                               questions for an agent over the canonical
                               tables, and over the tables CI builds from
                               the GA4 and Sensor.Community fixtures
+    tests/check_grade.py      checks evals/grade.py on hand-written answers
     tests/profiles.yml        the dbt profile CI and the checks build with;
                               a package ships none
     docs/<domain>.md          what each Ossie model answers and its limits
@@ -316,6 +317,8 @@ package or a model:
    (`uv run tests/check_evals.py <domain> --from <database>`). The
    questions also check agents over a build of your own
    (`evals/README.md`).
+   A change to `evals/grade.py` passes `uv run tests/check_grade.py`,
+   with a case for what it changes.
 
 ```bash
 dbt build --project-dir sources/ga4 --profiles-dir tests      # models and tests

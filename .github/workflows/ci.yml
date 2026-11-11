@@ -63,6 +63,8 @@ jobs:
             validate:
               - *common
               - entities/**
+              - evals/grade.py
+              - tests/check_grade.py
             ga4:
               - *common
               - sources/ga4/**
@@ -155,6 +157,10 @@ jobs:
         run: uv tool install "dactopus-ossie-clickhouse==0.14.0"
       - name: Validate
         run: dactopus-ossie-clickhouse validate entities/*.yaml
+      # The grader of the question set (evals/grade.py) on hand-written
+      # answers: the numbers and names it finds, the verdicts it gives.
+      - name: Check the question set's grader
+        run: uv run tests/check_grade.py
   ga4:
     runs-on: ubuntu-24.04
     needs: changes
