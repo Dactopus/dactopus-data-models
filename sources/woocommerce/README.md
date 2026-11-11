@@ -21,10 +21,10 @@ the trash, an order paid in EUR), with a catalog of seven products in
 nested categories and with brands (a product in two categories, a
 category moved under another, two categories of one name, a product in
 the trash). You need ClickHouse, dbt and
-dactopus-ossie-clickhouse, as in the README's [Quick start](../../README.md#quick-start). The package needs ClickHouse 26.7
-or later: its models compute each shared subquery once
-(`WITH ... AS MATERIALIZED`), which fails on earlier versions. CI runs it
-on 26.7 and 26.9.
+dactopus-ossie-clickhouse, as in the README's [Quick start](../../README.md#quick-start). The package needs ClickHouse 26.8
+or later, the LTS release: its models compute each shared subquery once
+(`WITH ... AS MATERIALIZED`), which fails on 26.3 to 26.6. CI runs it
+on 26.8 and 26.10.
 
 1. **Load** the package's input tables
    [`sources/woocommerce/input.sql`](input.sql) and the

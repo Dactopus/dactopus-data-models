@@ -40,6 +40,12 @@ needed.
   for commerce, over the tables the GA4 and Sensor.Community jobs build
   from their fixtures for the others.
 
+### Changed
+
+- CI runs every package on ClickHouse 26.8, the LTS release, and builds
+  them all again on the latest, 26.10, in the unions job; 26.7 and 26.9
+  are no longer tested. The WooCommerce package needs 26.8 or later.
+
 ## [0.12.2] - 2026-11-09
 
 Ossie schema `0.2.0.dev0`. Tested with dactopus-ossie-clickhouse 0.14.0,

@@ -34,15 +34,15 @@ one (the variable lets the passwordless `default` user connect over the
 network):
 
 ```bash
-docker run -d --name ch -p 8123:8123 -p 9000:9000 -e CLICKHOUSE_SKIP_USER_SETUP=1 clickhouse/clickhouse-server:26.9
+docker run -d --name ch -p 8123:8123 -p 9000:9000 -e CLICKHOUSE_SKIP_USER_SETUP=1 clickhouse/clickhouse-server:26.8
 pip install dbt-oss                     # dbt v2; or dbt-core~=1.11 with dbt-clickhouse (v1)
 pip install "dactopus-ossie-clickhouse[mcp]"
 ```
 
 Add the dbt profile of the README's [Quick start](README.md#quick-start)
 and build a package over its fixture as the Quick start does. CI runs on
-ClickHouse 26.9, and the WooCommerce package on 26.7 as well, the oldest
-release it builds on; older releases are untested.
+ClickHouse 26.8, the LTS release, and the unions job builds every package
+again on the latest release, 26.10; older releases are untested.
 
 ## Layout
 
@@ -342,8 +342,8 @@ in `docs/deployment.md`). The Shopify and WooCommerce jobs also check
 the retention windows (`windows.sql`), a build in two time zones, and
 that the canonical tables of the
 build are the CSV files in `tests/<source>/canon*`, over which `tests/run_canon.py` asks the
-questions again with no dbt; the WooCommerce job runs on ClickHouse 26.7 and 26.9. The unions
-job builds every package into databases of its own, builds the three
+questions again with no dbt. The unions
+job builds every package, on the latest ClickHouse, into databases of its own, builds the three
 unions over them and compares each label's answers with its database's
 (`tests/check_union.py`); a user with `SELECT` on the unions' databases
 alone gets the models' answers and is refused the packages' tables. The

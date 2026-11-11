@@ -396,9 +396,9 @@ DROP TABLE IF EXISTS {{ woocommerce_changed_table() }}
    references read the result; ClickHouse otherwise runs a CTE again at
    every reference. The changed orders' subquery, referenced through
    several CTEs, made order_lines read 123 million rows for a window of
-   two orders out of 320,000 (#18). Needs ClickHouse 26.7 or later:
-   26.3, where MATERIALIZED came in, to 26.6 fail on these models with
-   errors of their own.
+   two orders out of 320,000 (#18). Needs ClickHouse 26.8, the LTS
+   release, or later: 26.3, where MATERIALIZED came in, to 26.6 fail on
+   these models with errors of their own.
    join_use_nulls = 0: a LEFT JOIN without a match fills the joined
    columns with their type's default, 0 for an amount, which the models
    count on (an order without a refund or a shipping line); a server or

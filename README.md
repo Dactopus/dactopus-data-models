@@ -57,7 +57,7 @@ planned for it.
 
 Build the Shopify package over the rows the repository tests it with and
 ask the commerce model about them. You need
-[ClickHouse](https://clickhouse.com/docs/install) (tested on 26.9), dbt v2
+[ClickHouse](https://clickhouse.com/docs/install) (26.8, the LTS release, or later), dbt v2
 (`pip install dbt-oss`) or dbt v1 (`dbt-core` 1.11 with `dbt-clickhouse`),
 and [dactopus-ossie-clickhouse](https://github.com/Dactopus/dactopus-ossie-clickhouse)
 0.12.0 or later with its MCP server

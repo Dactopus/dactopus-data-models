@@ -168,7 +168,7 @@ jobs:
     name: GA4 package (dbt ${{ matrix.dbt.name }})
     services:
       clickhouse:
-        image: clickhouse/clickhouse-server:26.9
+        image: clickhouse/clickhouse-server:26.8
         ports: ["8123:8123"]
         env:
           CLICKHOUSE_SKIP_USER_SETUP: 1  # passwordless default user over the network
@@ -274,7 +274,7 @@ jobs:
     name: Shopify package (dbt ${{ matrix.dbt.name }})
     services:
       clickhouse:
-        image: clickhouse/clickhouse-server:26.9
+        image: clickhouse/clickhouse-server:26.8
         ports: ["8123:8123"]
         env:
           CLICKHOUSE_SKIP_USER_SETUP: 1  # passwordless default user over the network
@@ -490,14 +490,10 @@ jobs:
         dbt:
           - {name: v2, from: "dbt-oss", with: ""}
           - {name: v1, from: "dbt-core~=1.11.0", with: "dbt-clickhouse"}
-        # The oldest ClickHouse the package supports and the one it is
-        # tested on. Its materialized CTEs (woocommerce_query_settings)
-        # fail on 26.3 to 26.6 with errors of ClickHouse's own.
-        clickhouse: ["26.7", "26.9"]
-    name: WooCommerce package (dbt ${{ matrix.dbt.name }}, ClickHouse ${{ matrix.clickhouse }})
+    name: WooCommerce package (dbt ${{ matrix.dbt.name }})
     services:
       clickhouse:
-        image: clickhouse/clickhouse-server:${{ matrix.clickhouse }}
+        image: clickhouse/clickhouse-server:26.8
         ports: ["8123:8123"]
         env:
           CLICKHOUSE_SKIP_USER_SETUP: 1  # passwordless default user over the network
@@ -838,7 +834,7 @@ jobs:
     name: Sensor.Community package (dbt ${{ matrix.dbt.name }})
     services:
       clickhouse:
-        image: clickhouse/clickhouse-server:26.9
+        image: clickhouse/clickhouse-server:26.8
         ports: ["8123:8123"]
         env:
           CLICKHOUSE_SKIP_USER_SETUP: 1  # passwordless default user over the network
@@ -1002,7 +998,11 @@ jobs:
     name: Unions (dbt ${{ matrix.dbt.name }})
     services:
       clickhouse:
-        image: clickhouse/clickhouse-server:26.9
+        # The packages' jobs run on the LTS release, 26.8, the oldest the
+        # packages support (the WooCommerce models fail on 26.3 to 26.6).
+        # This job builds every package again on the latest release, the
+        # one ClickHouse Cloud moves to: bump it as each comes out.
+        image: clickhouse/clickhouse-server:26.10
         ports: ["8123:8123"]
         env:
           CLICKHOUSE_SKIP_USER_SETUP: 1  # passwordless default user over the network
