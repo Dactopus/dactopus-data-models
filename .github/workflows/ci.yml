@@ -63,6 +63,8 @@ jobs:
             validate:
               - *common
               - entities/**
+              - evals/grade.py
+              - tests/check_grade.py
             ga4:
               - *common
               - sources/ga4/**
@@ -70,6 +72,12 @@ jobs:
               - entities/web_analytics.yaml
               - tests/ga4/**
               - tests/ask_model.py
+              - tests/canon.py
+              - tests/run_canon.py
+              - tests/check_evals.py
+              - evals/web_analytics.yaml
+              - evals/deployment.web_analytics.example.yaml
+              - evals/reference.py
             shopify:
               - *common
               - sources/shopify/**
@@ -81,6 +89,11 @@ jobs:
               - tests/canon.py
               - tests/export_canon.py
               - tests/run_canon.py
+              - tests/woocommerce/canon/**
+              - tests/check_evals.py
+              - evals/commerce.yaml
+              - evals/deployment.commerce.example.yaml
+              - evals/reference.py
             woocommerce:
               - *common
               - sources/woocommerce/**
@@ -99,6 +112,12 @@ jobs:
               - entities/iot.yaml
               - tests/sensor_community/**
               - tests/ask_model.py
+              - tests/canon.py
+              - tests/run_canon.py
+              - tests/check_evals.py
+              - evals/iot.yaml
+              - evals/deployment.iot.example.yaml
+              - evals/reference.py
             unions:
               - *common
               - unions/**
@@ -138,6 +157,10 @@ jobs:
         run: uv tool install "dactopus-ossie-clickhouse==0.14.0"
       - name: Validate
         run: dactopus-ossie-clickhouse validate entities/*.yaml
+      # The grader of the question set (evals/grade.py) on hand-written
+      # answers: the numbers and names it finds, the verdicts it gives.
+      - name: Check the question set's grader
+        run: uv run tests/check_grade.py
   ga4:
     runs-on: ubuntu-24.04
     needs: changes
@@ -151,7 +174,7 @@ jobs:
     name: GA4 package (dbt ${{ matrix.dbt.name }})
     services:
       clickhouse:
-        image: clickhouse/clickhouse-server:26.9
+        image: clickhouse/clickhouse-server:26.8
         ports: ["8123:8123"]
         env:
           CLICKHOUSE_SKIP_USER_SETUP: 1  # passwordless default user over the network
@@ -210,6 +233,12 @@ jobs:
         run: uv run tests/check_contracts.py --built sources/ga4
       - name: Validate the Ossie model against the built tables
         run: dactopus-ossie-clickhouse validate entities/web_analytics.yaml --url "$OSSIE_CLICKHOUSE_URL"
+      # The question set (evals/web_analytics.yaml) asks its expected answers
+      # of the model over the built tables, copied as one property and as two:
+      # a metric, field or filter of a question that the model or the
+      # executor no longer takes fails here.
+      - name: Work out the question set's expected answers
+        run: uv run tests/check_evals.py web_analytics --from analytics --prefix evals_${{ matrix.dbt.name }}_
       # The fixture's events are from 2025: one event now, in the input
       # only, makes the source fresh. dbt v2 needs the package's own
       # freshness macros (macros/freshness.sql) to get this far. The age
@@ -251,7 +280,7 @@ jobs:
     name: Shopify package (dbt ${{ matrix.dbt.name }})
     services:
       clickhouse:
-        image: clickhouse/clickhouse-server:26.9
+        image: clickhouse/clickhouse-server:26.8
         ports: ["8123:8123"]
         env:
           CLICKHOUSE_SKIP_USER_SETUP: 1  # passwordless default user over the network
@@ -392,6 +421,12 @@ jobs:
           CLICKHOUSE_DATABASE=analytics_windows uv run tests/export_canon.py shopify --windows --check
           uv run tests/run_canon.py shopify --engine clickhouse --database analytics_canon_files
           uv run tests/run_canon.py shopify --windows --engine clickhouse --database analytics_canon_files_windows
+      # The question set (evals/commerce.yaml) asks its expected answers of
+      # the model over the canonical tables of both packages, alone and as two
+      # stores of a union: a metric, field or filter of a question that the
+      # model or the executor no longer takes fails here.
+      - name: Work out the question set's expected answers
+        run: uv run tests/check_evals.py --prefix evals_${{ matrix.dbt.name }}_
       # deployment.yml names what a deployment sets and reads; the check
       # holds it to the package and the built tables, and counts the rows
       # whose date is not the day of their time in the build's zone: none
@@ -461,14 +496,10 @@ jobs:
         dbt:
           - {name: v2, from: "dbt-oss", with: ""}
           - {name: v1, from: "dbt-core~=1.11.0", with: "dbt-clickhouse"}
-        # The oldest ClickHouse the package supports and the one it is
-        # tested on. Its materialized CTEs (woocommerce_query_settings)
-        # fail on 26.3 to 26.6 with errors of ClickHouse's own.
-        clickhouse: ["26.7", "26.9"]
-    name: WooCommerce package (dbt ${{ matrix.dbt.name }}, ClickHouse ${{ matrix.clickhouse }})
+    name: WooCommerce package (dbt ${{ matrix.dbt.name }})
     services:
       clickhouse:
-        image: clickhouse/clickhouse-server:${{ matrix.clickhouse }}
+        image: clickhouse/clickhouse-server:26.8
         ports: ["8123:8123"]
         env:
           CLICKHOUSE_SKIP_USER_SETUP: 1  # passwordless default user over the network
@@ -809,7 +840,7 @@ jobs:
     name: Sensor.Community package (dbt ${{ matrix.dbt.name }})
     services:
       clickhouse:
-        image: clickhouse/clickhouse-server:26.9
+        image: clickhouse/clickhouse-server:26.8
         ports: ["8123:8123"]
         env:
           CLICKHOUSE_SKIP_USER_SETUP: 1  # passwordless default user over the network
@@ -925,6 +956,12 @@ jobs:
         run: uv run tests/check_contracts.py --built sources/sensor_community
       - name: Validate the Ossie model against the built tables
         run: dactopus-ossie-clickhouse validate entities/iot.yaml --url "$OSSIE_CLICKHOUSE_URL"
+      # The question set (evals/iot.yaml) asks its expected answers of the
+      # model over the built tables, copied as one network and as two with
+      # the same device ids: a metric, field or filter of a question that
+      # the model or the executor no longer takes fails here.
+      - name: Work out the question set's expected answers
+        run: uv run tests/check_evals.py iot --from analytics --prefix evals_${{ matrix.dbt.name }}_
       # The late rows above were loaded now. dbt v2 needs the package's own
       # freshness macros (macros/freshness.sql) to get this far. The age dbt
       # reports must match ClickHouse's own (tests/check_freshness.py), for
@@ -967,7 +1004,11 @@ jobs:
     name: Unions (dbt ${{ matrix.dbt.name }})
     services:
       clickhouse:
-        image: clickhouse/clickhouse-server:26.9
+        # The packages' jobs run on the LTS release, 26.8, the oldest the
+        # packages support (the WooCommerce models fail on 26.3 to 26.6).
+        # This job builds every package again on the latest release, the
+        # one ClickHouse Cloud moves to: bump it as each comes out.
+        image: clickhouse/clickhouse-server:26.10
         ports: ["8123:8123"]
         env:
           CLICKHOUSE_SKIP_USER_SETUP: 1  # passwordless default user over the network

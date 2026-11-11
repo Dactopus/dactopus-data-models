@@ -43,7 +43,7 @@ other databases, and set the store's time zone: without it, every date
 is in UTC and orders near midnight fall on the wrong day. WooCommerce
 also needs the store's currency, and its report settings where they
 differ from WooCommerce's (the WooCommerce package's [Your store](../sources/woocommerce/README.md#your-store), step 4). The WooCommerce package
-needs ClickHouse 26.7 or later, and its dbt user needs
+needs ClickHouse 26.8 or later, and its dbt user needs
 `ALTER MODIFY COMMENT` on `orders`, `order_lines` and `refunds` (the WooCommerce package's [Your store](../sources/woocommerce/README.md#your-store), step 5). The dbt user of every package needs the same on its incremental tables: `orders`, `order_lines` and `refunds` of Shopify, `events`, `sessions` and `purchases` of GA4, `readings` of Sensor.Community.
 
 ```yaml

@@ -57,7 +57,7 @@ planned for it.
 
 Build the Shopify package over the rows the repository tests it with and
 ask the commerce model about them. You need
-[ClickHouse](https://clickhouse.com/docs/install) (tested on 26.9), dbt v2
+[ClickHouse](https://clickhouse.com/docs/install) (26.8, the LTS release, or later), dbt v2
 (`pip install dbt-oss`) or dbt v1 (`dbt-core` 1.11 with `dbt-clickhouse`),
 and [dactopus-ossie-clickhouse](https://github.com/Dactopus/dactopus-ossie-clickhouse)
 0.12.0 or later with its MCP server
@@ -169,6 +169,9 @@ The same walk, and then your own store or property, for each source:
   with `tests/run_canon.py` on ClickHouse (DuckDB in part, over a copy
   of the model its extension can read)
   ([CONTRIBUTING.md](CONTRIBUTING.md#checks-before-a-pull-request)).
+- Checking an AI agent over your own data: questions a store owner
+  asks, their expected answers worked out over your databases, and a
+  grader ([evals/README.md](evals/README.md)).
 - Layout, what a source package is, out of scope, authoring rules and
   the checks before a pull request: [CONTRIBUTING.md](CONTRIBUTING.md).
 - Changes by release: [CHANGELOG.md](CHANGELOG.md).
