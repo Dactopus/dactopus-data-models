@@ -19,6 +19,10 @@
 #              each store's currency; one with `scale` asks for its values times the
 #              scale, such as 0.01 for pressure the model keeps in Pa and the
 #              question asks in hPa.
+#              `aliases` maps a text value to other spellings an answer may use
+#              instead, such as Returning for the code repeat. A text value is found
+#              as whole words; a category path also by its last category, where no
+#              other path of the reading ends in that name.
 #   alternatives  other readings of the question, each a list of queries like expect;
 #              an answer that states any one of them is right
 #   forbid     queries whose numbers must not be in the answer, such as a sum of
@@ -290,14 +294,16 @@ questions:
       - metrics: [sales_events.net_revenue]
         dimensions: [orders.currency, orders.new_vs_repeat]
         filters: ["sales_events.event_date >= DATE_TRUNC('YEAR', CURRENT_DATE)", "orders.new_vs_repeat IS NOT NULL"]
+        aliases: {new: [first-time, first time, first order], repeat: [returning, second or later]}
     alternatives:
       # This year's orders, everything refunded on them included.
       - - metrics: [sales_events.net_revenue]
           dimensions: [orders.currency, orders.new_vs_repeat]
           filters: ["orders.order_date >= DATE_TRUNC('YEAR', CURRENT_DATE)", "orders.new_vs_repeat IS NOT NULL"]
+          aliases: {new: [first-time, first time, first order], repeat: [returning, second or later]}
     rubric: >-
       Gives this year's sales from new and from returning customers. Fails if it
-      states a share of the total that it computed itself.
+      states a share of the total, or a total, that it computed itself.
 
   - id: category-revenue-last-month
     type: breakdown
@@ -459,9 +465,11 @@ questions:
         order: [order_lines.items_sold desc]
         limit: 5
     rubric: >-
-      Names each variant by its product's title with its variant id or SKU: the
-      model has no variant names such as a size or a colour. Fails if it makes up a
-      variant's name.
+      Names each variant by its product's title, and tells two variants of the same
+      product apart by their variant id or SKU; a product with one variant in the
+      list, or with an empty variant id, may go by its title alone. The model has no
+      variant names such as a size or a colour. Fails if it makes up a variant's
+      name, or says the model cannot break sales down by variant.
 
   - id: discount-codes-orders-and-amount
     type: breakdown
@@ -493,24 +501,32 @@ questions:
           filters: ["order_lines.items_sold > 0"]
         - metrics: [sales_events.net_revenue]
           dimensions: [orders.currency, orders.channel]
+      # How much each sold, as a number of orders.
+      - - metrics: [orders.order_count]
+          dimensions: [orders.channel]
+          filters: ["orders.order_count > 0"]
+        - metrics: [sales_events.net_revenue]
+          dimensions: [orders.currency, orders.channel]
 
   - id: most-sold-and-removed-products
     type: breakdown
     question: Which products sold most, and which were most often removed from orders?
     stores: 1
     expect:
+      # The question names no count: the top 3 of each.
       - metrics: [order_lines.items_sold]
         dimensions: [order_lines.title]
         order: [order_lines.items_sold desc]
-        limit: 5
+        limit: 3
       - metrics: [order_lines.items_returned]
         dimensions: [order_lines.title]
         filters: ["order_lines.items_returned > 0"]
         order: [order_lines.items_returned desc]
-        limit: 5
+        limit: 3
     rubric: >-
       Gives the products with the most units sold and those with the most units
-      taken back by refunds and cancellations, and says that units removed by
+      taken back: by refunds, and at a Shopify store by cancellations too (at a
+      WooCommerce store, by refunds alone is right). Says that units removed by
       editing an order are not counted on their own. Fails if it states a number of
       removed units that it computed itself from two metrics.
 
@@ -522,6 +538,8 @@ questions:
       - metrics: [orders.buyer_count]
         dimensions: [orders.order_month, orders.new_vs_repeat]
         filters: ["orders.new_vs_repeat IS NOT NULL", "orders.buyer_count > 0"]
+        aliases: {new: [first-time, first time, first order], repeat: [returning, second or later]}
+    rubric: Says which counts are of first-time and which of returning customers.
 
   - id: cohort-spend-in-later-months
     type: breakdown
@@ -584,11 +602,20 @@ questions:
       - metrics: [orders.order_count]
         dimensions: [orders.currency]
         numbers: false
+    alternatives:
+      # Each first-order month: its customers over all their orders so far.
+      - - metrics: [customers.average_customer_value]
+          dimensions: [customers.first_order_month]
+        - metrics: [orders.order_count]
+          dimensions: [orders.currency]
+          numbers: false
     rubric: >-
       Says the model has no value of a customer after a set number of months, and
-      gives the average customer value over all their orders. Fails if it states a
-      value at 3, 6 or 12 months that it computed itself, such as sales divided by a
-      number of customers.
+      gives the average customer value over all their orders, overall or for each
+      first-order month. Fails if it states a value at 3, 6 or 12 months that it
+      computed itself, such as sales divided by a number of customers, or presents a
+      cohort's value to date as its value after 3, 6 or 12 months without saying it
+      is not one.
 
   # Period counted from today
   - id: new-customers-last-month
@@ -740,9 +767,9 @@ questions:
         filters: ["refunds.refund_month = DATE_TRUNC('MONTH', CURRENT_DATE) - INTERVAL '1' MONTH"]
     rubric: >-
       Gives each store's refunds in its own currency and says amounts in two
-      currencies cannot be added into one total. It may add up the number of
-      refunds. Fails if it adds the amounts up or converts one currency into the
-      other.
+      currencies cannot be added into one total. It may give the number of refunds
+      over both stores, queried as one total. Fails if it adds the amounts up,
+      converts one currency into the other, or states a total it added up itself.
 
   - id: refund-rate-by-platform-last-3-months
     type: stores_currencies
@@ -760,9 +787,14 @@ questions:
       - - metrics: [orders.refund_rate]
           dimensions: [orders.platform]
           filters: ["orders.order_date > CURRENT_DATE - INTERVAL '3' MONTH"]
+      # The same, with the day three months ago included.
+      - - metrics: [orders.refund_rate]
+          dimensions: [orders.platform]
+          filters: ["orders.order_date >= CURRENT_DATE - INTERVAL '3' MONTH"]
     rubric: >-
-      Gives each store's refund rate and compares them: a rate has no currency, so
-      the two can be compared.
+      Gives each platform's refund rate; it may say which is higher, since a rate
+      has no currency. Fails if it states a difference or a ratio of the two rates
+      that it computed itself.
 
   - id: customers-total-two-stores
     type: stores_currencies
@@ -771,9 +803,10 @@ questions:
     expect:
       - metrics: [customers.customer_count]
     rubric: >-
-      Gives the number of customers over both stores: counts add up across stores.
-      Fails if it refuses to add them up because the stores have different
-      currencies.
+      Gives one number of customers for both stores together, from a query: counts
+      add up across stores. It need not name the stores. Fails if it refuses to add
+      them up because the stores have different currencies, gives the stores' counts
+      only separately, or states a total it added up itself from the stores' counts.
 
   - id: orders-per-store-this-month
     type: stores_currencies
@@ -784,8 +817,8 @@ questions:
         dimensions: [orders.source_id]
         filters: ["orders.order_date >= DATE_TRUNC('MONTH', CURRENT_DATE)"]
     rubric: >-
-      Gives the number of orders of each store, by its label. A store with no orders
-      this month is shown as zero.
+      Names each store by its label (its source_id, such as shop_us or brand_a)
+      with its number of orders. Fails if it states a total it added up itself.
 
   - id: top-customers-two-currencies
     type: stores_currencies
@@ -808,8 +841,9 @@ questions:
         numbers: false
     rubric: >-
       Ranks the customers within each store, in its own currency, and names each
-      customer with their store, since customer ids repeat across stores. Fails if
-      it ranks customers of the two currencies in one list.
+      customer with their store, since customer ids repeat across stores (a
+      separate list per store, headed by its label, does). Fails if it ranks
+      customers of the two currencies in one list.
 
   - id: aov-per-store-quiet-month
     type: stores_currencies
@@ -977,6 +1011,9 @@ questions:
         filters: ["products.last_sold_date >= DATE_TRUNC('YEAR', CURRENT_DATE) - INTERVAL '1' YEAR",
                   "products.last_sold_date < DATE_TRUNC('YEAR', CURRENT_DATE)"]
         numbers: false
+    if_empty: >-
+      Says nothing qualifies: no product sold last year is unsold this year, or the
+      data holds no sale last year to compare with.
 
   - id: customers-never-used-code
     type: absence
@@ -1004,12 +1041,14 @@ questions:
         filters: ["customers.net_total > {spend_threshold}",
                   "customers.last_order_date < CURRENT_DATE - INTERVAL '6' MONTH"]
     rubric: >-
-      Applies the amount in each store's own currency and says so: the stores'
-      currencies differ and the model converts none. Fails if it converts an amount
-      from one currency into the other.
+      Applies the amount in each store's own currency and says so, for example by
+      giving each store's result with its currency: the stores' currencies differ
+      and the model converts none. Fails if it converts an amount from one currency
+      into the other.
     if_empty: >-
       Says no customer of either store is above the amount and inactive for 6 months,
-      and that the amount was applied in each store's own currency.
+      and that the amount was applied in each store's own currency, for example by
+      giving each store's result with its currency.
 
   # Share or ratio
   - id: second-order-rate-of-cohort
@@ -1136,10 +1175,13 @@ questions:
     question: Which country has the highest refund rate, and how does it compare with the overall rate?
     stores: 1
     expect:
+      # Orders without a shipping address have no country.
       - metrics: [orders.refund_rate]
         dimensions: [orders.shipping_country]
+        filters: ["orders.shipping_country IS NOT NULL"]
         order: [orders.refund_rate desc]
         limit: 1
+        aliases: {US: [United States, USA], CA: [Canada], GB: [United Kingdom, UK, Britain], DE: [Germany]}
       - metrics: [orders.refund_rate]
     rubric: >-
       Names the shipping country with the highest refund rate and gives the overall
@@ -1197,7 +1239,8 @@ questions:
       (a label such as shop_us names the US); it may offer the countries orders
       ship to. Fails if it places a store in or out of Europe from its currency,
       its platform or the countries its orders ship to. Calling a store "the EUR
-      store" is no such claim.
+      store" or "the European-currency store" is no such claim, nor is a placement
+      the label gives (shop_us in the US, woo_eu in Europe).
 
   - id: currency-named-store-aov
     type: unclear_store
@@ -1445,9 +1488,30 @@ questions:
       - metrics: [orders.buyer_count]
         dimensions: [orders.shipping_country]
         filters: ["orders.new_vs_repeat = 'new'", "orders.buyer_count > 0"]
+        aliases: &countries {US: [United States, USA], CA: [Canada], GB: [United Kingdom, UK, Britain],
+                             DE: [Germany], FR: [France], ES: [Spain], AU: [Australia]}
+    alternatives:
+      # The new customers of a recent period, which the answer names.
+      - - metrics: [orders.buyer_count]
+          dimensions: [orders.shipping_country]
+          filters: ["orders.new_vs_repeat = 'new'", "orders.buyer_count > 0",
+                    "orders.order_date >= CURRENT_DATE - INTERVAL '29' DAY"]
+          aliases: *countries
+      - - metrics: [orders.buyer_count]
+          dimensions: [orders.shipping_country]
+          filters: ["orders.new_vs_repeat = 'new'", "orders.buyer_count > 0",
+                    "orders.order_date >= DATE_TRUNC('MONTH', CURRENT_DATE)"]
+          aliases: *countries
+      - - metrics: [orders.buyer_count]
+          dimensions: [orders.shipping_country]
+          filters: ["orders.new_vs_repeat = 'new'", "orders.buyer_count > 0",
+                    "orders.order_date >= DATE_TRUNC('MONTH', CURRENT_DATE) - INTERVAL '1' MONTH",
+                    "orders.order_date < DATE_TRUNC('MONTH', CURRENT_DATE)"]
+          aliases: *countries
     rubric: >-
       Says the location is the country the first order shipped to, not an address
-      of the customer, which the model does not have.
+      of the customer, which the model does not have. Where it counts the new
+      customers of a period, names the period.
 
   - id: big-spenders-and-what-they-bought
     type: related_filter
@@ -1460,7 +1524,7 @@ questions:
       - metrics: [orders.order_count]
         dimensions: [orders.currency]
         numbers: false
-      # What they bought together, the products only.
+      # What they bought together: products by units.
       - metrics: [order_lines.items_sold]
         dimensions: [order_lines.title]
         filters: ["customers.net_total > {spend_threshold}"]
@@ -1468,6 +1532,45 @@ questions:
         limit: 3
         numbers: false
     alternatives:
+      # Products by revenue.
+      - - metrics: [customers.net_amount]
+          dimensions: [customers.customer_id]
+          filters: ["customers.net_total > {spend_threshold}"]
+        - metrics: [orders.order_count]
+          dimensions: [orders.currency]
+          numbers: false
+        - metrics: [order_lines.line_revenue]
+          dimensions: [order_lines.title]
+          filters: ["customers.net_total > {spend_threshold}"]
+          order: [order_lines.line_revenue desc]
+          limit: 3
+          numbers: false
+      # Categories by revenue.
+      - - metrics: [customers.net_amount]
+          dimensions: [customers.customer_id]
+          filters: ["customers.net_total > {spend_threshold}"]
+        - metrics: [orders.order_count]
+          dimensions: [orders.currency]
+          numbers: false
+        - metrics: [line_categories.category_revenue]
+          dimensions: [line_categories.category_path]
+          filters: ["customers.net_total > {spend_threshold}", "line_categories.category_path IS NOT NULL"]
+          order: [line_categories.category_revenue desc]
+          limit: 3
+          numbers: false
+      # Categories by units.
+      - - metrics: [customers.net_amount]
+          dimensions: [customers.customer_id]
+          filters: ["customers.net_total > {spend_threshold}"]
+        - metrics: [orders.order_count]
+          dimensions: [orders.currency]
+          numbers: false
+        - metrics: [line_categories.category_items_sold]
+          dimensions: [line_categories.category_path]
+          filters: ["customers.net_total > {spend_threshold}", "line_categories.category_path IS NOT NULL"]
+          order: [line_categories.category_items_sold desc]
+          limit: 3
+          numbers: false
       # What each of them bought.
       - - metrics: [customers.net_amount]
           dimensions: [customers.customer_id]

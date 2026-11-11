@@ -39,9 +39,7 @@ questions:
         dimensions: [readings.reading_date]
         filters: ["readings.measure = 'pressure'", "readings.reading_month = DATE '{month}'"]
         scale: 0.01
-    rubric: >-
-      Says the values are converted from Pa, in which the model keeps them, to
-      hPa. Fails if it gives values in Pa as hPa.
+    rubric: Gives the values in hPa. Fails if it labels values in Pa as hPa.
 
   - id: latest-data-each-sensor
     type: breakdown
@@ -63,12 +61,9 @@ questions:
     requires: [repeated_ids]
     expect:
       - metrics: [devices.device_count]
-    alternatives:
-      - - metrics: [devices.device_count]
-          dimensions: [devices.source_id]
     rubric: >-
-      Counts a device id that appears in two networks as two devices. Fails if it
-      counts such devices once.
+      Fails if it says a device id that appears in two networks is one device, or
+      states a total it added up itself from the networks' counts.
 
   - id: particulates-last-week-named-networks
     type: stores_currencies
@@ -83,12 +78,11 @@ questions:
                   "readings.reading_date >= DATE_TRUNC('WEEK', CURRENT_DATE) - INTERVAL '7' DAY",
                   "readings.reading_date < DATE_TRUNC('WEEK', CURRENT_DATE)"]
     alternatives:
-      # The last seven days before today.
+      # The last seven days, today included, as the server writes them.
       - - metrics: [readings.avg_value]
           dimensions: [readings.source_id, readings.measure]
           filters: ["readings.measure IN ('pm2_5', 'pm10')",
-                    "readings.reading_date >= CURRENT_DATE - INTERVAL '7' DAY",
-                    "readings.reading_date < CURRENT_DATE"]
+                    "readings.reading_date >= CURRENT_DATE - INTERVAL '6' DAY"]
     rubric: >-
       Gives PM2.5 and PM10 for each network separately. Fails if it averages the two
       measures together.
@@ -104,11 +98,14 @@ questions:
     stores: 2
     rubric: >-
       Measures silence from each network's own latest contact
-      (devices.last_contact_time), not from now; names the time it measures from and
-      the period it takes as silent; lists the silent devices, each with its
-      network. Where the latest contact is hours or days old, says the snapshots are
-      not running. Fails if it measures silence from the current time or names a
-      device without its network.
+      (devices.last_contact_time by network) and names that time, or says the
+      networks share one; where the question gives no period, either names the
+      period it takes as silent or lists each device's time since that contact
+      and asks for one. Names each device with its network (a list that says it
+      holds for each network, whose rows are the same, does). Where the latest
+      contact is hours or days old, says the snapshots are not running. Fails if
+      it measures silence from the current time, from one contact across
+      networks, or names a device without its network.
 
   # Unclear network
   - id: pm25-downtown-now
@@ -135,9 +132,19 @@ questions:
       - metrics: [readings.avg_value]
         dimensions: [readings.source_id]
         filters: ["readings.measure = 'temperature'"]
+    alternatives:
+      # "The outside ones" as the outdoor devices (devices.is_indoor), which the
+      # answer says.
+      - - metrics: [readings.avg_value]
+          filters: ["readings.measure = 'temperature'", "readings.source_id = '{net_lab}'"]
+        - metrics: [readings.avg_value]
+          filters: ["readings.measure = 'temperature'", "devices.is_indoor = false"]
     rubric: >-
-      Compares the {lab_word} network with the other network. Fails if it reads "the
-      outside ones" as the devices that are not indoors (devices.is_indoor).
+      Compares the {lab_word} network with the other network, or with the outdoor
+      devices (devices.is_indoor), saying that it read "the outside ones" so and
+      offering the other network as the other reading. Fails if it takes the
+      outdoor devices without saying so, or compares devices within the
+      {lab_word} network only.
     labels:
       opaque: >-
         Lists the networks' labels and asks which one is the {lab_word}. Fails if it

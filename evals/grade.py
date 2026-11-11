@@ -9,7 +9,8 @@ answers.jsonl holds one JSON object per line: {"id": ..., "database": ..., "answ
 the question's id and database as in expected.json and the agent's final answer as text.
 
 An answer is right when it states every number of one reading of the question (and
-every text value, such as a product's title or a currency's code), states no number
+every text value, such as a product's title or a currency's code, as whole words or as
+an alias the query gives), states no number
 the question forbids, and, where the question has a rubric, a reviewing model finds
 that it does what the rubric says. A number is found at the precision the answer
 shows it: 107.82 and 108 both state 107.8181...; a share of 0.244 may be written as
@@ -35,7 +36,8 @@ import re
 import subprocess
 import sys
 
-NUMBER = re.compile(r"(?<![\w.])([-−]?)(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d+))?\s*(%?)")
+# A number with its sign, which may stand before a currency sign (−$8,807.61).
+NUMBER = re.compile(r"(?<![\w.])([-−]?)(?:[$€£¥]\s?)?(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d+))?\s*(%?)")
 ZERO = re.compile(r"\b(zero|none|nothing)\b", re.I)
 RATIO = re.compile(r"rate|share")
 MONTH = (r"(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\.?")
@@ -87,11 +89,34 @@ def states(text, found, expected, metric):
 
 
 def plain(text):
-    """Text for finding a name in an answer: lower case, without punctuation, a
-    leading article or repeated spaces ("The Minimal Snowboard" is in "Minimal
-    snowboard:")."""
-    text = re.sub(r"[^\w\s]", " ", text.lower())
+    """Text for finding a name in an answer: lower case, without punctuation (an
+    underscore counts as one: pm2_5 is PM2.5), a URL's scheme, a leading article or
+    repeated spaces ("The Minimal Snowboard" is in "Minimal snowboard:")."""
+    text = re.sub(r"\bhttps?://", " ", text.lower())
+    text = re.sub(r"[\W_]+", " ", text)
     return " ".join(re.sub(r"^\s*(the|a|an)\s+", "", text).split())
+
+
+# The tail of a URL an answer shortened with an ellipsis: …/Apparel/Dino+Game+Tee.
+ELIDED = re.compile(r"(?:…|\.\.\.)([^\s|`'\")\]]*/[^\s|`'\")\]]*\w)")
+
+
+def names(answer, name, leaves):
+    """Whether the answer names a text value, as whole words ("Tee" is not in
+    "Thirteen"): by the value itself or one of its aliases; a category path
+    (Clothing > Dresses) by its last category alone where no other path of the
+    reading ends in that name; a URL also by a tail after an ellipsis."""
+    value, aliases = name
+    said = f" {plain(answer)} "
+    if any(f" {plain(n)} " in said for n in (value, *aliases)):
+        return True
+    leaf = value.rsplit(" > ", 1)[-1]
+    if leaf != value and leaves[leaf] == 1 and f" {plain(leaf)} " in said:
+        return True
+    if re.match(r"https?://", value):
+        url = value.lower().rstrip("/")
+        return any(url.endswith(tail.lower().rstrip("/")) for tail in ELIDED.findall(answer))
+    return False
 
 
 def is_empty(result):
@@ -104,11 +129,14 @@ def describe(query):
 
 
 def required(reading):
-    """The metric values and text values a reading's answer must state."""
+    """The metric values a reading's answer must state, and its text values, each with
+    the other spellings the query accepts for it (aliases: a code such as US or
+    repeat that an answer may write out)."""
     values, texts = [], []
     for result in reading:
         counts = result["query"].get("numbers", True)
         scale = result["query"].get("scale", 1)
+        aliases = result["query"].get("aliases", {})
         for row in result["rows"]:
             for key, value in row.items():
                 if "." in key and isinstance(value, (int, float)) and not isinstance(value, bool):
@@ -116,7 +144,7 @@ def required(reading):
                         values.append((key, float(value) * scale))
                 elif (key != "source_id" and not result.get("tied") and isinstance(value, str)
                       and not re.fullmatch(r"[\d\-:T+ .]+", value)):
-                    texts.append(value)
+                    texts.append((value, aliases.get(value, [])))
     return values, texts
 
 
@@ -134,7 +162,8 @@ def check_numbers(entry, answer):
             continue
         values, texts = required([r for r in reading if not is_empty(r)])
         missing = [f"{m} {v:g}" for m, v in values if not states(text, found, v, m)]
-        missing += [t for t in texts if plain(t) not in plain(answer)]
+        leaves = collections.Counter(value.rsplit(" > ", 1)[-1] for value in {v for v, _ in texts})
+        missing += [value for value, aliases in texts if not names(answer, (value, aliases), leaves)]
         if not missing:
             empties = [describe(r["query"]) for r in reading if is_empty(r)]
             break
@@ -162,9 +191,10 @@ def claude_judge(model):
     import anthropic
     from pydantic import BaseModel
 
+    # The reason comes first, so that the model reasons before it decides.
     class Verdict(BaseModel):
-        passed: bool
         reason: str
+        passed: bool
 
     client = anthropic.Anthropic()
 

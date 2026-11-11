@@ -162,9 +162,13 @@ Stderr counts the right answers per difficulty.
   Where the question asks in other units than the model keeps (hPa for
   Pa), the expected value is converted.
 - **Names.** Text values of the expected answer, such as a product's
-  title or a currency's code, must appear, without regard to case,
-  punctuation or a leading article. Where a list is cut at a tie, any of
-  the tied rows may be listed.
+  title or a currency's code, must appear as whole words, without regard
+  to case, punctuation, a leading article or a URL's scheme. A code may
+  be written as one of the aliases its query gives (Returning for
+  repeat, United States for US), a category path by its last category
+  where no other path of the answer ends in that name, a URL by its tail
+  after an ellipsis. Where a list is cut at a tie, any of the tied rows
+  may be listed.
 - **Forbidden numbers.** A question about stores in two currencies fails
   when the answer states the sum or average over both.
 - **Empty answers.** Where the data has no rows for the question or a

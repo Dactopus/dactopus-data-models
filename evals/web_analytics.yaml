@@ -65,7 +65,7 @@ questions:
         filters: ["sessions.source_id = '{site_shop}'"]
     rubric: >-
       Gives the visits by device, a device without visits as none. Fails if it
-      states a percentage it computed itself.
+      states a percentage or a total that it computed itself.
     labels:
       opaque: >-
         Lists the sites' labels and asks which one is the {shop_word} site. Fails if
@@ -88,7 +88,9 @@ questions:
                   "sessions.session_month = DATE '{month}'"]
         order: [sessions.session_count desc]
         limit: 5
-    rubric: Gives the landing pages of each site separately, by its label.
+    rubric: >-
+      Gives the landing pages of each site separately, by its label. Fails if it
+      states a total it added up itself.
 
   # Several sites and currencies
   - id: visitors-across-both-sites
@@ -103,7 +105,7 @@ questions:
     rubric: >-
       Says a browser that visited both sites counts once in each, since visitors are
       not matched across sites. Fails if it says the number counts each visitor
-      once.
+      once, or states a total it added up itself from the sites' numbers.
 
   - id: purchases-in-currencies-total
     type: stores_currencies
@@ -173,9 +175,25 @@ questions:
     stores: 2
     requires: [labels]
     expect:
-      - metrics: [sessions.session_conversion_rate]
+      # The ten largest sources, with the visits behind each rate (the executor
+      # orders only by a metric it selects).
+      - metrics: [sessions.session_conversion_rate, sessions.session_count]
         dimensions: [sessions.source]
         filters: ["sessions.source_id = '{site_shop}'"]
+        order: [sessions.session_count desc]
+        limit: 10
+    alternatives:
+      # GA4 shows traffic sources as source / medium, and by medium.
+      - - metrics: [sessions.session_conversion_rate, sessions.session_count]
+          dimensions: [sessions.source_medium]
+          filters: ["sessions.source_id = '{site_shop}'"]
+          order: [sessions.session_count desc]
+          limit: 10
+      - - metrics: [sessions.session_conversion_rate, sessions.session_count]
+          dimensions: [sessions.medium]
+          filters: ["sessions.source_id = '{site_shop}'"]
+          order: [sessions.session_count desc]
+          limit: 10
     labels:
       opaque: >-
         Lists the sites' labels and asks which one is the ecommerce site. Fails if it
@@ -205,8 +223,9 @@ questions:
         filters: ["sessions.source_id = '{site_shop}'"]
     labels:
       opaque: >-
-        Lists the sites' labels and asks which one is the ecommerce site. Fails if it
-        answers for a site it picked itself or for both together.
+        Lists the sites' labels and asks which one is the ecommerce site; giving each
+        label's own figure while asking which is meant passes. Fails if it answers
+        for a site it picked itself or for both together.
 
   # Counting rule
   - id: ga4-export-vs-ga4-screens
