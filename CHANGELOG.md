@@ -26,13 +26,18 @@ needed.
   a view over `orders`, and the `commerce` union reads it.
 - `orders.order_weekday`, the day of the week of the order's date, 1
   Monday to 7 Sunday.
-- `evals/`: questions a store owner asks an AI agent over the commerce
-  model, by difficulty, each with the queries of the model that give its
-  expected answer or a rubric of what a right answer says.
-  `evals/reference.py` works out the expected answers over a
-  deployment's databases for a given day, `evals/grade.py` grades an
-  agent's answers against them, and `tests/check_evals.py` works them
-  out over the canonical tables in CI.
+- `evals/`: questions an owner asks an AI agent over the commerce
+  (`evals/commerce.yaml`), web analytics (`evals/web_analytics.yaml`)
+  and IoT (`evals/iot.yaml`) models, by difficulty, each with the
+  queries of the model that give its expected answer or a rubric of what
+  a right answer says. `evals/reference.py` works out the expected
+  answers over a deployment's databases for a given day
+  (`evals/deployment.example.yaml` for commerce,
+  `evals/deployment.<domain>.example.yaml` for the others),
+  `evals/grade.py` grades an agent's answers against them, and
+  `tests/check_evals.py` works them out in CI: over the canonical tables
+  for commerce, over the tables the GA4 and Sensor.Community jobs build
+  from their fixtures for the others.
 
 ## [0.12.2] - 2026-11-09
 

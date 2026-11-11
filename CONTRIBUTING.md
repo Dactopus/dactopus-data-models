@@ -95,6 +95,9 @@ release it builds on; older releases are untested.
     evals/grade.py            grades an agent's answers against them
     evals/deployment.example.yaml
                               the canonical tables as a deployment
+    evals/deployment.<domain>.example.yaml
+                              web_analytics and iot: the tables CI builds
+                              from the fixture as a deployment
     tests/<source>/           hand-written input rows (fixture.sql, and
                               windows.sql for the retention windows) and
                               the numbers the model must answer over them
@@ -123,7 +126,8 @@ release it builds on; older releases are untested.
                               databases it adds up
     tests/check_evals.py      works out the expected answers of the
                               questions for an agent over the canonical
-                              tables
+                              tables, and over the tables CI builds from
+                              the GA4 and Sensor.Community fixtures
     tests/profiles.yml        the dbt profile CI and the checks build with;
                               a package ships none
     docs/<domain>.md          what each Ossie model answers and its limits
@@ -304,10 +308,14 @@ package or a model:
    than one AI model, and compare every number in the answers with the
    hand-written queries.
 8. A change to a metric, field or relationship the questions of
-   `evals/commerce.yaml` read, or to a question, passes
-   `uv run tests/check_evals.py`, which works out their expected answers
-   over the canonical tables (CI runs it). The questions also check
-   agents over a build of your own (`evals/README.md`).
+   `evals/<domain>.yaml` read, or to a question, passes
+   `uv run tests/check_evals.py`, which works out the expected answers of
+   `evals/commerce.yaml` over the canonical tables; the GA4 and
+   Sensor.Community jobs of CI work out those of `evals/web_analytics.yaml`
+   and `evals/iot.yaml` over the tables they build from the fixture
+   (`uv run tests/check_evals.py <domain> --from <database>`). The
+   questions also check agents over a build of your own
+   (`evals/README.md`).
 
 ```bash
 dbt build --project-dir sources/ga4 --profiles-dir tests      # models and tests

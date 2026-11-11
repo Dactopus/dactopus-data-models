@@ -70,6 +70,12 @@ jobs:
               - entities/web_analytics.yaml
               - tests/ga4/**
               - tests/ask_model.py
+              - tests/canon.py
+              - tests/run_canon.py
+              - tests/check_evals.py
+              - evals/web_analytics.yaml
+              - evals/deployment.web_analytics.example.yaml
+              - evals/reference.py
             shopify:
               - *common
               - sources/shopify/**
@@ -83,8 +89,9 @@ jobs:
               - tests/run_canon.py
               - tests/woocommerce/canon/**
               - tests/check_evals.py
-              - evals/**
-              - '!evals/README.md'
+              - evals/commerce.yaml
+              - evals/deployment.example.yaml
+              - evals/reference.py
             woocommerce:
               - *common
               - sources/woocommerce/**
@@ -103,6 +110,12 @@ jobs:
               - entities/iot.yaml
               - tests/sensor_community/**
               - tests/ask_model.py
+              - tests/canon.py
+              - tests/run_canon.py
+              - tests/check_evals.py
+              - evals/iot.yaml
+              - evals/deployment.iot.example.yaml
+              - evals/reference.py
             unions:
               - *common
               - unions/**
@@ -214,6 +227,12 @@ jobs:
         run: uv run tests/check_contracts.py --built sources/ga4
       - name: Validate the Ossie model against the built tables
         run: dactopus-ossie-clickhouse validate entities/web_analytics.yaml --url "$OSSIE_CLICKHOUSE_URL"
+      # The question set (evals/web_analytics.yaml) asks its expected answers
+      # of the model over the built tables, copied as one property and as two:
+      # a metric, field or filter of a question that the model or the
+      # executor no longer takes fails here.
+      - name: Work out the question set's expected answers
+        run: uv run tests/check_evals.py web_analytics --from analytics --prefix evals_${{ matrix.dbt.name }}_
       # The fixture's events are from 2025: one event now, in the input
       # only, makes the source fresh. dbt v2 needs the package's own
       # freshness macros (macros/freshness.sql) to get this far. The age
@@ -935,6 +954,12 @@ jobs:
         run: uv run tests/check_contracts.py --built sources/sensor_community
       - name: Validate the Ossie model against the built tables
         run: dactopus-ossie-clickhouse validate entities/iot.yaml --url "$OSSIE_CLICKHOUSE_URL"
+      # The question set (evals/iot.yaml) asks its expected answers of the
+      # model over the built tables, copied as one network and as two with
+      # the same device ids: a metric, field or filter of a question that
+      # the model or the executor no longer takes fails here.
+      - name: Work out the question set's expected answers
+        run: uv run tests/check_evals.py iot --from analytics --prefix evals_${{ matrix.dbt.name }}_
       # The late rows above were loaded now. dbt v2 needs the package's own
       # freshness macros (macros/freshness.sql) to get this far. The age dbt
       # reports must match ClickHouse's own (tests/check_freshness.py), for

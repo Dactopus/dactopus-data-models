@@ -8,8 +8,11 @@ agent, your model or prompt changes, and the model of a new release.
 ## The questions
 
 `commerce.yaml` holds each question with its difficulty, what the data
-must hold for it to test anything, and its expected answer. The
-difficulties:
+must hold for it to test anything, and its expected answer.
+`web_analytics.yaml` and `iot.yaml` hold the questions of the web
+analytics and IoT models in the same format, with the deployments
+`deployment.web_analytics.example.yaml` and `deployment.iot.example.yaml`.
+The difficulties:
 
 - **total**: one number over all time or a named period.
 - **breakdown**: a number by a dimension, a top list, by month.

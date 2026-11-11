@@ -1,0 +1,38 @@
+# A deployment to ask the questions of iot.yaml over: the tables the Sensor.Community
+# package's CI job builds from tests/sensor_community/fixture.sql, as
+# tests/check_evals.py copies them. Copy it for your own deployment and name your
+# databases and parameters.
+
+# The model the agent is asked through, relative to this file.
+models: [../entities/iot.yaml]
+# The zone the executor serves the model in (OSSIE_CLICKHOUSE_TIME_ZONE).
+time_zone: UTC
+
+# Parameters of the question texts, queries and rubrics, for every database; a
+# database's own params replace them.
+params:
+  # A day and a month of the data.
+  reading_day: "2026-10-19"
+  month: "2026-10-01"
+  # The words the questions name the networks by.
+  city_word: city
+  lab_word: lab
+
+# The databases the agent is asked over. stores: how many sensor networks the database
+# holds. provides: what its data has, which a question can require:
+#   repeated_ids            a device id in two networks
+#   labels                  labels of networks; with `labels: named` the labels name
+#                           the networks city_word and lab_word name, with
+#                           `labels: opaque` no label names a network
+databases:
+  - name: evals_iot
+    stores: 1
+  # The network twice, with the same device ids.
+  - name: evals_iot_named
+    stores: 2
+    labels: named
+    provides: [repeated_ids, labels]
+  - name: evals_iot_opaque
+    stores: 2
+    labels: opaque
+    provides: [repeated_ids, labels]

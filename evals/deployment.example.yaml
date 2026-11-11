@@ -12,6 +12,9 @@ time_zone: America/New_York
 params:
   # A month whose new customers the second-order questions ask about.
   cohort_month: "2026-08-01"
+  # The second currency of a union, as a word and as its code.
+  currency_name: euro
+  currency_code: EUR
 
 # The databases the agent is asked over. stores: how many stores the database holds.
 # provides: what its data has, which a question can require:
@@ -20,24 +23,37 @@ params:
 #   two_currencies          two stores in different currencies
 #   two_platforms           a Shopify store and a WooCommerce store
 #   labels                  labels of stores; with `labels: named` store_named is the
-#                           label that store_word names, with `labels: opaque` no label
-#                           names a store
+#                           label that store_word names (store_named_b store_word_b),
+#                           with `labels: opaque` no label names a store
+#   archived_products       a product archived after it sold
+#   quiet_month             a month in which one store has orders and the other none
+#                           (quiet_month)
 databases:
   - name: evals_shopify
     stores: 1
-    provides: [shopify]
-    params: {category: Apparel}
+    provides: [shopify, archived_products]
+    params: {category: Apparel, spend_threshold: 500}
   - name: evals_woocommerce
     stores: 1
     provides: [woocommerce, nested_categories]
-    params: {category: Gifts, parent_category: Clothing}
+    params: {category: Gifts, parent_category: Clothing, spend_threshold: 200}
   - name: evals_named
     stores: 2
     labels: named
     provides: [two_currencies, two_platforms, labels]
-    params: {store_a: shop_us, store_b: woo_eu, store_word: US, store_named: shop_us, shopify_store: shop_us}
+    params: {store_a: shop_us, store_b: woo_eu, store_word: US, store_named: shop_us,
+             store_word_b: European, store_named_b: woo_eu, shopify_store: shop_us,
+             woocommerce_store: woo_eu, spend_threshold: 200}
   - name: evals_opaque
     stores: 2
     labels: opaque
     provides: [two_currencies, two_platforms, labels]
-    params: {store_a: brand_a, store_b: brand_b, store_word: US, store_named: brand_a, shopify_store: brand_a}
+    params: {store_a: brand_a, store_b: brand_b, store_word: US, store_named: brand_a,
+             store_word_b: European, store_named_b: brand_b, shopify_store: brand_a,
+             woocommerce_store: brand_b, spend_threshold: 200}
+  # The union less the WooCommerce store's orders of August 2026.
+  - name: evals_quiet
+    stores: 2
+    labels: named
+    provides: [two_platforms, quiet_month]
+    params: {shopify_store: shop_us, woocommerce_store: woo_eu, quiet_month: "2026-08-01"}

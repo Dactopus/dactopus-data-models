@@ -120,16 +120,16 @@ def main():
             try:
                 if behaviour:
                     # Here the question has no answer to state: only the behaviour counts.
-                    entry.update(readings=[], forbid=[], rubric=" ".join(behaviour.split()))
+                    entry.update(readings=[], forbid=[], rubric=" ".join(fill(behaviour, params).split()))
                 else:
                     ask = lambda case: query(models, database["name"], deployment["time_zone"], case, args.today, params)
                     readings = [question.get("expect", []), *question.get("alternatives", [])]
                     entry["readings"] = [[ask(case) for case in reading] for reading in readings if reading]
                     entry["forbid"] = [ask(case) for case in question.get("forbid", [])]
                     if question.get("rubric"):
-                        entry["rubric"] = " ".join(question["rubric"].split())
+                        entry["rubric"] = " ".join(fill(question["rubric"], params).split())
                     if question.get("if_empty"):
-                        entry["if_empty"] = " ".join(question["if_empty"].split())
+                        entry["if_empty"] = " ".join(fill(question["if_empty"], params).split())
             except (RuntimeError, KeyError) as error:
                 failures += 1
                 print(f"FAILED {question['id']} over {database['name']}: {error}", file=sys.stderr)

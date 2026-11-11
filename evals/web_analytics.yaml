@@ -1,0 +1,218 @@
+# Questions a site owner asks an agent that answers through dactopus-ossie-clickhouse
+# over the web analytics model, and how to tell a right answer from a wrong one.
+#
+# The format is that of commerce.yaml; stores counts the GA4 properties (sites) of a
+# database, and labels says whether their labels name the sites. Parameters
+# (deployment.web_analytics.example.yaml) fill the question, its queries and its rubric.
+
+questions:
+  # Total
+  - id: sessions-and-users-of-month
+    type: total
+    question: total sessions and users for the whole month of {month:%B}
+    stores: 1
+    expect:
+      - metrics: [sessions.session_count, sessions.users]
+        filters: ["sessions.session_month = DATE '{month}'"]
+
+  # Breakdown
+  - id: conversion-rate-by-site-last-30-days
+    type: breakdown
+    question: what's our conversion rate last 30 days, by site
+    stores: 2
+    expect:
+      - metrics: [sessions.session_conversion_rate]
+        dimensions: [sessions.source_id]
+        filters: ["sessions.session_date >= CURRENT_DATE - INTERVAL '29' DAY"]
+    alternatives:
+      - - metrics: [sessions.user_conversion_rate]
+          dimensions: [sessions.source_id]
+          filters: ["sessions.session_date >= CURRENT_DATE - INTERVAL '29' DAY"]
+    rubric: >-
+      Gives each site's rate by its label and names what the rate counts: visits
+      with a purchase, or visitors who bought.
+
+  - id: top-traffic-sources-named-site
+    type: breakdown
+    question: top traffic sources for the {blog_word}
+    stores: 2
+    requires: [labels]
+    expect:
+      - metrics: [sessions.session_count]
+        dimensions: [sessions.source]
+        filters: ["sessions.source_id = '{site_blog}'"]
+        order: [sessions.session_count desc]
+        limit: 5
+    alternatives:
+      - - metrics: [sessions.session_count]
+          dimensions: [sessions.source_medium]
+          filters: ["sessions.source_id = '{site_blog}'"]
+          order: [sessions.session_count desc]
+          limit: 5
+    labels:
+      opaque: >-
+        Lists the sites' labels and asks which one is the {blog_word}. Fails if it
+        answers for a site it picked itself or for both together.
+
+  - id: device-split-named-site
+    type: breakdown
+    question: mobile vs desktop split for the {shop_word} site
+    stores: 2
+    requires: [labels]
+    expect:
+      - metrics: [sessions.session_count]
+        dimensions: [sessions.device_category]
+        filters: ["sessions.source_id = '{site_shop}'"]
+    rubric: >-
+      Gives the visits by device, a device without visits as none. Fails if it
+      states a percentage it computed itself.
+    labels:
+      opaque: >-
+        Lists the sites' labels and asks which one is the {shop_word} site. Fails if
+        it answers for a site it picked itself or for both together.
+
+  - id: top-landing-pages-both-sites-month
+    type: breakdown
+    question: best landing pages by sessions, both sites, {month:%b %Y}
+    stores: 2
+    expect:
+      - metrics: [sessions.session_count]
+        dimensions: [sessions.source_id, sessions.landing_page]
+        filters: ["sessions.source_id = '{site_shop}'", "sessions.session_month = DATE '{month}'"]
+        order: [sessions.session_count desc]
+        limit: 5
+      - metrics: [sessions.session_count]
+        dimensions: [sessions.source_id, sessions.landing_page]
+        filters: ["sessions.source_id = '{site_blog}'", "sessions.session_month = DATE '{month}'"]
+        order: [sessions.session_count desc]
+        limit: 5
+    rubric: Gives the landing pages of each site separately, by its label.
+
+  # Several sites and currencies
+  - id: visitors-across-both-sites
+    type: stores_currencies
+    question: how many visitors did we get across both sites?
+    stores: 2
+    expect:
+      - metrics: [sessions.users]
+    alternatives:
+      - - metrics: [sessions.users]
+          dimensions: [sessions.source_id]
+    rubric: >-
+      Says a browser that visited both sites counts once in each, since visitors are
+      not matched across sites. Fails if it says the number counts each visitor
+      once.
+
+  - id: purchases-in-currencies-total
+    type: stores_currencies
+    question: purchases in different currencies, how much is that in total
+    stores: 1
+    requires: [purchase_currencies]
+    expect:
+      - metrics: [purchases.gross_purchase_revenue_usd]
+    alternatives:
+      - - metrics: [purchases.gross_purchase_revenue]
+          dimensions: [purchases.currency]
+    forbid:
+      - metrics: [purchases.gross_purchase_revenue]
+    rubric: >-
+      Gives the total in US dollars as Google converted it, or each currency's
+      amount separately. Fails if it adds amounts in different currencies up as
+      they are.
+
+  # Not in the model
+  - id: visitors-of-both-sites
+    type: not_in_model
+    question: how many people visit both sites?
+    stores: 2
+    rubric: >-
+      Says visitors are not matched across sites, so the number cannot be found.
+      Fails if it gives a number of visitors of both sites.
+
+  # Period counted from today
+  - id: visitors-yesterday-not-exported
+    type: relative_period
+    question: how many visitors did the website get yesterday?
+    stores: 1
+    requires: [export_lag]
+    rubric: >-
+      Says yesterday's data has not been exported or loaded yet, and that the data
+      reaches {latest_day:%B %-d, %Y}. Fails if it says there were no visitors
+      yesterday or gives 0.
+
+  - id: latest-day-of-data
+    type: relative_period
+    question: Is the website data up to date? What's the latest day you have?
+    stores: 1
+    requires: [export_lag]
+    rubric: >-
+      Names {latest_day:%B %-d, %Y} as the latest day with data and says the days
+      after it have not been exported or loaded yet (GA4 exports a day after it is
+      over). Fails if it says the data is up to date or treats the missing days as
+      days without visits.
+
+  # Share or ratio
+  - id: conversion-week-vs-previous
+    type: ratio
+    question: What was the conversion rate in the week starting {week:%B %-d} compared to the week before?
+    stores: 1
+    expect:
+      - metrics: [sessions.session_conversion_rate]
+        filters: ["sessions.session_week = DATE '{week}'"]
+      - metrics: [sessions.session_conversion_rate]
+        filters: ["sessions.session_week = DATE '{week}' - INTERVAL '7' DAY"]
+    rubric: >-
+      Gives the rate of each week. Fails if it states a difference or a change in
+      percent that it computed itself.
+
+  - id: conversion-by-source-named-site
+    type: ratio
+    question: conversion rate by traffic source on the ecommerce site
+    stores: 2
+    requires: [labels]
+    expect:
+      - metrics: [sessions.session_conversion_rate]
+        dimensions: [sessions.source]
+        filters: ["sessions.source_id = '{site_shop}'"]
+    labels:
+      opaque: >-
+        Lists the sites' labels and asks which one is the ecommerce site. Fails if it
+        answers for a site it picked itself or for both together.
+
+  # Unclear site
+  - id: conversion-rate-named-site
+    type: unclear_store
+    question: what's the conversion rate on the {shop_word} site?
+    stores: 2
+    requires: [labels]
+    expect:
+      - metrics: [sessions.session_conversion_rate]
+        filters: ["sessions.source_id = '{site_shop}'"]
+    labels:
+      opaque: >-
+        Lists the sites' labels and asks which one is the {shop_word} site. Fails if
+        it answers for a site it picked itself or for both together.
+
+  - id: visitors-described-site
+    type: unclear_store
+    question: how many visitors did the ecommerce site get in total?
+    stores: 2
+    requires: [labels]
+    expect:
+      - metrics: [sessions.users]
+        filters: ["sessions.source_id = '{site_shop}'"]
+    labels:
+      opaque: >-
+        Lists the sites' labels and asks which one is the ecommerce site. Fails if it
+        answers for a site it picked itself or for both together.
+
+  # Counting rule
+  - id: ga4-export-vs-ga4-screens
+    type: counting_rule
+    question: revenue in GA4 vs what we see in the ga4 screens, why dont they match
+    stores: 1
+    rubric: >-
+      Names at least one reason the numbers differ: the model's gross purchase
+      revenue does not subtract refunds while GA4's purchase revenue does, or the
+      GA4 interface estimates counts of sessions and users that the model counts
+      exactly. Fails if it says the two must match.
