@@ -8,6 +8,12 @@ names the Ossie schema version its models carry.
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-11-11
+
+Ossie schema `0.3.0.dev0`. Tested with dactopus-ossie-clickhouse 0.16.0,
+dbt v2 (`dbt-oss` 2.0.11) and dbt v1 (`dbt-core` 1.11 with
+`dbt-clickhouse` 1.10) on ClickHouse 26.8, all packages also on 26.10.
+
 Run `dbt build` of the Shopify or WooCommerce package once before
 serving the model: it creates the view `order_discount_codes`, and until
 then dactopus-ossie-clickhouse serves the model without that dataset. A
@@ -1346,7 +1352,8 @@ ClickHouse 26.9.
 - Hand-written GA4 rows and the numbers the model must answer over them
   (`tests/ga4`), checked in CI on both dbt versions.
 
-[Unreleased]: https://github.com/Dactopus/dactopus-data-models/compare/v0.12.2...HEAD
+[Unreleased]: https://github.com/Dactopus/dactopus-data-models/compare/v0.13.0...HEAD
+[0.13.0]: https://github.com/Dactopus/dactopus-data-models/compare/v0.12.2...v0.13.0
 [0.12.2]: https://github.com/Dactopus/dactopus-data-models/compare/v0.12.1...v0.12.2
 [0.12.1]: https://github.com/Dactopus/dactopus-data-models/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/Dactopus/dactopus-data-models/compare/v0.11.2...v0.12.0
