@@ -304,13 +304,13 @@ questions:
     expect:
       - metrics: [line_categories.category_revenue]
         dimensions: [orders.currency, line_categories.category_path]
-        filters: ["line_categories.category_path IS NOT NULL",
+        filters: ["line_categories.category_path IS NOT NULL", "line_categories.category_revenue > 0",
                   "orders.order_date >= DATE_TRUNC('MONTH', CURRENT_DATE) - INTERVAL '1' MONTH",
                   "orders.order_date < DATE_TRUNC('MONTH', CURRENT_DATE)"]
     alternatives:
       - - metrics: [line_categories.category_net_revenue]
           dimensions: [orders.currency, line_categories.category_path]
-          filters: ["line_categories.category_path IS NOT NULL",
+          filters: ["line_categories.category_path IS NOT NULL", "line_categories.category_net_revenue <> 0",
                     "orders.order_date >= DATE_TRUNC('MONTH', CURRENT_DATE) - INTERVAL '1' MONTH",
                     "orders.order_date < DATE_TRUNC('MONTH', CURRENT_DATE)"]
     rubric: >-
@@ -363,7 +363,7 @@ questions:
     expect:
       - metrics: [product_categories.product_count]
         dimensions: [product_categories.category_path]
-        filters: ["products.status = 'active'"]
+        filters: ["products.status = 'active'", "product_categories.product_count > 0"]
     alternatives:
       # Each category with its subcategories.
       - - metrics: [product_categories.category_tree_product_count]
@@ -518,7 +518,7 @@ questions:
     expect:
       - metrics: [orders.buyer_count]
         dimensions: [orders.order_month, orders.new_vs_repeat]
-        filters: ["orders.new_vs_repeat IS NOT NULL"]
+        filters: ["orders.new_vs_repeat IS NOT NULL", "orders.buyer_count > 0"]
 
   - id: cohort-spend-in-later-months
     type: breakdown
@@ -563,6 +563,7 @@ questions:
       # By the month of the order.
       - - metrics: [orders.refunded_amount]
           dimensions: [orders.currency, orders.order_month]
+          filters: ["orders.refunded_amount > 0"]
         - metrics: [orders.order_count]
           dimensions: [orders.order_month]
           filters: ["orders.refunded_total > 0"]
@@ -1419,10 +1420,11 @@ questions:
     stores: 1
     requires: [archived_products]
     expect:
-      # Orders reach products through their lines, which the filter names.
+      # Orders reach products through their lines, which the filter names; no row
+      # where there are none.
       - metrics: [orders.all_orders]
         filters: ["order_lines.source_id IS NOT NULL", "products.status = 'archived'",
-                  "orders.order_date >= DATE_TRUNC('MONTH', CURRENT_DATE)"]
+                  "orders.order_date >= DATE_TRUNC('MONTH', CURRENT_DATE)", "orders.all_orders > 0"]
     alternatives:
       - - metrics: [order_lines.items_sold]
           dimensions: [order_lines.title]

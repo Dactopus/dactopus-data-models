@@ -78,12 +78,14 @@ questions:
     expect:
       - metrics: [sessions.session_count]
         dimensions: [sessions.source_id, sessions.landing_page]
-        filters: ["sessions.source_id = '{site_shop}'", "sessions.session_month = DATE '{month}'"]
+        filters: ["sessions.source_id = '{site_shop}'", "sessions.landing_page IS NOT NULL",
+                  "sessions.session_month = DATE '{month}'"]
         order: [sessions.session_count desc]
         limit: 5
       - metrics: [sessions.session_count]
         dimensions: [sessions.source_id, sessions.landing_page]
-        filters: ["sessions.source_id = '{site_blog}'", "sessions.session_month = DATE '{month}'"]
+        filters: ["sessions.source_id = '{site_blog}'", "sessions.landing_page IS NOT NULL",
+                  "sessions.session_month = DATE '{month}'"]
         order: [sessions.session_count desc]
         limit: 5
     rubric: Gives the landing pages of each site separately, by its label.
