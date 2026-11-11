@@ -61,9 +61,7 @@ questions:
     requires: [repeated_ids]
     expect:
       - metrics: [devices.device_count]
-    rubric: >-
-      Fails if it says a device id that appears in two networks is one device, or
-      states a total it added up itself from the networks' counts.
+    rubric: Fails if it says a device id that appears in two networks is one device.
 
   - id: particulates-last-week-named-networks
     type: stores_currencies
@@ -105,7 +103,8 @@ questions:
       holds for each network, whose rows are the same, does). Where the latest
       contact is hours or days old, says the snapshots are not running. Fails if
       it measures silence from the current time, from one contact across
-      networks, or names a device without its network.
+      networks, or names a device without its network. Giving how long ago that
+      latest contact was, counted from now, is right: it shows the data's age.
 
   # Unclear network
   - id: pm25-downtown-now
@@ -114,10 +113,12 @@ questions:
     stores: 2
     requires: [labels]
     rubric: >-
-      Takes the {city_word} network, saying so, or asks which network is meant; says
-      the latest readings are hours old (the archive publishes a day the day after)
-      and names the time of the data it uses. Fails if it presents a value as of
-      now, or picks the devices by whether they are indoors.
+      Takes the {city_word} network, saying so, or asks which network or which sites
+      are meant; says the latest readings are hours old (the archive publishes a day
+      the day after) and, where it gives a value, names the time of the data it
+      uses. Fails if it presents a value as of now, or picks the devices by whether
+      they are indoors (devices.is_indoor) in place of a network; saying that a
+      device it used is outdoors is no such pick.
     labels:
       opaque: >-
         Lists the networks' labels and asks which one is downtown. Fails if it answers
@@ -147,6 +148,7 @@ questions:
       {lab_word} network only.
     labels:
       opaque: >-
-        Lists the networks' labels and asks which one is the {lab_word}. Fails if it
-        answers for networks it picked itself or picks devices by whether they are
-        indoors.
+        Lists the networks' labels and asks which one is the {lab_word}. It may also
+        give the indoor and outdoor devices' values if it says that is another
+        reading of "the outside ones". Fails if it answers for networks it picked
+        itself, or compares indoor and outdoor devices without saying so.

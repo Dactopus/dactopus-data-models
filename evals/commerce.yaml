@@ -303,7 +303,8 @@ questions:
           aliases: {new: [first-time, first time, first order], repeat: [returning, second or later]}
     rubric: >-
       Gives this year's sales from new and from returning customers. Fails if it
-      states a share of the total, or a total, that it computed itself.
+      states a share of the total that it computed itself, or a total that it says
+      it added up itself.
 
   - id: category-revenue-last-month
     type: breakdown
@@ -351,8 +352,8 @@ questions:
                     "orders.order_date < DATE_TRUNC('MONTH', CURRENT_DATE)"]
     rubric: >-
       Gives each brand's numbers in the two months and says the model has no metric
-      of growth. Fails if it states a growth rate or a difference between the months
-      that it computed itself.
+      of growth. Fails if it states a growth rate, a difference or a ratio between
+      the months that it computed itself.
 
   - id: top-categories-by-units-returned
     type: breakdown
@@ -525,10 +526,10 @@ questions:
         limit: 3
     rubric: >-
       Gives the products with the most units sold and those with the most units
-      taken back: by refunds, and at a Shopify store by cancellations too (at a
-      WooCommerce store, by refunds alone is right). Says that units removed by
-      editing an order are not counted on their own. Fails if it states a number of
-      removed units that it computed itself from two metrics.
+      taken back (order_lines.items_returned: by refunds, and at a Shopify store by
+      cancellations too), and says that units removed by editing an order are not
+      counted on their own. Fails if it states a number of removed units that it
+      computed itself from two metrics.
 
   - id: first-time-and-returning-buyers-by-month
     type: breakdown
@@ -768,8 +769,8 @@ questions:
     rubric: >-
       Gives each store's refunds in its own currency and says amounts in two
       currencies cannot be added into one total. It may give the number of refunds
-      over both stores, queried as one total. Fails if it adds the amounts up,
-      converts one currency into the other, or states a total it added up itself.
+      over both stores. Fails if it adds the amounts up or converts one currency
+      into the other.
 
   - id: refund-rate-by-platform-last-3-months
     type: stores_currencies
@@ -803,10 +804,10 @@ questions:
     expect:
       - metrics: [customers.customer_count]
     rubric: >-
-      Gives one number of customers for both stores together, from a query: counts
-      add up across stores. It need not name the stores. Fails if it refuses to add
-      them up because the stores have different currencies, gives the stores' counts
-      only separately, or states a total it added up itself from the stores' counts.
+      Gives one number of customers for both stores together: counts add up across
+      stores. It need not name the stores. Fails if it refuses to add them up because
+      the stores have different currencies, or gives the stores' counts only
+      separately.
 
   - id: orders-per-store-this-month
     type: stores_currencies
@@ -818,7 +819,8 @@ questions:
         filters: ["orders.order_date >= DATE_TRUNC('MONTH', CURRENT_DATE)"]
     rubric: >-
       Names each store by its label (its source_id, such as shop_us or brand_a)
-      with its number of orders. Fails if it states a total it added up itself.
+      with its number of orders. Fails if it states a total that it says it added
+      up itself.
 
   - id: top-customers-two-currencies
     type: stores_currencies
@@ -885,7 +887,8 @@ questions:
     stores: 1
     rubric: >-
       Says the model has no collections and gives no revenue split by collection.
-      It may offer categories or brands, if it says they are not collections.
+      It may offer categories or brands as other groupings, if it does not present
+      them as collections.
 
   - id: billing-countries
     type: not_in_model
@@ -1103,8 +1106,8 @@ questions:
         filters: ["sales_events.event_date >= DATE_TRUNC('MONTH', CURRENT_DATE) - INTERVAL '1' MONTH"]
     rubric: >-
       Gives this month's and last month's sales, and says the model gives no change
-      between them. Fails if it states a difference or a percentage it computed
-      itself.
+      between them. Fails if it states a difference, a percentage or a ratio it
+      computed itself.
 
   - id: repeat-order-share-last-month
     type: ratio
@@ -1168,7 +1171,7 @@ questions:
     rubric: >-
       Gives the number of all orders and of those with a code, and the average order
       value with and without a code, and says the model has no metric for the share.
-      Fails if it states a percentage or a difference it computed itself.
+      Fails if it states a percentage, a difference or a ratio it computed itself.
 
   - id: refund-rate-by-country
     type: ratio

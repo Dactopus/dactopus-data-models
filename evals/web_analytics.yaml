@@ -65,7 +65,8 @@ questions:
         filters: ["sessions.source_id = '{site_shop}'"]
     rubric: >-
       Gives the visits by device, a device without visits as none. Fails if it
-      states a percentage or a total that it computed itself.
+      states a percentage that it computed itself, or a total that it says it added
+      up itself.
     labels:
       opaque: >-
         Lists the sites' labels and asks which one is the {shop_word} site. Fails if
@@ -90,7 +91,7 @@ questions:
         limit: 5
     rubric: >-
       Gives the landing pages of each site separately, by its label. Fails if it
-      states a total it added up itself.
+      states a total that it says it added up itself.
 
   # Several sites and currencies
   - id: visitors-across-both-sites
@@ -105,7 +106,7 @@ questions:
     rubric: >-
       Says a browser that visited both sites counts once in each, since visitors are
       not matched across sites. Fails if it says the number counts each visitor
-      once, or states a total it added up itself from the sites' numbers.
+      once.
 
   - id: purchases-in-currencies-total
     type: stores_currencies
@@ -166,8 +167,8 @@ questions:
       - metrics: [sessions.session_conversion_rate]
         filters: ["sessions.session_week = DATE '{week}' - INTERVAL '7' DAY"]
     rubric: >-
-      Gives the rate of each week. Fails if it states a difference or a change in
-      percent that it computed itself.
+      Gives the rate of each week. Fails if it states a difference, a change in
+      percent or a ratio ("1.7 times") that it computed itself.
 
   - id: conversion-by-source-named-site
     type: ratio
