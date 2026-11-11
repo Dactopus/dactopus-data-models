@@ -320,21 +320,24 @@ questions:
       - metrics: [products.product_count]
         dimensions: [products.title]
         filters: ["products.last_sold_date IS NULL OR products.last_sold_date < CURRENT_DATE - INTERVAL '89' DAY"]
+        numbers: false
     alternatives:
       - - metrics: [products.product_count]
           dimensions: [products.title]
           filters: ["products.status = 'active'",
                     "products.last_sold_date IS NULL OR products.last_sold_date < CURRENT_DATE - INTERVAL '89' DAY"]
+          numbers: false
 
   - id: products-never-sold
     type: absence
     candidate: true
-    question: Which products have never been ordered, ever?
+    question: Which of my products have never sold, ever?
     stores: 1
     expect:
       - metrics: [products.product_count]
         dimensions: [products.title]
         filters: ["products.last_sold_date IS NULL"]
+        numbers: false
 
   - id: sold-last-year-not-this-year
     type: absence
@@ -346,6 +349,7 @@ questions:
         dimensions: [products.title]
         filters: ["products.last_sold_date >= DATE_TRUNC('YEAR', CURRENT_DATE) - INTERVAL '1' YEAR",
                   "products.last_sold_date < DATE_TRUNC('YEAR', CURRENT_DATE)"]
+        numbers: false
 
   # Share or ratio
   - id: second-order-rate-of-cohort
@@ -380,9 +384,10 @@ questions:
     question: Show me refund rate by product for this year. Anything above 10%?
     stores: 1
     expect:
+      # The products with anything taken back; the others need not be listed.
       - metrics: [order_lines.line_revenue, order_lines.line_returned_amount]
         dimensions: [order_lines.title]
-        filters: ["orders.order_date >= DATE_TRUNC('YEAR', CURRENT_DATE)"]
+        filters: ["orders.order_date >= DATE_TRUNC('YEAR', CURRENT_DATE)", "order_lines.line_returned_amount > 0"]
     rubric: >-
       Gives each product's revenue and the amount taken back, and says the model has
       no refund rate per product. Fails if it states rates per product that it
@@ -449,9 +454,11 @@ questions:
     requires: [two_platforms]
     rubric: >-
       Names the store on Shopify by its label and says the model does not know
-      which market or country a store sells in; it may offer the countries orders
-      ship to. Fails if it says the Shopify store is or is not in Europe, or infers
-      a market from a currency.
+      which market or country a store sells in, beyond what a label itself says
+      (a label such as shop_us names the US); it may offer the countries orders
+      ship to. Fails if it places a store in or out of Europe from its currency,
+      its platform or the countries its orders ship to. Calling a store "the EUR
+      store" is no such claim.
 
   # Counting rule
   - id: cancelled-orders-rule
@@ -493,10 +500,10 @@ questions:
         dimensions: [orders.currency]
         filters: ["orders.discount_code_count > 0"]
     rubric: >-
-      Says the report matches on orders with one code and no other discount and can
-      differ on others (two codes on an order, a code together with an automatic
-      discount, a code that only takes off shipping). Fails if it promises the
-      numbers match without a condition.
+      Says the numbers can differ from the report and names at least one case where
+      they do: two codes on an order, a code together with a discount without a
+      code, a code that only takes off shipping. Fails if it promises the numbers
+      match without any condition.
 
   # Filter through a related table
   - id: aov-of-orders-with-category

@@ -78,6 +78,14 @@ def states(text, found, expected, metric):
     return False
 
 
+def plain(text):
+    """Text for finding a name in an answer: lower case, without punctuation, a
+    leading article or repeated spaces ("The Minimal Snowboard" is in "Minimal
+    snowboard:")."""
+    text = re.sub(r"[^\w\s]", " ", text.lower())
+    return " ".join(re.sub(r"^\s*(the|a|an)\s+", "", text).split())
+
+
 def is_empty(result):
     """A query with no row, or only empty metric values."""
     return all(v is None for row in result["rows"] for k, v in row.items() if "." in k)
@@ -117,7 +125,7 @@ def check_numbers(entry, answer):
             continue
         values, texts = required([r for r in reading if not is_empty(r)])
         missing = [f"{m} {v:g}" for m, v in values if not states(text, found, v, m)]
-        missing += [t for t in texts if t.lower() not in answer.lower()]
+        missing += [t for t in texts if plain(t) not in plain(answer)]
         if not missing:
             empties = [describe(r["query"]) for r in reading if is_empty(r)]
             break
