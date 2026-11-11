@@ -148,12 +148,12 @@ def main():
             else:
                 fill_copies(engine, args.domain, name, args.source)
         deployment["models"] = [str(root / m.removeprefix("../")) for m in deployment["models"]]
-        with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False) as file:
+        with tempfile.NamedTemporaryFile("w", suffix=".yaml") as file:
             yaml.safe_dump(deployment, file, sort_keys=False)
-        out = subprocess.run([sys.executable, str(root / "evals" / "reference.py"),
-                              str(root / "evals" / f"{args.domain}.yaml"), file.name,
-                              "--today", TODAY[args.domain]], capture_output=True, text=True)
-        pathlib.Path(file.name).unlink()
+            file.flush()
+            out = subprocess.run([sys.executable, str(root / "evals" / "reference.py"),
+                                  str(root / "evals" / f"{args.domain}.yaml"), file.name,
+                                  "--today", TODAY[args.domain]], capture_output=True, text=True)
         sys.stderr.write(out.stderr)
         entries = json.loads(out.stdout or "[]")
         if args.out:

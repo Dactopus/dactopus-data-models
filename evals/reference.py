@@ -57,9 +57,10 @@ def query(models, database, time_zone, case, today, params):
     if limit:
         # A few rows past the limit show a tie at its edge.
         args += ["-l", str(limit + 5)]
+    # The URL carries the password: through the environment, not the command line.
     out = subprocess.run(["dactopus-ossie-clickhouse", "query", *models, *args, "--json",
-                          "--url", url(database), "--time-zone", time_zone],
-                         capture_output=True, text=True)
+                          "--time-zone", time_zone],
+                         capture_output=True, text=True, env={**os.environ, "OSSIE_CLICKHOUSE_URL": url(database)})
     if out.returncode != 0:
         raise RuntimeError(out.stderr.strip())
     rows = json.loads(out.stdout)

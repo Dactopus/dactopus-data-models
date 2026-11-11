@@ -14,8 +14,8 @@ an alias the query gives), states no number
 the question forbids, and, where the question has a rubric, a reviewing model finds
 that it does what the rubric says. A number is found at the precision the answer
 shows it: 107.82 and 108 both state 107.8181...; a share of 0.244 may be written as
-24.4%. Where every expected query is empty, the rubric is the question's if_empty, or
-that the answer says there is none.
+24.4%. Where every query of a reading is empty and the answer states no reading with
+rows, the rubric is the question's if_empty, or that the answer says there is none.
 
 A rubric is judged by a reviewing model. By default it is a Claude model
 (--judge-model, default claude-haiku-5-5) through the Anthropic API: set
@@ -40,12 +40,14 @@ import sys
 NUMBER = re.compile(r"(?<![\w.])([-−]?)(?:[$€£¥]\s?)?(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d+))?\s*(%?)")
 ZERO = re.compile(r"\b(zero|none|nothing)\b", re.I)
 RATIO = re.compile(r"rate|share")
-MONTH = (r"(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\.?")
-# Numbers that are not values: dates, times, years, the day in "October 3" or
-# "3rd of October", list markers at the start of a line.
+# A month's name or abbreviation as a whole word ("Dec", not the start of "decreased").
+MONTH = (r"\b(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|June?|July?|Aug(?:ust)?"
+         r"|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\b\.?")
+# Numbers that are not values: dates, times, years (not an amount such as 1950.00 or
+# $2025), the day in "October 3" or "3rd of October", list markers at the start of a line.
 NOT_VALUES = [re.compile(p, re.I | re.M) for p in (
     r"\b\d{4}-\d\d-\d\d(?:[ T]\d\d:\d\d(?::\d\d)?(?:[+-]\d\d:?\d\d|Z)?)?",
-    r"\b\d{1,2}:\d\d(?::\d\d)?\b", r"\b(?:19|20)\d\d\b",
+    r"\b\d{1,2}:\d\d(?::\d\d)?\b", r"(?<![$€£¥.,])\b(?:19|20)\d\d\b(?![.,]\d|\s*%)",
     MONTH + r"\s+\d{1,2}(?:st|nd|rd|th)?\b", r"\b\d{1,2}(?:st|nd|rd|th)?\s+(?:of\s+)?" + MONTH,
     r"^\s*(?:[-*]\s*)?\d{1,2}[.)]\s")]
 DEFAULT_IF_EMPTY = "Says there is none: no such rows, or zero."
@@ -149,17 +151,17 @@ def required(reading):
 
 
 def check_numbers(entry, answer):
-    """None when the question has no numbers, or every query of its first reading is
-    empty; else (passed, what is missing or forbidden, the empty queries of the
-    reading the answer states)."""
-    if not entry["readings"] or all(is_empty(r) for r in entry["readings"][0]):
+    """None when the question has no numbers, or every query of a reading is empty and
+    the answer states no reading with rows (the answer must then say there is none);
+    else (passed, what is missing or forbidden, the empty queries of the reading the
+    answer states)."""
+    readings = [reading for reading in entry["readings"] if not all(is_empty(r) for r in reading)]
+    if not readings:
         return None
     text = strip_not_values(answer, entry["question"])
     found = numbers(text)
     misses = []
-    for reading in entry["readings"]:
-        if all(is_empty(r) for r in reading):
-            continue
+    for reading in readings:
         values, texts = required([r for r in reading if not is_empty(r)])
         missing = [f"{m} {v:g}" for m, v in values if not states(text, found, v, m)]
         leaves = collections.Counter(value.rsplit(" > ", 1)[-1] for value in {v for v, _ in texts})
@@ -169,6 +171,9 @@ def check_numbers(entry, answer):
             break
         misses.append(missing)
     else:
+        if len(readings) < len(entry["readings"]):
+            # A reading with no rows: the answer may say there is none.
+            return None
         return False, "missing " + " | ".join(", ".join(m) for m in misses), []
     allowed = [v for reading in entry["readings"] for _, v in required(reading)[0]]
     forbidden = [(m, v) for m, v in required(entry["forbid"])[0]
@@ -215,7 +220,9 @@ def command_judge(command):
         if out.returncode != 0:
             raise SystemExit(f"the judge command failed: {out.stderr.strip()}")
         verdict = json.loads(out.stdout)
-        return bool(verdict["passed"]), str(verdict.get("reason", ""))
+        if not isinstance(verdict.get("passed"), bool):
+            raise SystemExit(f"the judge command printed no true or false passed: {out.stdout.strip()}")
+        return verdict["passed"], str(verdict.get("reason", ""))
     return judge
 
 

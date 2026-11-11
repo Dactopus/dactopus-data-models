@@ -4,6 +4,8 @@
 # A question has:
 #   id         a stable name
 #   type       the difficulty it tests (see README.md)
+#   candidate  true for the three or four questions of each type that also check the
+#              open models: an owner's questions that carry over to another store
 #   question   the text the agent gets; {name} is a parameter of the deployment
 #              (deployment.commerce.example.yaml), {name:%B} a date parameter as a
 #              month name.
