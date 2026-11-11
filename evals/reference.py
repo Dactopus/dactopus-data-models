@@ -5,7 +5,7 @@
 
     uv run evals/reference.py evals/commerce.yaml deployment.yaml --today 2026-10-10 > expected.json
 
-deployment.yaml (see evals/deployment.example.yaml) names the model files, the time zone,
+deployment.yaml (see evals/deployment.commerce.example.yaml) names the model files, the time zone,
 the databases the agent is asked over and the parameters of the questions. A question
 is asked over each database that has as many stores as it needs (`stores`) and provides
 what it requires (`requires`); a question no database fits is listed as skipped on
@@ -88,7 +88,7 @@ def fits(question, database, provides):
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("questions", help="evals/<domain>.yaml")
-    parser.add_argument("deployment", help="the deployment's file, as evals/deployment.example.yaml")
+    parser.add_argument("deployment", help="the deployment's file, as evals/deployment.commerce.example.yaml")
     parser.add_argument("--today", required=True, type=datetime.date.fromisoformat,
                         help="the day the agent was asked, in the deployment's zone (YYYY-MM-DD)")
     parser.add_argument("--only", nargs="*", help="these question ids only")

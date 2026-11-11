@@ -31,10 +31,11 @@ needed.
   and IoT (`evals/iot.yaml`) models, by difficulty, each with the
   queries of the model that give its expected answer or a rubric of what
   a right answer says. `evals/reference.py` works out the expected
-  answers over a deployment's databases for a given day
-  (`evals/deployment.example.yaml` for commerce,
-  `evals/deployment.<domain>.example.yaml` for the others),
-  `evals/grade.py` grades an agent's answers against them, and
+  answers over a deployment's databases for a given day (an example
+  deployment per domain: `evals/deployment.<domain>.example.yaml`),
+  `evals/grade.py` grades an agent's answers against them (numbers by
+  code, rubrics by a Claude model, a command of your own or not at all
+  with `--no-judge`), and
   `tests/check_evals.py` works them out in CI: over the canonical tables
   for commerce, over the tables the GA4 and Sensor.Community jobs build
   from their fixtures for the others.

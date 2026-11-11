@@ -90,7 +90,7 @@ jobs:
               - tests/woocommerce/canon/**
               - tests/check_evals.py
               - evals/commerce.yaml
-              - evals/deployment.example.yaml
+              - evals/deployment.commerce.example.yaml
               - evals/reference.py
             woocommerce:
               - *common

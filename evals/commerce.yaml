@@ -5,7 +5,8 @@
 #   id         a stable name
 #   type       the difficulty it tests (see README.md)
 #   question   the text the agent gets; {name} is a parameter of the deployment
-#              (deployment.example.yaml), {name:%B} a date parameter as a month name.
+#              (deployment.commerce.example.yaml), {name:%B} a date parameter as a
+#              month name.
 #              Queries, rubrics and if_empty take parameters too.
 #   stores     1: asked of a database with one store; 2: of a union of two stores
 #   requires   what the deployment's data must hold for the question to test anything
@@ -15,7 +16,9 @@
 #              and every text value of a dimension other than source_id.
 #              CURRENT_DATE is the day the agent was asked, in the deployment's zone.
 #              A query with `numbers: false` asks only for its text values, such as
-#              each store's currency.
+#              each store's currency; one with `scale` asks for its values times the
+#              scale, such as 0.01 for pressure the model keeps in Pa and the
+#              question asks in hPa.
 #   alternatives  other readings of the question, each a list of queries like expect;
 #              an answer that states any one of them is right
 #   forbid     queries whose numbers must not be in the answer, such as a sum of

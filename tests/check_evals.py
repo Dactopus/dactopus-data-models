@@ -7,9 +7,8 @@
     uv run tests/check_evals.py web_analytics --from analytics [--prefix ci_]
     uv run tests/check_evals.py iot --from analytics [--prefix ci_]
 
-Fills the databases of the domain's example deployment (evals/deployment.example.yaml
-for commerce, evals/deployment.<domain>.example.yaml for the others) on the server of
-CLICKHOUSE_HOST, CLICKHOUSE_PORT (HTTP), CLICKHOUSE_USER and CLICKHOUSE_PASSWORD, runs
+Fills the databases of the domain's example deployment (evals/deployment.<domain>.example.yaml)
+on the server of CLICKHOUSE_HOST, CLICKHOUSE_PORT (HTTP), CLICKHOUSE_USER and CLICKHOUSE_PASSWORD, runs
 evals/reference.py with today inside their data, and fails if a query of a question
 fails (a renamed metric or field, or a filter the executor no longer takes) or if no
 database fits a question. Drops the databases afterwards. Run from the repository root.
@@ -135,8 +134,7 @@ def main():
         parser.error(f"{args.domain} needs --from, the database CI built")
 
     root = canon.ROOT
-    example = root / "evals" / ("deployment.example.yaml" if args.domain == "commerce"
-                                else f"deployment.{args.domain}.example.yaml")
+    example = root / "evals" / f"deployment.{args.domain}.example.yaml"
     deployment = yaml.safe_load(example.read_text())
     engines = []
     try:

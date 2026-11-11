@@ -93,7 +93,7 @@ release it builds on; older releases are untested.
     evals/reference.py        works out the expected answers over a
                               deployment's databases
     evals/grade.py            grades an agent's answers against them
-    evals/deployment.example.yaml
+    evals/deployment.commerce.example.yaml
                               the canonical tables as a deployment
     evals/deployment.<domain>.example.yaml
                               web_analytics and iot: the tables CI builds

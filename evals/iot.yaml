@@ -34,15 +34,14 @@ questions:
     question: show me pressure in hPa, avg by day for {month:%B}
     stores: 1
     expect:
-      # The model's values are in Pa; the answer states them divided by 100.
+      # The model's values are in Pa; the answer states them in hPa.
       - metrics: [readings.avg_value]
         dimensions: [readings.reading_date]
         filters: ["readings.measure = 'pressure'", "readings.reading_month = DATE '{month}'"]
-        numbers: false
+        scale: 0.01
     rubric: >-
-      Gives each day's average pressure in hPa: the model's values are in Pa, and
-      the answer divides them by 100 and says so. Fails if it gives the values in Pa
-      as hPa.
+      Says the values are converted from Pa, in which the model keeps them, to
+      hPa. Fails if it gives values in Pa as hPa.
 
   - id: latest-data-each-sensor
     type: breakdown
