@@ -191,7 +191,7 @@ ClickHouse, and serving several models to one agent:
 ## Versioning
 
 One version for the whole repository, [SemVer](https://semver.org), tags
-`vX.Y.Z`. The Ossie schema version (`0.2.0.dev0`) is separate: the model
+`vX.Y.Z`. The Ossie schema version (`0.3.0.dev0`) is separate: the model
 files carry it, and the changelog names it for every release.
 
 A breaking change is anything that stops a deployment working or changes

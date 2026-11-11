@@ -43,6 +43,12 @@ needed.
 
 ### Changed
 
+- The models of the three domains carry Ossie schema `0.3.0.dev0`, the
+  version apache/ossie#691 moved the spec to; there will be no 0.2.0.
+  Reading them needs dactopus-ossie-clickhouse 0.15.0 or newer: 0.14.0
+  and earlier refuse them as an unsupported version. Nothing else in the
+  models changes, their numbers do not change and no rebuild is needed.
+  CI tests them with dactopus-ossie-clickhouse 0.16.0.
 - CI runs every package on ClickHouse 26.8, the LTS release, and builds
   them all again on the latest, 26.10, in the unions job; 26.7 and 26.9
   are no longer tested. The WooCommerce package needs 26.8 or later.

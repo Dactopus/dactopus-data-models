@@ -154,7 +154,7 @@ jobs:
         with:
           cache-dependency-glob: .github/workflows/ci.yml
       - name: Install dactopus-ossie-clickhouse
-        run: uv tool install "dactopus-ossie-clickhouse==0.14.0"
+        run: uv tool install "dactopus-ossie-clickhouse==0.16.0"
       - name: Validate
         run: dactopus-ossie-clickhouse validate entities/*.yaml
       # The grader of the question set (evals/grade.py) on hand-written
@@ -198,7 +198,7 @@ jobs:
         with:
           cache-dependency-glob: .github/workflows/ci.yml
       - name: Install dactopus-ossie-clickhouse
-        run: uv tool install "dactopus-ossie-clickhouse==0.14.0"
+        run: uv tool install "dactopus-ossie-clickhouse==0.16.0"
       # The GA4 sample needs a Google login, so CI runs on hand-written rows
       # (tests/ga4/fixture.sql) and checks the model's answers against numbers
       # derived from them by hand. The first build runs on an empty input, as
@@ -310,7 +310,7 @@ jobs:
         with:
           cache-dependency-glob: .github/workflows/ci.yml
       - name: Install dactopus-ossie-clickhouse
-        run: uv tool install "dactopus-ossie-clickhouse==0.14.0"
+        run: uv tool install "dactopus-ossie-clickhouse==0.16.0"
       # Hand-written rows (tests/shopify/fixture.sql) and the model's answers
       # over them, checked against numbers derived by hand; the first build
       # runs on an empty input. The fixture goes into a database of its own
@@ -532,7 +532,7 @@ jobs:
         with:
           cache-dependency-glob: .github/workflows/ci.yml
       - name: Install dactopus-ossie-clickhouse
-        run: uv tool install "dactopus-ossie-clickhouse==0.14.0"
+        run: uv tool install "dactopus-ossie-clickhouse==0.16.0"
       # Hand-written CDC rows (tests/woocommerce/fixture.sql); the first
       # build runs on an empty input. The fixture goes into a database of
       # its own and reaches the input in syncs, each followed by an
@@ -866,7 +866,7 @@ jobs:
         with:
           cache-dependency-glob: .github/workflows/ci.yml
       - name: Install dactopus-ossie-clickhouse
-        run: uv tool install "dactopus-ossie-clickhouse==0.14.0"
+        run: uv tool install "dactopus-ossie-clickhouse==0.16.0"
       # Hand-written rows (tests/sensor_community/fixture.sql) reach the input
       # in the loads they record, each followed by an incremental run; the
       # first build runs on an empty input. The higher of the two copies of
@@ -1027,7 +1027,7 @@ jobs:
         with:
           cache-dependency-glob: .github/workflows/ci.yml
       - name: Install dactopus-ossie-clickhouse
-        run: uv tool install "dactopus-ossie-clickhouse==0.14.0"
+        run: uv tool install "dactopus-ossie-clickhouse==0.16.0"
       # The instances: each package's fixture built into a database of its
       # own under a label of its own. WooCommerce twice, from one input: the
       # two have the same order, customer and product ids, which only the

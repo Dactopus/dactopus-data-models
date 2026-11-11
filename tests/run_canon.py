@@ -151,18 +151,25 @@ class DuckDB:
         import yaml
         from sqlglot import exp
 
+        def parse(sql):
+            # The spec puts the date part first, DATEDIFF(day, d1, d2), as Snowflake does;
+            # sqlglot's default dialect reads DATEDIFF's arguments in another order.
+            return sqlglot.parse_one(sql, read="snowflake")
+
         document = yaml.safe_load(pathlib.Path(model).read_text())
         self.metrics = {}
         for dataset in document["datasets"]:
+            for field in dataset["fields"]:
+                field["expression"]["sql"] = parse(field["expression"]["sql"]).sql("duckdb")
             for metric in dataset.pop("metrics", None) or []:
-                expression = sqlglot.parse_one(metric["expression"]["sql"])
+                expression = parse(metric["expression"]["sql"])
                 for star in list(expression.find_all(exp.Star)):
                     if isinstance(star.parent, exp.Count):
                         star.replace(exp.column(dataset["primary_key"][-1], dataset["name"]))
                 for column in expression.find_all(exp.Column):
                     if not column.table:
                         column.set("table", exp.to_identifier(dataset["name"]))
-                metric["expression"]["sql"] = expression.sql()
+                metric["expression"]["sql"] = expression.sql("duckdb")
                 name = f"{dataset['name']}.{metric['name']}"
                 metric["name"] = self.metrics[name] = f"{dataset['name']}__{metric['name']}"
                 document.setdefault("metrics", []).append(metric)
