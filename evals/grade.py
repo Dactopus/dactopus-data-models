@@ -28,9 +28,29 @@ import re
 import sys
 
 NUMBER = re.compile(r"(?<![\w.])([-−]?)(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d+))?\s*(%?)")
-NONE = re.compile(r"\b(no|none|zero|nothing|not any|0)\b", re.I)
+ZERO = re.compile(r"\b(zero|none|nothing)\b", re.I)
 RATIO = re.compile(r"rate|share")
+MONTH = (r"(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\.?")
+# Numbers that are not values: dates, times, years, the day in "October 3" or
+# "3rd of October", list markers at the start of a line.
+NOT_VALUES = [re.compile(p, re.I | re.M) for p in (
+    r"\b\d{4}-\d\d-\d\d(?:[ T]\d\d:\d\d(?::\d\d)?(?:[+-]\d\d:?\d\d|Z)?)?",
+    r"\b\d{1,2}:\d\d(?::\d\d)?\b", r"\b(?:19|20)\d\d\b",
+    MONTH + r"\s+\d{1,2}(?:st|nd|rd|th)?\b", r"\b\d{1,2}(?:st|nd|rd|th)?\s+(?:of\s+)?" + MONTH,
+    r"^\s*(?:[-*]\s*)?\d{1,2}[.)]\s")]
 DEFAULT_IF_EMPTY = "Says there is none: no such rows, or zero."
+
+
+def strip_not_values(text, question):
+    """The text without the numbers that are not values, nor those the question
+    asks with (the 7 of "last 7 days", the 10 of "top 10")."""
+    for pattern in NOT_VALUES:
+        text = pattern.sub(" ", text)
+    for number, word in re.findall(r"(\d+)\s*(%|[a-z]+)", question, re.I):
+        text = re.sub(rf"\b{number}\s*{re.escape(word)}", " ", text, flags=re.I)
+    for word, number in re.findall(r"\b(top|last|past|bottom|first|within)\s+(\d+)", question, re.I):
+        text = re.sub(rf"\b{word}\s+{number}\b", " ", text, flags=re.I)
+    return text
 
 
 def numbers(text):
@@ -45,7 +65,7 @@ def numbers(text):
 def states(text, found, expected, metric):
     """Whether the answer states the expected value at the precision it shows."""
     if expected == 0:
-        return bool(NONE.search(text))
+        return any(value == 0 for value, _, _ in found) or bool(ZERO.search(text))
     for value, decimals, percent in found:
         tolerance = 0.5 * 10 ** -decimals + 1e-9
         if RATIO.search(metric):
@@ -58,6 +78,15 @@ def states(text, found, expected, metric):
     return False
 
 
+def is_empty(result):
+    """A query with no row, or only empty metric values."""
+    return all(v is None for row in result["rows"] for k, v in row.items() if "." in k)
+
+
+def describe(query):
+    return ", ".join(query.get("metrics", [])) + "".join(f" where {f}" for f in query.get("filters", []))
+
+
 def required(reading):
     """The metric values and text values a reading's answer must state."""
     values, texts = [], []
@@ -68,39 +97,40 @@ def required(reading):
                 if "." in key and isinstance(value, (int, float)) and not isinstance(value, bool):
                     if counts:
                         values.append((key, float(value)))
-                elif key != "source_id" and isinstance(value, str) and not re.fullmatch(r"[\d\-:T+ .]+", value):
+                elif (key != "source_id" and not result.get("tied") and isinstance(value, str)
+                      and not re.fullmatch(r"[\d\-:T+ .]+", value)):
                     texts.append(value)
     return values, texts
 
 
-def empty(reading):
-    return all(v is None for result in reading for row in result["rows"] for k, v in row.items() if "." in k)
-
-
 def check_numbers(entry, answer):
-    """None when every expected query is empty; else (passed, what is missing or forbidden)."""
-    if not entry["readings"]:
+    """None when the question has no numbers, or every query of its first reading is
+    empty; else (passed, what is missing or forbidden, the empty queries of the
+    reading the answer states)."""
+    if not entry["readings"] or all(is_empty(r) for r in entry["readings"][0]):
         return None
-    if empty(entry["readings"][0]):
-        return None
-    found = numbers(answer)
+    text = strip_not_values(answer, entry["question"])
+    found = numbers(text)
     misses = []
     for reading in entry["readings"]:
-        values, texts = required(reading)
-        missing = [f"{m} {v:g}" for m, v in values if not states(answer, found, v, m)]
+        if all(is_empty(r) for r in reading):
+            continue
+        values, texts = required([r for r in reading if not is_empty(r)])
+        missing = [f"{m} {v:g}" for m, v in values if not states(text, found, v, m)]
         missing += [t for t in texts if t.lower() not in answer.lower()]
         if not missing:
+            empties = [describe(r["query"]) for r in reading if is_empty(r)]
             break
         misses.append(missing)
     else:
-        return False, "missing " + " | ".join(", ".join(m) for m in misses)
+        return False, "missing " + " | ".join(", ".join(m) for m in misses), []
     allowed = [v for reading in entry["readings"] for _, v in required(reading)[0]]
     forbidden = [(m, v) for m, v in required(entry["forbid"])[0]
                  if v != 0 and not any(math.isclose(v, a, rel_tol=1e-9) for a in allowed)]
-    stated = [f"{m} {v:g}" for m, v in forbidden if states(answer, found, v, m)]
+    stated = [f"{m} {v:g}" for m, v in forbidden if states(text, found, v, m)]
     if stated:
-        return False, "states forbidden " + ", ".join(stated)
-    return True, ""
+        return False, "states forbidden " + ", ".join(stated), []
+    return True, "", empties
 
 
 def judge(client, model, entry, criterion, answer):
@@ -141,12 +171,17 @@ def main():
         answer = item["answer"] or ""
         verdict = {"id": item["id"], "database": item["database"], "passed": True, "reasons": []}
         result = check_numbers(entry, answer)
-        criterion = entry.get("rubric")
+        criteria = [entry["rubric"]] if entry.get("rubric") else []
         if result is None and entry["readings"]:
-            criterion = entry.get("if_empty", DEFAULT_IF_EMPTY)
+            criteria.append(entry.get("if_empty", DEFAULT_IF_EMPTY))
         elif result is not None and not result[0]:
             verdict["passed"] = False
             verdict["reasons"].append(result[1])
+        elif result is not None and result[2]:
+            # Part of the answer has no rows: that part must say so.
+            criteria.append(entry.get("if_empty") or
+                            "For " + "; and for ".join(result[2]) + ": says there is none, or zero.")
+        criterion = " ".join(criteria)
         if criterion and verdict["passed"]:
             if client is None:
                 import anthropic

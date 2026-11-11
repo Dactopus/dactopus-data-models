@@ -303,6 +303,11 @@ package or a model:
    `dactopus-ossie-clickhouse serve` (MCP), in fresh sessions, with more
    than one AI model, and compare every number in the answers with the
    hand-written queries.
+8. A change to a metric, field or relationship the questions of
+   `evals/commerce.yaml` read, or to a question, passes
+   `uv run tests/check_evals.py`, which works out their expected answers
+   over the canonical tables (CI runs it). The questions also check
+   agents over a build of your own (`evals/README.md`).
 
 ```bash
 dbt build --project-dir sources/ga4 --profiles-dir tests      # models and tests

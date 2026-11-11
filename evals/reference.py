@@ -71,8 +71,14 @@ def query(models, database, time_zone, case, today, params):
         if len(rows) > limit:
             edge = case["order"][0].split()[0]
             edge_value = rows[limit].get(edge)
-            required = [row for row in required if row.get(edge) != edge_value]
-    return {"query": {k: v for k, v in case.items()}, "rows": required}
+            untied = [row for row in required if row.get(edge) != edge_value]
+            if untied:
+                required = untied
+            else:
+                # Every row within the limit ties: any of them may be listed, and the
+                # answer states their value.
+                return {"query": dict(case), "rows": required, "tied": True}
+    return {"query": dict(case), "rows": required}
 
 
 def fits(question, database, provides):
