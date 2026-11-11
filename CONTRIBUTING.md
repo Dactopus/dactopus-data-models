@@ -195,7 +195,7 @@ does not belong here.
 
 ## Authoring rules
 
-**Format.** Ossie schema `0.2.0.dev0`, the only version the upstream
+**Format.** Ossie schema `0.3.0.dev0`, the only version the upstream
 schema accepts today. Write expressions in `sql`, the spec's portable form
 (`OSSIE_SQL_2026`); `dialects` only for a vendor variant. Mapping, refresh
 and checks live in the package's dbt project, not in the Ossie files, so
