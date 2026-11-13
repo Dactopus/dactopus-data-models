@@ -5,6 +5,24 @@ versions follow [Semantic Versioning](https://semver.org) as the
 README's [Versioning](README.md#versioning) section applies them. What a
 deployment does to move to a release: [UPGRADING.md](UPGRADING.md).
 
+## [0.13.1] - 2026-11-13
+
+_Moving to it takes three columns in the Shopify input, its orders exported again and one `dbt build --full-refresh` ([Upgrading](UPGRADING.md#0131))._
+
+### Changed
+
+- **Breaking:** Require `billing_country_code`, `billing_province_code` and `billing_city` in the Shopify input's `orders` ([#81](https://github.com/Dactopus/dactopus-data-models/pull/81))
+
+### Added
+
+- Add `orders.billing_country`, `billing_region` and `billing_city`, the address the order was billed to, in the Shopify and WooCommerce packages ([#81](https://github.com/Dactopus/dactopus-data-models/pull/81))
+- Add a recipe for loading a GA4 property's own export day by day, which replaces the days Google still updates ([#84](https://github.com/Dactopus/dactopus-data-models/pull/84))
+- Add `UPGRADING.md`, the steps a deployment takes to move to each release ([#83](https://github.com/Dactopus/dactopus-data-models/pull/83))
+
+### Fixed
+
+- Bound the memory of the Shopify and Sensor.Community builds on the insert again: the dbt contract kept their insert settings from the `INSERT` ([#83](https://github.com/Dactopus/dactopus-data-models/pull/83))
+
 ## [0.13.0] - 2026-11-11
 
 _Moving to it takes dactopus-ossie-clickhouse 0.15.0 or newer and one `dbt build` ([Upgrading](UPGRADING.md#0130))._
@@ -316,6 +334,7 @@ _Initial release._
 - Add the GA4 package `sources/ga4`, over the BigQuery export ([`e186a97`](https://github.com/Dactopus/dactopus-data-models/commit/e186a97))
 - Add the web_analytics model `entities/web_analytics.yaml` ([`0076e69`](https://github.com/Dactopus/dactopus-data-models/commit/0076e69))
 
+[0.13.1]: https://github.com/Dactopus/dactopus-data-models/releases/tag/v0.13.1
 [0.13.0]: https://github.com/Dactopus/dactopus-data-models/releases/tag/v0.13.0
 [0.12.2]: https://github.com/Dactopus/dactopus-data-models/releases/tag/v0.12.2
 [0.12.1]: https://github.com/Dactopus/dactopus-data-models/releases/tag/v0.12.1

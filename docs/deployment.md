@@ -18,10 +18,10 @@ WooCommerce, `subdirectory: sources/woocommerce`; for Sensor.Community,
 ```yaml
 packages:
   - git: https://github.com/Dactopus/dactopus-data-models.git
-    revision: v0.13.0
+    revision: v0.13.1
     subdirectory: sources/ga4
   - git: https://github.com/Dactopus/dactopus-data-models.git
-    revision: v0.13.0
+    revision: v0.13.1
     subdirectory: sources/shopify
 ```
 
@@ -124,8 +124,8 @@ The input database, the table prefix and the lookback days only say
 where and how far a run reads (`meta.free_vars`): they change in any
 run. The lookback is how far before its latest load, sync or built day
 an incremental run rereads the input, for inserts that commit late; for
-GA4, because Google updates a day's export table for up to 72 hours
-after its date
+GA4, because Google adds late events to a day's export table through
+the third day after its date
 ([export schedule](https://support.google.com/analytics/answer/9358801)).
 
 ### Serving

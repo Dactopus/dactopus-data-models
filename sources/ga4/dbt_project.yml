@@ -1,5 +1,5 @@
 name: dactopus_ga4
-version: "0.13.0"
+version: "0.13.1"
 profile: dactopus
 model-paths: ["models"]
 macro-paths: ["macros"]
@@ -10,7 +10,8 @@ vars:
   # Give each property its own, and the tables of several properties add up.
   # A new label needs a --full-refresh.
   ga4_source_id: ga4
-  # GA4 keeps updating a daily export table for up to 72 hours after its date:
+  # GA4 adds late events to a daily export table through the third day after
+  # its date:
   # https://support.google.com/analytics/answer/9358801
   ga4_lookback_days: 3
 models:
