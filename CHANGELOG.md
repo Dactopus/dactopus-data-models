@@ -37,6 +37,16 @@ package it reads.
   `dbt build --full-refresh`. WooCommerce's input already has the
   billing address (`wp_wc_order_addresses`).
 
+### Fixed
+
+- The Shopify package bounds a build's memory again. Its insert settings
+  stopped reaching the insert in 0.9.0, when the dbt contract started to
+  wrap each model in a subquery; they are now the models'
+  `+query_settings`. The first build of a shop of 2 million orders peaks
+  at 1.2 GiB instead of 1.6, and a shop of 4 million orders builds on a
+  ClickHouse server limited to 3.5 GB, where it ran out of memory. The
+  tables are the same, row for row.
+
 ## [0.13.0] - 2026-11-11
 
 Ossie schema `0.3.0.dev0`. Tested with dactopus-ossie-clickhouse 0.16.0,

@@ -372,12 +372,12 @@ definition, as the model's descriptions say:
   days are not checked against the reports yet
   ([#16](https://github.com/Dactopus/dactopus-data-models/issues/16)).
 
-The memory a build needs grows with the shop's history, slowly: on
-synthetic shops of 2, 4 and 8 million orders, the largest query of the
-first build, `orders`, peaks at 1.1, 1.5 and 2.0 GB, and the structural
-test `orders_amounts_consistent` at 0.7, 1.7 and 2.7 GB, so on a server
-that allows a query 3 GB it is the first to fail, past 8 million orders
-([#8](https://github.com/Dactopus/dactopus-data-models/issues/8)).
+The memory a build needs grows with the shop's history. On synthetic
+shops of 2 and 4 million orders, the largest query of the first build,
+`orders`, peaks at 1.2 and 1.7 GiB, and the structural test
+`orders_amounts_consistent` at 0.8 and 1.3 GiB. A ClickHouse server
+limited to 3.5 GB in all builds the shop of 4 million orders; one of 8
+million needs more, as `orders` passes 2.1 GiB there.
 The input tables' sorting keys (`input.sql`) are part of this: with
 other keys the package builds the same tables, sorting each whole in
 memory.

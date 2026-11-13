@@ -112,8 +112,9 @@ request](CONTRIBUTING.md#checks-before-a-pull-request).
 - A `LEFT JOIN` without a match gives 0 for a non-Nullable column only
   while `join_use_nulls` is 0; the settings macros set it, and
   `tests/profiles.yml` sets 1 to prove it.
-- `INSERT ... SELECT` buffers up to 2 GB on 8 cores; Shopify table
-  models end with `shopify_query_settings()`, which bounds it.
+- `INSERT ... SELECT` buffers up to 2 GB on 8 cores. Settings for the
+  insert go in `+query_settings` (Shopify's `dbt_project.yml`): the
+  contract wraps a model in a subquery, whose `SETTINGS` never reach it.
 
 ## Development
 
