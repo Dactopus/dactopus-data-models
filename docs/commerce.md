@@ -11,7 +11,8 @@ is on the dataset whose rows it counts, and a question names it as
   They break down by the order's date, week, month and day of the
   week; payment and fulfillment status, cancelled or not, counted in the store's reports
   or not, channel, currency and the store's platform; shipping country,
-  region and city; new or repeat customer, the order's place among its customer's orders,
+  region and city; billing country, region and city, the payer's; new or
+  repeat customer, the order's place among its customer's orders,
   days since the customer's previous order and months since their
   first; and by the customer's fields below, such as the month of their
   first order (the cohort).

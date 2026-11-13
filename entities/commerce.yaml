@@ -251,6 +251,39 @@ datasets:
         dimension: {is_time: false}
         ai_context:
           synonyms: [city, town, destination city, ship-to city]
+      - name: billing_country
+        expression: {sql: billing_country}
+        description: >
+          Country of the billing address, the payer's, as a two-letter code
+          (US, CA). It can differ from shipping_country: a gift sent abroad,
+          a business that pays from its head office. For where orders go,
+          use shipping_country. Empty when the order has no billing address,
+          such as an order created through an API or an import without one.
+        datatype: String
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [billing country, payer country, country of the payer, customer billing location]
+      - name: billing_region
+        expression: {sql: billing_region}
+        description: >
+          State or province of the billing address, as the store's code for
+          it (NY, ON). Empty when the address has none.
+        datatype: String
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [billing state, billing province, billing region, payer state]
+      - name: billing_city
+        expression: {sql: billing_city}
+        description: >
+          City of the billing address, as the customer typed it: one city
+          can appear under several spellings, and the same name in
+          different countries or regions. Group with billing_country and
+          billing_region, and name the spellings you see rather than adding
+          them up yourself. Empty when the order has no billing address.
+        datatype: String
+        dimension: {is_time: false}
+        ai_context:
+          synonyms: [billing city, payer city, billing town]
       - name: customer_id
         expression: {sql: customer_id}
         description: >

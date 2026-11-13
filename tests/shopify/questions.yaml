@@ -168,6 +168,17 @@ cases:
       - {shipping_country: "CA", orders.revenue: 752, sales_events.net_revenue: 465.05}
       - {shipping_country: "US", orders.revenue: 498, sales_events.net_revenue: 383}
       - {shipping_country: null, orders.revenue: 110, sales_events.net_revenue: 110}
+  # By billing country, the payer's: as by shipping country, but 1011,
+  # shipped to Toronto, is billed to New York, and 1003, a download with no
+  # shipping address, is billed to Buffalo. US: 1001, 1003 30, 1004, 1007,
+  # 1010, 1011 40. CA: 1005, 1006, 1008, 1012. No address: 1002 80.
+  - metrics: [orders.order_count, orders.revenue, sales_events.net_revenue]
+    dimensions: [orders.billing_country]
+    order: [orders.billing_country]
+    expected:
+      - {billing_country: "CA", orders.order_count: 4, orders.revenue: 712, sales_events.net_revenue: 425.05}
+      - {billing_country: "US", orders.order_count: 6, orders.revenue: 568, sales_events.net_revenue: 453}
+      - {billing_country: null, orders.order_count: 1, orders.revenue: 80, sales_events.net_revenue: 80}
   # Paid: 1007, 1011, 1012. PENDING (1002) is unpaid; 1010's voided authorization and 1003's
   # expired one are voided (unpaid 2, voided 1 if EXPIRED were unpaid). 1001
   # (its gift card), 1004 and 1008 (its shipping) are partially refunded. 1005 is refunded: its

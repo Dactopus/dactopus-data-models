@@ -111,6 +111,11 @@ CREATE TABLE IF NOT EXISTS {db:Identifier}.orders
     shipping_province_code Nullable(String),    -- shippingAddress.provinceCode
     shipping_city Nullable(String),             -- shippingAddress.city
     shipping_zip Nullable(String),              -- shippingAddress.zip
+    -- The payer's address. Empty when the order has none: an order created
+    -- through the API without addresses, as on the development store.
+    billing_country_code Nullable(String),      -- billingAddress.countryCodeV2
+    billing_province_code Nullable(String),     -- billingAddress.provinceCode
+    billing_city Nullable(String),              -- billingAddress.city
     loaded_at DateTime64(6, 'UTC') DEFAULT now64(6) -- when the load inserted the row (header)
 )
 ENGINE = MergeTree

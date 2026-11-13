@@ -112,15 +112,19 @@ operational AS MATERIALIZED (
         ifNull(discount_total_amount, 0) AS discount_total_amount
     FROM {{ woocommerce_current('wc_order_operational_data', 'id', 'order_id IN ids') }}
 ),
-shipping_addresses AS MATERIALIZED (
+-- The shipping address and the billing address, the payer's.
+addresses AS MATERIALIZED (
     SELECT
         order_id,
-        argMax(nullIf(ifNull(country, ''), ''), id) AS country,
-        argMax(nullIf(ifNull(state, ''), ''), id) AS state,
-        argMax(nullIf(ifNull(city, ''), ''), id) AS city,
-        argMax(nullIf(ifNull(postcode, ''), ''), id) AS postcode
+        argMaxIf(nullIf(ifNull(country, ''), ''), id, address_type = 'shipping') AS shipping_country,
+        argMaxIf(nullIf(ifNull(state, ''), ''), id, address_type = 'shipping') AS shipping_state,
+        argMaxIf(nullIf(ifNull(city, ''), ''), id, address_type = 'shipping') AS shipping_city,
+        argMaxIf(nullIf(ifNull(postcode, ''), ''), id, address_type = 'shipping') AS shipping_postcode,
+        argMaxIf(nullIf(ifNull(country, ''), ''), id, address_type = 'billing') AS billing_country,
+        argMaxIf(nullIf(ifNull(state, ''), ''), id, address_type = 'billing') AS billing_state,
+        argMaxIf(nullIf(ifNull(city, ''), ''), id, address_type = 'billing') AS billing_city
     FROM {{ woocommerce_current('wc_order_addresses', 'id', 'order_id IN ids') }}
-    WHERE address_type = 'shipping'
+    WHERE address_type IN ('shipping', 'billing')
     GROUP BY order_id
 ),
 {% if number_key %}
@@ -234,10 +238,13 @@ SELECT
     op.channel AS channel,
     e.discount_codes AS discount_codes,
     length(e.discount_codes) AS discount_code_count,
-    a.country AS shipping_country,
-    a.state AS shipping_region,
-    a.city AS shipping_city,
-    a.postcode AS shipping_postcode,
+    a.shipping_country AS shipping_country,
+    a.shipping_state AS shipping_region,
+    a.shipping_city AS shipping_city,
+    a.shipping_postcode AS shipping_postcode,
+    a.billing_country AS billing_country,
+    a.billing_state AS billing_region,
+    a.billing_city AS billing_city,
     l.line_item_count AS line_item_count,
     toInt64(l.item_quantity) AS item_quantity,
     o.customer_order_number AS customer_order_number,
@@ -249,7 +256,7 @@ SELECT
     o.synced_at AS synced_at
 FROM headers AS o
 LEFT JOIN operational AS op ON op.order_id = o.id
-LEFT JOIN shipping_addresses AS a ON a.order_id = o.id
+LEFT JOIN addresses AS a ON a.order_id = o.id
 {% if number_key %}
 LEFT JOIN numbers AS n ON n.order_id = o.id
 {% endif %}

@@ -117,7 +117,7 @@ deliveries, a product's type and vendor changed, a deleted product).
    ```
 
 3. **Validate** the model against the built tables and **check** its
-   answers: `check_numbers.py` asks 48 questions through
+   answers: `check_numbers.py` asks 49 questions through
    dactopus-ossie-clickhouse, in the zone of step 2, and compares the
    answers with numbers worked out by hand from the rows.
 

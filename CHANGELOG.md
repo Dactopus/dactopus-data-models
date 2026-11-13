@@ -8,6 +8,35 @@ names the Ossie schema version its models carry.
 
 ## [Unreleased]
 
+The Shopify input gains three columns, and the `orders` tables of the
+Shopify and WooCommerce packages gain three: run `dbt build
+--full-refresh` of each once, as the entry below describes; an
+incremental run stops on the new columns. A union is built after every
+package it reads.
+
+### Added
+
+- `orders.billing_country`, `billing_region` and `billing_city`: the
+  billing address, the payer's, as the shipping fields give the
+  shipping address. It can differ from the shipping address (a gift
+  sent abroad) or exist without one (a download). Empty when the order
+  has no billing address. The Shopify input's `orders` has three new
+  columns, `billing_country_code`, `billing_province_code` and
+  `billing_city`, which a loader must deliver; the README's export query
+  reads them. A deployment adds them to the input:
+
+  ```sql
+  ALTER TABLE shopify_raw.orders
+      ADD COLUMN billing_country_code Nullable(String) AFTER shipping_zip,
+      ADD COLUMN billing_province_code Nullable(String) AFTER billing_country_code,
+      ADD COLUMN billing_city Nullable(String) AFTER billing_province_code;
+  ```
+
+  The orders already loaded have no billing address until they are
+  exported again: export every order, from before the first, then run
+  `dbt build --full-refresh`. WooCommerce's input already has the
+  billing address (`wp_wc_order_addresses`).
+
 ## [0.13.0] - 2026-11-11
 
 Ossie schema `0.3.0.dev0`. Tested with dactopus-ossie-clickhouse 0.16.0,

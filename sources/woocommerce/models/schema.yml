@@ -30,6 +30,9 @@ models:
       - {name: shipping_country, data_type: "Nullable(String)"}
       - {name: shipping_region, data_type: "Nullable(String)"}
       - {name: shipping_city, data_type: "Nullable(String)"}
+      - {name: billing_country, data_type: "Nullable(String)"}
+      - {name: billing_region, data_type: "Nullable(String)"}
+      - {name: billing_city, data_type: "Nullable(String)"}
       - {name: customer_id, data_type: "Nullable(Int64)"}
       - {name: customer_order_number, data_type: "Nullable(UInt64)"}
       - {name: new_vs_repeat, data_type: "Nullable(String)"}

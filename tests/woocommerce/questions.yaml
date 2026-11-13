@@ -207,6 +207,15 @@ cases:
       - {shipping_country: "DE", orders.order_count: 1, orders.revenue: 66}
       - {shipping_country: "US", orders.order_count: 6, orders.revenue: 271.7}
       - {shipping_country: null, orders.order_count: 1, orders.revenue: 66}
+  # By billing country: US 101 88, 110 46 (shipped to Toronto), 112 66;
+  # the others have no billing address: 103 33, 104 70.40, 109 30.80, 111
+  # 33, 113 16.50, 117 66.
+  - metrics: [orders.order_count, orders.revenue]
+    dimensions: [orders.billing_country]
+    order: [orders.billing_country]
+    expected:
+      - {billing_country: "US", orders.order_count: 3, orders.revenue: 200}
+      - {billing_country: null, orders.order_count: 6, orders.revenue: 249.7}
   # Every amount is in the store's currency, 117 converted: one currency.
   - metrics: [orders.order_count]
     dimensions: [orders.currency]
