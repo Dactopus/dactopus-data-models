@@ -45,7 +45,7 @@ dactopus-ossie-clickhouse, as in the README's [Quick start](../../README.md#quic
    ```
 
 3. **Validate** the model and **check** its answers: `check_numbers.py`
-   asks 42 questions through dactopus-ossie-clickhouse, in the zone of
+   asks 49 questions through dactopus-ossie-clickhouse, in the zone of
    step 2, and compares the answers with numbers worked out by hand from
    the rows.
 
@@ -130,6 +130,7 @@ dactopus-ossie-clickhouse, as in the README's [Quick start](../../README.md#quic
          currentTotalPriceSet {MONEY} totalTipReceivedSet {MONEY}
          originalTotalDutiesSet {MONEY} originalTotalAdditionalFeesSet {MONEY}
          discountCodes shippingAddress {{ countryCodeV2 provinceCode city zip }}
+         billingAddress {{ countryCodeV2 provinceCode city }}
          shippingLines(first: 50) {{ pageInfo {{ hasNextPage }} nodes {{
            discountedPriceSet {MONEY} taxLines {{ priceSet {MONEY} }} }} }}
          lineItems(first: 50) {{ pageInfo {{ hasNextPage }} nodes {{
@@ -193,6 +194,7 @@ dactopus-ossie-clickhouse, as in the README's [Quick start](../../README.md#quic
    for o in pages(QUERY, "orders", f"updated_at:>='{since}'"):
        oid, updated, ship = int(o["legacyResourceId"]), ts(o["updatedAt"]), nodes(o["shippingLines"], "shipping lines")
        addr = o["shippingAddress"] or {}
+       bill = o["billingAddress"] or {}
        tables["orders"].append({
            "id": oid, "name": o["name"], "created_at": ts(o["createdAt"]), "processed_at": ts(o["processedAt"]),
            "updated_at": updated, "cancelled_at": ts(o["cancelledAt"]), "closed_at": ts(o["closedAt"]),
@@ -210,7 +212,8 @@ dactopus-ossie-clickhouse, as in the README's [Quick start](../../README.md#quic
            "total_additional_fees": money(o["originalTotalAdditionalFeesSet"]),
            "discount_codes": o["discountCodes"], "shipping_country_code": addr.get("countryCodeV2"),
            "shipping_province_code": addr.get("provinceCode"), "shipping_city": addr.get("city"),
-           "shipping_zip": addr.get("zip")})
+           "shipping_zip": addr.get("zip"), "billing_country_code": bill.get("countryCodeV2"),
+           "billing_province_code": bill.get("provinceCode"), "billing_city": bill.get("city")})
        for l in nodes(o["lineItems"], "line items"):
            tables["order_lines"].append({
                "id": legacy(l["id"]), "order_id": oid, "order_updated_at": updated,
@@ -317,8 +320,8 @@ change in any run.
 
 The package is checked against a store's reports.
 `sales_events.net_revenue` equals Shopify's total sales overall, by
-shipping country and by new or returning customer, and, by
-`sales_events.event_date`, for each order on each day;
+shipping country, by billing country and by new or returning customer,
+and, by `sales_events.event_date`, for each order on each day;
 `orders.average_order_value` equals the store's. Units, goods revenue,
 returns and net sales by product type and by vendor equal the reports'
 over all time and by month, and the counts of products by status, type

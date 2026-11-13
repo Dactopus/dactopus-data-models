@@ -35,11 +35,14 @@ A code's own amount needs the order's discount applications at Shopify,
 a new input column, and the coupon item's `discount_amount` at
 WooCommerce.
 
-### Payment method and billing country
+### Payment method
 
-How customers paid, and where the payer is, as Shopify's reports by
-payment method and by billing location and WooCommerce's order fields
-give them. WooCommerce's input has both; Shopify's needs new columns.
+How customers paid, as Shopify's report of payments and WooCommerce's
+order fields give it. Shopify's report counts transactions: each payment
+and each refund on its own date, and an order paid with a gift card and
+a card under both. Its input needs the order's
+transactions. WooCommerce keeps one payment method on each order, a
+column its input would add.
 
 ### Advertising: Google Ads and Meta Ads
 

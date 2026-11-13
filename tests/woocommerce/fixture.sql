@@ -44,7 +44,8 @@
 --        payment (its item and meta rows deleted).
 --   110  customer 2: prices include tax, a TEE-M at 35 with tax,
 --        shipping 10; 46, paid September 15, processing. The line total
---        is 31.818182, without tax and not rounded.
+--        is 31.818182, without tax and not rounded. Shipped to Toronto,
+--        billed to Buffalo.
 --   111  customer 1: a mug, shipping 10; 33, paid September 20, refunded
 --        whole with shipping on September 22 (refund 902).
 --   112  guest, billing address only: 2 TEE-M; 66, paid October 1,
@@ -151,7 +152,8 @@ INSERT INTO {db:Identifier}.wp_wc_order_addresses
 (8, 111, 'shipping', 'Newark', 'NJ', '07102', 'US', '2026-09-20 10:00:05', 0, 229),
 (9, 112, 'billing', 'Boston', 'MA', '02108', 'US', '2026-10-01 13:00:05', 0, 263),
 (10, 113, 'shipping', 'New York', 'NY', '10001', 'US', '2026-10-03 14:00:05', 0, 279),
-(11, 117, 'shipping', 'Berlin', 'BE', '10115', 'DE', '2026-10-09 10:00:05', 0, 343);
+(11, 117, 'shipping', 'Berlin', 'BE', '10115', 'DE', '2026-10-09 10:00:05', 0, 343),
+(12, 110, 'billing', 'Buffalo', 'NY', '14201', 'US', '2026-09-15 16:00:05', 0, 214);
 
 INSERT INTO {db:Identifier}.wp_wc_orders_meta
     (id, order_id, meta_key, meta_value, _peerdb_synced_at, _peerdb_is_deleted, _peerdb_version) SETTINGS session_timezone = 'UTC' VALUES

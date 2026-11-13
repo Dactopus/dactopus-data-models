@@ -22,34 +22,35 @@ INSERT INTO {db:Identifier}.orders VALUES
 --  customer_id, email, currency_code, presentment_currency_code,
 --  display_financial_status, display_fulfillment_status, source_name, taxes_included,
 --  total_price, shipping_price, shipping_tax, total_tax, total_refunded, current_total_price, total_tip,
---  total_duties, total_additional_fees, discount_codes, shipping_country_code, shipping_province_code, shipping_city, shipping_zip, loaded_at)
+--  total_duties, total_additional_fees, discount_codes, shipping_country_code, shipping_province_code, shipping_city, shipping_zip,
+--  billing_country_code, billing_province_code, billing_city, loaded_at)
 (2001, '#2001', '2025-09-01 15:00:00', '2025-09-01 15:00:00', '2025-09-02 15:00:00', NULL, '2025-09-02 15:00:00', false,
  11, 'carol@example.com', 'USD', 'USD', 'PAID', 'FULFILLED', 'web', false,
- 60, 0, 0, 0, 0, 60, 0, 0, 0, [], 'US', 'NY', 'New York', '10001', '2026-10-04 00:00:00'),
+ 60, 0, 0, 0, 0, 60, 0, 0, 0, [], 'US', 'NY', 'New York', '10001', 'US', 'NY', 'New York', '2026-10-04 00:00:00'),
 (2002, '#2002', '2026-08-01 15:00:00', '2026-08-01 15:00:00', '2026-08-02 15:00:00', NULL, '2026-08-02 15:00:00', false,
  11, 'carol@example.com', 'USD', 'USD', 'PAID', 'FULFILLED', 'web', false,
- 60, 0, 0, 0, 0, 60, 0, 0, 0, [], 'US', 'NY', 'New York', '10001', '2026-10-04 00:00:00'),
+ 60, 0, 0, 0, 0, 60, 0, 0, 0, [], 'US', 'NY', 'New York', '10001', 'US', 'NY', 'New York', '2026-10-04 00:00:00'),
 (2003, '#2003', '2025-10-03 15:00:00', '2025-10-03 15:00:00', '2025-10-04 15:00:00', NULL, '2025-10-04 15:00:00', false,
  12, 'dan@example.com', 'USD', 'USD', 'PAID', 'FULFILLED', 'web', false,
- 60, 0, 0, 0, 0, 60, 0, 0, 0, [], 'US', 'NY', 'New York', '10001', '2026-10-04 00:00:00'),
+ 60, 0, 0, 0, 0, 60, 0, 0, 0, [], 'US', 'NY', 'New York', '10001', 'US', 'NY', 'New York', '2026-10-04 00:00:00'),
 (2004, '#2004', '2025-10-04 15:00:00', '2025-10-04 15:00:00', '2025-10-05 15:00:00', NULL, '2025-10-05 15:00:00', false,
  13, 'erin@example.com', 'USD', 'USD', 'PAID', 'FULFILLED', 'web', false,
- 60, 0, 0, 0, 0, 60, 0, 0, 0, [], 'US', 'NY', 'New York', '10001', '2026-10-04 00:00:00'),
+ 60, 0, 0, 0, 0, 60, 0, 0, 0, [], 'US', 'NY', 'New York', '10001', 'US', 'NY', 'New York', '2026-10-04 00:00:00'),
 (2005, '#2005', '2026-05-01 15:00:00', '2026-05-01 15:00:00', '2026-05-02 15:00:00', NULL, '2026-05-02 15:00:00', false,
  14, 'frank@example.com', 'USD', 'USD', 'PAID', 'FULFILLED', 'web', false,
- 60, 0, 0, 0, 0, 60, 0, 0, 0, [], 'US', 'NY', 'New York', '10001', '2026-10-04 00:00:00'),
+ 60, 0, 0, 0, 0, 60, 0, 0, 0, [], 'US', 'NY', 'New York', '10001', 'US', 'NY', 'New York', '2026-10-04 00:00:00'),
 (2006, '#2006', '2026-05-11 15:00:00', '2026-05-11 15:00:00', '2026-05-12 15:00:00', NULL, '2026-05-12 15:00:00', true,
  14, 'frank@example.com', 'USD', 'USD', 'PAID', 'FULFILLED', 'web', false,
- 60, 0, 0, 0, 0, 60, 0, 0, 0, [], 'US', 'NY', 'New York', '10001', '2026-10-04 00:00:00'),
+ 60, 0, 0, 0, 0, 60, 0, 0, 0, [], 'US', 'NY', 'New York', '10001', 'US', 'NY', 'New York', '2026-10-04 00:00:00'),
 (2007, '#2007', '2026-07-30 15:00:00', '2026-07-30 15:00:00', '2026-07-31 15:00:00', NULL, '2026-07-31 15:00:00', false,
  14, 'frank@example.com', 'USD', 'USD', 'PAID', 'FULFILLED', 'web', false,
- 60, 0, 0, 0, 0, 60, 0, 0, 0, [], 'US', 'NY', 'New York', '10001', '2026-10-04 00:00:00'),
+ 60, 0, 0, 0, 0, 60, 0, 0, 0, [], 'US', 'NY', 'New York', '10001', 'US', 'NY', 'New York', '2026-10-04 00:00:00'),
 (2008, '#2008', '2026-06-01 15:00:00', '2026-06-01 15:00:00', '2026-06-02 15:00:00', NULL, '2026-06-02 15:00:00', false,
  15, 'grace@example.com', 'USD', 'USD', 'PAID', 'FULFILLED', 'web', false,
- 60, 0, 0, 0, 0, 60, 0, 0, 0, [], 'US', 'NY', 'New York', '10001', '2026-10-04 00:00:00'),
+ 60, 0, 0, 0, 0, 60, 0, 0, 0, [], 'US', 'NY', 'New York', '10001', 'US', 'NY', 'New York', '2026-10-04 00:00:00'),
 (2009, '#2009', '2026-07-15 15:00:00', '2026-07-15 15:00:00', '2026-07-15 15:00:00', NULL, NULL, false,
  15, 'grace@example.com', 'USD', 'USD', 'PAID', 'UNFULFILLED', 'web', false,
- 60, 0, 0, 0, 0, 60, 0, 0, 0, [], 'US', 'NY', 'New York', '10001', '2026-10-04 00:00:00');
+ 60, 0, 0, 0, 0, 60, 0, 0, 0, [], 'US', 'NY', 'New York', '10001', 'US', 'NY', 'New York', '2026-10-04 00:00:00');
 
 INSERT INTO {db:Identifier}.order_lines VALUES
 -- (id, order_id, order_updated_at, product_id, variant_id, sku, title, variant_title, quantity, current_quantity,
@@ -68,7 +69,7 @@ INSERT INTO {db:Identifier}.order_lines VALUES
 INSERT INTO {db:Identifier}.orders VALUES
 (2009, '#2009', '2026-07-15 15:00:00', '2026-07-15 15:00:00', '2026-10-05 01:30:00', NULL, '2026-10-05 01:30:00', false,
  15, 'grace@example.com', 'USD', 'USD', 'PAID', 'FULFILLED', 'web', false,
- 60, 0, 0, 0, 0, 60, 0, 0, 0, [], 'US', 'NY', 'New York', '10001', '2026-10-05 02:00:00');
+ 60, 0, 0, 0, 0, 60, 0, 0, 0, [], 'US', 'NY', 'New York', '10001', 'US', 'NY', 'New York', '2026-10-05 02:00:00');
 
 INSERT INTO {db:Identifier}.order_lines VALUES
 (2091, 2009, '2026-10-05 01:30:00', 105, 1051, 'CAP', 'Cap', NULL, 1, 1, 60, 60, 0, 0, 0, true, true, false, '2026-10-05 02:00:01');

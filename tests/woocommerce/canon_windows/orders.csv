@@ -1,28 +1,28 @@
-source_id,order_id,order_number,order_date,order_time,financial_status,fulfillment_status,is_cancelled,in_sales_reports,channel,currency,platform,shipping_country,shipping_region,shipping_city,customer_id,customer_order_number,new_vs_repeat,days_since_previous_order,months_since_first_order,item_quantity,discount_code_count,total,subtotal,discount_total,shipping_total,tax_total,refunded_total,net_total
-woocommerce,101,101,2026-08-10,2026-08-10 14:05:00+00:00,paid,fulfilled,false,true,checkout,USD,woocommerce,US,NY,New York,1,1,new,\N,-1,3,0,88,70,0,10,8,0,88
-woocommerce,102,102,2026-08-20,2026-08-20 15:00:00+00:00,unpaid,unfulfilled,false,false,store-api,USD,woocommerce,US,NY,Albany,2,1,new,\N,-1,3,0,16.5,15,0,0,1.5,0,16.5
-woocommerce,103,103,2026-08-31,2026-09-01 02:10:00+00:00,paid,unfulfilled,false,true,checkout,USD,woocommerce,US,NY,Buffalo,2,2,repeat,11,0,1,0,33,25,0,5,3,0,33
-woocommerce,104,104,2026-09-02,2026-09-02 12:00:00+00:00,partially_refunded,fulfilled,false,true,checkout,USD,woocommerce,US,NY,new york,1,2,repeat,20,0,2,1,70.4,54,6,10,6.4,29.7,40.7
-woocommerce,106,106,2026-09-05,2026-09-05 16:00:00+00:00,unpaid,unfulfilled,false,false,checkout,USD,woocommerce,\N,\N,\N,-106,\N,\N,\N,\N,1,0,22,20,0,0,2,0,22
-woocommerce,107,107,2026-09-08,2026-09-08 13:00:00+00:00,partially_refunded,unfulfilled,true,false,checkout,USD,woocommerce,\N,\N,\N,2,\N,\N,\N,\N,2,0,44,40,0,0,4,22,0
-woocommerce,108,108,2026-09-10,2026-09-10 11:00:00+00:00,voided,unfulfilled,false,false,checkout,USD,woocommerce,\N,\N,\N,-108,\N,\N,\N,\N,1,0,33,30,0,0,3,0,33
-woocommerce,109,109,2026-09-12,2026-09-12 15:00:00+00:00,paid,fulfilled,false,true,checkout,USD,woocommerce,US,NY,New York,1,3,repeat,13,1,1,0,30.8,18,0,10,2.8,0,30.8
-woocommerce,110,110,2026-09-15,2026-09-15 16:00:00+00:00,paid,unfulfilled,false,true,checkout,USD,woocommerce,CA,ON,Toronto,2,3,repeat,15,1,1,0,46,31.82,0,10,4.18,0,46
-woocommerce,111,111,2026-09-20,2026-09-20 10:00:00+00:00,refunded,unfulfilled,false,true,checkout,USD,woocommerce,US,NJ,Newark,1,4,repeat,8,1,1,0,33,20,0,10,3,33,0
-woocommerce,112,112,2026-10-01,2026-10-01 13:00:00+00:00,partially_refunded,fulfilled,false,true,checkout,USD,woocommerce,\N,\N,\N,-112,2,repeat,3,1,2,0,66,60,0,0,6,5,61
-woocommerce,113,113,2026-10-06,2026-10-06 18:00:00+00:00,paid,fulfilled,false,true,checkout,USD,woocommerce,US,NY,New York,2,4,repeat,18,2,2,0,16.5,10,0,5,1.5,0,16.5
-woocommerce,117,117,2026-10-09,2026-10-09 10:00:00+00:00,paid,unfulfilled,false,true,checkout,USD,woocommerce,DE,BE,Berlin,1,5,repeat,19,2,2,0,66,50,0,10,6,0,66
-woocommerce,118,118,2026-09-28,2026-09-28 14:00:00+00:00,unpaid,unfulfilled,false,false,checkout,USD,woocommerce,\N,\N,\N,-112,1,new,\N,-1,1,0,22,20,0,0,2,0,22
-woocommerce,119,119,2026-09-30,2026-09-30 14:00:00+00:00,unpaid,unfulfilled,false,false,admin,USD,woocommerce,\N,\N,\N,-119,1,new,\N,-1,1,0,22,20,0,0,2,0,22
-woocommerce,2001,2001,2025-09-01,2025-09-01 15:05:00+00:00,paid,fulfilled,false,true,checkout,USD,woocommerce,\N,\N,\N,11,1,new,\N,-1,1,0,22,20,0,0,2,0,22
-woocommerce,2002,2002,2026-08-01,2026-08-01 15:05:00+00:00,paid,fulfilled,false,true,checkout,USD,woocommerce,\N,\N,\N,11,2,repeat,334,11,1,0,22,20,0,0,2,0,22
-woocommerce,2003,2003,2025-10-08,2025-10-08 15:05:00+00:00,paid,fulfilled,false,true,checkout,USD,woocommerce,\N,\N,\N,12,1,new,\N,-1,1,0,22,20,0,0,2,0,22
-woocommerce,2004,2004,2025-10-09,2025-10-09 15:05:00+00:00,paid,fulfilled,false,true,checkout,USD,woocommerce,\N,\N,\N,13,1,new,\N,-1,1,0,22,20,0,0,2,0,22
-woocommerce,2005,2005,2026-05-01,2026-05-01 15:05:00+00:00,paid,fulfilled,false,true,checkout,USD,woocommerce,\N,\N,\N,14,1,new,\N,-1,1,0,22,20,0,0,2,0,22
-woocommerce,2006,2006,2026-05-11,2026-05-11 15:00:00+00:00,voided,unfulfilled,false,false,checkout,USD,woocommerce,\N,\N,\N,14,\N,\N,\N,\N,1,0,22,20,0,0,2,0,22
-woocommerce,2007,2007,2026-07-30,2026-07-30 15:05:00+00:00,paid,fulfilled,false,true,checkout,USD,woocommerce,\N,\N,\N,14,2,repeat,90,2,1,0,22,20,0,0,2,0,22
-woocommerce,2008,2008,2026-06-01,2026-06-01 15:05:00+00:00,paid,fulfilled,false,true,checkout,USD,woocommerce,\N,\N,\N,15,1,new,\N,-1,1,0,22,20,0,0,2,0,22
-woocommerce,2009,2009,2026-06-06,2026-06-06 15:00:00+00:00,unpaid,unfulfilled,false,false,checkout,USD,woocommerce,\N,\N,\N,15,\N,\N,\N,\N,1,0,22,20,0,0,2,0,22
-woocommerce,2010,2010,2026-07-15,2026-07-15 15:05:00+00:00,paid,fulfilled,false,true,checkout,USD,woocommerce,\N,\N,\N,15,2,repeat,44,1,1,0,22,20,0,0,2,0,22
-woocommerce,2011,2011,2026-03-02,2026-03-02 15:05:00+00:00,paid,fulfilled,false,true,checkout,USD,woocommerce,\N,\N,\N,-2011,1,new,\N,-1,1,0,22,20,0,0,2,0,22
-woocommerce,2012,2012,2026-03-20,2026-03-20 15:05:00+00:00,paid,fulfilled,false,true,checkout,USD,woocommerce,\N,\N,\N,-2011,2,repeat,18,0,1,0,22,20,0,0,2,0,22
+source_id,order_id,order_number,order_date,order_time,financial_status,fulfillment_status,is_cancelled,in_sales_reports,channel,currency,platform,shipping_country,shipping_region,shipping_city,billing_country,billing_region,billing_city,customer_id,customer_order_number,new_vs_repeat,days_since_previous_order,months_since_first_order,item_quantity,discount_code_count,total,subtotal,discount_total,shipping_total,tax_total,refunded_total,net_total
+woocommerce,101,101,2026-08-10,2026-08-10 14:05:00+00:00,paid,fulfilled,false,true,checkout,USD,woocommerce,US,NY,New York,US,NY,New York,1,1,new,\N,-1,3,0,88,70,0,10,8,0,88
+woocommerce,102,102,2026-08-20,2026-08-20 15:00:00+00:00,unpaid,unfulfilled,false,false,store-api,USD,woocommerce,US,NY,Albany,\N,\N,\N,2,1,new,\N,-1,3,0,16.5,15,0,0,1.5,0,16.5
+woocommerce,103,103,2026-08-31,2026-09-01 02:10:00+00:00,paid,unfulfilled,false,true,checkout,USD,woocommerce,US,NY,Buffalo,\N,\N,\N,2,2,repeat,11,0,1,0,33,25,0,5,3,0,33
+woocommerce,104,104,2026-09-02,2026-09-02 12:00:00+00:00,partially_refunded,fulfilled,false,true,checkout,USD,woocommerce,US,NY,new york,\N,\N,\N,1,2,repeat,20,0,2,1,70.4,54,6,10,6.4,29.7,40.7
+woocommerce,106,106,2026-09-05,2026-09-05 16:00:00+00:00,unpaid,unfulfilled,false,false,checkout,USD,woocommerce,\N,\N,\N,\N,\N,\N,-106,\N,\N,\N,\N,1,0,22,20,0,0,2,0,22
+woocommerce,107,107,2026-09-08,2026-09-08 13:00:00+00:00,partially_refunded,unfulfilled,true,false,checkout,USD,woocommerce,\N,\N,\N,\N,\N,\N,2,\N,\N,\N,\N,2,0,44,40,0,0,4,22,0
+woocommerce,108,108,2026-09-10,2026-09-10 11:00:00+00:00,voided,unfulfilled,false,false,checkout,USD,woocommerce,\N,\N,\N,\N,\N,\N,-108,\N,\N,\N,\N,1,0,33,30,0,0,3,0,33
+woocommerce,109,109,2026-09-12,2026-09-12 15:00:00+00:00,paid,fulfilled,false,true,checkout,USD,woocommerce,US,NY,New York,\N,\N,\N,1,3,repeat,13,1,1,0,30.8,18,0,10,2.8,0,30.8
+woocommerce,110,110,2026-09-15,2026-09-15 16:00:00+00:00,paid,unfulfilled,false,true,checkout,USD,woocommerce,CA,ON,Toronto,US,NY,Buffalo,2,3,repeat,15,1,1,0,46,31.82,0,10,4.18,0,46
+woocommerce,111,111,2026-09-20,2026-09-20 10:00:00+00:00,refunded,unfulfilled,false,true,checkout,USD,woocommerce,US,NJ,Newark,\N,\N,\N,1,4,repeat,8,1,1,0,33,20,0,10,3,33,0
+woocommerce,112,112,2026-10-01,2026-10-01 13:00:00+00:00,partially_refunded,fulfilled,false,true,checkout,USD,woocommerce,\N,\N,\N,US,MA,Boston,-112,2,repeat,3,1,2,0,66,60,0,0,6,5,61
+woocommerce,113,113,2026-10-06,2026-10-06 18:00:00+00:00,paid,fulfilled,false,true,checkout,USD,woocommerce,US,NY,New York,\N,\N,\N,2,4,repeat,18,2,2,0,16.5,10,0,5,1.5,0,16.5
+woocommerce,117,117,2026-10-09,2026-10-09 10:00:00+00:00,paid,unfulfilled,false,true,checkout,USD,woocommerce,DE,BE,Berlin,\N,\N,\N,1,5,repeat,19,2,2,0,66,50,0,10,6,0,66
+woocommerce,118,118,2026-09-28,2026-09-28 14:00:00+00:00,unpaid,unfulfilled,false,false,checkout,USD,woocommerce,\N,\N,\N,\N,\N,\N,-112,1,new,\N,-1,1,0,22,20,0,0,2,0,22
+woocommerce,119,119,2026-09-30,2026-09-30 14:00:00+00:00,unpaid,unfulfilled,false,false,admin,USD,woocommerce,\N,\N,\N,\N,\N,\N,-119,1,new,\N,-1,1,0,22,20,0,0,2,0,22
+woocommerce,2001,2001,2025-09-01,2025-09-01 15:05:00+00:00,paid,fulfilled,false,true,checkout,USD,woocommerce,\N,\N,\N,\N,\N,\N,11,1,new,\N,-1,1,0,22,20,0,0,2,0,22
+woocommerce,2002,2002,2026-08-01,2026-08-01 15:05:00+00:00,paid,fulfilled,false,true,checkout,USD,woocommerce,\N,\N,\N,\N,\N,\N,11,2,repeat,334,11,1,0,22,20,0,0,2,0,22
+woocommerce,2003,2003,2025-10-08,2025-10-08 15:05:00+00:00,paid,fulfilled,false,true,checkout,USD,woocommerce,\N,\N,\N,\N,\N,\N,12,1,new,\N,-1,1,0,22,20,0,0,2,0,22
+woocommerce,2004,2004,2025-10-09,2025-10-09 15:05:00+00:00,paid,fulfilled,false,true,checkout,USD,woocommerce,\N,\N,\N,\N,\N,\N,13,1,new,\N,-1,1,0,22,20,0,0,2,0,22
+woocommerce,2005,2005,2026-05-01,2026-05-01 15:05:00+00:00,paid,fulfilled,false,true,checkout,USD,woocommerce,\N,\N,\N,\N,\N,\N,14,1,new,\N,-1,1,0,22,20,0,0,2,0,22
+woocommerce,2006,2006,2026-05-11,2026-05-11 15:00:00+00:00,voided,unfulfilled,false,false,checkout,USD,woocommerce,\N,\N,\N,\N,\N,\N,14,\N,\N,\N,\N,1,0,22,20,0,0,2,0,22
+woocommerce,2007,2007,2026-07-30,2026-07-30 15:05:00+00:00,paid,fulfilled,false,true,checkout,USD,woocommerce,\N,\N,\N,\N,\N,\N,14,2,repeat,90,2,1,0,22,20,0,0,2,0,22
+woocommerce,2008,2008,2026-06-01,2026-06-01 15:05:00+00:00,paid,fulfilled,false,true,checkout,USD,woocommerce,\N,\N,\N,\N,\N,\N,15,1,new,\N,-1,1,0,22,20,0,0,2,0,22
+woocommerce,2009,2009,2026-06-06,2026-06-06 15:00:00+00:00,unpaid,unfulfilled,false,false,checkout,USD,woocommerce,\N,\N,\N,\N,\N,\N,15,\N,\N,\N,\N,1,0,22,20,0,0,2,0,22
+woocommerce,2010,2010,2026-07-15,2026-07-15 15:05:00+00:00,paid,fulfilled,false,true,checkout,USD,woocommerce,\N,\N,\N,\N,\N,\N,15,2,repeat,44,1,1,0,22,20,0,0,2,0,22
+woocommerce,2011,2011,2026-03-02,2026-03-02 15:05:00+00:00,paid,fulfilled,false,true,checkout,USD,woocommerce,\N,\N,\N,\N,\N,\N,-2011,1,new,\N,-1,1,0,22,20,0,0,2,0,22
+woocommerce,2012,2012,2026-03-20,2026-03-20 15:05:00+00:00,paid,fulfilled,false,true,checkout,USD,woocommerce,\N,\N,\N,\N,\N,\N,-2011,2,repeat,18,0,1,0,22,20,0,0,2,0,22
