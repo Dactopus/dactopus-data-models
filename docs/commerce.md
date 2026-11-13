@@ -1,6 +1,6 @@
 # The commerce model
 
-[`entities/commerce.yaml`](../entities/commerce.yaml) has 49 metrics. Each
+[`entities/commerce.yaml`](../entities/commerce.yaml) has 54 metrics. Each
 is on the dataset whose rows it counts, and a question names it as
 `dataset.metric` (`orders.revenue`):
 

@@ -12,9 +12,9 @@ models, to see what got better and what broke.
 ## The questions
 
 `commerce.yaml`, `web_analytics.yaml` and `iot.yaml` hold the questions
-of each model. A question has its text, its difficulty, what the data
-must hold for it to test anything, and its expected answer: not numbers
-but the queries of the model that give them, worked out over your
+of each model. A question has its text, its difficulty (`type`), what
+the data must hold for it to test anything, and its expected answer:
+the queries of the model that give the numbers, worked out over your
 databases for the day you ask. A change of a metric's definition moves
 the expected numbers with it. A question whose right answer is no
 number (a refusal, a question back, a rule) has a rubric instead: what
@@ -54,8 +54,9 @@ served, and the ClickHouse server your packages built into, named by
 Copy the example of the domain, `deployment.<domain>.example.yaml`
 (`commerce`, `web_analytics` or `iot`), and edit it:
 
-- **models** and **time_zone**: the model files your agent is served and
-  the zone the executor serves them in (`OSSIE_CLICKHOUSE_TIME_ZONE`).
+- **models**: the model files your agent is served, and beside them
+  `time_zone`, the zone the executor serves them in
+  (`OSSIE_CLICKHOUSE_TIME_ZONE`).
 - **databases**: each database the agent is asked over, with `stores`
   (how many stores, sites or networks it holds) and `provides` (what its
   data has). A question is asked over every database whose `stores`
@@ -69,13 +70,12 @@ Copy the example of the domain, `deployment.<domain>.example.yaml`
   each parameter and each value of `provides`; a parameter a question
   needs and the deployment does not give fails that question with its
   name.
-- **labels**: `named` where a label names the store (`uk_outlet`),
-  `opaque` where none does (`store_1`). The questions about an unclear
+- **labels**, a key of each database: `named` where a label names the
+  store (`uk_outlet`), `opaque` where none does (`store_1`). The questions about an unclear
   store expect an answer in the first case and a question back in the
   second. With one kind of labels only, they test half of that.
 
-The examples describe the databases this repository's CI fills from its
-test data, with the values those need.
+The examples describe the databases CI fills from the test data.
 
 ### 2. Work out the expected answers
 
@@ -174,8 +174,7 @@ Stderr counts the right answers per difficulty.
 - **Empty answers.** Where the data has no rows for the question or a
   part of it, the right answer says there are none.
 
-The set checks the agent, not the model: the expected answers come from
-the model, so a wrong definition in it would not show here. The model's
+The set checks the agent: the expected answers come from the model, so a wrong definition in it would not show here. The model's
 numbers are checked against numbers derived by hand from the test data
 of each package (`tests/<source>/`).
 
