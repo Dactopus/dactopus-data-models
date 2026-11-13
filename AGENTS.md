@@ -119,7 +119,8 @@ request](CONTRIBUTING.md#checks-before-a-pull-request).
   while `join_use_nulls` is 0; the settings macros set it, and
   `tests/profiles.yml` sets 1 to prove it.
 - `INSERT ... SELECT` buffers up to 2 GB on 8 cores. Settings for the
-  insert go in `+query_settings` (Shopify's `dbt_project.yml`): the
+  insert go in `+query_settings` (Shopify's and Sensor.Community's
+  `dbt_project.yml`): the
   contract wraps a model in a subquery, whose `SETTINGS` never reach it.
 
 ## Development

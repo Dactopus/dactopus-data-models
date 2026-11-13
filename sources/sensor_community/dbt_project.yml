@@ -25,6 +25,18 @@ models:
     # with an error rather than leave the old table: run it once with
     # --full-refresh, as UPGRADING.md says.
     +on_schema_change: fail
+    # An INSERT ... SELECT buffers the rows per insert thread, up to
+    # min_insert_block_size_bytes each, before it writes a part: with the
+    # defaults, 256 MB times the server's cores, while a full build of a
+    # year of readings is smaller than that and would be held in memory
+    # whole. One insert thread and smaller blocks bound it, as in the
+    # Shopify package. They go on the INSERT here: the contract wraps a
+    # model's SELECT in a subquery, whose own SETTINGS do not reach the
+    # insert.
+    +query_settings:
+      max_insert_threads: 1
+      min_insert_block_size_rows: 262144
+      min_insert_block_size_bytes: 67108864
     # The settings guard (macros/settings.sql): an incremental run whose
     # table was built with other values of guarded_vars stops before it
     # reads or deletes a row, and a full refresh records the new ones. Each

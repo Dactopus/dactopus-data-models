@@ -31,6 +31,14 @@ NOTICE = re.compile(r"_[^_].*[^_]_")
 REFERENCE = r"\[[^\]]+\]\(https://[^)]+\)"
 CHANGE = re.compile(rf"- (\*\*Breaking:\*\* )?([A-Z][a-z]+)\b.* \({REFERENCE}(, {REFERENCE})*\)")
 UPGRADE_LINK = re.compile(r"\(UPGRADING\.md#(\d+)\)")
+# Imperatives that end like a third person, a past or a gerund.
+IMPERATIVES = {"Bring", "Embed", "Feed", "Need", "Seed", "Shed", "Speed", "String"}
+
+
+def imperative(verb):
+    if verb in IMPERATIVES or verb.endswith(("ss", "us", "is")):
+        return True
+    return not verb.endswith(("s", "ed", "ing"))
 
 
 def semver(version):
@@ -93,7 +101,7 @@ def check_release(version, body, problems):
                                 f"each reference a link: {line[:80]}")
                 continue
             verb = match.group(2)
-            if verb.endswith(("s", "ed", "ing")):
+            if not imperative(verb):
                 problems.append(f"CHANGELOG.md:{number}: start with a verb in the imperative, not {verb}")
             if match.group(1) and breaking_over:
                 problems.append(f"CHANGELOG.md:{number}: breaking changes come first in their group")
@@ -131,13 +139,16 @@ def check():
     sections = re.findall(r"^## (.+)$", (ROOT / "UPGRADING.md").read_text(), flags=re.M)
     if sections and sections[0] == "Unreleased":
         sections.pop(0)
-    for position, section in enumerate(sections):
+    previous = None
+    for section in sections:
         if not re.fullmatch(r"\d+\.\d+\.\d+", section):
             problems.append(f"UPGRADING.md: a section is `## Unreleased`, first, or `## X.Y.Z`: {section}")
-        elif section not in notices:
+            continue
+        if section not in notices:
             problems.append(f"UPGRADING.md: {section} is not a release in CHANGELOG.md")
-        elif position and semver(section) >= semver(sections[position - 1]):
-            problems.append(f"UPGRADING.md: {section} must come after {sections[position - 1]}: newest first")
+        elif previous and semver(section) >= semver(previous):
+            problems.append(f"UPGRADING.md: {section} must come after {previous}: newest first")
+        previous = section
     for version, notice in notices.items():
         linked = notice == anchor(version)
         if (version in sections) != linked:
