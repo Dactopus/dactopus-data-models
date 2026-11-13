@@ -45,7 +45,7 @@ dactopus-ossie-clickhouse, as in the README's [Quick start](../../README.md#quic
    ```
 
 3. **Validate** the model and **check** its answers: `check_numbers.py`
-   asks 42 questions through dactopus-ossie-clickhouse, in the zone of
+   asks 48 questions through dactopus-ossie-clickhouse, in the zone of
    step 2, and compares the answers with numbers worked out by hand from
    the rows.
 
