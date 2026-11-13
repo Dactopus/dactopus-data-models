@@ -18,10 +18,10 @@ WooCommerce, `subdirectory: sources/woocommerce`; for Sensor.Community,
 ```yaml
 packages:
   - git: https://github.com/Dactopus/dactopus-data-models.git
-    revision: v0.13.0
+    revision: v0.13.1
     subdirectory: sources/ga4
   - git: https://github.com/Dactopus/dactopus-data-models.git
-    revision: v0.13.0
+    revision: v0.13.1
     subdirectory: sources/shopify
 ```
 

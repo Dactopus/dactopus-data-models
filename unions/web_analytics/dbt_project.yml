@@ -1,5 +1,5 @@
 name: dactopus_web_analytics_union
-version: "0.13.0"
+version: "0.13.1"
 profile: dactopus
 model-paths: ["models"]
 macro-paths: ["macros"]

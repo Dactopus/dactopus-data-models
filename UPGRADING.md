@@ -8,7 +8,7 @@ one; after a package, build the unions that read it. A release not
 listed here needs only the new tag. What each release changed:
 [CHANGELOG.md](CHANGELOG.md).
 
-## Unreleased
+## 0.13.1
 
 - Add the billing address to the Shopify input's `orders`; the README's
   export query reads it, and a loader must deliver it:
