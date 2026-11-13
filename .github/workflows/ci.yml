@@ -234,6 +234,22 @@ jobs:
           python3 tests/ga4/check_numbers.py
           $DBT_BUILD --full-refresh
           python3 tests/ga4/check_numbers.py
+      # A load replaces the days it delivers (README, Your property): the
+      # fixture's days loaded again by its statements give the same
+      # numbers. Appended instead, they would double the events and page
+      # views, which check_numbers.py counts.
+      - name: Load the days again and check numbers
+        run: |
+          q() { curl -sf http://127.0.0.1:8123/ --data-binary "$1"; }
+          since=$(q "SELECT ifNull(formatDateTime(parseDateTimeOrNull(max(event_date), '%Y%m%d') - INTERVAL 3 DAY, '%Y%m%d'), '00000000') FROM ga4_input.events")
+          q "CREATE TABLE IF NOT EXISTS ga4_input.events_load AS ga4_input.events"
+          q "TRUNCATE TABLE ga4_input.events_load"
+          q "INSERT INTO ga4_input.events_load SELECT * FROM ga4_input.events WHERE event_date >= '$since'"
+          test "$(q 'SELECT count() FROM ga4_input.events_load')" -gt 0
+          q "DELETE FROM ga4_input.events WHERE event_date IN (SELECT DISTINCT event_date FROM ga4_input.events_load)"
+          q "INSERT INTO ga4_input.events SELECT * FROM ga4_input.events_load"
+          $DBT_BUILD
+          python3 tests/ga4/check_numbers.py
       # deployment.yml names what a deployment sets and reads; the check
       # holds it to the package and the built tables. GA4's days are the
       # property's and the package takes no zone, so the count against
