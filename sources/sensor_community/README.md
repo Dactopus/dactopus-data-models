@@ -2,7 +2,7 @@
 
 Maps the readings and the sensor registry of
 [Sensor.Community](https://sensor.community/), a citizen network of air
-quality sensors, onto the `iot` entities: `devices` and `readings`. `iot`
+quality sensors, onto the `iot` entities `devices` and `readings`. `iot`
 is the reference domain, built from this one public dataset. What the
 model answers and its limits: [docs/iot.md](../../docs/iot.md).
 Installing the package in a dbt project and several networks:
@@ -10,37 +10,34 @@ Installing the package in a dbt project and several networks:
 
 ## Quick start
 
-[Sensor.Community](https://sensor.community/) is a citizen network of
-air quality sensors: over 17,000 sensors reporting particulate matter,
-temperature, humidity and pressure every few minutes, with the sensor
-registry and the readings published as open data (Open Data Commons
-[DbCL 1.0](https://opendatacommons.org/licenses/dbcl/1-0/), linked from
-the site's footer). The package loads one country at a time; the
-examples take Australia (`AU`), 36 sites and 66 sensors in October 2026.
+Over 17,000 sensors report particulate matter, temperature, humidity
+and pressure every few minutes; registry and readings are open data
+(Open Data Commons [DbCL 1.0](https://opendatacommons.org/licenses/dbcl/1-0/),
+linked from the site's footer). The package loads one country at a
+time; the examples take Australia (`AU`): 36 sites, 66 sensors in
+October 2026.
 You need ClickHouse, dbt, dactopus-ossie-clickhouse and
 [uv](https://docs.astral.sh/uv/), as in the README's [Quick start](../../README.md#quick-start).
 
-1. **Load** the package's input tables
-   [`sources/sensor_community/input.sql`](input.sql).
-   Their database is a parameter; the package reads it from the dbt
-   variable `sensor_community_input_database` (default
-   `sensor_community_raw`). The input has no label: the package writes
-   the network's label into every row it builds, from the dbt variable
-   `sensor_community_source_id` (default `sensor_community`; [several
-   networks](../../docs/deployment.md#several-stores-properties-or-networks)).
+1. **Load** the input tables
+   [`sources/sensor_community/input.sql`](input.sql). They have no
+   label; their database and the label are dbt variables
+   ([Variables](#variables)).
 
    ```bash
    clickhouse client --param_db=sensor_community_raw --multiquery < sources/sensor_community/input.sql
    ```
 
-2. **Snapshot** the sensors of the country. The API returns every
-   sensor that reported in the last five minutes, with its site's
-   coordinates, country and whether it is indoors; nothing else carries
-   the country, so the snapshot is the registry, and a sensor appears in
-   it once it has reported during a snapshot. ClickHouse reads the API
-   itself. The API asks every client for a `User-Agent` that names a
-   contact ([the project's wiki](https://github.com/opendata-stuttgart/meta/wiki/APIs));
-   put yours in place of the one below.
+2. **Snapshot** the country's sensors, which ClickHouse reads from the
+   API itself. Nothing else carries the country, so the snapshot is the
+   registry.
+
+   - The API returns every sensor that reported in the last five
+     minutes, with its site's coordinates, country and indoor flag, so
+     a sensor enters the registry once it reports during a snapshot.
+   - The API asks every client for a `User-Agent` that names a contact
+     ([the project's wiki](https://github.com/opendata-stuttgart/meta/wiki/APIs));
+     put yours in the query below.
 
    ```sql
    INSERT INTO sensor_community_raw.locations (location_id, sensor_id, sensor_type, latitude, longitude, altitude,
@@ -60,54 +57,60 @@ You need ClickHouse, dbt, dactopus-ossie-clickhouse and
    GROUP BY location.id, sensor.id
    ```
 
-   Run it every five minutes (cron, or anything that runs a query on a
-   schedule): each run appends the snapshot, one row per sensor with its
-   latest record (the API gives a sensor several in five minutes), and
-   the package reads the latest row of each site. A snapshot is visible
-   to the model as soon as it is loaded, with no build: it gives each
-   site's last contact (`devices.last_contact_at`), country and indoor
-   flag. The table
-   keeps only each sensor's latest snapshot once ClickHouse merges it
-   (`input.sql`), so it stays as large as the country's sensors; the
-   history of the snapshots is not kept. The snapshots are also what
-   tells a sensor that has gone quiet from one that never existed. Several countries go in one query
-   (`country=AU,NZ`); the whole network is
-   `https://data.sensor.community/static/v2/data.json`, 17,500 rows.
+   Run it every five minutes (cron or any scheduler). Each run appends
+   one row per sensor, its latest record (the API gives several in five
+   minutes); the package reads each site's latest row.
 
-3. **Load the history.** The archive publishes one CSV file per sensor
-   and day, all of a day at once the night after, done by 10:00 UTC. A
-   published file does not change. Save the script below as
-   `load_sensor_community.py` and run it with the ClickHouse HTTP URL,
-   the input database, the country and the first and last day to load:
+   - A snapshot reaches the model with no build: it gives each site's
+     last contact (`devices.last_contact_at`), country and indoor flag.
+   - Once merged, the table keeps only each sensor's latest snapshot
+     (`input.sql`): it stays the size of the country's sensors, with no
+     history.
+   - The snapshots also tell a sensor gone quiet from one that never
+     existed.
+   - Several countries go in one query (`country=AU,NZ`); the whole
+     network is `https://data.sensor.community/static/v2/data.json`,
+     17,500 rows.
+
+3. **Load the history.** The archive publishes a CSV file per sensor
+   and day, all of a day at once by 10:00 UTC the day after; a published
+   file does not change. Save the script below as
+   `load_sensor_community.py` and run it with ClickHouse's HTTP URL, the
+   input database, the country and the first and last day:
 
    ```bash
    uv run --with certifi load_sensor_community.py http://localhost:8123 sensor_community_raw AU 2025-10-20 2026-10-19
    ```
 
-   It takes the country's sensors from the snapshots, fetches each
-   sensor's file for each day (four at a time; an indoor sensor's file
-   has the suffix `_indoor`, earlier years are gzipped), and inserts a
-   day at a time: about 20 seconds per day of Australia, two hours for
-   a year. It loads a day only from 10:00 UTC of the day after, when
-   the archive has published it whole, and stops before a later one. A
-   sensor without a file for a day has no readings that day; some
-   sensors the API lists have no file at all. A sensor that
-   stopped reporting before the first snapshot is not in the snapshots
-   and is not loaded, so a year back holds fewer sensors than the
-   archive. The archive's own count of sensors per country and day
-   (`sensors_per_country_per_day.json` at its root) runs higher, and
-   does not say which sensors it includes. Sensors of
-   other types than SDS011, PMS5003, BME280 and DHT22 are left out: the
-   package does not read them. Values load as the files have them. Some
-   firmware sends the pressure in hPa instead of Pa (a BME280 in
-   Australia); the package reads a pressure from 300 to 1,100 as hPa and
-   converts it to Pa (`input.sql`). The script sends the `User-Agent` from
-   `SENSOR_COMMUNITY_AGENT`, or the one shown above; set it to yours.
-   It connects to ClickHouse as `CLICKHOUSE_USER` (default `default`)
-   with `CLICKHOUSE_PASSWORD`. It needs
-   [uv](https://docs.astral.sh/uv/) for the one package it uses,
-   `certifi`: Python from python.org on macOS does not see the system's
-   root certificates.
+   The script:
+
+   - fetches each snapshot sensor's file for each day (four at a time;
+     an indoor sensor's has the suffix `_indoor`, earlier years are
+     gzipped) and inserts a day at a time: about 20 seconds per day of
+     Australia, two hours for a year;
+   - loads only days the archive has published whole, and stops before
+     a later one;
+   - sends the `User-Agent` from `SENSOR_COMMUNITY_AGENT`, or the one
+     above;
+   - connects to ClickHouse as `CLICKHOUSE_USER` (default `default`) with
+     `CLICKHOUSE_PASSWORD`;
+   - needs `certifi` (uv installs it): python.org's Python on macOS does
+     not see the system's root certificates.
+
+   Coverage:
+
+   - A sensor without a file for a day has no readings that day; some
+     sensors the API lists have no file at all.
+   - A sensor silent since before the first snapshot is not loaded, so
+     a year back holds fewer sensors than the archive. The
+     archive's own count per country and day
+     (`sensors_per_country_per_day.json` at its root) runs higher,
+     without saying which sensors it includes.
+   - Only SDS011, PMS5003, BME280 and DHT22 sensors load: the package
+     reads no other type.
+   - Values load as the files have them. Where firmware sends pressure
+     in hPa instead of Pa (a BME280 in Australia), the package reads 300
+     to 1,100 as hPa and converts it (`input.sql`).
 
    <details><summary>load_sensor_community.py</summary>
 
@@ -123,8 +126,6 @@ You need ClickHouse, dbt, dactopus-ossie-clickhouse and
             "X-ClickHouse-Key": os.environ.get("CLICKHOUSE_PASSWORD", "")}
    NOW = datetime.datetime.now(datetime.timezone.utc)
    THIS_YEAR = str(NOW.year)
-   # The archive publishes a day the night after, done by 10:00 UTC; the
-   # last day it has whole.
    PUBLISHED = (NOW - datetime.timedelta(hours=10)).date() - datetime.timedelta(days=1)
    TYPES = {"SDS011": "sds011", "PMS5003": "pms5003", "BME280": "bme280", "DHT22": "dht22"}
    COLUMNS = ["sensor_id", "sensor_type", "location", "lat", "lon", "timestamp",
@@ -157,8 +158,7 @@ You need ClickHouse, dbt, dactopus-ossie-clickhouse and
 
 
    def fetch(day, kind, sensor, indoor):
-       # An indoor sensor's file has the suffix _indoor; a sensor that moved
-       # may have either, so both names are tried, the flagged one first.
+       # A moved sensor may have either suffix; the flagged one goes first.
        for suffix in (("_indoor", "") if indoor else ("", "_indoor")):
            name = f"{day}_{kind}_sensor_{sensor}{suffix}.csv"
            paths = (f"{ARCHIVE}/{day}/{name}", f"{ARCHIVE}/{day[:4]}/{day}/{name}.gz")
@@ -205,20 +205,18 @@ You need ClickHouse, dbt, dactopus-ossie-clickhouse and
    </details>
 
 4. **Build** `readings`, `devices_archive` and the view `devices` into
-   the target database (`CLICKHOUSE_DATABASE`, default `dactopus`), with
-   the profile of the README's [Quick start](../../README.md#quick-start). Every time and date is UTC, so there is
-   no time zone to set.
+   the target database (`CLICKHOUSE_DATABASE`, default `dactopus`).
+   Times and dates are UTC, with no time zone to set.
 
    ```bash
    dbt build --project-dir sources/sensor_community
    ```
 
-5. **Validate** the model against the built tables, and **check** the
-   package's answers: `check_numbers.py` asks 17 questions over the
+5. **Validate and check.** Validate the model against the built tables,
+   then compare `check_numbers.py`'s answers to 17 questions over the
    hand-written rows of
-   [`tests/sensor_community/fixture.sql`](../../tests/sensor_community/fixture.sql),
-   built into databases of their own, and compares the answers with
-   numbers worked out by hand from the rows.
+   [`tests/sensor_community/fixture.sql`](../../tests/sensor_community/fixture.sql)
+   with numbers worked out by hand.
 
    ```bash
    dactopus-ossie-clickhouse validate entities/iot.yaml --url http://user:password@host:8123/dactopus
@@ -230,23 +228,17 @@ You need ClickHouse, dbt, dactopus-ossie-clickhouse and
    ```
 
 6. **Ask.** Serve `entities/iot.yaml` with `dactopus-ossie-clickhouse serve`
-   at the database of step 4. Try the average temperature at each site
-   over the last week, the devices silent for more than an hour, PM2.5
-   by day, and how many devices reported yesterday. The archive
-   publishes a day the night after, so the latest reading is hours old;
-   the model tells agents to measure silence from the latest contact in
-   the data, which the snapshots keep within minutes of now, and to name
-   that time and its age.
+   at the database of step 4. Try each site's average temperature over
+   the last week, devices silent for over an hour, PM2.5 by day, and how
+   many devices reported yesterday. How the model
+   measures silence: [docs/iot.md](../../docs/iot.md#limits).
 
-7. **Next loads.** Once a day after 10:00 UTC, load from the day after
-   the country's last day loaded to yesterday, keep the snapshots
-   running, and build again. The build is incremental for `readings`;
-   `devices_archive`, one row per site, is rebuilt whole and reads every
-   reading, so its time grows with the history: 0.05 seconds on a laptop
-   for a month of Australia, 2.3 million readings. The snapshots need no
-   build. Each day is loaded once.
-   Loading a day twice by hand is harmless: the package reads each
-   reading once.
+7. **Next loads.** Daily after 10:00 UTC, load from the day after the
+   country's last loaded day to yesterday, keep the snapshots running
+   and build again. `devices_archive`, one row per site, is rebuilt
+   whole from every reading, so its time grows with the history: 0.05 seconds on a laptop for a month of Australia, 2.3
+   million readings. Loading a day twice by hand is harmless: the
+   package reads each reading once.
 
    ```bash
    since=$(clickhouse client --query "SELECT max(toDate(timestamp)) + 1 FROM sensor_community_raw.readings
@@ -256,22 +248,20 @@ You need ClickHouse, dbt, dactopus-ossie-clickhouse and
 
    On Linux, yesterday is `$(date -u -d yesterday +%F)`.
 
+## Variables
+
+| Variable | Default | What it sets | Guarded |
+| --- | --- | --- | --- |
+| `sensor_community_input_database` | `sensor_community_raw` | the database of the input tables | no |
+| `sensor_community_source_id` | `sensor_community` | the network's label in every row (`source_id`, [labels](../../docs/deployment.md#labels)) | yes |
+| `sensor_community_lookback_days` | `3` | the days an incremental run rereads before the latest data it has seen | no |
 
 ## Changing a setting
 
-`readings` is incremental: a run rebuilds the sensor-days loaded in the
-`sensor_community_lookback_days` (default 3) days before the latest load
-it has seen, and keeps the other rows as they were built.
-`sensor_community_source_id`, the `source_id` of every row, decides the
-values of the rows already built, so a change of it needs
-`dbt build --full-refresh` once.
-
-`readings` records the label it was built with in its comment
-(`built with {...}`), and an incremental run that finds another one
-stops before it reads or deletes a row, naming the variable with its old
-and new value; `devices_archive`, which reads it, is not built then.
-The full refresh records the new label. A `readings` built by release 0.12.1 or earlier
-records none, so its first run stops the same way. The dbt user needs
-`ALTER MODIFY COMMENT` on `readings` (part of `ALTER TABLE`).
-`sensor_community_input_database` and `sensor_community_lookback_days`
-can change in any run.
+`readings` is incremental: a run rebuilds the sensor-days loaded
+recently ([`sensor_community_lookback_days`](#variables)). A change of a
+guarded variable needs `dbt build --full-refresh` once
+([docs/deployment.md](../../docs/deployment.md#changing-a-setting)); a
+run that stops on one does not build `devices_archive`, which reads
+`readings`. The dbt user needs `ALTER MODIFY COMMENT` (part of
+`ALTER TABLE`) on `readings`.

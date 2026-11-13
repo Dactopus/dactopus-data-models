@@ -40,4 +40,3 @@ FROM
 ARRAY JOIN [('pm10', P1), ('pm2_5', P2), ('temperature', temperature), ('humidity', humidity),
             ('pressure', if(pressure BETWEEN 300 AND 1100, pressure * 100, pressure))] AS m
 WHERE m.2 IS NOT NULL AND NOT isNaN(m.2)
-{{ sensor_community_query_settings() }}

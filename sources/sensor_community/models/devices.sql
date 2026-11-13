@@ -1,4 +1,6 @@
-{{ config(materialized='view') }}
+{{ config(materialized='view', query_settings={}) }}
+-- A view inserts nothing: no insert settings (dbt_project.yml), which would
+-- end the CREATE VIEW after its own SETTINGS.
 -- One row per site, a "location" in Sensor.Community's terms (input.sql):
 -- every site in the snapshots and every site with a reading. A view over
 -- devices_archive and the snapshots, so a snapshot loaded after the last

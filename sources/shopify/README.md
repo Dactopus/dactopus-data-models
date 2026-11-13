@@ -1,7 +1,7 @@
 # Shopify package
 
-Maps a Shopify store's orders and catalog, read from the
-[GraphQL Admin API](https://shopify.dev/docs/api/admin-graphql), onto the
+Maps a Shopify store's orders and catalog from the
+[GraphQL Admin API](https://shopify.dev/docs/api/admin-graphql) onto the
 `commerce` entities: `orders`, `order_lines`, `refunds`, `sales_events`,
 `customers`, `products`, `line_categories`, `line_brands`,
 `order_discount_codes`, `product_categories` and `product_brands`. What
@@ -12,53 +12,46 @@ dbt project, time zones and several stores:
 
 ## Quick start
 
-There is no public Shopify export, so try the package on the rows the
-repository tests it with,
-[`tests/shopify/fixture.sql`](../../tests/shopify/fixture.sql): twelve orders
-of a shop in New York and its thirteen products, each a case the package
-must get right (refunds, cancellations, discounts, tax included in
-prices, a gift card, a tip, import duties, repeated deliveries, a
-product's type and vendor changed, a deleted product). You need ClickHouse, dbt and
-dactopus-ossie-clickhouse, as in the README's [Quick start](../../README.md#quick-start).
+Shopify has no public export, so try the package on the rows its tests
+use, [`tests/shopify/fixture.sql`](../../tests/shopify/fixture.sql): twelve
+orders of a shop in New York and its thirteen products, each a case the
+package must get right (refunds, cancellations, discounts, tax included
+in prices, a gift card, a tip, import duties, repeated deliveries, a
+product's type and vendor changed, a deleted product). You need
+ClickHouse, dbt and dactopus-ossie-clickhouse, as in the README's
+[Quick start](../../README.md#quick-start).
 
-1. **Load** the package's input tables
-   [`sources/shopify/input.sql`](input.sql) and the rows.
-   Their database is a parameter; the package reads it from the dbt
-   variable `shopify_input_database` (default `shopify_raw`, kept here
-   for your own store). The input has no label: the package writes the
-   store's label into every row it builds, from the dbt variable
-   `shopify_source_id` (default `shopify`; [several
-   stores](../../docs/deployment.md#several-stores-properties-or-networks)).
+1. **Load** the input tables [`sources/shopify/input.sql`](input.sql)
+   and the rows. They have no label; their database and the label are
+   dbt variables ([Variables](#variables)).
 
    ```bash
    clickhouse client --param_db=shopify_sample_raw --multiquery < sources/shopify/input.sql
    clickhouse client --param_db=shopify_sample_raw --multiquery < tests/shopify/fixture.sql
    ```
 
-2. **Build** into a database of its own, in the shop's time zone. Order
-   and refund dates are in it, as in Shopify's reports; the package's
-   default is UTC.
+2. **Build** into a database of its own, in the shop's time zone
+   ([Variables](#variables)).
 
    ```bash
    CLICKHOUSE_DATABASE=shopify_sample dbt build --project-dir sources/shopify \
        --vars '{shopify_input_database: shopify_sample_raw, shopify_timezone: America/New_York}'
    ```
 
-3. **Validate** the model and **check** its answers: `check_numbers.py`
-   asks 49 questions through dactopus-ossie-clickhouse, in the zone of
-   step 2, and compares the answers with numbers worked out by hand from
-   the rows.
+3. **Validate and check.** Validate the model, then compare
+   `check_numbers.py`'s answers to 49 questions, in the zone of step 2,
+   with numbers worked out by hand.
 
    ```bash
    dactopus-ossie-clickhouse validate entities/commerce.yaml --url http://user:password@host:8123/shopify_sample --time-zone America/New_York
-   OSSIE_CLICKHOUSE_URL=http://user:password@host:8123/shopify_sample OSSIE_CLICKHOUSE_TIME_ZONE=America/New_York python3 tests/shopify/check_numbers.py
+   OSSIE_CLICKHOUSE_URL=http://user:password@host:8123/shopify_sample OSSIE_CLICKHOUSE_TIME_ZONE=America/New_York uv run tests/shopify/check_numbers.py
    ```
 
 4. **Ask.** Serve `entities/commerce.yaml` in the zone of step 2, so
-   that "today" in a question is the shop's date. Try net revenue,
-   refunds by month, average order value and repeat orders, by shipping
-   country and new or returning customer; revenue and returns by product
-   type and by vendor; products not sold since a date.
+   "today" is the shop's date. Try net revenue, refunds by month,
+   average order value and repeat orders by shipping country and new or
+   returning customer; revenue and returns by product type and by
+   vendor; products not sold since a date.
 
    ```bash
    dactopus-ossie-clickhouse serve entities/commerce.yaml \
@@ -70,13 +63,12 @@ dactopus-ossie-clickhouse, as in the README's [Quick start](../../README.md#quic
 1. **An app.** In the Shopify
    [Dev Dashboard](https://shopify.dev/docs/apps/build/dev-dashboard/create-apps-using-dev-dashboard),
    create an app with the scopes `read_orders`, `read_customers` and
-   `read_products`, and install it on the store. Shopify returns only the
-   last 60 days of orders unless the app also has `read_all_orders`,
-   which Shopify grants on request
+   `read_products`, and install it on the store. Without
+   `read_all_orders`, which Shopify grants on request, it gets only the
+   last 60 days of orders
    ([Order](https://shopify.dev/docs/api/admin-rest/latest/resources/order)).
-   Get an access token with the
-   [client credentials grant](https://shopify.dev/docs/apps/build/authentication-authorization/client-credentials-grant);
-   it lasts 24 hours:
+   Get an access token, valid 24 hours, with the
+   [client credentials grant](https://shopify.dev/docs/apps/build/authentication-authorization/client-credentials-grant):
 
    ```bash
    curl -s -X POST "https://$SHOPIFY_SHOP.myshopify.com/admin/oauth/access_token" \
@@ -85,27 +77,30 @@ dactopus-ossie-clickhouse, as in the README's [Quick start](../../README.md#quic
        --data-urlencode "client_secret=$SHOPIFY_CLIENT_SECRET"
    ```
 
-2. **Export** the orders and products updated since a time. Save the
+2. **Export** the orders and products updated since a time: save the
    script below as `export_shopify.py` and run it with the store's
-   subdomain and the token; the first time, from a date before the
+   subdomain and the token, the first time from a date before the
    store's first order:
 
    ```bash
    SHOPIFY_SHOP=<store> SHOPIFY_TOKEN=<token> uv run --with certifi export_shopify.py 2000-01-01T00:00:00Z data/shopify
    ```
 
-   It reads the GraphQL Admin API (version 2026-10) 25 orders at a
-   time, each with its lines and refunds, then the products, archived
-   ones and drafts included, and writes one JSON file per input table,
-   with only the columns `input.sql` declares. A deleted product is gone
-   from the API: the script finds it in the store's events (`destroy` of
-   a `PRODUCT`) and writes a version of it with only its id and the time
-   of the deletion. It needs
-   [uv](https://docs.astral.sh/uv/) for the one package it uses,
-   `certifi`: Python from python.org on macOS does not see the system's
-   root certificates. A Shopify bulk operation would be faster on a large store, but
-   it cannot read refund lines, which sit inside the list of an order's
-   refunds.
+   The script:
+
+   - reads 25 orders at a time from the GraphQL Admin API (version
+     2026-10), with their lines and refunds, then the products, archived
+     and draft ones included;
+   - writes one JSON file per input table, with only the columns
+     `input.sql` declares;
+   - takes a deleted product, gone from the API, from the store's events
+     (`destroy` of a `PRODUCT`) as a version with only its id and
+     deletion time.
+
+   It needs [uv](https://docs.astral.sh/uv/) to install `certifi`:
+   python.org's Python on macOS does not see the system's root
+   certificates. A bulk operation would be faster on a large store but
+   cannot read refund lines, nested in an order's refunds.
 
    <details><summary>export_shopify.py</summary>
 
@@ -256,9 +251,9 @@ dactopus-ossie-clickhouse, as in the README's [Quick start](../../README.md#quic
 
    </details>
 
-3. **Load** the files into the input tables. A file is empty when
-   nothing of its kind changed, often refunds, and ClickHouse refuses an
-   empty insert, so the loop skips it:
+3. **Load** the files into the input tables. The loop skips an empty
+   file (nothing of its kind changed, often refunds), since ClickHouse
+   refuses an empty insert:
 
    ```bash
    clickhouse client --param_db=shopify_raw --multiquery < sources/shopify/input.sql
@@ -269,127 +264,120 @@ dactopus-ossie-clickhouse, as in the README's [Quick start](../../README.md#quic
    done
    ```
 
-4. **Build** with the shop's time zone (Settings > General in the admin)
-   as `shopify_timezone`, then validate and ask as above, with the same
-   zone as `--time-zone`, at the database the tables went to
-   (`CLICKHOUSE_DATABASE`, default `dactopus`).
+4. **Build** with `shopify_timezone` set to the shop's zone, then
+   validate and ask as above with it as `--time-zone`, at the database
+   the tables went to (`CLICKHOUSE_DATABASE`, default `dactopus`).
 
 5. **Next loads.** Export from an hour before the latest change already
-   loaded, load, and build again: the build is incremental. A refund or a
+   loaded, load, and build again: the build is incremental. A refund or
    cancellation changes an order's `updated_at`, so the export delivers
-   the order again, whole; delivering the same version twice is harmless.
-   So does a change of a product, a sale included (Shopify updates its
-   inventory), and its deletion arrives from the events of the same
-   window.
+   the whole order again, as it does a product after any change, a sale
+   included (Shopify updates its inventory); a version delivered twice
+   is harmless. A product's deletion arrives from the same window's
+   events.
 
    ```bash
    since=$(clickhouse client --query "SELECT formatDateTime(max(updated_at) - INTERVAL 1 HOUR, '%Y-%m-%dT%H:%i:%SZ') FROM shopify_raw.orders")
    SHOPIFY_SHOP=<store> SHOPIFY_TOKEN=<token> uv run --with certifi export_shopify.py "$since" data/shopify
    ```
 
-   Orders deleted in Shopify are not exported again, so they stay in the
-   input tables.
+## Variables
 
+| Variable | Default | What it sets | Guarded |
+| --- | --- | --- | --- |
+| `shopify_input_database` | `shopify_raw` | the database of the input tables | no |
+| `shopify_source_id` | `shopify` | the store's label in every row (`source_id`, [labels](../../docs/deployment.md#labels)) | yes |
+| `shopify_timezone` | `UTC` | the shop's time zone (Settings > General in the Shopify admin), for order and refund dates; Shopify's reports use it | yes |
+| `shopify_lookback_days` | `3` | the days an incremental run rereads before the latest data it has seen | no |
 
 ## Changing a setting
 
 `orders`, `order_lines` and `refunds` are incremental: a run rebuilds
-only what the input changed and keeps the other rows as they were built.
-Two variables decide the values of the rows already built, so a change
-of either needs `dbt build --full-refresh` once:
-
-- `shopify_timezone`: the day of every order and refund.
-- `shopify_source_id`: the `source_id` of every row.
-
-The three tables record the values they were built with in their
-comments (`built with {...}`), and an incremental run that finds other
-values stops before it reads or deletes a row of them, naming each
-variable with its old and new value. The tables a run builds whole
-before it reaches them, `product_categories_all` and
-`product_brands_all`, may already carry the new label when it stops;
-the full refresh brings all of them in line and records the new values.
-A table built by release 0.11.2 or earlier records none, so its first
-run stops the same way; the full refresh the next release needs for its
-new column covers it.
-The dbt user needs `ALTER MODIFY COMMENT` on the three tables (part of
-`ALTER TABLE`). `shopify_input_database` and `shopify_lookback_days` can
-change in any run.
-
+only what the input changed. A change of a guarded variable needs
+`dbt build --full-refresh` once
+([docs/deployment.md](../../docs/deployment.md#changing-a-setting)).
+The dbt user needs `ALTER MODIFY COMMENT` (part of `ALTER TABLE`) on
+these three tables.
 
 ## Known differences from Shopify's reports
 
-The package is checked against a store's reports.
-`sales_events.net_revenue` equals Shopify's total sales overall, by
-shipping country, by billing country and by new or returning customer,
-and, by `sales_events.event_date`, for each order on each day;
-`orders.average_order_value` equals the store's. Units, goods revenue,
-returns and net sales by product type and by vendor equal the reports'
-over all time and by month, and the counts of products by status, type
-and vendor equal the admin's. The customers, new customers and
-returning customers of each month, each customer's total sales and
-orders, and orders and customers by month and
-`months_since_first_purchase` equal the reports'. Test orders are left
-out, as in the reports. Other numbers differ by definition, and the model's
-descriptions say how:
+Checked against a store's reports, these equal them:
 
-- **Gross and net sales** in Shopify's reports are goods only.
+- `sales_events.net_revenue`: Shopify's total sales overall, by shipping
+  and billing country, by new or returning customer, and per order and
+  day by `sales_events.event_date`.
+- `orders.average_order_value`.
+- Units, goods revenue, returns and net sales by product type and
+  vendor, over all time and by month.
+- Product counts by status, type and vendor in the admin.
+- Each month's customers, new and returning, and each customer's total
+  sales and orders.
+- Orders and customers by month and Shopify's
+  `months_since_first_purchase`, the model's
+  `orders.months_since_first_order`.
+
+Test orders are left out, as in the reports. Other numbers differ by
+definition, as the model's descriptions say:
+
+- **Gross and net sales** in the reports are goods only;
   `orders.revenue` and `sales_events.net_revenue` add shipping, tax and
-  import duties; `order_lines.line_revenue` is goods after discounts.
-- **Sales reversals** (formerly returns) in the reports are without tax
-  and count a cancelled unpaid order as reversed.
-  `orders.refunded_amount` is the money paid back, with its tax; a
-  cancelled unpaid order has nothing refunded.
-  `sales_events.net_revenue` takes a cancelled order back on the day it
-  was cancelled, as the reports do, through a cancellation event.
+  import duties, and `order_lines.line_revenue` is goods after
+  discounts.
+- **Sales reversals** (formerly returns) in the reports exclude tax and
+  count a cancelled unpaid order as reversed; `orders.refunded_amount`
+  is the money paid back, with its tax, and nothing for such an order.
+  `sales_events.net_revenue` takes a cancelled order back on its
+  cancellation day through a cancellation event, as the reports do.
 - **Taxes** in the reports are net of refunded tax; `orders.tax_amount`
-  is the tax on the order as placed.
-- **Discounts** can differ on an order created through the API with its
-  tax lines set on the price before the discount (10.00 against the
-  report's 8.84 on the development store); on orders from the storefront
-  they match.
-- **A refunded tip** has no refund line, so it cannot be told from a
-  refund of goods and counts as a refund
-  ([#6](https://github.com/Dactopus/dactopus-data-models/issues/6)).
+  is the tax as placed.
+- **Discounts** can differ on an order created through the API with
+  tax lines set on the pre-discount price (10.00 against the report's
+  8.84 on the development store); storefront orders match.
+- **A refunded tip** has no refund line, so it counts as a refund of
+  goods ([#6](https://github.com/Dactopus/dactopus-data-models/issues/6)).
   Tips and gift cards sold are otherwise not sales, as in the reports.
 - **Gift cards** count in the reports' units sold and returned; here a
   gift card is no product, so `order_lines.items_sold` and
   `order_lines.items_returned` leave it out.
 - **Returns by product, type or vendor**: the reports date a return on
-  the day of the refund, `order_lines.items_returned` and
-  `order_lines.line_returned_amount` on the day of the order. Over all
-  time they are equal.
-- **Sales by discount**: the report counts an order's goods under the
-  discount on them, without shipping, so a code that only takes off
-  shipping, such as free shipping, has no orders there (FREESHIP on the
-  development store). `order_discount_codes.code_revenue` is the whole
-  total of each order with the code, shipping included, and
-  `order_discount_codes.code_discount_amount` the order's whole discount:
-  they match the report's total sales and discounts on an order with one
+  the refund's day, `order_lines.items_returned` and
+  `order_lines.line_returned_amount` on the order's; over all time they
+  are equal.
+- **Sales by discount**: the report counts an order's goods under their
+  discount, without shipping, so a shipping-only code such as free
+  shipping has no orders there (FREESHIP on the development store).
+  `order_discount_codes.code_revenue` is each order's whole total with
+  the code, shipping included, and
+  `order_discount_codes.code_discount_amount` its whole discount: they
+  match the report's total sales and discounts on an order with one
   code, no other discount and no shipping.
 - **Average order value by product type**: the reports, filtered by a
   type, count only that type's lines of each order;
   `orders.average_order_value` filtered by a category counts each such
   order whole, as WooCommerce Analytics does.
 
-Known limits of the package: a custom item with no product, no tax and
-nothing to ship that costs exactly the order's tip is taken for the tip;
-a line's tax rates are added up, so compound taxes are not exact; orders
-deleted in Shopify stay; amounts are in the shop's currency, not the
-currency the customer paid in. In a shop whose prices include tax, a
-line's discount is computed in cents, so in a currency without them,
-such as the yen, `orders.discount_total` can carry a fraction
-([#7](https://github.com/Dactopus/dactopus-data-models/issues/7)). The
-reports date an order edit on the day of the edit, `sales_events` on the
-day of the order; a cancellation and a refund of one order on different
-days are not checked against the reports yet
-([#16](https://github.com/Dactopus/dactopus-data-models/issues/16)).
+### Known limits
 
-The memory a build needs grows with the shop's history, slowly: on
-synthetic shops of 2, 4 and 8 million orders, the largest query of the
-first build, `orders`, peaks at 1.1, 1.5 and 2.0 GB, and the structural
-test `orders_amounts_consistent` at 0.7, 1.7 and 2.7 GB, so on a server
-that allows a query 3 GB it is the first to fail, past 8 million orders
-([#8](https://github.com/Dactopus/dactopus-data-models/issues/8)).
+- A custom item with no product, no tax and nothing to ship that costs
+  exactly the order's tip is taken for the tip.
+- A line's tax rates are added up, so compound taxes are not exact.
+- Orders deleted in Shopify stay: the export no longer delivers them.
+- Amounts are in the shop's currency, not the one the customer paid in.
+- In a shop whose prices include tax, a line's discount is computed in
+  cents, so in a currency without them, such as the yen,
+  `orders.discount_total` can carry a fraction
+  ([#7](https://github.com/Dactopus/dactopus-data-models/issues/7)).
+- The reports date an order edit on the edit's day, `sales_events` on
+  the order's; a cancellation and a refund of one order on different
+  days are not checked against the reports yet
+  ([#16](https://github.com/Dactopus/dactopus-data-models/issues/16)).
+
+The memory a build needs grows with the shop's history. On synthetic
+shops of 2 and 4 million orders, the largest query of the first build,
+`orders`, peaks at 1.2 and 1.7 GiB, and the structural test
+`orders_amounts_consistent` at 0.8 and 1.3 GiB. A ClickHouse server
+limited to 3.5 GB in all builds the shop of 4 million orders; one of 8
+million needs more, as `orders` passes 2.1 GiB there.
 The input tables' sorting keys (`input.sql`) are part of this: with
 other keys the package builds the same tables, sorting each whole in
 memory.

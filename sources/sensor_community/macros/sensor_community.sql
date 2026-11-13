@@ -15,16 +15,6 @@
  WHERE loaded_at >= (SELECT max(loaded_at) - INTERVAL {{ var('sensor_community_lookback_days') }} DAY FROM {{ this }}))
 {%- endmacro %}
 
-{# Settings every model's query ends with, as in the Shopify package: an
-   INSERT ... SELECT buffers up to min_insert_block_size_bytes per insert
-   thread before it writes a part, 2 GB on 8 cores with the defaults,
-   while a full build of a year of readings is smaller than that and would
-   be held in memory whole. `more` adds a model's own settings. #}
-{% macro sensor_community_query_settings(more='') -%}
-SETTINGS max_insert_threads = 1, min_insert_block_size_rows = 262144, min_insert_block_size_bytes = 67108864
-{%- if more %}, {{ more }}{% endif %}
-{%- endmacro %}
-
 {# The label of the sensor network, which every row carries as source_id:
    the variable sensor_community_source_id, 1 to 64 of a-z, 0-9 and _. Tables of
    several deployments add up and join by it. A view over a built table

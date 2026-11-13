@@ -3,7 +3,7 @@
 How the packages and the Ossie models go into a dbt project and are
 served to agents: the input databases, the label of each store, property
 or network, the time zones, and the unions that add up several of them.
-Each package's own settings and loading recipe are in its README
+Each package's own variables and loading recipe are in its README
 ([GA4](../sources/ga4/README.md), [Shopify](../sources/shopify/README.md),
 [WooCommerce](../sources/woocommerce/README.md),
 [Sensor.Community](../sources/sensor_community/README.md)).
@@ -30,21 +30,26 @@ installs one of them: with both, dbt stops before building anything. A
 business with a store on each builds them into separate target
 databases, as for [several stores](#several-stores-properties-or-networks).
 
-The GA4 package writes `events`, `sessions` and `purchases` to your
-target's database and reads its input from `ga4_raw.events`. The Shopify
-package writes `orders`, `order_lines`, `refunds`, `sales_events`, the
-catalog's `products` and the tables of categories and brands, and reads
-its input from the five tables in `shopify_raw`; the WooCommerce package
-writes the same tables from the eleven in `woocommerce_raw`. The
-Sensor.Community package writes `readings`, `devices_archive` and the
-view `devices` from `locations` and `readings` in
-`sensor_community_raw`. Name
-other databases, and set the store's time zone: without it, every date
-is in UTC and orders near midnight fall on the wrong day. WooCommerce
-also needs the store's currency, and its report settings where they
-differ from WooCommerce's (the WooCommerce package's [Your store](../sources/woocommerce/README.md#your-store), step 4). The WooCommerce package
-needs ClickHouse 26.8 or later, and its dbt user needs
-`ALTER MODIFY COMMENT` on `orders`, `order_lines` and `refunds` (the WooCommerce package's [Your store](../sources/woocommerce/README.md#your-store), step 5). The dbt user of every package needs the same on its incremental tables: `orders`, `order_lines` and `refunds` of Shopify, `events`, `sessions` and `purchases` of GA4, `readings` of Sensor.Community.
+### Tables and input
+
+Each package writes to your target's database and reads its input from a
+database a variable names:
+
+| Package | Writes | Reads (default input database) |
+| --- | --- | --- |
+| GA4 | `events`, `sessions`, `purchases` | `events` (`ga4_raw`) |
+| Shopify | `orders`, `order_lines`, `refunds`, `sales_events`, `customers`, `order_discount_codes`, `products` and the tables of categories and brands | five tables (`shopify_raw`) |
+| WooCommerce | the same tables as Shopify | eleven tables (`woocommerce_raw`) |
+| Sensor.Community | `readings`, `devices_archive` and the view `devices` | `locations`, `readings` (`sensor_community_raw`) |
+
+Name other databases, and set the store's time zone: without it, every
+date is in UTC and orders near midnight fall on the wrong day.
+WooCommerce also needs the store's currency, and its report settings
+where they differ from WooCommerce's (the WooCommerce package's
+[Your store](../sources/woocommerce/README.md#your-store), step 4), and
+ClickHouse 26.8 or later. Each package's README lists its variables, and
+its "Changing a setting" section the grant its dbt user needs on the
+incremental tables.
 
 ```yaml
 vars:
@@ -61,13 +66,7 @@ vars:
     sensor_community_input_database: my_sensor_community
 ```
 
-`shopify_lookback_days`, `woocommerce_lookback_days` and
-`sensor_community_lookback_days` (default 3) are how far before its last
-load or sync an incremental run rereads the input, for inserts that
-commit late. `ga4_lookback_days` (default 3) is how many days before the
-latest day it has built an incremental run rereads: Google updates a
-day's export table for up to 72 hours after its date
-([export schedule](https://support.google.com/analytics/answer/9358801)).
+### Labels
 
 Every row of every table carries the label of its property, store or
 network in `source_id`, from `ga4_source_id`, `shopify_source_id`,
@@ -76,20 +75,22 @@ is the package's name (`shopify`). A label is 1 to 64 of `a-z`, `0-9`
 and `_`; the build stops on any other. The Ossie models put `source_id`
 first in the key of every dataset that has one and join on it, so the
 tables of two stores, each built with its own label, keep their orders
-and customers apart. A new label needs `dbt build --full-refresh`, as
-the settings below do: an incremental run over tables built under
-another label stops before it reads or deletes a row of any
-incremental table, with a message that says so. The packages' tests
-that every row carries one label stay and hold the tables a run builds
-whole.
+and customers apart. A new label is a setting like the others below: it
+needs `dbt build --full-refresh` once. The packages' tests that every
+row carries one label hold the tables a run builds whole.
 
-Each package's `deployment.yml` lists what a deployment sets and reads:
-the Ossie model its tables serve, the variables above by their role
-(input database, label, time zone) and the tables a deployment counts rows per
-day in, with the Date column it counts by and the time column that date
-is the day of. A tool that deploys the packages reads it in place of
-this section. A package's days are in the zone of the variable with the
-role `time_zone` (Shopify, WooCommerce), in the `zone` the package fixes
+### deployment.yml
+
+Each package's `deployment.yml` lists what a deployment sets and reads,
+for a tool that deploys the packages:
+
+- the Ossie model its tables serve;
+- the variables above by their role (input database, label, time zone);
+- the tables a deployment counts rows per day in, with the Date column
+  it counts by and the time column that date is the day of.
+
+A package's days are in the zone of the variable with the role
+`time_zone` (Shopify, WooCommerce), in the `zone` the package fixes
 (Sensor.Community: UTC), or in the source's own zone, which only the
 deployment knows (GA4: neither key). `uv run
 tests/check_deployment.py sources/shopify --time-zone <zone>` counts the
@@ -97,40 +98,37 @@ rows whose date is not the day of their time in the zone: none in a table
 built whole in it. For a package with `zone` the check runs without
 `--time-zone`.
 
+### Changing a setting
+
 An incremental run rebuilds only the rows the input changed, and the
 rest keep the values they were built with. A variable that decides
-those values therefore needs `dbt build --full-refresh` once when it
-changes. Every incremental table of every package keeps the values it
-was built with in its table comment, and a run that changes one without
-the full refresh stops before it reads or deletes a row of it, with the
-message
+those values (a package's `meta.guarded_vars`, marked in its README's
+variables) therefore needs `dbt build --full-refresh` once when it
+changes. Every incremental table keeps the values it was built with in
+its table comment, and a run that changes one without the full refresh
+stops before it reads or deletes a row of it, with the message
 
 ```text
 <table> was not built with the settings of this run (<variable> was <old>, is <new>; ...): run dbt build --full-refresh once (package README, Changing a setting)
 ```
 
-The phrase `was not built with the settings of this run` stays the same
-from release to release, and a tool that deploys the packages can tell
-the stop by it; a change of it is in the CHANGELOG. The tables a run
-builds whole may have taken the new values by then, and the full
-refresh brings all of them in line. The variables, each package's
-`meta.guarded_vars` in its `dbt_project.yml`:
-
-| Package | Variables |
-| --- | --- |
-| Shopify | `shopify_timezone`, `shopify_source_id` |
-| WooCommerce | `woocommerce_timezone`, `woocommerce_source_id`, `woocommerce_currency`, `woocommerce_price_decimals`, `woocommerce_date_type`, `woocommerce_excluded_statuses`, `woocommerce_order_statuses`, `woocommerce_order_number_meta_key` |
-| GA4 | `ga4_source_id` |
-| Sensor.Community | `sensor_community_source_id` |
+A tool that deploys the packages can tell the stop by the phrase `was
+not built with the settings of this run`; a change of it is a breaking
+change, named in UPGRADING.md. The tables a run builds whole may have
+taken the new values by then, and the full refresh brings all of them
+in line. A table that records no values stops its first run the same
+way. A variable the table does not record is read as its default, so
+only a deployment that set another value builds anew.
 
 The input database, the table prefix and the lookback days only say
-where and how far a run reads: the values of the rows built stay what
-they were, and the three change in any run (`meta.free_vars`). A table
-that records no values stops its first run the same way: one of Shopify
-or WooCommerce built by release 0.11.2 or earlier, and one of GA4 or
-Sensor.Community built by 0.12.1 or earlier. A variable that a later
-release starts to record is read as its default from a table that does
-not record it, so only a deployment that set another value builds anew.
+where and how far a run reads (`meta.free_vars`): they change in any
+run. The lookback is how far before its latest load, sync or built day
+an incremental run rereads the input, for inserts that commit late; for
+GA4, because Google updates a day's export table for up to 72 hours
+after its date
+([export schedule](https://support.google.com/analytics/answer/9358801)).
+
+### Serving
 
 Point dactopus-ossie-clickhouse at your target's database
 (`--url http://host:8123/<database>`, or `https://` over TLS) and take
@@ -148,14 +146,13 @@ schema](https://support.google.com/analytics/answer/7029846)). "Today"
 (`CURRENT_DATE`) is then the date there, and so is a time written
 without an offset, as a plain string (`'2026-10-01 09:00:00'`) or a
 literal (`TIMESTAMP '2026-10-01 09:00:00'`); times in answers carry
-their offset from UTC. Keep
-the two values the same: a store in New York built with
-`America/New_York` and served in UTC finds no orders of today after
-20:00 (19:00 in winter), when the date in UTC is already tomorrow. The
-iot model's dates are in UTC, the default, so it takes no zone.
-`OSSIE_CLICKHOUSE_TIME_ZONE` sets the zone for every model served from
-that environment, the iot model included; give the option to each model
-instead.
+their offset from UTC. Keep the two values the same: a store in New
+York built with `America/New_York` and served in UTC finds no orders of
+today after 20:00 (19:00 in winter), when the date in UTC is already
+tomorrow. The iot model's dates are in UTC, the default, so it takes no
+zone. `OSSIE_CLICKHOUSE_TIME_ZONE` sets the zone for every model served
+from that environment, the iot model included; give the option to each
+model instead.
 
 ```bash
 dactopus-ossie-clickhouse serve entities/commerce.yaml --url http://host:8123/<database> --time-zone Europe/Berlin
@@ -175,6 +172,8 @@ store's figures from the commerce model; the GA4 metrics are named after
 GA4's own (`purchases.gross_purchase_revenue`), and the agent names both
 when asked to compare them.
 
+### Freshness on dbt v2
+
 On dbt v2, `dbt source freshness` fails on ClickHouse for every source
 ([dbt-labs/dbt#16714](https://github.com/dbt-labs/dbt/issues/16714)).
 Each package carries macros that fix it; dbt uses a package's macro in
@@ -193,10 +192,9 @@ Freshness then reports the same ages as on dbt v1.
 
 Build each store, GA4 property or Sensor.Community network with its
 package into a target database of its own, under a label of its own
-(`shopify_source_id` and the like, [Use in your dbt
-project](#use-in-your-dbt-project)). Each GA4 property exports to its own
-BigQuery dataset, and each site of a WordPress multisite is a store with
-its own table prefix. A union then adds up their tables for one domain:
+([Labels](#labels)). Each GA4 property exports to its own BigQuery
+dataset, and each site of a WordPress multisite is a store with its own
+table prefix. A union then adds up their tables for one domain:
 `unions/commerce`, `unions/web_analytics` and `unions/iot` are dbt
 projects that write, to a database of their own, a view of each table
 the domain's Ossie model reads, `UNION ALL` over the databases a
@@ -216,8 +214,8 @@ names, so dbt stops a project that installs a package beside it.
 - **Columns.** A view has the columns the Ossie model reads and no
   others; a package's own columns (`tip_total`, `fee_total`) stay in the
   store's database. Each column has the type every package gives it, and
-  the build stops on a database whose table gives another, as one built
-  by an earlier release would, and names the column.
+  the build stops on a database whose table gives another type, and
+  names the column.
 - **Tests.** `dbt build` fails when a label is in two of the databases,
   as for two stores built under the package's default. Each package
   tests its keys when it builds, so with a label of its own in each

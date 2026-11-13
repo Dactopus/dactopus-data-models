@@ -39,8 +39,6 @@ Units: PM10 and PM2.5 in µg/m³, temperature in °C, relative humidity in
   it is the latest reading, hours old, since the archive publishes a day
   the day after. The snapshots keep no history, so the answer is exact
   only if they ran without a gap through the hour before that time.
-  With several networks, each one's silence counts from its own latest
-  contact.
 - **Indoor sites** count in every average across devices; the model
   tells agents to say so and to offer the outdoor ones
   (`devices.is_indoor`). A site that was never in a snapshot has no

@@ -26,8 +26,21 @@ models:
     +incremental_strategy: delete+insert
     # A release that changes a model's columns stops an incremental run
     # with an error rather than leave the old table: run it once with
-    # --full-refresh, as the CHANGELOG says.
+    # --full-refresh, as UPGRADING.md says.
     +on_schema_change: fail
+    # An INSERT ... SELECT buffers the rows per insert thread, up to
+    # min_insert_block_size_bytes each, before it sorts and writes a part:
+    # with the defaults, 256 MB times the server's cores, while a full build
+    # holds its output and the models' own work on top. One insert thread
+    # and smaller blocks bound it (the full build of orders for 2 million
+    # orders peaks at 1.2 GiB instead of 1.6; it is about twice as slow); an
+    # incremental run inserts few rows and is not affected. They go on the
+    # INSERT here: the contract wraps a model's SELECT in a subquery, whose
+    # own SETTINGS do not reach the insert.
+    +query_settings:
+      max_insert_threads: 1
+      min_insert_block_size_rows: 262144
+      min_insert_block_size_bytes: 67108864
     # The settings guard (macros/settings.sql): an incremental run whose
     # table was built with other values of guarded_vars stops before it
     # reads or deletes a row, and a full refresh records the new ones. Each

@@ -33,4 +33,4 @@ LEFT JOIN
     WHERE sensor_type IN {{ sensor_community_types() }}
     GROUP BY location
 ) AS f ON f.device_id = r.device_id
-{{ sensor_community_query_settings('join_use_nulls = 1') }}
+SETTINGS join_use_nulls = 1

@@ -15,21 +15,14 @@
  ORDER BY {{ key }}{% if version not in key.replace(' ', '').split(',') %}, {{ version }} DESC{% endif %}, loaded_at DESC LIMIT 1 BY {{ key }})
 {%- endmacro %}
 
-{# Settings every model's query ends with. An INSERT ... SELECT buffers the
-   rows to insert per insert thread, up to min_insert_block_size_bytes
-   each, before it sorts and writes them as a part: with the defaults, 256
-   MB times the server's cores (max_insert_threads), 2 GB on 8 cores, while
-   the output of a full build is smaller than that, it is all held in
-   memory, and the models' own work comes on top (#8: the full build of
-   orders for 4 million orders peaked at 2.9 GB, 1.5 GB with these settings;
-   with one insert thread the build is about twice as slow). An incremental
-   run inserts few rows and is not affected.
-   join_use_nulls = 0: a LEFT JOIN without a match fills the joined
-   columns with their type's default, 0 for an amount, which the models
-   count on (an order without gift cards, a refund without lines); a
-   server or profile that sets 1 would make them NULL. #}
+{# Settings every model's query ends with. join_use_nulls = 0: a LEFT
+   JOIN without a match fills the joined columns with their type's default,
+   0 for an amount, which the models count on (an order without gift cards,
+   a refund without lines); a server or profile that sets 1 would make them
+   NULL. The insert settings are on the INSERT, as +query_settings in
+   dbt_project.yml. #}
 {% macro shopify_query_settings() -%}
-SETTINGS max_insert_threads = 1, min_insert_block_size_rows = 262144, min_insert_block_size_bytes = 67108864, join_use_nulls = 0
+SETTINGS join_use_nulls = 0
 {%- endmacro %}
 
 {# A refund line refunds a gift card sold: its line item is a gift card in

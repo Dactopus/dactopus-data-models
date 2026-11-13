@@ -1,24 +1,24 @@
 # GA4 package
 
 Maps the [GA4 BigQuery export](https://support.google.com/analytics/answer/7029846)
-onto the `web_analytics` entities: `events`, `sessions` and `purchases`.
+onto the `web_analytics` entities `events`, `sessions` and `purchases`.
 What the model answers: [docs/web_analytics.md](../../docs/web_analytics.md).
 Installing the package in a dbt project, time zones and several
 properties: [docs/deployment.md](../../docs/deployment.md).
 
 ## Quick start
 
-Try the GA4 package on Google's public sample
+Try the package on Google's public sample
 [`ga4_obfuscated_sample_ecommerce`](https://developers.google.com/analytics/bigquery/web-ecommerce-demo-dataset):
-4.3 million events from November 2020 to January 2021. You need
-ClickHouse, dbt and dactopus-ossie-clickhouse with the dbt profile, as in
-the README's [Quick start](../../README.md#quick-start), and the
+4.3 million events, November 2020 to January 2021. You need ClickHouse,
+dbt with the profile and dactopus-ossie-clickhouse from the README's
+[Quick start](../../README.md#quick-start), plus the
 [gcloud CLI](https://cloud.google.com/sdk/docs/install) and
 [uv](https://docs.astral.sh/uv/) for the export.
 
 1. **Export.** A Google Cloud project in the
    [BigQuery sandbox](https://cloud.google.com/bigquery/docs/sandbox) is
-   enough: no billing account, no Cloud Storage bucket. Save the script
+   enough, without billing or a Cloud Storage bucket. Save the script
    below as `export_ga4.py` and run:
 
    ```bash
@@ -29,11 +29,9 @@ the README's [Quick start](../../README.md#quick-start), and the
        --with pyarrow export_ga4.py <project-id> data/ga4
    ```
 
-   The script reads the daily tables with the BigQuery Storage Read API
-   and writes one Parquet file per day (about 200 MB, 10 minutes). It
-   passes the gcloud login token explicitly, so a
-   `GOOGLE_APPLICATION_CREDENTIALS` set for another project does not get
-   in the way:
+   It writes the daily tables to Parquet via the BigQuery Storage Read
+   API (about 200 MB, 10 minutes) with the gcloud login token, so another
+   project's `GOOGLE_APPLICATION_CREDENTIALS` does not interfere:
 
    ```python
    import pathlib, subprocess, sys
@@ -53,15 +51,10 @@ the README's [Quick start](../../README.md#quick-start), and the
            pq.write_table(rows, path, compression="zstd")
    ```
 
-2. **Load** into the package's input table
-   [`sources/ga4/input.sql`](input.sql). It declares only the
-   columns the package reads; any other way of delivering the export must
-   fill the same table. Its database is a parameter, `ga4_raw` here; the
-   package reads another one from the dbt variable `ga4_input_database`.
-   The input has no label: the package writes the property's label into
-   every row it builds, from the dbt variable `ga4_source_id` (default
-   `ga4`; [several
-   properties](../../docs/deployment.md#several-stores-properties-or-networks)).
+2. **Load** into the input table [`sources/ga4/input.sql`](input.sql).
+   It holds only the columns the package reads; any other delivery of
+   the export fills it too. It has no label; its database and
+   the label are dbt variables ([Variables](#variables)).
 
    ```bash
    clickhouse client --param_db=ga4_raw --multiquery < sources/ga4/input.sql
@@ -79,12 +72,10 @@ the README's [Quick start](../../README.md#quick-start), and the
      FORMAT Native"
    ```
 
-   The sample is older than the `session_traffic_source_last_click`
-   column. Exports from October 2024 on have it with the
-   `cross_channel_campaign` record the package reads: load it too, adding
-   the column to the `INSERT` list and this expression to the `SELECT`.
-   Without it the package falls back to the first source seen in a
-   session, and revenue by source will not match the GA4 interface.
+   Exports from October 2024 on, unlike the sample, have
+   `session_traffic_source_last_click`, whose `cross_channel_campaign`
+   the package reads: add the column to the `INSERT` and this expression
+   to the `SELECT`:
 
    ```sql
    tuple(tuple(session_traffic_source_last_click.cross_channel_campaign.source,
@@ -93,72 +84,72 @@ the README's [Quick start](../../README.md#quick-start), and the
      AS session_traffic_source_last_click
    ```
 
-3. **Build** the canonical tables, with the profile of the README's [Quick start](../../README.md#quick-start).
+3. **Build** the canonical tables.
 
    ```bash
    dbt build --project-dir sources/ga4
    ```
 
-4. **Validate** the model against the built tables. The model names its
-   tables without a database: dactopus-ossie-clickhouse reads them in the database
-   of its URL.
+4. **Validate and check.** Validate the model against the built tables
+   (it names no database: dactopus-ossie-clickhouse reads its URL's).
+   Then compare `check_numbers.py`'s answers to 10 questions over the
+   hand-written rows of
+   [`tests/ga4/fixture.sql`](../../tests/ga4/fixture.sql) with numbers
+   worked out by hand.
 
    ```bash
    dactopus-ossie-clickhouse validate entities/web_analytics.yaml --url http://user:password@host:8123/dactopus
+   clickhouse client --param_db=ga4_sample_raw --multiquery < sources/ga4/input.sql
+   clickhouse client --param_db=ga4_sample_raw --multiquery < tests/ga4/fixture.sql
+   CLICKHOUSE_DATABASE=ga4_sample dbt build --project-dir sources/ga4 \
+       --vars '{ga4_input_database: ga4_sample_raw}'
+   OSSIE_CLICKHOUSE_URL=http://user:password@host:8123/ga4_sample python3 tests/ga4/check_numbers.py
    ```
 
-5. **Ask.** Serve the model to an AI agent over MCP with
-   `dactopus-ossie-clickhouse serve entities/web_analytics.yaml --url ...`, the
-   same URL; its [README](https://github.com/Dactopus/dactopus-ossie-clickhouse#readme)
-   shows how to connect an agent. Try sessions, conversion rate and
-   revenue, by traffic source, device, country and date. The sample's
-   dates are in UTC, the default, so the command takes no time zone; an
-   export of your own property takes the property's ([docs/deployment.md](../../docs/deployment.md)).
+5. **Ask.** Serve the model over MCP with
+   `dactopus-ossie-clickhouse serve entities/web_analytics.yaml --url ...`
+   at the same URL ([connecting an agent](https://github.com/Dactopus/dactopus-ossie-clickhouse#readme)).
+   Try sessions, conversion rate and revenue by traffic source, device,
+   country and date. The sample is in UTC, the default; serve your own
+   export in the property's zone, so "today" is its date
+   ([docs/deployment.md](../../docs/deployment.md)).
 
+## Variables
+
+| Variable | Default | What it sets | Guarded |
+| --- | --- | --- | --- |
+| `ga4_input_database` | `ga4_raw` | the database of the input table | no |
+| `ga4_source_id` | `ga4` | the property's label in every row (`source_id`, [labels](../../docs/deployment.md#labels)) | yes |
+| `ga4_lookback_days` | `3` | the days an incremental run rereads before the latest data it has seen | no |
 
 ## Changing a setting
 
-`events`, `sessions` and `purchases` are incremental: a run rebuilds the
-days from `ga4_lookback_days` (default 3) before the latest one it has
-built on, and keeps the other rows as they were built.
-`ga4_source_id`, the `source_id` of every row, decides the values of the
-rows already built, so a change of it needs `dbt build --full-refresh`
-once.
-
-The three tables record the label they were built with in their
-comments (`built with {...}`), and an incremental run that finds another
-one stops before it reads or deletes a row of them, naming the variable
-with its old and new value. The full refresh records the new label. A
-table built by release 0.12.1 or earlier records none, so its first run
-stops the same way. The dbt user needs `ALTER MODIFY COMMENT` on the
-three tables (part of `ALTER TABLE`). `ga4_input_database` and
-`ga4_lookback_days` can change in any run.
-
+The three tables are incremental: a run rebuilds the recent days
+([`ga4_lookback_days`](#variables)). A change of a guarded variable
+needs `dbt build --full-refresh` once
+([docs/deployment.md](../../docs/deployment.md#changing-a-setting)).
+The dbt user needs `ALTER MODIFY COMMENT` (part of `ALTER TABLE`) on
+them.
 
 ## Known differences from the GA4 interface
 
-Numbers from the model and from the GA4 interface can differ for reasons
-the model states in its descriptions:
+The model's descriptions state each:
 
-- **Sessions and users** are counted exactly; the GA4 interface estimates
-  them, so they differ slightly. A user is a browser on a device
-  (`user_pseudo_id`), not a person.
+- **Sessions and users** are exact counts; the interface's estimates
+  differ slightly.
 - **Traffic source** matches the interface (last non-direct click) only
-  for exports from October 2024 on, loaded with the
-  `session_traffic_source_last_click` column. Older exports fall back to
-  the first source seen in the session.
-- **Purchases** are what the site sent to GA4, not the store's orders:
-  purchases made with tracking blocked are missing. A purchase sent twice
-  by the same user with the same transaction id counts once, as in GA4.
-- **Revenue** is in the currency of each purchase. A store that sells in
-  several currencies has to read it by `purchases.currency`;
-  `purchases.gross_purchase_revenue_usd` is converted by Google at a
-  rate it does not document.
-- **Refunds** are not subtracted: the model reads purchase events only.
-  The metrics are GA4's gross purchase revenue; the interface's
-  "Purchase revenue" subtracts the refunds the site sent to GA4, so it
-  is lower when there were any ([GA4 metrics](https://support.google.com/analytics/answer/9143382)).
-- **Dates** are in the GA4 property's time zone; a session that crosses
-  midnight counts once, on the day it started. "Today" is the
-  property's date when the model is served in that zone ([docs/deployment.md](../../docs/deployment.md)). Properties outside UTC
+  when loaded with `session_traffic_source_last_click` (step 2); without
+  it, the package takes the first source seen in the session.
+- **Purchases** are what the site sent, without those made with
+  tracking blocked; one sent twice by a user with the same transaction
+  id counts once, as in GA4.
+- **Revenue** is in each purchase's currency; a store selling in several
+  reads it by `purchases.currency`. Google converts
+  `purchases.gross_purchase_revenue_usd` at a rate it does not document.
+- **Refunds** are not subtracted: the model reads only purchase events,
+  GA4's gross purchase revenue. The interface's "Purchase revenue"
+  subtracts the refunds the site sent
+  ([GA4 metrics](https://support.google.com/analytics/answer/9143382)).
+- **Dates** are in the property's time zone; a session that crosses
+  midnight counts once, on its first day. Properties outside UTC
   are not tested yet ([#1](https://github.com/Dactopus/dactopus-data-models/issues/1)).

@@ -39,6 +39,7 @@ jobs:
       woocommerce: ${{ steps.reach.outputs.woocommerce }}
       sensor_community: ${{ steps.reach.outputs.sensor_community }}
       unions: ${{ steps.reach.outputs.unions }}
+      changelog: ${{ steps.reach.outputs.changelog }}
     steps:
       # The whole history (a few MB), so the commit before a push is there.
       - uses: actions/checkout@v7
@@ -126,6 +127,11 @@ jobs:
               - '!sources/*/README.md'
               - tests/*/fixture.sql
               - tests/check_union.py
+            changelog:
+              - .github/workflows/ci.yml
+              - CHANGELOG.md
+              - UPGRADING.md
+              - tests/check_changelog.py
       - uses: astral-sh/setup-uv@v7
         with:
           cache-dependency-glob: .github/workflows/ci.yml
@@ -161,6 +167,15 @@ jobs:
       # answers: the numbers and names it finds, the verdicts it gives.
       - name: Check the question set's grader
         run: uv run tests/check_grade.py
+  # CHANGELOG.md in Common Changelog, its notices matching UPGRADING.md.
+  changelog:
+    runs-on: ubuntu-24.04
+    needs: changes
+    if: needs.changes.outputs.changelog == 'true'
+    name: Changelog
+    steps:
+      - uses: actions/checkout@v7
+      - run: python3 tests/check_changelog.py
   ga4:
     runs-on: ubuntu-24.04
     needs: changes
@@ -1157,7 +1172,7 @@ jobs:
   # hold the pull request for ever.
   ci:
     runs-on: ubuntu-24.04
-    needs: [changes, validate, ga4, shopify, woocommerce, sensor_community, unions]
+    needs: [changes, validate, changelog, ga4, shopify, woocommerce, sensor_community, unions]
     if: always()
     name: CI passed
     steps:

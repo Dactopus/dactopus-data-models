@@ -1,167 +1,92 @@
 # Contributing
 
 Bug reports, questions about a mapping, new source packages and pull
-requests are welcome. Everything in this repository is in English: models,
-descriptions, SQL comments, commit messages, issues.
-
+requests are welcome. Everything in this repository is in English.
 Questions about using it and ideas go to
-[Discussions](https://github.com/orgs/Dactopus/discussions); issues are for
-bugs and concrete changes.
+[Discussions](https://github.com/orgs/Dactopus/discussions); issues are
+for bugs and concrete changes.
 
 ## Reporting a wrong number
 
-The failure this project guards against is a model that builds, passes its
-checks and returns the wrong value. If you see one, open an issue with:
+The failure this project guards against is a model that builds, passes
+its checks and returns the wrong value. If you see one, open an issue
+with:
 
 - the source and entity (`sources/ga4`, `sessions`);
 - the question: metrics, dimensions, filters, period;
-- the number the model gives and the number you expected, and where the
-  expected one comes from: the source's own interface, its documentation,
-  or a hand-written query (include it).
+- the number the model gives, the number you expected, and where the
+  expected one comes from: the source's interface, its documentation, or
+  a hand-written query (include it).
 
-Some differences are expected and documented: each package's README has
-a section of known differences from the source's own reports, and the
-field and metric descriptions in `entities/` say where the model's
-definition differs.
+Some differences are expected: each package's README lists its known
+differences from the source's reports, and the descriptions in
+`entities/` say where a definition differs.
 
 ## Setup
 
-You need a [ClickHouse](https://clickhouse.com/docs) server,
-dbt and [dactopus-ossie-clickhouse](https://github.com/Dactopus/dactopus-ossie-clickhouse).
-Without a server at hand, the
-[official Docker image](https://clickhouse.com/docs/install/docker) gives
-one (the variable lets the passwordless `default` user connect over the
-network):
+You need a [ClickHouse](https://clickhouse.com/docs) server, dbt,
+[dactopus-ossie-clickhouse](https://github.com/Dactopus/dactopus-ossie-clickhouse)
+and [uv](https://docs.astral.sh/uv/), which runs the checks. Without a
+server at hand, the
+[official Docker image](https://clickhouse.com/docs/install/docker)
+gives one (the variable lets the passwordless `default` user connect
+over the network):
 
 ```bash
 docker run -d --name ch -p 8123:8123 -p 9000:9000 -e CLICKHOUSE_SKIP_USER_SETUP=1 clickhouse/clickhouse-server:26.8
-pip install dbt-oss                     # dbt v2; or dbt-core~=1.11 with dbt-clickhouse (v1)
-pip install "dactopus-ossie-clickhouse[mcp]"
+pip install dbt-oss                     # dbt v2; or dbt-core~=1.11.0 with dbt-clickhouse (v1)
+pip install "dactopus-ossie-clickhouse[mcp]" uv
 ```
 
 Add the dbt profile of the README's [Quick start](README.md#quick-start)
-and build a package over its fixture as the Quick start does. CI runs on
-ClickHouse 26.8, the LTS release, and the unions job builds every package
-again on the latest release, 26.10; older releases are untested.
+and build a package over its fixture as the Quick start does. CI runs
+on ClickHouse 26.8, the LTS release, and the unions job on the latest,
+26.10; older releases are untested.
 
 ## Layout
 
-    entities/<domain>.yaml    one Ossie model per domain (web_analytics,
-                              commerce, iot): its entities, relationships
-                              and metrics
-    sources/<source>/         one package per source, a dbt project:
-      README.md               the package's guide: loading, settings, known
-                              differences from the source's own reports
+    entities/<domain>.yaml    one Ossie model per domain: web_analytics, commerce, iot
+    sources/<source>/         one package per source, a dbt project
+      README.md               loading, variables, known differences from the source's reports
       input.sql               the input tables the package accepts
-      deployment.yml          what a deployment sets and reads: the Ossie
-                              model, the variables for the input database,
-                              the label and the time zone, the zone the
-                              package fixes for its days, the tables
-                              counted per day
+      deployment.yml          the Ossie model, the variables by role, the tables counted per day
       macros/<source>.sql     SQL the package's models share
-      macros/freshness.sql    `dbt source freshness` on dbt v2, the same
-                              file in every package
-      macros/settings.sql     the settings guard of the incremental models,
-                              the same file in every package
-      models/<entity>.sql     one model per entity, named after it; a table
-                              behind an entity's model that is no entity
-                              itself is <entity>_<part>.sql
-                              (devices_archive.sql, product_categories_all.sql)
-      models/schema.yml       structural checks (dbt tests) and each
-                              column's type (the dbt contract)
-      models/sources.yml      the input tables as a dbt source, with their
-                              freshness
-      tests/                  singular dbt tests, for checks a generic
-                              test cannot express
-    unions/<domain>/          one union per domain, a dbt project of views
-                              that add up the tables of several databases,
-                              each built by a package under its own label
-      deployment.yml          the Ossie model and the variable that lists
-                              the databases
-      macros/union.sql        the view over the databases and its test,
-                              the same file in every union
-      macros/<domain>_union.sql
-                              the union's variable and its test's name
-      models/<entity>.sql     one view per dataset of the Ossie model
-      models/schema.yml       the view's columns and types (the dbt
-                              contract): those the Ossie model reads, no
-                              others; its tests
-    evals/<domain>.yaml       questions a store owner asks an agent, each
-                              with the queries of the model that give its
-                              expected answer, or a rubric of what a right
-                              answer says
-    evals/reference.py        works out the expected answers over a
-                              deployment's databases
-    evals/grade.py            grades an agent's answers against them
-    evals/deployment.commerce.example.yaml
-                              the canonical tables as a deployment
-    evals/deployment.<domain>.example.yaml
-                              web_analytics and iot: the tables CI builds
-                              from the fixture as a deployment
-    tests/<source>/           hand-written input rows (fixture.sql, and
-                              windows.sql for the retention windows) and
-                              the numbers the model must answer over them
-                              (check_numbers.py asks the questions of
-                              questions.yaml, each with the derivation of
-                              its numbers in comments)
-      canon/                  commerce packages: the canonical tables over
-      canon_windows/          fixture.sql, and over fixture.sql with
-                              windows.sql, one CSV file a table
-    tests/commerce/tables.sql the canonical tables of the commerce domain
-                              in standard SQL, written by export_canon.py
-    tests/ask_model.py        asks the questions, shared by every source
-    tests/export_canon.py     writes the canonical tables of a built
-                              package to the CSV files, and tables.sql
-    tests/run_canon.py        loads the CSV files into an engine and asks
-                              the questions of them, with no dbt
-    tests/canon.py            what the two share
-    tests/check_contracts.py  checks the contracts of the packages and the
-                              unions against the Ossie models and each other
-    tests/check_deployment.py checks the deployment.yml of each package and
-                              union against it and its built tables
-    tests/check_freshness.py  checks the ages `dbt source freshness` reports
-    tests/check_settings.py   checks that a changed setting stops an
-                              incremental run of a package
-    tests/check_union.py      checks a union's answers against those of the
-                              databases it adds up
-    tests/check_evals.py      works out the expected answers of the
-                              questions for an agent over the canonical
-                              tables, and over the tables CI builds from
-                              the GA4 and Sensor.Community fixtures
-    tests/check_grade.py      checks evals/grade.py on hand-written answers
-    tests/profiles.yml        the dbt profile CI and the checks build with;
-                              a package ships none
+      macros/freshness.sql    `dbt source freshness` on dbt v2 (same file in every package)
+      macros/settings.sql     the settings guard (same file in every package)
+      models/<entity>.sql     one model per entity; a helper table is <entity>_<part>.sql
+      models/schema.yml       column types (the dbt contract) and structural tests
+      models/sources.yml      the input tables as a dbt source, with freshness
+      tests/                  singular dbt tests
+    unions/<domain>/          views that add up the tables of several databases
+      macros/union.sql        the view and its test (same file in every union)
+      models/schema.yml       the columns the Ossie model reads, with types
+    evals/                    questions for an agent over your build (evals/README.md)
+    tests/<source>/           fixture.sql, check_numbers.py; Shopify and WooCommerce
+                              also windows.sql, questions.yaml and canon*/ (CSV tables)
+    tests/commerce/tables.sql the canonical commerce tables in standard SQL
+    tests/check_*.py          contracts, deployment.yml, freshness, settings, unions,
+                              evals, the grader, the changelog
+    tests/export_canon.py     writes a built package's tables to canon*/
+    tests/run_canon.py        asks the questions of the CSV files, with no dbt
+    tests/reach.py            which CI jobs a change reaches
+    tests/profiles.yml        the dbt profile of CI and the checks
     docs/<domain>.md          what each Ossie model answers and its limits
-    docs/deployment.md        the packages in a dbt project: labels, time
-                              zones, serving the models, unions
-    docs/architecture.svg     the diagram, shown in the README and, with
-    docs/index.html           the text for each part, on GitHub Pages;
-                              update both in the change that alters what
-                              they show
+    docs/deployment.md        packages in a dbt project, labels, time zones, serving, unions
+    docs/architecture.svg     the diagram, and with its text on GitHub Pages
+    docs/index.html           (change both together)
 
-A package's model writes the entity's table, named after it, in the
-database the deployment chooses. The entity's dataset in the domain's
-Ossie model names that table without a database (an Ossie model is one
-file, since relationships and metrics span entities), so one model serves
-any database dactopus-ossie-clickhouse connects to, and
-`dactopus-ossie-clickhouse validate --url` checks that the package delivers every
-column the entity declares. A deployment picks one package per entity.
-
-Every package declares the type of each column it writes (a dbt
-contract in `models/schema.yml`), and a build stops on any other type.
-The columns the entity's Ossie model reads come first in each table,
-with the same types in every package of the entity: the tables of
-Shopify and WooCommerce add up with `UNION ALL`.
-`uv run tests/check_contracts.py` checks it.
-
-This is one repository, not one per source. Packages map onto shared
-entities, so they are released together with them under a single version.
-Consumers take the subdirectories they need.
+A package's model writes the entity's table in the database the
+deployment chooses; the Ossie model names it without a database, so one
+model serves any database dactopus-ossie-clickhouse connects to. Every
+package declares the type of each column it writes, and the columns the
+Ossie model reads come first, in the order it reads them, with the same
+types in every package of the domain, so the tables of Shopify and
+WooCommerce add up with `UNION ALL`. Packages and entities are released
+together under one version.
 
 ## What a source package is
 
-A package is more than a table schema. Every pair of an entity and a
-source has six parts:
+Every pair of an entity and a source has six parts:
 
 | Part | Lives in | Example |
 | --- | --- | --- |
@@ -172,11 +97,10 @@ source has six parts:
 | 5. Field descriptions | entity | plus `ai_context` and synonyms |
 | 6. Simple metrics | entity | net revenue = `total - refunded_total` |
 
-Part 2 is where the value is. Sources differ in what a status means,
-when a refund counts and when the same thing is sent twice: GA4, for one,
-sends a purchase again when the thank-you page is reloaded. A package
-that gets the schema right and the mapping wrong returns wrong numbers
-that look plausible.
+Sources differ in what a status means, when a refund counts and when
+the same thing is sent twice (GA4 sends a purchase again when the
+thank-you page is reloaded). A package with the right schema and a wrong
+mapping returns wrong numbers that look plausible.
 
 ## Out of scope
 
@@ -186,278 +110,193 @@ that look plausible.
 - Reconciling with the source's own reports through its API.
 - Anything that needs two sources at once: attributing sessions to
   orders, matching customers across systems, cross-source marts. A union
-  puts the tables of several stores side by side and matches nothing
-  across them.
+  puts the tables of several stores side by side and matches nothing.
 - API connectors (for example to the GA4 API) and Universal Analytics.
 
-Everything here is Apache 2.0. If a file cannot be released under it, it
+Everything here is Apache 2.0; a file that cannot be released under it
 does not belong here.
 
 ## Authoring rules
 
-**Format.** Ossie schema `0.3.0.dev0`, the only version the upstream
-schema accepts today. Write expressions in `sql`, the spec's portable form
-(`OSSIE_SQL_2026`); `dialects` only for a vendor variant. Mapping, refresh
-and checks live in the package's dbt project, not in the Ossie files, so
-entities stay plain Ossie that any Ossie tool reads. The models use no
-extension; the only one allowed is dactopus-ossie-clickhouse's
-`CLICKHOUSE` namespace and its `dedup` key.
+- **Format.** Ossie schema `0.3.0.dev0`, the only version upstream
+  accepts. Expressions in `sql` (`OSSIE_SQL_2026`); `dialects` only for
+  a vendor variant. Mapping, refresh and checks live in the package, so
+  entities stay plain Ossie. The only extension allowed is
+  dactopus-ossie-clickhouse's `CLICKHOUSE` namespace and its `dedup`
+  key; the models use none.
+- **The canon.** A field that two sources provide goes in, also when one
+  has less of it with the same meaning (a category with subcategories,
+  where Shopify's product types have none). With one source, a field
+  qualifies when its meaning does not depend on it, and where the second
+  source is known, it must exist there too. A reference domain (`iot`)
+  takes a field any network of devices would have. Nothing goes in "for
+  completeness".
+- **Descriptions.** Agents answer from descriptions, synonyms and
+  `ai_context`; without them even strong models guess. One line is the
+  minimum.
+- **Model instructions.** `ai_context.instructions` hold rules across
+  datasets: labels, currencies, time zones, which rows the metrics
+  count, a default meaning of a common word. A rule about one dataset,
+  field or metric goes in its description, never in both. The
+  instructions stay within 2,300 characters: the executor adds a
+  preamble of about 1,780, and Claude Code cuts a server's instructions
+  at 4,096 (`tests/check_contracts.py` checks it).
+- **Obvious choices.** Order date: placed, paid or shipped, store time
+  zone or UTC? Customer: account, email or card? A package states which
+  and why.
+- **Which rows a dataset counts.** A dataset built from orders states
+  which orders it counts, in the model's terms (`orders.status`,
+  `orders.in_sales_reports`, a date), then names the store report that
+  counts the same. Where the stores' reports differ, the description
+  says so.
+- **Access control** comes from ClickHouse grants; the models carry
+  none.
 
-**The canon is selected, not designed.** A field that at least two
-sources provide goes into the canonical entity. A source that has less
-of it still provides it when the meaning is the same: a category with
-its subcategories, where Shopify's product types have no subcategories.
-While a domain has a single source (GA4 for events), a field qualifies
-when its meaning does not depend on that source. Where the second source
-is known but not yet packaged, the field must exist there too, checked
-against its documentation. A field only one source has is not modelled
-until a second source needs it. A reference domain (`iot`) is built from
-one public dataset with no second source planned: a field qualifies when
-any network of devices would have it with the same meaning. No canonical
-field goes in "for completeness".
+The executor's limits are rules here
+([model authoring guide](https://github.com/Dactopus/dactopus-ossie-clickhouse/blob/main/docs/model-authoring.md)):
 
-**Descriptions are part of the model.** Agents answer from descriptions,
-synonyms and `ai_context`. Without them even strong models guess. A
-one-line description is the minimum, not the target.
-
-**Model instructions hold what spans datasets.** A model's
-`ai_context.instructions` hold the rules that apply across its datasets:
-the labels of stores, sites or networks, currencies, time zones, which
-rows the metrics count, a default meaning of a common word. A rule about
-one dataset, field or metric goes in that object's description, never in
-both places; `list_model` shows the descriptions of datasets and metrics,
-`describe_object` those of fields. The instructions stay within 2,300
-characters: dactopus-ossie-clickhouse puts them into its MCP server's
-instructions after a preamble of about 1,780 (it names the model and its
-time zone), and Claude Code cuts a server's instructions at 4,096.
-`uv run tests/check_contracts.py` checks the limit.
-
-**Name the "obvious" choices.** Models break on what looks obvious:
-- Order date: placed, paid or shipped? Store time zone or UTC?
-- Customer: account, email or card?
-
-A package states which one it uses and why.
-
-**A dataset says which rows it counts, then which report agrees.** The
-agent sees descriptions and the tables, never the store's reports. A
-dataset built from orders states in its description which orders it
-counts, in the model's own terms (`orders.status`,
-`orders.in_sales_reports`, a date), and then names the store report that
-counts the same, so that the client can check the number there and the
-author of a new source knows what to match. Where the stores' reports
-count differently, say so in the description, not in the model
-instructions, which keep the rule across datasets: `customers` counts
-the orders of the store's customers report, the sales metrics those of
-its sales reports.
-
-**dactopus-ossie-clickhouse limits are rules here.**
-- Joins are many-to-one only, on a declared primary or unique key, and
-  each dataset has one path from the question's root.
-- Two fact tables meet only on shared dimensions: their metrics in one
-  question are computed apart and merged. A metric that combines both
-  facts needs them in one table, so such a mart is materialized as one
-  fact table.
-- A metric reads one dataset: the Ossie spec rejects an aggregate over
-  fields of two datasets (`E_AMBIGUOUS_MEASURE_GRAIN`) and does not
-  expose the model's own metrics in its relational layer. A dataset
-  that needs a column of another carries it, as `order_lines` carries
-  the flag of its order (`in_sales_reports`). `tests/check_contracts.py`
-  fails on a metric over two datasets and on a metric of the model.
-- A metric cannot reference another metric by name; repeat the
-  expression.
-- No time grain or derived dimensions: declare one field per grain.
-- `source` is a table name without a database, not a query: the
-  deployment picks the database.
-
-See its [model authoring guide](https://github.com/Dactopus/dactopus-ossie-clickhouse/blob/main/docs/model-authoring.md).
-
-**Access control is not modelled.** It comes from ClickHouse grants.
+- joins are many-to-one on a declared key, one path to each dataset;
+- two fact tables meet only on shared dimensions; a metric combining
+  both needs them materialized as one fact table;
+- a metric reads one dataset and sits in its `metrics`; the model has
+  none of its own, and a dataset that needs another's column carries it
+  (`order_lines.in_sales_reports`);
+- no metric references another; no time grain or derived dimensions;
+- `source` is a table name without a database.
 
 ## Checks before a pull request
 
 A model that validates can still return wrong numbers. For a change to a
 package or a model:
 
-1. `dactopus-ossie-clickhouse validate <model> --url <clickhouse>/<database>`
-   passes against loaded data.
-2. `dbt build` of the package passes: models and their tests.
-3. An incremental run over unchanged input changes nothing, and matches a
+1. `dactopus-ossie-clickhouse validate` passes against loaded data.
+2. `dbt build` of the package passes.
+3. An incremental run over unchanged input changes nothing and matches a
    `--full-refresh` build row for row.
-4. A number the change affects matches a hand-written ClickHouse query
-   over the same data. Put both queries and both results in the pull
-   request.
-5. `tests/<source>/check_numbers.py` passes over that source's fixture
-   (CI runs it). A changed number gets a new expected value with its
-   derivation in `tests/<source>/questions.yaml` (GA4 and
-   Sensor.Community still list theirs in `check_numbers.py`); a new source
-   behaviour gets fixture rows. Check that a
-   new case fails against the old code.
-6. A change that moves a canonical row of a commerce package (a column
-   the model reads, a mapping, the fixture) regenerates its files:
-   build the package over `fixture.sql` loaded at once (and, for
-   `canon_windows`, over `windows.sql` as well), then run
-   `uv run tests/export_canon.py <source>` (`--windows` for the second)
-   and commit the files. `uv run tests/run_canon.py <source> --engine
-   clickhouse` (`--windows`) then asks the questions of the files alone;
-   CI does both. `--engine duckdb` asks them through DuckDB's community
-   extension `ossie`, over a copy of the model with the metrics of each
-   dataset moved to the model's (the extension does not read them yet);
-   it refuses some questions, and CI does not run it.
-7. A change to descriptions, `ai_context` or model instructions changes
-   what agents answer. Ask the questions it affects through
-   `dactopus-ossie-clickhouse serve` (MCP), in fresh sessions, with more
-   than one AI model, and compare every number in the answers with the
-   hand-written queries.
-8. A change to a metric, field or relationship the questions of
-   `evals/<domain>.yaml` read, or to a question, passes
-   `uv run tests/check_evals.py`, which works out the expected answers of
-   `evals/commerce.yaml` over the canonical tables; the GA4 and
-   Sensor.Community jobs of CI work out those of `evals/web_analytics.yaml`
-   and `evals/iot.yaml` over the tables they build from the fixture
-   (`uv run tests/check_evals.py <domain> --from <database>`). The
-   questions also check agents over a build of your own
-   (`evals/README.md`).
-   A change to `evals/grade.py` passes `uv run tests/check_grade.py`,
-   with a case for what it changes.
+4. A number the change affects matches a hand-written ClickHouse query;
+   both queries and results go in the pull request.
+5. `tests/<source>/check_numbers.py` passes. A changed number gets a new
+   expected value with its derivation (`questions.yaml`, or
+   `check_numbers.py` at GA4 and Sensor.Community); a new behaviour gets
+   fixture rows and a case that fails on the old code.
+6. A change that moves a canonical row of a commerce package rebuilds
+   the package over `fixture.sql` (and `windows.sql` for
+   `canon_windows`), runs `uv run tests/export_canon.py <source>
+   [--windows]`, commits the files, and `uv run tests/run_canon.py
+   <source> --engine clickhouse` passes. `--engine duckdb` goes through
+   DuckDB's `ossie` extension, which refuses some questions; CI skips it.
+7. A change to descriptions, `ai_context` or instructions: ask the
+   questions it affects through `dactopus-ossie-clickhouse serve`, in
+   fresh sessions with more than one AI model, and compare every number
+   with hand-written queries.
+8. A change the questions of `evals/<domain>.yaml` read passes `uv run
+   tests/check_evals.py` (`<domain> --from <database>` for GA4 and
+   Sensor.Community); a change to `evals/grade.py` passes `uv run
+   tests/check_grade.py` with a case for it.
 
 ```bash
-dbt build --project-dir sources/ga4 --profiles-dir tests      # models and tests
+dbt build --project-dir sources/ga4 --profiles-dir tests
 dactopus-ossie-clickhouse validate entities/web_analytics.yaml --url http://127.0.0.1:8123/dactopus
-uv run tests/check_contracts.py                               # column types agree across packages
-uv run tests/check_deployment.py sources/ga4 --time-zone UTC  # deployment.yml against the built tables
+uv run tests/check_contracts.py
+uv run tests/check_deployment.py sources/ga4 --time-zone UTC
 ```
 
-Facts about ClickHouse behaviour and a source's export schema come from
-running queries (`clickhouse local` or a server) or from the source's
-documentation, cited next to the code, not from memory.
+Facts about ClickHouse and a source's export schema come from running
+queries or from the source's documentation, cited next to the code.
 
-CI builds every package on dbt v2 and v1, first over an empty input
-table, then over the package's hand-written rows
-(`tests/<source>/fixture.sql`): incrementally into the empty tables, again
-over unchanged input, and with `--full-refresh`. After each build
-`tests/<source>/check_numbers.py` asks the model questions and compares
-the answers with numbers derived by hand from those rows. Every job then
-checks `deployment.yml`, the contracts against the built tables, the
-Ossie model against them and `dbt source freshness`, and builds under a
-label other than the package's default, and that a changed setting
-stops an incremental run (`tests/check_settings.py`, the variables listed
-in `docs/deployment.md`). The Shopify and WooCommerce jobs also check
-the retention windows (`windows.sql`), a build in two time zones, and
-that the canonical tables of the
-build are the CSV files in `tests/<source>/canon*`, over which `tests/run_canon.py` asks the
-questions again with no dbt. The unions
-job builds every package, on the latest ClickHouse, into databases of its own, builds the three
-unions over them and compares each label's answers with its database's
-(`tests/check_union.py`); a user with `SELECT` on the unions' databases
-alone gets the models' answers and is refused the packages' tables. The
-fixtures are small, so they do not replace the check on real data. A job
-of its own validates the Ossie models of every domain together, with no
-server: a deployment with several
-packages serves them as one, and the executor refuses a name defined in
-two files.
+### What CI runs
 
-A job runs when a file it reads changed: its package, its entity, its
-`tests/<source>/` and `tests/ask_model.py`, or what every job reads
-(`ci.yml`, `tests/profiles.yml`, `tests/reach.py`, the `check_*.py`
-scripts); the filters are in `ci.yml`. The unions job runs on a change
-to any package, the validate job on a change to any entity. Documentation
-reaches no job, and a change of text alone no package or union job: a
-`dbt_project.yml` whose only changed line is its `version:`, an entity
-whose `description` and `ai_context` alone changed (`tests/reach.py`). The
-check `main` requires is `CI passed`, which fails when a job failed or
-was cancelled and passes otherwise, also when every job was skipped.
+- Every package on dbt v2 and v1, over an empty input, then over its
+  fixture: incremental, again over unchanged input, and full refresh,
+  with `check_numbers.py` between builds. Then `deployment.yml`, the
+  contracts and the Ossie model against the built tables, freshness, a
+  build under another label, and `tests/check_settings.py` for each
+  guarded variable. Shopify and WooCommerce add the retention windows,
+  a build in two time zones and the `canon*` files.
+- The unions job builds every package on the latest ClickHouse, the
+  three unions over them, and compares answers (`tests/check_union.py`),
+  also for a user who may read the unions only.
+- The validate job checks the Ossie models of every domain together.
+
+A job runs when a file it reads changed (filters in `ci.yml`); a change
+of text alone (descriptions, `ai_context`, a `version:` line, docs)
+reaches no package job (`tests/reach.py`). `main` requires `CI passed`,
+which fails only when a job failed or was cancelled. The fixtures are
+small and do not replace a check on real data.
 
 ## Adding a source package
 
 [ROADMAP.md](ROADMAP.md) lists what is planned. Open an issue before you
-start a package, so the input and the entities it maps to are agreed
-first.
+start, so the input and the entities are agreed first. A package is a
+dbt project in `sources/<source>/` laid out as in [Layout](#layout):
 
-A package maps one source onto the canonical entities. It is a dbt
-project in `sources/<source>/`, laid out as in [Layout](#layout):
+- `input.sql`: only the columns the package reads, with types from the
+  source's official schema; the database is the query parameter
+  `{db:Identifier}`, read by the models from `<source>_input_database`.
+- `models/<entity>.sql`: `source_id` first, from `<source>_source_id`,
+  tested by `<source>_one_source_id`; no database name in the code.
+- `models/schema.yml`: the contract and the structural tests, the key of
+  each table among them. Descriptions live in the Ossie model only.
+- `macros/settings.sql` and the `+meta` of `dbt_project.yml`, for an
+  incremental model or a time zone: each variable in
+  `meta.guarded_vars` with its default when built rows depend on it
+  (the `time_zone` and `source_id` roles always), otherwise in
+  `meta.free_vars`. A release that starts to guard a variable keeps its
+  default.
+- `deployment.yml`: a package whose days are in a fixed zone declares
+  `zone`; one in the source's zone declares neither.
+- `README.md`, `tests/<source>/fixture.sql` and `check_numbers.py`, and a
+  CI job like the others. The domain's union reads the new tables when
+  their columns match the contract.
 
-- `input.sql`: the input tables the package accepts. Only the columns the
-  package reads, with types from the source's official schema, not from
-  one sample of it. The database is the query parameter
-  `{db:Identifier}`; the models read it from a dbt variable
-  (`<source>_input_database`).
-- `models/<entity>.sql`: one model per entity, named after it, writing
-  the table `<entity>` in the dbt target's database. The columns the
-  Ossie model reads come first, with the types every package of the
-  domain gives them; every table's first column is `source_id`, the
-  label from `<source>_source_id` (`docs/deployment.md`). No database
-  name in the code.
-- `models/schema.yml`: each column's type (the dbt contract, `+contract`
-  in `dbt_project.yml`) and the structural checks as dbt tests, the key
-  of each table among them. Descriptions live in the Ossie model only.
-- `models/sources.yml` and `macros/freshness.sql`: the input tables as a
-  dbt source with their freshness; the macro file is the same in every
-  package.
-- `macros/settings.sql` and the hooks and `+meta` of `dbt_project.yml`, as
-  in the other packages, for a package with an incremental model or a
-  time zone: the settings guard. Each variable in `vars` goes into
-  `meta.guarded_vars`, with its default, when the rows already built
-  depend on its value, or into `meta.free_vars`, when any run may change
-  it; the variables of the `time_zone` and `source_id` roles are guarded.
-  A release that starts to guard a variable keeps its default to what the
-  rows were built with before. `tests/check_contracts.py` checks it, and
-  the package's CI job runs `tests/check_settings.py` with another value
-  of each guarded variable.
-- `deployment.yml`: the Ossie model, the variables by their role and the
-  tables counted per day. A package whose model fixes the zone of its
-  days (`toDate(..., 'UTC')`) declares it as `zone`, without the role
-  `time_zone`; a package whose days are in the source's zone declares
-  neither. `tests/check_deployment.py` checks it.
-- `README.md`: how to load the source, the package's variables, and its
-  known differences from the source's own reports.
-- `tests/<source>/fixture.sql` and `check_numbers.py`: hand-written rows,
-  each a case the package must get right, and the numbers the model must
-  answer over them, each derived in a comment. A CI job like the
-  existing ones runs them.
-- The domain's union (`unions/<domain>/`) reads the new package's tables
-  as it reads the others', if their columns and types match the
-  contract; `tests/check_contracts.py` checks it.
-
-What the source does (what a status means, when a refund counts, when it
-sends duplicates) comes from its documentation or its data, cited in a
-comment next to the code that relies on it. A package adapted from a
+What the source does comes from its documentation or its data, cited
+next to the code. A package adapted from a
 [Fivetran dbt package](https://github.com/fivetran) says so and keeps
-Fivetran's license notice. Packages that need two sources at once, such
-as attributing sessions to orders, do not belong here ([Out of
-scope](#out-of-scope)).
+Fivetran's license notice.
 
 ## Adding a field or metric
 
-A field goes into a canonical entity when at least two sources provide it
-([Authoring rules](#authoring-rules) has the rule while a domain has one
-source). Every field and
-metric gets a description, and `ai_context` synonyms where people phrase
-it differently: agents answer from these, so a missing description is a
-defect. A field or dataset the Ossie model starts to read goes into the
-domain's union (`unions/<domain>/models/schema.yml`) in the same change,
-with its type. Renaming or removing a field, metric or column, or
-changing what a metric means, is a breaking change (README,
-[Versioning](README.md#versioning)).
+Every field and metric gets a description, and `ai_context` synonyms
+where people phrase it differently. A field the Ossie model starts to
+read goes into the domain's union `schema.yml` in the same change.
+Renaming or removing a field, metric or column, or changing what a
+metric means, is a breaking change ([Versioning](README.md#versioning)).
 
 ## Pull requests
 
-Small and focused, one change each. Add an entry under `[Unreleased]` in
-`CHANGELOG.md`, and say there when the change alters numbers or needs
-`dbt build --full-refresh`. By submitting a contribution you agree it is
-licensed under the Apache License 2.0, like the rest of the project.
+Small and focused. Update the documentation the change affects in the
+same pull request; documentation states the current state, and history
+lives in `CHANGELOG.md` and `UPGRADING.md` only. A breaking change
+([Versioning](README.md#versioning)), or one a deployment must act on
+(`dbt build --full-refresh`, an input column, a grant), adds its steps
+under `## Unreleased` in `UPGRADING.md`. Leave `CHANGELOG.md` alone: it
+is written at release. By
+submitting a contribution you agree it is licensed under the Apache
+License 2.0.
 
 ## Releasing
 
 For maintainers.
 
-1. Move the `[Unreleased]` entries in `CHANGELOG.md` under
-   `## [X.Y.Z] - YYYY-MM-DD` with the Ossie schema version the release
-   targets, and mark it if it needs a full refresh.
+1. Write the release's section of `CHANGELOG.md` from the pull requests
+   merged since the last tag, in [Common
+   Changelog](https://common-changelog.org): `## [X.Y.Z] - YYYY-MM-DD`
+   linked to the GitHub release; groups Changed, Added, Removed, Fixed,
+   in that order; one line per change, in the imperative, with its pull
+   request; breaking changes first in their group, as `**Breaking:**`.
+   Leave out what changes nothing for a deployment or a model's user,
+   such as CI and contributor docs. A release with steps in
+   `UPGRADING.md` opens with one sentence in italics that links to
+   them, and there `## Unreleased` becomes `## X.Y.Z`.
+   `tests/check_changelog.py` checks the form.
 2. Set `version` in every `sources/*/dbt_project.yml` and
-   `unions/*/dbt_project.yml` to `X.Y.Z`, and the `revision` of the
-   `packages.yml` example in `docs/deployment.md` to `vX.Y.Z`.
+   `unions/*/dbt_project.yml`, and the `revision` in
+   `docs/deployment.md`, to the new version.
 3. Merge after CI passes, then tag the commit on `main`. A published tag
-   never moves: a fix is a new version.
+   never moves. The release's notes (`notes.md`) are its `CHANGELOG.md`
+   section without the heading, then one line: the Ossie schema version
+   and the versions of dactopus-ossie-clickhouse, dbt and ClickHouse the
+   release was tested with.
 
 ```bash
 git switch main && git pull --ff-only
