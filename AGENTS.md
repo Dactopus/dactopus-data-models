@@ -41,10 +41,16 @@ request](CONTRIBUTING.md#checks-before-a-pull-request).
 
 ## Documentation
 
-- Docs state the current state; history goes in `CHANGELOG.md` only.
+- Docs state the current state; history goes in `CHANGELOG.md` and
+  `UPGRADING.md` only.
 - A change updates its page in the same pull request (which page:
-  [Layout](CONTRIBUTING.md#layout)) and adds an `[Unreleased]` entry
-  saying when a deployment needs `--full-refresh` or an input change.
+  [Layout](CONTRIBUTING.md#layout)). A breaking change, or one a
+  deployment must act on (`--full-refresh`, an input column, a grant),
+  adds its steps under `## Unreleased` in `UPGRADING.md`.
+- `CHANGELOG.md` follows [Common Changelog](https://common-changelog.org)
+  and is written at release
+  ([Releasing](CONTRIBUTING.md#releasing)); a pull request leaves it
+  alone.
 - A number in a guide is counted from the code before it is written.
 - Field and metric descriptions live in the Ossie entity only.
 - The README describes what works today; plans go in `ROADMAP.md`.
@@ -119,7 +125,7 @@ request](CONTRIBUTING.md#checks-before-a-pull-request).
 ## Development
 
 - dbt v2 (`dbt-oss`) and v1 (`dbt-core` 1.11, `dbt-clickhouse`) give
-  identical results; the changelog names the tested versions.
+  identical results; the GitHub release names the tested versions.
 - `tests/profiles.yml` is the profile of CI and the checks; packages
   ship none. It sets LZ4: dbt v2's adapter cannot read ZSTD.
 - `macros/freshness.sql` replaces dbt v2's broken `dbt source

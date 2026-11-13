@@ -275,7 +275,7 @@ ALTER TABLE {{ this }} MODIFY COMMENT '{{ segments | join('; ') | replace('\\', 
 {%- do declared.append(c['name'] ~ ' ' ~ c['data_type'] | replace(' ', '')) -%}
 {%- endfor -%}
 {%- if built | sort != declared | sort -%}
-{{ exceptions.raise_compiler_error(this ~ " has other columns than this release builds: run dbt build --full-refresh once (CHANGELOG)") }}
+{{ exceptions.raise_compiler_error(this ~ " has other columns than this release builds: run dbt build --full-refresh once (UPGRADING.md)") }}
 {%- endif -%}
 {%- endif -%}
 {%- endmacro %}

@@ -141,13 +141,14 @@ sensors).
 - Checking an AI agent over your own data: [evals/README.md](evals/README.md).
 - Layout, authoring rules, checks, and asking the questions of the
   canonical CSV tables with no dbt: [CONTRIBUTING.md](CONTRIBUTING.md).
-- Changes by release: [CHANGELOG.md](CHANGELOG.md).
+- Changes by release: [CHANGELOG.md](CHANGELOG.md); what a deployment
+  does to move to one: [UPGRADING.md](UPGRADING.md).
 
 ## Versioning
 
 One version for the whole repository, [SemVer](https://semver.org), tags
 `vX.Y.Z`; the Ossie schema version (`0.3.0.dev0`) is separate, and the
-changelog names it for every release.
+GitHub release names it for every release.
 
 A breaking change stops a deployment working or changes its numbers:
 renaming or removing a field, metric or column, changing a column's
@@ -158,8 +159,8 @@ metrics are minor, fixes are patches.
 A deployment pins one tag for its packages (`sources/<source>`), unions
 (`unions/<domain>`) and Ossie models. Upgrading is changing the tag and
 running `dbt build --full-refresh`, which rebuilds every table from the
-input; the changelog marks the releases that need it and any change to
-an input table.
+input; [UPGRADING.md](UPGRADING.md) lists the releases that need it and
+any change to an input table.
 
 ## License
 

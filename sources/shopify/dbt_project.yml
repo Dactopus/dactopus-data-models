@@ -26,7 +26,7 @@ models:
     +incremental_strategy: delete+insert
     # A release that changes a model's columns stops an incremental run
     # with an error rather than leave the old table: run it once with
-    # --full-refresh, as the CHANGELOG says.
+    # --full-refresh, as UPGRADING.md says.
     +on_schema_change: fail
     # An INSERT ... SELECT buffers the rows per insert thread, up to
     # min_insert_block_size_bytes each, before it sorts and writes a part:

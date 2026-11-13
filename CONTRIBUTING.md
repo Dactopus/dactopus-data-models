@@ -65,7 +65,7 @@ on ClickHouse 26.8, the LTS release, and the unions job on the latest,
                               also windows.sql, questions.yaml and canon*/ (CSV tables)
     tests/commerce/tables.sql the canonical commerce tables in standard SQL
     tests/check_*.py          contracts, deployment.yml, freshness, settings, unions,
-                              evals, the grader
+                              evals, the grader, the changelog
     tests/export_canon.py     writes a built package's tables to canon*/
     tests/run_canon.py        asks the questions of the CSV files, with no dbt
     tests/reach.py            which CI jobs a change reaches
@@ -266,8 +266,11 @@ metric means, is a breaking change ([Versioning](README.md#versioning)).
 
 Small and focused. Update the documentation the change affects in the
 same pull request; documentation states the current state, and history
-lives in `CHANGELOG.md` only. Add an entry under `[Unreleased]`, saying
-when the change alters numbers or needs `dbt build --full-refresh`. By
+lives in `CHANGELOG.md` and `UPGRADING.md` only. A breaking change
+([Versioning](README.md#versioning)), or one a deployment must act on
+(`dbt build --full-refresh`, an input column, a grant), adds its steps
+under `## Unreleased` in `UPGRADING.md`. Leave `CHANGELOG.md` alone: it
+is written at release. By
 submitting a contribution you agree it is licensed under the Apache
 License 2.0.
 
@@ -275,18 +278,28 @@ License 2.0.
 
 For maintainers.
 
-1. Move the `[Unreleased]` entries under `## [X.Y.Z] - YYYY-MM-DD` with
-   the Ossie schema version and the versions of dbt and
-   dactopus-ossie-clickhouse the release was tested with; mark it if it
-   needs a full refresh.
+1. Write the release's section of `CHANGELOG.md` from the pull requests
+   merged since the last tag, in [Common
+   Changelog](https://common-changelog.org): `## [X.Y.Z] - YYYY-MM-DD`
+   linked to the GitHub release; groups Changed, Added, Removed, Fixed,
+   in that order; one line per change, in the imperative, with its pull
+   request; breaking changes first in their group, as `**Breaking:**`.
+   Leave out what changes nothing for a deployment or a model's user,
+   such as CI and contributor docs. A release with steps in
+   `UPGRADING.md` opens with one sentence in italics that links to
+   them, and there `## Unreleased` becomes `## X.Y.Z`.
+   `tests/check_changelog.py` checks the form.
 2. Set `version` in every `sources/*/dbt_project.yml` and
    `unions/*/dbt_project.yml`, and the `revision` in
    `docs/deployment.md`, to the new version.
 3. Merge after CI passes, then tag the commit on `main`. A published tag
-   never moves.
+   never moves. The release's notes (`notes.md`) are its `CHANGELOG.md`
+   section without the heading, then one line: the Ossie schema version
+   and the versions of dactopus-ossie-clickhouse, dbt and ClickHouse the
+   release was tested with.
 
 ```bash
 git switch main && git pull --ff-only
 git tag -a vX.Y.Z -m "dactopus-data-models X.Y.Z" && git push origin vX.Y.Z
-gh release create vX.Y.Z --title X.Y.Z --notes-file notes.md   # notes.md: the release's CHANGELOG section
+gh release create vX.Y.Z --title X.Y.Z --notes-file notes.md
 ```

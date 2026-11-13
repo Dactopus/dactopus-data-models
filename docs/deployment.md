@@ -114,7 +114,7 @@ stops before it reads or deletes a row of it, with the message
 
 A tool that deploys the packages can tell the stop by the phrase `was
 not built with the settings of this run`; a change of it is a breaking
-change, named in the CHANGELOG. The tables a run builds whole may have
+change, named in UPGRADING.md. The tables a run builds whole may have
 taken the new values by then, and the full refresh brings all of them
 in line. A table that records no values stops its first run the same
 way. A variable the table does not record is read as its default, so
