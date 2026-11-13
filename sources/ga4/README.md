@@ -129,19 +129,24 @@ dbt with the profile and dactopus-ossie-clickhouse from the README's
    [setup](https://support.google.com/analytics/answer/9823238)). It
    writes a table `events_YYYYMMDD` for each day, in the property's
    time zone, to the dataset `analytics_<property-id>`; the first one
-   arrives within a day. The package reads only these: the tables
-   `events_intraday_*` of the streaming export have no session source.
+   arrives within a day. The package reads only these: Google deletes a
+   table `events_intraday_*` of the streaming export once the day's table
+   is complete and advises querying the daily ones
+   ([export schedule](https://support.google.com/analytics/answer/9358801)).
 
-2. **Load.** Google updates a day's table for up to 72 hours after its
-   date ([export schedule](https://support.google.com/analytics/answer/9358801)),
+2. **Load.** Google adds late events to a day's table through the third
+   day after its date (the table of 1 January through 4 January,
+   [export schedule](https://support.google.com/analytics/answer/9358801)),
    so each load exports again the days from three days before the
    latest day loaded and replaces their rows. Loaded a second time
    without the `DELETE`, a day would count its events and page views
-   twice. The first load runs the same commands: on an empty input
-   `since` is `00000000`, every table.
+   twice. Create the input table once, as in [Quick start](#quick-start),
+   step 2; the first load then runs the same script: on an empty input
+   `since` is `00000000`, every table. Save the script as `load_ga4.sh`
+   and run `bash load_ga4.sh` for each load:
 
    ```bash
-   clickhouse client --param_db=ga4_raw --multiquery < sources/ga4/input.sql
+   set -eo pipefail
    since=$(clickhouse client --query "
      SELECT ifNull(formatDateTime(parseDateTimeOrNull(max(event_date), '%Y%m%d')
                                   - INTERVAL 3 DAY, '%Y%m%d'), '00000000')
@@ -149,25 +154,16 @@ dbt with the profile and dactopus-ossie-clickhouse from the README's
    uv run --with google-cloud-bigquery --with google-cloud-bigquery-storage \
        --with pyarrow export_ga4.py <project-id> \
        <project-id>.analytics_<property-id> data/ga4/$since $since
-   clickhouse client --query "CREATE TABLE IF NOT EXISTS ga4_raw.events_load AS ga4_raw.events"
-   clickhouse client --query "TRUNCATE TABLE ga4_raw.events_load"
+   structure=$(clickhouse client --query "
+     SELECT arrayStringConcat(arrayMap(c -> c.2,
+              arraySort(groupArray((position, name || ' ' || type)))), ', ')
+     FROM system.columns WHERE database = 'ga4_raw' AND table = 'events'")
+   clickhouse client --query "DROP TABLE IF EXISTS ga4_raw.events_load"
+   clickhouse client --query "CREATE TABLE ga4_raw.events_load AS ga4_raw.events"
    clickhouse local --query "
-     SELECT event_date, event_timestamp, event_name, event_params,
-            user_pseudo_id, user_id,
-            tuple(device.category) AS device, tuple(geo.country) AS geo,
-            tuple(ecommerce.purchase_revenue, ecommerce.purchase_revenue_in_usd,
-                  ecommerce.tax_value,
-                  ecommerce.shipping_value, ecommerce.transaction_id) AS ecommerce,
-            tuple(tuple(session_traffic_source_last_click.cross_channel_campaign.source,
-                        session_traffic_source_last_click.cross_channel_campaign.medium,
-                        session_traffic_source_last_click.cross_channel_campaign.campaign_name))
-              AS session_traffic_source_last_click
-     FROM file('data/ga4/$since/*.parquet') FORMAT Native" |
-   clickhouse client --query "
-     INSERT INTO ga4_raw.events_load (event_date, event_timestamp, event_name,
-       event_params, user_pseudo_id, user_id, device, geo, ecommerce,
-       session_traffic_source_last_click)
-     FORMAT Native"
+     SELECT * FROM file('data/ga4/$since/*.parquet', Parquet, '$structure')
+     FORMAT Native" |
+   clickhouse client --query "INSERT INTO ga4_raw.events_load FORMAT Native"
    clickhouse client --multiquery --query "
      DELETE FROM ga4_raw.events
      WHERE event_date IN (SELECT DISTINCT event_date FROM ga4_raw.events_load);
@@ -176,17 +172,20 @@ dbt with the profile and dactopus-ossie-clickhouse from the README's
 
    - **The 3** is `ga4_lookback_days` ([Variables](#variables)): change
      both together.
-   - **`events_load`** holds a load until it is in ClickHouse whole, and
-     the `DELETE` removes only the days it holds. If the export or the
-     insert fails, stop there: the input is as it was, and the next load
-     exports those days again.
+   - **A failed command** stops the script (`set -eo pipefail`).
+     `events_load` holds a load until it is in ClickHouse whole, and the
+     `DELETE` removes only the days it holds, so after a failed export or
+     insert the input is as it was and the next load exports those days
+     again. Each load creates `events_load` anew, with the input table's
+     columns.
+   - **Every export layout** loads: the input table's columns read each
+     file, and a field a file lacks is NULL, as
+     `session_traffic_source_last_click.cross_channel_campaign` in tables
+     before October 2024.
    - **Grants** for the user that loads, on the input database:
-     `SELECT`, `INSERT`, `CREATE TABLE`, `TRUNCATE` and `ALTER DELETE`,
+     `SELECT`, `INSERT`, `CREATE TABLE`, `DROP TABLE` and `ALTER DELETE`,
      which a `DELETE` needs
      ([DELETE](https://clickhouse.com/docs/sql-reference/statements/delete)).
-   - **Tables before October 2024** lack
-     `session_traffic_source_last_click.cross_channel_campaign`: load
-     them with the expression of [Quick start](#quick-start), step 2.
 
 3. **Build** with `dbt build --project-dir sources/ga4`. The build is
    incremental: it rebuilds the days from `ga4_lookback_days` before the
