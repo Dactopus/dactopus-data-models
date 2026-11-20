@@ -7,6 +7,9 @@
 
 answers.jsonl holds one JSON object per line: {"id": ..., "database": ..., "answer": ...},
 the question's id and database as in expected.json and the agent's final answer as text.
+An optional "tool_results", the text of each tool result of the session, adds to each
+verdict "not_from_queries": the answer's numbers that no tool result gives (unsourced()).
+The verdict does not depend on it.
 
 An answer is right when it states every number of one reading of the question (and
 every text value, such as a product's title or a currency's code, as whole words or as
@@ -56,6 +59,20 @@ NOT_VALUES = [re.compile(p, re.I | re.M) for p in (
     r"\b\d{1,2}:\d\d(?::\d\d)?\b", r"(?<![$€£¥.,])\b(?:19|20)\d\d\b(?![.,]\d|\s*%)",
     MONTH + r"\s+\d{1,2}(?:st|nd|rd|th)?\b" + WHOLE, r"\b\d{1,2}(?:st|nd|rd|th)?\s+(?:of\s+)?" + MONTH,
     r"^\s*(?:[-*]\s*)?\d{1,2}[.)]\s")]
+# Not values either where the check is whether a number comes from a query: a month
+# (2026-09), a date with a no-break hyphen or without its year (11-09), a day as an
+# ordinal (the 31st) or in "1–11 Nov", "Nov 1–11" or "Mon 2", the rank in a table's
+# first column. Grading leaves them in: a right answer may state a
+# value nowhere else ("1–10 November ... One landed on").
+NOT_SOURCED = [re.compile(p, re.I | re.M) for p in (
+    r"\b\d{4}[-‑]\d\d(?:[-‑]\d\d)?\b", r"\b(?:0[1-9]|1[0-2])[-‑](?:0[1-9]|[12]\d|3[01])\b",
+    r"\b\d{1,2}(?:st|nd|rd|th)\b",
+    MONTH + r"\s+\d{1,2}\s*[–-]\s*\d{1,2}\b" + WHOLE,
+    r"\b\d{1,2}\s*[–-]\s*(?=\d{1,2}(?:st|nd|rd|th)?\s+(?:of\s+)?" + MONTH + ")",
+    r"\b(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*\.?\s+\d{1,2}\b" + WHOLE,
+    r"^\s*\|\s*\d{1,3}\s*(?=\|)")]
+# A number shortened by thousands or millions: 109k, 1.2M.
+THOUSANDFOLD = re.compile(r"(?<![\w.])(\d+(?:\.\d+)?)([kKM])\b")
 DEFAULT_IF_EMPTY = "Says there is none: no such rows, or zero."
 
 
@@ -190,6 +207,62 @@ def check_numbers(entry, answer):
     return True, "", empties
 
 
+def sources(tool_results):
+    """The numbers the tools returned in the session: every value in the rows of a
+    query's result and every number in its text values (a SKU, a title), its count of
+    rows, and every number in the text of another result, such as the model's
+    descriptions. A result with an error gives none."""
+    values = []
+    for text in tool_results:
+        try:
+            data = json.loads(text)
+        except ValueError:
+            data = None
+        if isinstance(data, dict) and "error" in data:
+            continue
+        if isinstance(data, dict) and isinstance(data.get("rows"), list):
+            values.append(float(data.get("row_count", len(data["rows"]))))
+            for row in data["rows"]:
+                for value in (row.values() if isinstance(row, dict) else row):
+                    if isinstance(value, (int, float)) and not isinstance(value, bool):
+                        values.append(float(value))
+                    elif isinstance(value, str):
+                        try:
+                            values.append(float(value))
+                        except ValueError:
+                            values += [number for number, _, _ in numbers(value)]
+        else:
+            values += [value for value, _, _ in numbers(text)]
+    return values
+
+
+def unsourced(entry, answer, tool_results):
+    """The numbers of an answer that come from no tool result of its session: not a
+    value of a result at the precision the answer shows (by its absolute value, a share
+    as a percentage, times a scale of the expected answer, such as hPa from Pa), nor a
+    number of the question, nor zero (a store without a row has zero). From 1,000 up, a
+    whole number's trailing zeros are rounding: about 2,600 states 2,610, and 109k states
+    109,297."""
+    pool = sources(tool_results) + [value for value, _, _ in numbers(entry["question"])]
+    scales = {1} | {r["query"].get("scale", 1) for reading in entry["readings"] for r in reading}
+    found = []
+    text = answer
+    for pattern in NOT_SOURCED:
+        text = pattern.sub(" ", text)
+    text = THOUSANDFOLD.sub(lambda m: str(round(float(m[1]) * {"k": 1e3, "m": 1e6}[m[2].lower()])), text)
+    for value, decimals, percent in numbers(strip_not_values(text, entry["question"])):
+        if value == 0:
+            continue
+        whole = str(int(abs(value)))
+        zeros = len(whole) - len(whole.rstrip("0")) if not decimals and abs(value) >= 1000 else 0
+        tolerance = 0.5 * 10 ** (zeros - decimals) + 1e-9
+        if not any(abs(abs(value) - abs(r * scale)) <= tolerance
+                   or (percent and abs(value - r * scale * 100) <= tolerance)
+                   for r in pool for scale in scales):
+            found.append(f"{value:,.{decimals}f}" + ("%" if percent else ""))
+    return found
+
+
 JUDGE_PROMPT = (
     "An agent answered a question about an owner's data through a semantic model of that data. "
     "Decide whether the answer meets the criterion. Judge only the criterion, not the style, "
@@ -245,7 +318,8 @@ def main():
 
     expected = {(e["id"], e["database"]): e for e in json.load(open(args.expected))}
     judge = None
-    totals = collections.defaultdict(lambda: [0, 0, 0])  # right, wrong, not graded
+    totals = collections.defaultdict(lambda: [0, 0, 0, 0])  # right, wrong, not graded, unsourced
+    sourced = False
     for line in open(args.answers):
         if not line.strip():
             continue
@@ -279,16 +353,21 @@ def main():
                 passed, reason = judge(task)
                 verdict["passed"] = passed
                 verdict["reasons"].append(("" if passed else "rubric: ") + reason)
+        if "tool_results" in item:
+            sourced = True
+            verdict["not_from_queries"] = unsourced(entry, answer, item["tool_results"] or [])
+            totals[entry["type"]][3] += bool(verdict["not_from_queries"])
         column = {True: 0, False: 1, None: 2}[verdict["passed"]]
         totals[entry["type"]][column] += 1
         print(json.dumps(verdict, ensure_ascii=False), flush=True)
 
-    def line(name, right, wrong, open_):
+    def line(name, right, wrong, open_, unsourced_):
         rest = f", {open_} not graded" if open_ else ""
+        rest += f", {unsourced_} with numbers not from a query" if sourced else ""
         print(f"{name}: {right} of {right + wrong} right{rest}", file=sys.stderr)
     for kind, counts in sorted(totals.items()):
         line(kind, *counts)
-    line("all", *(sum(c[i] for c in totals.values()) for i in range(3)))
+    line("all", *(sum(c[i] for c in totals.values()) for i in range(4)))
 
 
 if __name__ == "__main__":
