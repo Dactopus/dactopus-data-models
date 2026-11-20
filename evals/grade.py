@@ -37,9 +37,12 @@ import subprocess
 import sys
 
 # A number with its sign, which may stand before a currency sign (−$8,807.61). Thousands
-# are grouped by a comma or a no-break, narrow no-break or thin space (20 907.74); a
-# plain space is not a separator, as two numbers in a row may be apart by one.
+# are grouped by a comma or a no-break (U+00A0), narrow no-break (U+202F) or thin (U+2009)
+# space; a plain space is not a separator, as two numbers in a row may be apart by one.
 THOUSANDS = ",\u00a0\u202f\u2009"
+# Not inside a grouped number: no digit or separator before, no group after.
+APART = rf"(?<![\w.{THOUSANDS}])"
+WHOLE = rf"(?![{THOUSANDS}]\d)"
 NUMBER = re.compile(rf"(?<![\w.])([-−]?)(?:[$€£¥]\s?)?(\d{{1,3}}(?:[{THOUSANDS}]\d{{3}})+|\d+)(?:\.(\d+))?\s*(%?)")
 ZERO = re.compile(r"\b(zero|none|nothing)\b", re.I)
 RATIO = re.compile(r"rate|share")
@@ -51,7 +54,7 @@ MONTH = (r"\b(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|June?|July?
 NOT_VALUES = [re.compile(p, re.I | re.M) for p in (
     r"\b\d{4}-\d\d-\d\d(?:[ T]\d\d:\d\d(?::\d\d)?(?:[+-]\d\d:?\d\d|Z)?)?",
     r"\b\d{1,2}:\d\d(?::\d\d)?\b", r"(?<![$€£¥.,])\b(?:19|20)\d\d\b(?![.,]\d|\s*%)",
-    MONTH + r"\s+\d{1,2}(?:st|nd|rd|th)?\b", r"\b\d{1,2}(?:st|nd|rd|th)?\s+(?:of\s+)?" + MONTH,
+    MONTH + r"\s+\d{1,2}(?:st|nd|rd|th)?\b" + WHOLE, r"\b\d{1,2}(?:st|nd|rd|th)?\s+(?:of\s+)?" + MONTH,
     r"^\s*(?:[-*]\s*)?\d{1,2}[.)]\s")]
 DEFAULT_IF_EMPTY = "Says there is none: no such rows, or zero."
 
@@ -62,9 +65,9 @@ def strip_not_values(text, question):
     for pattern in NOT_VALUES:
         text = pattern.sub(" ", text)
     for number, word in re.findall(r"(\d+)\s*(%|[a-z]+)", question, re.I):
-        text = re.sub(rf"\b{number}\s*{re.escape(word)}", " ", text, flags=re.I)
+        text = re.sub(rf"{APART}{number}\s*{re.escape(word)}", " ", text, flags=re.I)
     for word, number in re.findall(r"\b(top|last|past|bottom|first|within)\s+(\d+)", question, re.I):
-        text = re.sub(rf"\b{word}\s+{number}\b", " ", text, flags=re.I)
+        text = re.sub(rf"\b{word}\s+{number}\b{WHOLE}", " ", text, flags=re.I)
     return text
 
 

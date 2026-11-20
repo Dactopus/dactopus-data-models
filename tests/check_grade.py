@@ -41,6 +41,11 @@ for space in ("\u00a0", "\u202f", "\u2009"):
     check(f"U+{ord(space):04X} with a percent", found(f"A share of 1{space}250.5%"), [1250.5])
 check("plain space parts numbers", found("Tee 3 450 sold"), [3, 450])
 check("no-break space after a group", found("Cap: 12\u00a0orders, 4\u202fcaps"), [12, 4])
+for sep in (",", "\u00a0"):
+    check(f"question's number as the last group by {sep!r}",
+          found(f"Store A: 1{sep}500 orders", "Which stores have more than 500 orders?"), [1500])
+    check(f"day of a month before a group by {sep!r}", found(f"Net revenue in December 1{sep}234.50 USD"), [1234.5])
+    check(f"top N before a group by {sep!r}", found(f"The top 10{sep}000 orders", "the top 10 orders"), [10000])
 
 # Not values: dates, times, years, days of a month, list markers, the question's numbers.
 check("ISO date", found("On 2026-10-03 there were 44 orders"), [44])
