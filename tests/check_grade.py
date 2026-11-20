@@ -122,6 +122,50 @@ tied = entry([{"query": {}, "rows": [{"title": "Cap", "orders.order_count": 3},
                                      {"title": "Tee", "orders.order_count": 3}], "tied": True}])
 check("tied names not required", grade.check_numbers(tied, "Hat: 3 orders"), (True, "", []))
 
+# Numbers not from a query: what the tools returned, the question, zero, a scale, rounding.
+def result(*rows, **extra):
+    return json.dumps({"columns": ["x"], "rows": [list(r) for r in rows], "row_count": len(rows), **extra})
+
+
+tools = [result(("shop_us", 26), ("woo_eu", 8)), result(("Knife (KNI-064)", 0.2441)),
+         json.dumps({"name": "commerce", "description": "Repeat orders within 30, 60 or 90 days."}),
+         json.dumps({"error": "Code: 38. Cannot parse date"})]
+spend = entry([rows(26)])
+spend["question"] = "Which customers spent over 5,000?"
+
+
+def unsourced(answer, tool_results=tools, entry_=spend):
+    return grade.unsourced(entry_, answer, tool_results)
+
+
+check("from rows", unsourced("shop_us 26, woo_eu 8"), [])
+check("a total added up", unsourced("shop_us 26, woo_eu 8, 34 in all"), ["34"])
+check("a difference", unsourced("18 more in shop_us"), ["18"])
+check("share as percent", unsourced("a share of 24.4%"), [])
+check("a share worked out", unsourced("76% in shop_us"), ["76%"])
+check("number in a text value", unsourced("Knife (KNI-064)"), [])
+check("count of rows", unsourced("2 stores"), [])
+check("model description", unsourced("within 30, 60 or 90 days"), [])
+check("error gives none", unsourced("code 38"), ["38"])
+check("question's number", unsourced("nobody spent over 5,000"), [])
+check("zero", unsourced("woo_eu: 0 refunds"), [])
+check("sign", unsourced("refunds of −26"), [])
+check("rounded to hundreds", unsourced("about 2,600 minutes", [result((2610,))]), [])
+check("rounded wrong", unsourced("about 2,700 minutes", [result((2610,))]), ["2,700"])
+check("small whole number not rounded", unsourced("about 30 minutes", [result((26,))]), ["30"])
+check("thousands shortened", unsourced("based on 109k visits", [result((109297,))]), [])
+scaled = entry([{"query": {"scale": 0.01}, "rows": [{"air.pressure": 101050}]}])
+check("scale of the expected answer", unsourced("1010.5 hPa", [result((101050,))], scaled), [])
+check("not scaled elsewhere", unsourced("1010.5 hPa", [result((101050,))]), ["1,010.5"])
+check("dates and ranks", unsourced("| 11 | Tee | 26 |\n2026-09, 2026‑11‑09, 11-09 12:29, the 31st, "
+                                   "1–11 Nov, Nov 1–11, Mon 2"), [])
+check("weekday words only", unsourced("Monthly 45, Sunglasses 3, Wednesday 4"), ["45", "3"])
+check("shortened, not a year", unsourced("about 2k visits", [result((2610,))]), ["2,000"])
+check("a date gives no day", unsourced("21 orders", [result(("2026-10-21T00:00:00-04:00", 5))]), ["21"])
+check("text after a line break", unsourced("30 days", [json.dumps({"description": "Repeat orders.\n30 days"})]), [])
+check("model with a clock error", unsourced("30 days", [json.dumps({"description": "Within 30 days",
+                                                                    "error": "ClickHouse: down"})]), [])
+
 # A judge command prints true or false; a string stops the run.
 judge = grade.command_judge("""echo '{"passed": false, "reason": "no period"}'""")
 check("judge command", judge({}), (False, "no period"))
@@ -146,6 +190,20 @@ with tempfile.TemporaryDirectory() as directory:
 check("run exit code", out.returncode, 0)
 check("run verdicts", [json.loads(line)["passed"] for line in out.stdout.splitlines()], [True, None])
 check("run totals", out.stderr.splitlines()[-1] if out.stderr else "", "all: 1 of 1 right, 1 not graded")
+
+# With tool_results: the numbers not from a query, apart from the verdict.
+answers[0].update(answer="5 orders, 7 last week", tool_results=[result((5,))])
+answers[1]["tool_results"] = []
+with tempfile.TemporaryDirectory() as directory:
+    paths = [pathlib.Path(directory, "expected.json"), pathlib.Path(directory, "answers.jsonl")]
+    paths[0].write_text(json.dumps(expected))
+    paths[1].write_text("".join(json.dumps(a) + "\n" for a in answers))
+    out = subprocess.run([sys.executable, str(ROOT / "evals" / "grade.py"), *map(str, paths), "--no-judge"],
+                         capture_output=True, text=True)
+verdicts = [json.loads(line) for line in out.stdout.splitlines()]
+check("sourced verdicts", [(v["passed"], v["not_from_queries"]) for v in verdicts], [(True, ["7"]), (None, [])])
+check("sourced totals", out.stderr.splitlines()[-1] if out.stderr else "",
+      "all: 1 of 1 right, 1 not graded, 1 with numbers not from a query")
 
 for failure in failures:
     print(failure)

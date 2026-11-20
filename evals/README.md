@@ -102,8 +102,14 @@ Give it no other tools if you want to compare runs. Write each final
 answer as a line of JSON:
 
 ```json
-{"id": "net-sales-all-time", "database": "shop", "answer": "The store has made 13,693.68 USD ..."}
+{"id": "net-sales-all-time", "database": "shop", "answer": "The store has made 13,693.68 USD ...",
+ "tool_results": ["{\"columns\": [\"sales_events.net_revenue\"], \"rows\": [[13693.68]], ...}"]}
 ```
+
+`tool_results` may be left out. It holds the text of each tool result
+of the session, in order, as the server returned it; with it, the
+grader also lists the numbers of the answer that come from no query
+([below](#how-an-answer-is-graded)).
 
 The repository ships no program that asks an agent: that is your
 agent's own API.
@@ -150,7 +156,11 @@ or `null` (not graded), and `reasons` says why:
   rubric;
 - `not graded: ...`: the rubric that needed a judge, with `--no-judge`.
 
-Stderr counts the right answers per difficulty.
+With `tool_results`, `not_from_queries` lists the numbers of the answer
+that come from no tool result, whatever the verdict.
+
+Stderr counts the right answers per difficulty and, with
+`tool_results`, the answers with numbers not from a query.
 
 ## How an answer is graded
 
@@ -175,6 +185,22 @@ Stderr counts the right answers per difficulty.
   when the answer states the sum or average over both.
 - **Empty answers.** Where the data has no rows for the question or a
   part of it, the right answer says there are none.
+- **Numbers not from a query.** The server tells the agent to state
+  only numbers its queries return. A number of the answer comes from a
+  query when a tool result of the session gives it at the precision the
+  answer shows: a value or the count of rows of a query's result, a
+  number in one of its text values or in another result (the model's
+  descriptions), by its absolute value, a share as a percentage, times
+  the units of the expected answer. A date or time in a result gives
+  no number, nor does a result that is only an error. A number of the
+  question and zero come from a query too; so does a whole number from
+  1,000 up rounded to its trailing zeros (about 2,600 for 2,610, 109k
+  for 109,297).
+  Besides the numbers that are not values above, a month (2026-09), a
+  date without its year (11-09), a day as an ordinal or in a range
+  (1–11 Nov) and the rank in a table's first column are not values
+  here. A total, difference or share the agent works out, or the hours
+  since a time, is listed; the verdict does not change.
 
 The set checks the agent: the expected answers come from the model, so a wrong definition in it would not show here. The model's
 numbers are checked against numbers derived by hand from the test data
