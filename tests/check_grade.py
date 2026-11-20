@@ -35,6 +35,17 @@ check("thousands", found("Net revenue was 13,693.68 USD."), [13693.68])
 check("sign before currency", found("Net revenue: −$8,807.61"), [-8807.61])
 check("hyphen of a range", found("between 5-10 orders"), [5, 10])
 check("percentage", found("A refund rate of 24.4 %"), [24.4])
+for space in ("\u00a0", "\u202f", "\u2009"):
+    check(f"thousands by U+{ord(space):04X}", found(f"Net revenue was 20{space}907.74 USD."), [20907.74])
+    check(f"U+{ord(space):04X} before a currency sign", found(f"Net revenue: −$1{space}234{space}567.5"), [-1234567.5])
+    check(f"U+{ord(space):04X} with a percent", found(f"A share of 1{space}250.5%"), [1250.5])
+check("plain space parts numbers", found("Tee 3 450 sold"), [3, 450])
+check("no-break space after a group", found("Cap: 12\u00a0orders, 4\u202fcaps"), [12, 4])
+for sep in (",", "\u00a0"):
+    check(f"question's number as the last group by {sep!r}",
+          found(f"Store A: 1{sep}500 orders", "Which stores have more than 500 orders?"), [1500])
+    check(f"day of a month before a group by {sep!r}", found(f"Net revenue in December 1{sep}234.50 USD"), [1234.5])
+    check(f"top N before a group by {sep!r}", found(f"The top 10{sep}000 orders", "the top 10 orders"), [10000])
 
 # Not values: dates, times, years, days of a month, list markers, the question's numbers.
 check("ISO date", found("On 2026-10-03 there were 44 orders"), [44])
