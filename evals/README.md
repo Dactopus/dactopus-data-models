@@ -191,9 +191,11 @@ Stderr counts the right answers per difficulty and, with
   answer shows: a value or the count of rows of a query's result, a
   number in one of its text values or in another result (the model's
   descriptions), by its absolute value, a share as a percentage, times
-  the units of the expected answer. A number of the question and zero
-  come from a query too; so does a whole number from 1,000 up rounded
-  to its trailing zeros (about 2,600 for 2,610, 109k for 109,297).
+  the units of the expected answer. A date or time in a result gives
+  no number, nor does a result that is only an error. A number of the
+  question and zero come from a query too; so does a whole number from
+  1,000 up rounded to its trailing zeros (about 2,600 for 2,610, 109k
+  for 109,297).
   Besides the numbers that are not values above, a month (2026-09), a
   date without its year (11-09), a day as an ordinal or in a range
   (1–11 Nov) and the rank in a table's first column are not values

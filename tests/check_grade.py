@@ -159,6 +159,12 @@ check("scale of the expected answer", unsourced("1010.5 hPa", [result((101050,))
 check("not scaled elsewhere", unsourced("1010.5 hPa", [result((101050,))]), ["1,010.5"])
 check("dates and ranks", unsourced("| 11 | Tee | 26 |\n2026-09, 2026‑11‑09, 11-09 12:29, the 31st, "
                                    "1–11 Nov, Nov 1–11, Mon 2"), [])
+check("weekday words only", unsourced("Monthly 45, Sunglasses 3, Wednesday 4"), ["45", "3"])
+check("shortened, not a year", unsourced("about 2k visits", [result((2610,))]), ["2,000"])
+check("a date gives no day", unsourced("21 orders", [result(("2026-10-21T00:00:00-04:00", 5))]), ["21"])
+check("text after a line break", unsourced("30 days", [json.dumps({"description": "Repeat orders.\n30 days"})]), [])
+check("model with a clock error", unsourced("30 days", [json.dumps({"description": "Within 30 days",
+                                                                    "error": "ClickHouse: down"})]), [])
 
 # A judge command prints true or false; a string stops the run.
 judge = grade.command_judge("""echo '{"passed": false, "reason": "no period"}'""")

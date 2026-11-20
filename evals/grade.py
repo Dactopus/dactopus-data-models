@@ -69,7 +69,8 @@ NOT_SOURCED = [re.compile(p, re.I | re.M) for p in (
     r"\b\d{1,2}(?:st|nd|rd|th)\b",
     MONTH + r"\s+\d{1,2}\s*[–-]\s*\d{1,2}\b" + WHOLE,
     r"\b\d{1,2}\s*[–-]\s*(?=\d{1,2}(?:st|nd|rd|th)?\s+(?:of\s+)?" + MONTH + ")",
-    r"\b(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*\.?\s+\d{1,2}\b" + WHOLE,
+    r"\b(?:Mon(?:day)?|Tue(?:s(?:day)?)?|Wed(?:nesday)?|Thu(?:r(?:s(?:day)?)?)?|Fri(?:day)?"
+    r"|Sat(?:urday)?|Sun(?:day)?)\b\.?\s+\d{1,2}\b" + WHOLE,
     r"^\s*\|\s*\d{1,3}\s*(?=\|)")]
 # A number shortened by thousands or millions: 109k, 1.2M.
 THOUSANDFOLD = re.compile(r"(?<![\w.])(\d+(?:\.\d+)?)([kKM])\b")
@@ -211,28 +212,38 @@ def sources(tool_results):
     """The numbers the tools returned in the session: every value in the rows of a
     query's result and every number in its text values (a SKU, a title), its count of
     rows, and every number in the text of another result, such as the model's
-    descriptions. A result with an error gives none."""
+    descriptions. A date or a time gives none (its day is no value), nor does a result
+    that is only an error."""
     values = []
+
+    def walk(value):
+        if isinstance(value, dict):
+            value = list(value.values())
+        if isinstance(value, list):
+            for item in value:
+                walk(item)
+        elif isinstance(value, (int, float)) and not isinstance(value, bool):
+            values.append(float(value))
+        elif isinstance(value, str):
+            try:
+                values.append(float(value))
+            except ValueError:
+                if not re.fullmatch(r"[\d\-:T+ .]+", value):
+                    values.extend(number for number, _, _ in numbers(value))
+
     for text in tool_results:
         try:
             data = json.loads(text)
         except ValueError:
-            data = None
-        if isinstance(data, dict) and "error" in data:
+            walk(text)
+            continue
+        if isinstance(data, dict) and set(data) == {"error"}:
             continue
         if isinstance(data, dict) and isinstance(data.get("rows"), list):
-            values.append(float(data.get("row_count", len(data["rows"]))))
-            for row in data["rows"]:
-                for value in (row.values() if isinstance(row, dict) else row):
-                    if isinstance(value, (int, float)) and not isinstance(value, bool):
-                        values.append(float(value))
-                    elif isinstance(value, str):
-                        try:
-                            values.append(float(value))
-                        except ValueError:
-                            values += [number for number, _, _ in numbers(value)]
+            values.append(float(data.get("row_count") or len(data["rows"])))
+            walk(data["rows"])
         else:
-            values += [value for value, _, _ in numbers(text)]
+            walk(data)
     return values
 
 
@@ -249,7 +260,7 @@ def unsourced(entry, answer, tool_results):
     text = answer
     for pattern in NOT_SOURCED:
         text = pattern.sub(" ", text)
-    text = THOUSANDFOLD.sub(lambda m: str(round(float(m[1]) * {"k": 1e3, "m": 1e6}[m[2].lower()])), text)
+    text = THOUSANDFOLD.sub(lambda m: f"{round(float(m[1]) * {'k': 1e3, 'm': 1e6}[m[2].lower()]):,}", text)
     for value, decimals, percent in numbers(strip_not_values(text, entry["question"])):
         if value == 0:
             continue
