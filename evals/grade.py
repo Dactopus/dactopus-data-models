@@ -36,8 +36,11 @@ import re
 import subprocess
 import sys
 
-# A number with its sign, which may stand before a currency sign (−$8,807.61).
-NUMBER = re.compile(r"(?<![\w.])([-−]?)(?:[$€£¥]\s?)?(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d+))?\s*(%?)")
+# A number with its sign, which may stand before a currency sign (−$8,807.61). Thousands
+# are grouped by a comma or a no-break, narrow no-break or thin space (20 907.74); a
+# plain space is not a separator, as two numbers in a row may be apart by one.
+THOUSANDS = ",\u00a0\u202f\u2009"
+NUMBER = re.compile(rf"(?<![\w.])([-−]?)(?:[$€£¥]\s?)?(\d{{1,3}}(?:[{THOUSANDS}]\d{{3}})+|\d+)(?:\.(\d+))?\s*(%?)")
 ZERO = re.compile(r"\b(zero|none|nothing)\b", re.I)
 RATIO = re.compile(r"rate|share")
 # A month's name or abbreviation as a whole word ("Dec", not the start of "decreased").
@@ -69,7 +72,7 @@ def numbers(text):
     """The numbers of a text: (value, decimals shown, written as a percentage)."""
     found = []
     for sign, whole, fraction, percent in NUMBER.findall(text):
-        value = float(whole.replace(",", "") + (f".{fraction}" if fraction else ""))
+        value = float(re.sub(f"[{THOUSANDS}]", "", whole) + (f".{fraction}" if fraction else ""))
         found.append((-value if sign else value, len(fraction), bool(percent)))
     return found
 

@@ -154,13 +154,15 @@ Stderr counts the right answers per difficulty.
 
 ## How an answer is graded
 
-- **Numbers.** A right answer states every number of one accepted reading
-  of the question, at the precision it chooses: 107.82 and 108 both state
-  107.818. A share may be written as a percentage. Dates, years, list
-  markers and the question's own numbers ("the last 7 days") do not
-  count as stated values. A zero is stated by 0, zero, none or nothing.
-  Where the question asks in other units than the model keeps (hPa for
-  Pa), the expected value is converted.
+- **Numbers.** A right answer states every number of one accepted
+  reading of the question, at the precision it chooses: 107.82 and 108
+  both state 107.818. Thousands may be grouped by a comma or a no-break,
+  narrow no-break or thin space (20 907.74), not a plain one. A share
+  may be written as a percentage. Dates, years, list markers and the
+  question's own numbers ("the last 7 days") do not count as stated
+  values. A zero is stated by 0, zero, none or nothing. Where the
+  question asks in other units than the model keeps (hPa for Pa), the
+  expected value is converted.
 - **Names.** Text values of the expected answer, such as a product's
   title or a currency's code, must appear as whole words, without regard
   to case, punctuation, a leading article or a URL's scheme. A code may
