@@ -112,6 +112,25 @@ check("empty first reading", grade.check_numbers(entry([EMPTY], [rows(5)]), "5 o
 part = entry([rows(5), {"query": {"metrics": ["refunds.refund_count"]}, "rows": []}])
 check("empty part", grade.check_numbers(part, "5 orders"), (True, "", ["refunds.refund_count"]))
 
+# An expression over metrics comes back under its name: its value is stated, the
+# share as a percentage.
+share = entry([{"query": {"metrics": ["orders.order_count FILTER (WHERE orders.discount_code_count > 0)"
+                                      " / orders.order_count AS discount_code_share"]},
+                "rows": [{"discount_code_share": 0.0806}]}])
+check("expression stated", grade.check_numbers(share, "8.1% of orders used a code"), (True, "", []))
+check("expression missing", grade.check_numbers(share, "37 of 459 orders used a code")[0], False)
+check("expression empty", grade.check_numbers(entry([{"query": share["readings"][0][0]["query"],
+                                                      "rows": [{"discount_code_share": None}]}]), "none"), None)
+
+# A change asked as a rise or a fall: with `unsigned`, its value with or without its sign.
+fall = {"metrics": ["a - b AS revenue_change", "(a - b) / b AS revenue_change_rate"]}
+change = {"query": fall, "rows": [{"revenue_change": -82051.35, "revenue_change_rate": -0.8296}]}
+check("signed change", grade.check_numbers(entry([change]), "−82,051.35 USD, −83%")[0], True)
+check("unsigned change refused", grade.check_numbers(entry([change]), "down 82,051.35 USD, or 83%")[0], False)
+unsigned = {**change, "query": {**fall, "unsigned": True}}
+check("unsigned change", grade.check_numbers(entry([unsigned]), "down 82,051.35 USD, or 83%")[0], True)
+check("unsigned keeps the value", grade.check_numbers(entry([unsigned]), "down 82,051 USD, or 85%")[0], False)
+
 # Forbidden numbers: a sum over two currencies, unless a reading states it too.
 forbidden = entry([rows(100, 200, metric="orders.net_revenue")], forbid=[rows(300, metric="orders.net_revenue")])
 check("forbidden stated", grade.check_numbers(forbidden, "100 USD and 200 EUR, 300 in all")[0], False)

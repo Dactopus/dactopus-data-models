@@ -33,7 +33,8 @@ The difficulties:
 - **absence**: customers who stopped buying, products that never sold,
   sensors that went quiet.
 - **ratio**: a share or a change. Where the model has no metric for it,
-  the agent gives the numbers it has and does not compute the share
+  the agent asks for it as an expression over the model's metrics
+  (dactopus-ossie-clickhouse 0.19 or later) and does not compute it
   itself.
 - **unclear_store**: a store or site named by a word, a currency or a
   platform, or not at all; the agent answers where a label names it and
@@ -168,7 +169,9 @@ Stderr counts the right answers per difficulty and, with
   reading of the question, at the precision it chooses: 107.82 and 108
   both state 107.818. Thousands may be grouped by a comma or a no-break
   (U+00A0), narrow no-break (U+202F) or thin (U+2009) space, not a plain
-  one. A share may be written as a percentage. Dates, years, list
+  one. A share may be written as a percentage, and a change the question
+  asks as a rise or a fall without its sign (down 12%) where its query
+  allows. Dates, years, list
   markers and the question's own numbers ("the last 7 days") do not
   count as stated values. A zero is stated by 0, zero, none or nothing.
   Where the question asks in other units than the model keeps (hPa for
@@ -200,7 +203,9 @@ Stderr counts the right answers per difficulty and, with
   date without its year (11-09), a day as an ordinal or in a range
   (1–11 Nov) and the rank in a table's first column are not values
   here. A total, difference or share the agent works out, or the hours
-  since a time, is listed; the verdict does not change.
+  since a time, is listed; the verdict does not change. Rubrics leave
+  this to the code: a judge sees the answer alone and cannot tell a
+  share the agent worked out from one its query returned.
 
 The set checks the agent: the expected answers come from the model, so a wrong definition in it would not show here. The model's
 numbers are checked against numbers derived by hand from the test data

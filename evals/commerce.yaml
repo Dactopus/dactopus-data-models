@@ -14,13 +14,16 @@
 #   requires   what the deployment's data must hold for the question to test anything
 #   expect     the numbers a right answer states: queries of the model, in the form
 #              of `dactopus-ossie-clickhouse query` (metrics, dimensions, filters,
-#              order, limit). Every metric value of every row must be in the answer,
-#              and every text value of a dimension other than source_id.
+#              order, limit). A metric may be an expression over metrics under its
+#              name (`a / b AS share`), the share or change the executor works out.
+#              Every metric value of every row must be in the answer, and every
+#              text value of a dimension other than source_id.
 #              CURRENT_DATE is the day the agent was asked, in the deployment's zone.
 #              A query with `numbers: false` asks only for its text values, such as
 #              each store's currency; one with `scale` asks for its values times the
 #              scale, such as 0.01 for pressure the model keeps in Pa and the
-#              question asks in hPa.
+#              question asks in hPa; one with `unsigned: true` takes its values with
+#              or without their sign, such as a fall written as "down 12%".
 #              `aliases` maps a text value to other spellings an answer may use
 #              instead, such as Returning for the code repeat. A text value is found
 #              as whole words; a category path also by its last category, where no
@@ -153,8 +156,7 @@ questions:
           dimensions: [orders.currency]
     rubric: >-
       Says that the amounts are already after discounts, so the discounts are not
-      subtracted again. Fails if it subtracts the discount amount from the sales
-      itself.
+      subtracted again. Fails if it subtracts the discount amount from the sales.
 
   - id: items-shipped-and-returned
     type: total
@@ -304,9 +306,7 @@ questions:
           filters: ["orders.order_date >= DATE_TRUNC('YEAR', CURRENT_DATE)", "orders.new_vs_repeat IS NOT NULL"]
           aliases: {new: [first-time, first time, first order], repeat: [returning, second or later]}
     rubric: >-
-      Gives this year's sales from new and from returning customers. Fails if it
-      states a share of the total that it computed itself, or a total that it says
-      it added up itself.
+      Gives this year's sales from new and from returning customers.
 
   - id: category-revenue-last-month
     type: breakdown
@@ -352,10 +352,17 @@ questions:
           filters: ["line_brands.brand IS NOT NULL",
                     "orders.order_date >= DATE_TRUNC('MONTH', CURRENT_DATE) - INTERVAL '2' MONTH",
                     "orders.order_date < DATE_TRUNC('MONTH', CURRENT_DATE)"]
+      # Each brand's growth from the month before to last month.
+      - - metrics: ["(line_brands.brand_revenue FILTER (WHERE orders.order_date >= DATE_TRUNC('MONTH', CURRENT_DATE) - INTERVAL '1' MONTH)
+                     - line_brands.brand_revenue FILTER (WHERE orders.order_date < DATE_TRUNC('MONTH', CURRENT_DATE) - INTERVAL '1' MONTH))
+                     / line_brands.brand_revenue FILTER (WHERE orders.order_date < DATE_TRUNC('MONTH', CURRENT_DATE) - INTERVAL '1' MONTH)
+                     AS brand_growth_rate"]
+          dimensions: [orders.currency, line_brands.brand]
+          filters: ["line_brands.brand IS NOT NULL",
+                    "orders.order_date >= DATE_TRUNC('MONTH', CURRENT_DATE) - INTERVAL '2' MONTH",
+                    "orders.order_date < DATE_TRUNC('MONTH', CURRENT_DATE)"]
     rubric: >-
-      Gives each brand's numbers in the two months and says the model has no metric
-      of growth. Fails if it states a growth rate, a difference or a ratio between
-      the months that it computed itself.
+      Says which brand grew the most, in amount or in percent.
 
   - id: top-categories-by-units-returned
     type: breakdown
@@ -530,8 +537,8 @@ questions:
       Gives the products with the most units sold and those with the most units
       taken back (order_lines.items_returned: by refunds, and at a Shopify store by
       cancellations too), and says that units removed by editing an order are not
-      counted on their own. Fails if it states a number of removed units that it
-      computed itself from two metrics.
+      counted on their own. Fails if it states a number of removed units, such as
+      the difference of two metrics.
 
   - id: first-time-and-returning-buyers-by-month
     type: breakdown
@@ -615,8 +622,8 @@ questions:
     rubric: >-
       Says the model has no value of a customer after a set number of months, and
       gives the average customer value over all their orders, overall or for each
-      first-order month. Fails if it states a value at 3, 6 or 12 months that it
-      computed itself, such as sales divided by a number of customers, or presents a
+      first-order month. Fails if it states a value at 3, 6 or 12 months, such as
+      sales divided by a number of customers, or presents a
       cohort's value to date as its value after 3, 6 or 12 months without saying it
       is not one.
 
@@ -796,8 +803,7 @@ questions:
           filters: ["orders.order_date >= CURRENT_DATE - INTERVAL '3' MONTH"]
     rubric: >-
       Gives each platform's refund rate; it may say which is higher, since a rate
-      has no currency. Fails if it states a difference or a ratio of the two rates
-      that it computed itself.
+      has no currency.
 
   - id: customers-total-two-stores
     type: stores_currencies
@@ -821,8 +827,7 @@ questions:
         filters: ["orders.order_date >= DATE_TRUNC('MONTH', CURRENT_DATE)"]
     rubric: >-
       Names each store by its label (its source_id, such as shop_us or brand_a)
-      with its number of orders. Fails if it states a total that it says it added
-      up itself.
+      with its number of orders.
 
   - id: top-customers-two-currencies
     type: stores_currencies
@@ -1025,15 +1030,10 @@ questions:
     question: How many customers have never used a discount code?
     stores: 1
     expect:
-      - metrics: [orders.buyer_count]
-      - metrics: [order_discount_codes.code_buyer_count]
+      - metrics: ["orders.buyer_count - order_discount_codes.code_buyer_count AS never_used_code"]
     alternatives:
-      - - metrics: [customers.customer_count]
-        - metrics: [order_discount_codes.code_buyer_count]
-    rubric: >-
-      Gives the number of customers and of those who used a code, and says the model
-      has no count of customers who never used one. Fails if it states the
-      difference of the two numbers, computed itself, as the answer.
+      # Every customer of the customers report, those without an order in the sales reports included.
+      - - metrics: ["customers.customer_count - order_discount_codes.code_buyer_count AS never_used_code"]
 
   - id: big-spenders-inactive-two-currencies
     type: absence
@@ -1074,13 +1074,8 @@ questions:
     question: what % of my customers have bought more than once?
     stores: 1
     expect:
-      - metrics: [customers.customer_count]
-      - metrics: [customers.customer_count]
-        filters: ["customers.number_of_orders > 1"]
-    rubric: >-
-      Gives the number of all customers and of those who bought more than once, and
-      says the model has no metric for this share. Fails if it states a percentage it
-      computed itself from the two numbers.
+      - metrics: ["customers.customer_count FILTER (WHERE customers.number_of_orders > 1)
+                   / customers.customer_count AS repeat_customer_share"]
 
   - id: refund-rate-by-product
     type: ratio
@@ -1088,14 +1083,12 @@ questions:
     question: Show me refund rate by product for this year. Anything above 10%?
     stores: 1
     expect:
-      # The products with anything taken back; the others need not be listed.
-      - metrics: [order_lines.line_revenue, order_lines.line_returned_amount]
+      # The products above 10%; an answer may list the others too.
+      - metrics: ["order_lines.line_returned_amount / order_lines.line_revenue AS refund_rate"]
         dimensions: [order_lines.title]
-        filters: ["orders.order_date >= DATE_TRUNC('YEAR', CURRENT_DATE)", "order_lines.line_returned_amount > 0"]
+        filters: ["orders.order_date >= DATE_TRUNC('YEAR', CURRENT_DATE)", "refund_rate > 0.1"]
     rubric: >-
-      Gives each product's revenue and the amount taken back, and says the model has
-      no refund rate per product. Fails if it states rates per product that it
-      computed itself or judges which products are above 10% from such rates.
+      Says which products have a refund rate above 10%, or that none has.
 
   - id: sales-this-month-vs-last
     type: ratio
@@ -1103,13 +1096,38 @@ questions:
     question: How does this month's revenue compare with last month's, in amount and percent?
     stores: 1
     expect:
-      - metrics: [sales_events.net_revenue]
-        dimensions: [orders.currency, sales_events.event_month]
+      - metrics:
+          - "sales_events.net_revenue FILTER (WHERE sales_events.event_date >= DATE_TRUNC('MONTH', CURRENT_DATE))
+             AS this_month"
+          - "sales_events.net_revenue FILTER (WHERE sales_events.event_date < DATE_TRUNC('MONTH', CURRENT_DATE))
+             AS last_month"
+          - "sales_events.net_revenue FILTER (WHERE sales_events.event_date >= DATE_TRUNC('MONTH', CURRENT_DATE))
+             - sales_events.net_revenue FILTER (WHERE sales_events.event_date < DATE_TRUNC('MONTH', CURRENT_DATE))
+             AS revenue_change"
+          - "(sales_events.net_revenue FILTER (WHERE sales_events.event_date >= DATE_TRUNC('MONTH', CURRENT_DATE))
+             - sales_events.net_revenue FILTER (WHERE sales_events.event_date < DATE_TRUNC('MONTH', CURRENT_DATE)))
+             / sales_events.net_revenue FILTER (WHERE sales_events.event_date < DATE_TRUNC('MONTH', CURRENT_DATE))
+             AS revenue_change_rate"
+        dimensions: [orders.currency]
         filters: ["sales_events.event_date >= DATE_TRUNC('MONTH', CURRENT_DATE) - INTERVAL '1' MONTH"]
-    rubric: >-
-      Gives this month's and last month's sales, and says the model gives no change
-      between them. Fails if it states a difference, a percentage or a ratio it
-      computed itself.
+        unsigned: true
+    alternatives:
+      # Against the same days of last month, up to today's date.
+      - - metrics:
+            - "sales_events.net_revenue FILTER (WHERE sales_events.event_date >= DATE_TRUNC('MONTH', CURRENT_DATE))
+               AS this_month"
+            - "sales_events.net_revenue FILTER (WHERE sales_events.event_date < DATE_TRUNC('MONTH', CURRENT_DATE) AND sales_events.event_date <= CURRENT_DATE - INTERVAL '1' MONTH)
+               AS last_month"
+            - "sales_events.net_revenue FILTER (WHERE sales_events.event_date >= DATE_TRUNC('MONTH', CURRENT_DATE))
+               - sales_events.net_revenue FILTER (WHERE sales_events.event_date < DATE_TRUNC('MONTH', CURRENT_DATE) AND sales_events.event_date <= CURRENT_DATE - INTERVAL '1' MONTH)
+               AS revenue_change"
+            - "(sales_events.net_revenue FILTER (WHERE sales_events.event_date >= DATE_TRUNC('MONTH', CURRENT_DATE))
+               - sales_events.net_revenue FILTER (WHERE sales_events.event_date < DATE_TRUNC('MONTH', CURRENT_DATE) AND sales_events.event_date <= CURRENT_DATE - INTERVAL '1' MONTH))
+               / sales_events.net_revenue FILTER (WHERE sales_events.event_date < DATE_TRUNC('MONTH', CURRENT_DATE) AND sales_events.event_date <= CURRENT_DATE - INTERVAL '1' MONTH)
+               AS revenue_change_rate"
+          dimensions: [orders.currency]
+          filters: ["sales_events.event_date >= DATE_TRUNC('MONTH', CURRENT_DATE) - INTERVAL '1' MONTH"]
+          unsigned: true
 
   - id: repeat-order-share-last-month
     type: ratio
@@ -1125,34 +1143,20 @@ questions:
     question: What percentage of my catalogue has ever had a sale?
     stores: 1
     expect:
-      - metrics: [products.product_count]
-      - metrics: [products.product_count]
-        filters: ["products.last_sold_date IS NOT NULL"]
-    rubric: >-
-      Gives the number of products in the catalogue and of those that ever sold, and
-      says the model has no metric for this share. Fails if it states a percentage
-      it computed itself from the two numbers.
+      - metrics: ["products.product_count FILTER (WHERE products.last_sold_date IS NOT NULL)
+                   / products.product_count AS sold_share"]
 
   - id: share-of-revenue-from-repeat-customers
     type: ratio
     question: What share of my revenue comes from repeat customers?
     stores: 1
     expect:
-      - metrics: [sales_events.net_revenue]
-        dimensions: [orders.currency]
-      - metrics: [sales_events.net_revenue]
-        dimensions: [orders.currency]
-        filters: ["orders.new_vs_repeat = 'repeat'"]
+      - metrics: ["sales_events.net_revenue FILTER (WHERE orders.new_vs_repeat = 'repeat')
+                   / sales_events.net_revenue AS repeat_revenue_share"]
     alternatives:
       # All the sales of customers who bought more than once, their first orders included.
-      - - metrics: [sales_events.net_revenue]
-          dimensions: [orders.currency]
-        - metrics: [sales_events.net_revenue]
-          dimensions: [orders.currency]
-          filters: ["customers.number_of_orders > 1"]
-    rubric: >-
-      Gives all sales and the sales from repeat customers, and says the model has no
-      metric for this share. Fails if it states a percentage it computed itself.
+      - - metrics: ["sales_events.net_revenue FILTER (WHERE customers.number_of_orders > 1)
+                     / sales_events.net_revenue AS repeat_revenue_share"]
 
   - id: discount-code-order-share-and-aov
     type: ratio
@@ -1161,19 +1165,14 @@ questions:
       value compare with orders without one?
     stores: 1
     expect:
-      - metrics: [orders.order_count]
-      - metrics: [orders.order_count]
-        filters: ["orders.discount_code_count > 0"]
+      - metrics: ["orders.order_count FILTER (WHERE orders.discount_code_count > 0)
+                   / orders.order_count AS discount_code_share"]
       - metrics: [orders.average_order_value]
         dimensions: [orders.currency]
         filters: ["orders.discount_code_count > 0"]
       - metrics: [orders.average_order_value]
         dimensions: [orders.currency]
         filters: ["orders.discount_code_count = 0"]
-    rubric: >-
-      Gives the number of all orders and of those with a code, and the average order
-      value with and without a code, and says the model has no metric for the share.
-      Fails if it states a percentage, a difference or a ratio it computed itself.
 
   - id: refund-rate-by-country
     type: ratio
@@ -1190,8 +1189,7 @@ questions:
       - metrics: [orders.refund_rate]
     rubric: >-
       Names the shipping country with the highest refund rate and gives the overall
-      rate; the country is where orders ship to. Fails if it states a difference or
-      a ratio of the two rates that it computed itself.
+      rate; the country is where orders ship to.
 
   # Unclear store
   - id: named-store-sales-last-month
@@ -1355,21 +1353,15 @@ questions:
     stores: 2
     requires: [two_platforms]
     expect:
-      - metrics: [orders.all_orders]
+      - metrics: ["orders.all_orders FILTER (WHERE orders.customer_id < 0) / orders.all_orders AS guest_order_share"]
         filters: ["orders.source_id = '{woocommerce_store}'"]
-      - metrics: [orders.all_orders]
-        filters: ["orders.source_id = '{woocommerce_store}'", "orders.customer_id < 0"]
     alternatives:
       # The orders the store's reports count.
-      - - metrics: [orders.order_count]
+      - - metrics: ["orders.order_count FILTER (WHERE orders.customer_id < 0) / orders.order_count AS guest_order_share"]
           filters: ["orders.source_id = '{woocommerce_store}'"]
-        - metrics: [orders.order_count]
-          filters: ["orders.source_id = '{woocommerce_store}'", "orders.customer_id < 0"]
     rubric: >-
       Says guests count as customers, one per email, with a negative id, and that a
-      guest's order whose email has an account counts under that account. Gives the
-      number of orders and of guests' orders, and says the model has no metric for
-      the share. Fails if it states a percentage it computed itself.
+      guest's order whose email has an account counts under that account.
 
   - id: category-and-brand-meaning
     type: counting_rule

@@ -98,11 +98,14 @@ def numbers(text):
     return found
 
 
-def states(text, found, expected, metric):
-    """Whether the answer states the expected value at the precision it shows."""
+def states(text, found, expected, metric, unsigned=False):
+    """Whether the answer states the expected value at the precision it shows; unsigned,
+    with or without its sign (a fall written as "down 12%")."""
     if expected == 0:
         return any(value == 0 for value, _, _ in found) or bool(ZERO.search(text))
     for value, decimals, percent in found:
+        if unsigned and (value < 0) != (expected < 0):
+            value = -value
         tolerance = 0.5 * 10 ** -decimals + 1e-9
         if RATIO.search(metric):
             if percent and abs(value - expected * 100) <= tolerance:
@@ -145,9 +148,19 @@ def names(answer, name, leaves):
     return False
 
 
+# The name an expression over metrics gives its value: the column it comes back as.
+NAMED = re.compile(r"\bAS\s+(\w+)\s*$", re.I)
+
+
+def is_metric(key, query):
+    """Whether a column of the query's rows is a metric's value: a metric of the model
+    (dataset.metric) or an expression over metrics under its name."""
+    return "." in key or any((m := NAMED.search(item)) and m[1] == key for item in query.get("metrics", []))
+
+
 def is_empty(result):
     """A query with no row, or only empty metric values."""
-    return all(v is None for row in result["rows"] for k, v in row.items() if "." in k)
+    return all(v is None for row in result["rows"] for k, v in row.items() if is_metric(k, result["query"]))
 
 
 def describe(query):
@@ -155,19 +168,22 @@ def describe(query):
 
 
 def required(reading):
-    """The metric values a reading's answer must state, and its text values, each with
+    """The metric values a reading's answer must state (metric, value, whether its sign
+    may be left out), and its text values, each with
     the other spellings the query accepts for it (aliases: a code such as US or
     repeat that an answer may write out)."""
     values, texts = [], []
     for result in reading:
         counts = result["query"].get("numbers", True)
+        unsigned = result["query"].get("unsigned", False)
         scale = result["query"].get("scale", 1)
         aliases = result["query"].get("aliases", {})
         for row in result["rows"]:
             for key, value in row.items():
-                if "." in key and isinstance(value, (int, float)) and not isinstance(value, bool):
+                if (is_metric(key, result["query"]) and isinstance(value, (int, float))
+                        and not isinstance(value, bool)):
                     if counts:
-                        values.append((key, float(value) * scale))
+                        values.append((key, float(value) * scale, unsigned))
                 elif (key != "source_id" and not result.get("tied") and isinstance(value, str)
                       and not re.fullmatch(r"[\d\-:T+ .]+", value)):
                     texts.append((value, aliases.get(value, [])))
@@ -187,7 +203,7 @@ def check_numbers(entry, answer):
     misses = []
     for reading in readings:
         values, texts = required([r for r in reading if not is_empty(r)])
-        missing = [f"{m} {v:g}" for m, v in values if not states(text, found, v, m)]
+        missing = [f"{m} {v:g}" for m, v, unsigned in values if not states(text, found, v, m, unsigned)]
         leaves = collections.Counter(value.rsplit(" > ", 1)[-1] for value in {v for v, _ in texts})
         missing += [value for value, aliases in texts if not names(answer, (value, aliases), leaves)]
         if not missing:
@@ -199,8 +215,8 @@ def check_numbers(entry, answer):
             # A reading with no rows: the answer may say there is none.
             return None
         return False, "missing " + " | ".join(", ".join(m) for m in misses), []
-    allowed = [v for reading in entry["readings"] for _, v in required(reading)[0]]
-    forbidden = [(m, v) for m, v in required(entry["forbid"])[0]
+    allowed = [v for reading in entry["readings"] for _, v, _ in required(reading)[0]]
+    forbidden = [(m, v) for m, v, _ in required(entry["forbid"])[0]
                  if v != 0 and not any(math.isclose(v, a, rel_tol=1e-9) for a in allowed)]
     stated = [f"{m} {v:g}" for m, v in forbidden if states(text, found, v, m)]
     if stated:
