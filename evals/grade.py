@@ -100,11 +100,12 @@ def numbers(text):
 
 def states(text, found, expected, metric, unsigned=False):
     """Whether the answer states the expected value at the precision it shows; unsigned,
-    with or without its sign (a fall written as "down 12%")."""
+    a negative value also written without its sign (a fall written as "down 12%"), never
+    a positive one with a minus."""
     if expected == 0:
         return any(value == 0 for value, _, _ in found) or bool(ZERO.search(text))
     for value, decimals, percent in found:
-        if unsigned and (value < 0) != (expected < 0):
+        if unsigned and expected < 0 < value:
             value = -value
         tolerance = 0.5 * 10 ** -decimals + 1e-9
         if RATIO.search(metric):
@@ -284,7 +285,7 @@ def unsourced(entry, answer, tool_results):
         zeros = len(whole) - len(whole.rstrip("0")) if not decimals and abs(value) >= 1000 else 0
         tolerance = 0.5 * 10 ** (zeros - decimals) + 1e-9
         if not any(abs(abs(value) - abs(r * scale)) <= tolerance
-                   or (percent and abs(value - r * scale * 100) <= tolerance)
+                   or (percent and abs(abs(value) - abs(r * scale * 100)) <= tolerance)
                    for r in pool for scale in scales):
             found.append(f"{value:,.{decimals}f}" + ("%" if percent else ""))
     return found

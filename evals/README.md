@@ -45,7 +45,8 @@ The difficulties:
 
 ## Running them
 
-You need dactopus-ossie-clickhouse on the PATH, the models your agent is
+You need dactopus-ossie-clickhouse 0.19.0 or later on the PATH (the
+expected answers ask for shares and changes as expressions), the models your agent is
 served, and the ClickHouse server your packages built into, named by
 `CLICKHOUSE_HOST`, `CLICKHOUSE_PORT` (HTTP), `CLICKHOUSE_USER` and
 `CLICKHOUSE_PASSWORD`.

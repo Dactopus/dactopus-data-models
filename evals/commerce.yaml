@@ -22,8 +22,9 @@
 #              A query with `numbers: false` asks only for its text values, such as
 #              each store's currency; one with `scale` asks for its values times the
 #              scale, such as 0.01 for pressure the model keeps in Pa and the
-#              question asks in hPa; one with `unsigned: true` takes its values with
-#              or without their sign, such as a fall written as "down 12%".
+#              question asks in hPa; one with `unsigned: true` takes a negative value
+#              with or without its sign, such as a fall written as "down 12%" (a
+#              rubric then checks the direction).
 #              `aliases` maps a text value to other spellings an answer may use
 #              instead, such as Returning for the code repeat. A text value is found
 #              as whole words; a category path also by its last category, where no
@@ -1128,6 +1129,9 @@ questions:
           dimensions: [orders.currency]
           filters: ["sales_events.event_date >= DATE_TRUNC('MONTH', CURRENT_DATE) - INTERVAL '1' MONTH"]
           unsigned: true
+    rubric: >-
+      Says whether this month's revenue is above or below last month's, as the two
+      amounts it gives show.
 
   - id: repeat-order-share-last-month
     type: ratio

@@ -130,6 +130,9 @@ check("unsigned change refused", grade.check_numbers(entry([change]), "down 82,0
 unsigned = {**change, "query": {**fall, "unsigned": True}}
 check("unsigned change", grade.check_numbers(entry([unsigned]), "down 82,051.35 USD, or 83%")[0], True)
 check("unsigned keeps the value", grade.check_numbers(entry([unsigned]), "down 82,051 USD, or 85%")[0], False)
+rise = {"query": {**fall, "unsigned": True}, "rows": [{"revenue_change": 82051.35, "revenue_change_rate": 0.8296}]}
+check("unsigned rise", grade.check_numbers(entry([rise]), "up 82,051.35 USD, or 83%")[0], True)
+check("unsigned rise with a minus", grade.check_numbers(entry([rise]), "−82,051.35 USD, −83%")[0], False)
 
 # Forbidden numbers: a sum over two currencies, unless a reading states it too.
 forbidden = entry([rows(100, 200, metric="orders.net_revenue")], forbid=[rows(300, metric="orders.net_revenue")])
@@ -161,6 +164,7 @@ check("from rows", unsourced("shop_us 26, woo_eu 8"), [])
 check("a total added up", unsourced("shop_us 26, woo_eu 8, 34 in all"), ["34"])
 check("a difference", unsourced("18 more in shop_us"), ["18"])
 check("share as percent", unsourced("a share of 24.4%"), [])
+check("a fall as percent", unsourced("down 24.4%", [result((-0.2441,))]), [])
 check("a share worked out", unsourced("76% in shop_us"), ["76%"])
 check("number in a text value", unsourced("Knife (KNI-064)"), [])
 check("count of rows", unsourced("2 stores"), [])
