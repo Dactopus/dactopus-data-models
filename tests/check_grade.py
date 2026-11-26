@@ -186,6 +186,9 @@ check("weekday words only", unsourced("Monthly 45, Sunglasses 3, Wednesday 4"), 
 check("shortened, not a year", unsourced("about 2k visits", [result((2610,))]), ["2,000"])
 check("a date gives no day", unsourced("21 orders", [result(("2026-10-21T00:00:00-04:00", 5))]), ["21"])
 check("text after a line break", unsourced("30 days", [json.dumps({"description": "Repeat orders.\n30 days"})]), [])
+check("length of a period", unsourced("November is only 20 days in; the 89 days before it; a 31-day month"), [])
+check("hours since a time", unsourced("quiet for 31 hours"), ["31"])
+check("code", unsourced('Ran `INTERVAL \'4\' MONTH`:\n```json\n{"limit": 20}\n```\n7 orders'), ["7"])
 check("model with a clock error", unsourced("30 days", [json.dumps({"description": "Within 30 days",
                                                                     "error": "ClickHouse: down"})]), [])
 
@@ -214,7 +217,7 @@ check("run exit code", out.returncode, 0)
 check("run verdicts", [json.loads(line)["passed"] for line in out.stdout.splitlines()], [True, None])
 check("run totals", out.stderr.splitlines()[-1] if out.stderr else "", "all: 1 of 1 right, 1 not graded")
 
-# With tool_results: the numbers not from a query, apart from the verdict.
+# With tool_results: a number not from a query makes the answer wrong.
 answers[0].update(answer="5 orders, 7 last week", tool_results=[result((5,))])
 answers[1]["tool_results"] = []
 with tempfile.TemporaryDirectory() as directory:
@@ -224,9 +227,10 @@ with tempfile.TemporaryDirectory() as directory:
     out = subprocess.run([sys.executable, str(ROOT / "evals" / "grade.py"), *map(str, paths), "--no-judge"],
                          capture_output=True, text=True)
 verdicts = [json.loads(line) for line in out.stdout.splitlines()]
-check("sourced verdicts", [(v["passed"], v["not_from_queries"]) for v in verdicts], [(True, ["7"]), (None, [])])
+check("sourced verdicts", [(v["passed"], v["reasons"], v["not_from_queries"]) for v in verdicts],
+      [(False, ["not from a query 7"], ["7"]), (None, ["not graded: needs a judge for: Asks which store is meant."], [])])
 check("sourced totals", out.stderr.splitlines()[-1] if out.stderr else "",
-      "all: 1 of 1 right, 1 not graded, 1 with numbers not from a query")
+      "all: 0 of 1 right, 1 not graded, 1 wrong for numbers not from a query")
 
 for failure in failures:
     print(failure)

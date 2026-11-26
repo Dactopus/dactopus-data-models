@@ -108,10 +108,11 @@ answer as a line of JSON:
  "tool_results": ["{\"columns\": [\"sales_events.net_revenue\"], \"rows\": [[13693.68]], ...}"]}
 ```
 
-`tool_results` may be left out. It holds the text of each tool result
-of the session, in order, as the server returned it; with it, the
-grader also lists the numbers of the answer that come from no query
-([below](#how-an-answer-is-graded)).
+`tool_results` holds the text of each tool result of the session, in
+order, as the server returned it. With it, an answer that states a
+number no query returned is wrong
+([below](#how-an-answer-is-graded)); without it, that is not checked,
+and runs with and without it do not compare.
 
 The repository ships no program that asks an agent: that is your
 agent's own API.
@@ -154,15 +155,17 @@ or `null` (not graded), and `reasons` says why:
   is not in it, listed for each accepted reading;
 - `states forbidden <metric> <value>`: the answer states a number it
   must not, such as a sum over two currencies;
+- `not from a query <value>`: with `tool_results`, a number of the
+  answer that no tool result gives;
 - `rubric: ...`: the reviewing model's reason the answer fails its
   rubric;
 - `not graded: ...`: the rubric that needed a judge, with `--no-judge`.
 
 With `tool_results`, `not_from_queries` lists the numbers of the answer
-that come from no tool result, whatever the verdict.
+that come from no tool result.
 
 Stderr counts the right answers per difficulty and, with
-`tool_results`, the answers with numbers not from a query.
+`tool_results`, the answers wrong for numbers not from a query.
 
 ## How an answer is graded
 
@@ -190,7 +193,11 @@ Stderr counts the right answers per difficulty and, with
 - **Empty answers.** Where the data has no rows for the question or a
   part of it, the right answer says there are none.
 - **Numbers not from a query.** The server tells the agent to state
-  only numbers its queries return. A number of the answer comes from a
+  only numbers its queries return, and with `tool_results` an answer
+  that states another is wrong, even where the number is right: the
+  model does not stand behind a sum, difference or share the agent works
+  out (a sum over categories counts a product in two of them twice).
+  A number of the answer comes from a
   query when a tool result of the session gives it at the precision the
   answer shows: a value or the count of rows of a query's result, a
   number in one of its text values or in another result (the model's
@@ -202,11 +209,13 @@ Stderr counts the right answers per difficulty and, with
   for 109,297).
   Besides the numbers that are not values above, a month (2026-09), a
   date without its year (11-09), a day as an ordinal or in a range
-  (1–11 Nov) and the rank in a table's first column are not values
-  here. A total, difference or share the agent works out, or the hours
-  since a time, is listed; the verdict does not change. Rubrics leave
-  this to the code: a judge sees the answer alone and cannot tell a
-  share the agent worked out from one its query returned.
+  (1–11 Nov), the length of a period (20 days, a 31-day month), a
+  number in code (a query the agent shows) and the rank in a table's
+  first column are not values here. A total, difference or share the
+  agent works out, a count of rows it counts itself, or the hours since
+  a time, is not from a query. Rubrics leave this to the code: a judge
+  sees the answer alone and cannot tell a share the agent worked out
+  from one its query returned.
 
 The set checks the agent: the expected answers come from the model, so a wrong definition in it would not show here. The model's
 numbers are checked against numbers derived by hand from the test data

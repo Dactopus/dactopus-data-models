@@ -9,12 +9,13 @@ answers.jsonl holds one JSON object per line: {"id": ..., "database": ..., "answ
 the question's id and database as in expected.json and the agent's final answer as text.
 An optional "tool_results", the text of each tool result of the session, adds to each
 verdict "not_from_queries": the answer's numbers that no tool result gives (unsourced()).
-The verdict does not depend on it.
+An answer with any such number is wrong.
 
 An answer is right when it states every number of one reading of the question (and
 every text value, such as a product's title or a currency's code, as whole words or as
-an alias the query gives), states no number
-the question forbids, and, where the question has a rubric, a reviewing model finds
+an alias the query gives), states no number the question forbids, with tool_results
+states no number that comes from no query, and, where the question has a rubric, a
+reviewing model finds
 that it does what the rubric says. A number is found at the precision the answer
 shows it: 107.82 and 108 both state 107.8181...; a share of 0.244 may be written as
 24.4%. Where every query of a reading is empty and the answer states no reading with
@@ -71,7 +72,11 @@ NOT_SOURCED = [re.compile(p, re.I | re.M) for p in (
     r"\b\d{1,2}\s*[–-]\s*(?=\d{1,2}(?:st|nd|rd|th)?\s+(?:of\s+)?" + MONTH + ")",
     r"\b(?:Mon(?:day)?|Tue(?:s(?:day)?)?|Wed(?:nesday)?|Thu(?:r(?:s(?:day)?)?)?|Fri(?:day)?"
     r"|Sat(?:urday)?|Sun(?:day)?)\b\.?\s+\d{1,2}\b" + WHOLE,
-    r"^\s*\|\s*\d{1,3}\s*(?=\|)")]
+    r"^\s*\|\s*\d{1,3}\s*(?=\|)",
+    # The length of a period: "only 20 days in", "the 89 days before it", "12 months".
+    r"\b\d+(?:\s+|-)(?:days?|weeks?|months?|years?)\b")]
+# Code: a query the agent shows ("limit": 20, INTERVAL '4' MONTH), no stated value.
+CODE = re.compile(r"```.*?```|`[^`\n]*`", re.S)
 # A number shortened by thousands or millions: 109k, 1.2M.
 THOUSANDFOLD = re.compile(r"(?<![\w.])(\d+(?:\.\d+)?)([kKM])\b")
 DEFAULT_IF_EMPTY = "Says there is none: no such rows, or zero."
@@ -268,13 +273,13 @@ def unsourced(entry, answer, tool_results):
     """The numbers of an answer that come from no tool result of its session: not a
     value of a result at the precision the answer shows (by its absolute value, a share
     as a percentage, times a scale of the expected answer, such as hPa from Pa), nor a
-    number of the question, nor zero (a store without a row has zero). From 1,000 up, a
-    whole number's trailing zeros are rounding: about 2,600 states 2,610, and 109k states
-    109,297."""
+    number of the question, nor zero (a store without a row has zero), nor the length of
+    a period (20 days) or a number in code. From 1,000 up, a whole number's trailing
+    zeros are rounding: about 2,600 states 2,610, and 109k states 109,297."""
     pool = sources(tool_results) + [value for value, _, _ in numbers(entry["question"])]
     scales = {1} | {r["query"].get("scale", 1) for reading in entry["readings"] for r in reading}
     found = []
-    text = answer
+    text = CODE.sub(" ", answer)
     for pattern in NOT_SOURCED:
         text = pattern.sub(" ", text)
     text = THOUSANDFOLD.sub(lambda m: f"{round(float(m[1]) * {'k': 1e3, 'm': 1e6}[m[2].lower()]):,}", text)
@@ -366,6 +371,15 @@ def main():
             # Part of the answer has no rows: that part must say so.
             criteria.append(entry.get("if_empty") or
                             "For " + "; and for ".join(result[2]) + ": says there is none, or zero.")
+        if "tool_results" in item:
+            sourced = True
+            verdict["not_from_queries"] = unsourced(entry, answer, item["tool_results"] or [])
+            if verdict["not_from_queries"]:
+                # A number the agent worked out itself, or one it made up: the model does
+                # not stand behind it, right or wrong. No judge is asked.
+                verdict["passed"] = False
+                verdict["reasons"].append("not from a query " + ", ".join(verdict["not_from_queries"]))
+                totals[entry["type"]][3] += 1
         criterion = " ".join(criteria)
         if criterion and verdict["passed"]:
             if args.no_judge:
@@ -381,17 +395,13 @@ def main():
                 passed, reason = judge(task)
                 verdict["passed"] = passed
                 verdict["reasons"].append(("" if passed else "rubric: ") + reason)
-        if "tool_results" in item:
-            sourced = True
-            verdict["not_from_queries"] = unsourced(entry, answer, item["tool_results"] or [])
-            totals[entry["type"]][3] += bool(verdict["not_from_queries"])
         column = {True: 0, False: 1, None: 2}[verdict["passed"]]
         totals[entry["type"]][column] += 1
         print(json.dumps(verdict, ensure_ascii=False), flush=True)
 
     def line(name, right, wrong, open_, unsourced_):
         rest = f", {open_} not graded" if open_ else ""
-        rest += f", {unsourced_} with numbers not from a query" if sourced else ""
+        rest += f", {unsourced_} wrong for numbers not from a query" if sourced else ""
         print(f"{name}: {right} of {right + wrong} right{rest}", file=sys.stderr)
     for kind, counts in sorted(totals.items()):
         line(kind, *counts)
