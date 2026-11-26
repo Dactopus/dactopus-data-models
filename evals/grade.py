@@ -73,8 +73,9 @@ NOT_SOURCED = [re.compile(p, re.I | re.M) for p in (
     r"\b(?:Mon(?:day)?|Tue(?:s(?:day)?)?|Wed(?:nesday)?|Thu(?:r(?:s(?:day)?)?)?|Fri(?:day)?"
     r"|Sat(?:urday)?|Sun(?:day)?)\b\.?\s+\d{1,2}\b" + WHOLE,
     r"^\s*\|\s*\d{1,3}\s*(?=\|)",
-    # The length of a period: "only 20 days in", "the 89 days before it", "12 months".
-    r"\b\d+(?:\s+|-)(?:days?|weeks?|months?|years?)\b")]
+    # The length of a period, a whole number: "only 20 days in", "the 89 days before it",
+    # "12 months". A number with decimals or grouped thousands (23.6 days) is a value.
+    APART + r"\d+(?:\s+|-)(?:days?|weeks?|months?|years?)\b")]
 # Code: a query the agent shows ("limit": 20, INTERVAL '4' MONTH), no stated value.
 CODE = re.compile(r"```.*?```|`[^`\n]*`", re.S)
 # A number shortened by thousands or millions: 109k, 1.2M.
@@ -274,8 +275,9 @@ def unsourced(entry, answer, tool_results):
     value of a result at the precision the answer shows (by its absolute value, a share
     as a percentage, times a scale of the expected answer, such as hPa from Pa), nor a
     number of the question, nor zero (a store without a row has zero), nor the length of
-    a period (20 days) or a number in code. From 1,000 up, a whole number's trailing
-    zeros are rounding: about 2,600 states 2,610, and 109k states 109,297."""
+    a period in whole days, weeks, months or years (20 days) or a number in code. From
+    1,000 up, a whole number's trailing zeros are rounding: about 2,600 states 2,610, and
+    109k states 109,297."""
     pool = sources(tool_results) + [value for value, _, _ in numbers(entry["question"])]
     scales = {1} | {r["query"].get("scale", 1) for reading in entry["readings"] for r in reading}
     found = []

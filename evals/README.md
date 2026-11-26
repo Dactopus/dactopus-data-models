@@ -209,9 +209,10 @@ Stderr counts the right answers per difficulty and, with
   for 109,297).
   Besides the numbers that are not values above, a month (2026-09), a
   date without its year (11-09), a day as an ordinal or in a range
-  (1–11 Nov), the length of a period (20 days, a 31-day month), a
-  number in code (a query the agent shows) and the rank in a table's
-  first column are not values here. A total, difference or share the
+  (1–11 Nov), the length of a period in whole days, weeks, months or
+  years (20 days, a 31-day month; 23.6 days is a value), a number in
+  code (a query the agent shows) and the rank in a table's first column
+  are not values here. A total, difference or share the
   agent works out, a count of rows it counts itself, or the hours since
   a time, is not from a query. Rubrics leave this to the code: a judge
   sees the answer alone and cannot tell a share the agent worked out

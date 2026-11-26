@@ -187,6 +187,9 @@ check("shortened, not a year", unsourced("about 2k visits", [result((2610,))]), 
 check("a date gives no day", unsourced("21 orders", [result(("2026-10-21T00:00:00-04:00", 5))]), ["21"])
 check("text after a line break", unsourced("30 days", [json.dumps({"description": "Repeat orders.\n30 days"})]), [])
 check("length of a period", unsourced("November is only 20 days in; the 89 days before it; a 31-day month"), [])
+check("days with decimals, from a query", unsourced("On average 23.6 days.", [result((23.6,))]), [])
+check("days with decimals, worked out", unsourced("On average 23.6 days.", [result((20,))]), ["23.6"])
+check("days in thousands", unsourced("open for 1,250 days", [result((20,))]), ["1,250"])
 check("hours since a time", unsourced("quiet for 31 hours"), ["31"])
 check("code", unsourced('Ran `INTERVAL \'4\' MONTH`:\n```json\n{"limit": 20}\n```\n7 orders'), ["7"])
 check("model with a clock error", unsourced("30 days", [json.dumps({"description": "Within 30 days",

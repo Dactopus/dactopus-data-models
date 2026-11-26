@@ -15,7 +15,8 @@
 #   expect     the numbers a right answer states: queries of the model, in the form
 #              of `dactopus-ossie-clickhouse query` (metrics, dimensions, filters,
 #              order, limit). A metric may be an expression over metrics under its
-#              name (`a / b AS share`), the share or change the executor works out.
+#              name (`a / b AS share`), the share or change the executor works out;
+#              a name with `share` or `rate` in it may be answered as a percentage.
 #              Every metric value of every row must be in the answer, and every
 #              text value of a dimension other than source_id.
 #              CURRENT_DATE is the day the agent was asked, in the deployment's zone.
@@ -362,6 +363,8 @@ questions:
           filters: ["line_brands.brand IS NOT NULL",
                     "orders.order_date >= DATE_TRUNC('MONTH', CURRENT_DATE) - INTERVAL '2' MONTH",
                     "orders.order_date < DATE_TRUNC('MONTH', CURRENT_DATE)"]
+          # A brand that fell may be written as "fell 44%".
+          unsigned: true
     rubric: >-
       Says which brand grew the most, in amount or in percent.
 
