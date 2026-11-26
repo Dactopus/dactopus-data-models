@@ -112,6 +112,28 @@ check("empty first reading", grade.check_numbers(entry([EMPTY], [rows(5)]), "5 o
 part = entry([rows(5), {"query": {"metrics": ["refunds.refund_count"]}, "rows": []}])
 check("empty part", grade.check_numbers(part, "5 orders"), (True, "", ["refunds.refund_count"]))
 
+# An expression over metrics comes back under its name: its value is stated, the
+# share as a percentage.
+share = entry([{"query": {"metrics": ["orders.order_count FILTER (WHERE orders.discount_code_count > 0)"
+                                      " / orders.order_count AS discount_code_share"]},
+                "rows": [{"discount_code_share": 0.0806}]}])
+check("expression stated", grade.check_numbers(share, "8.1% of orders used a code"), (True, "", []))
+check("expression missing", grade.check_numbers(share, "37 of 459 orders used a code")[0], False)
+check("expression empty", grade.check_numbers(entry([{"query": share["readings"][0][0]["query"],
+                                                      "rows": [{"discount_code_share": None}]}]), "none"), None)
+
+# A change asked as a rise or a fall: with `unsigned`, its value with or without its sign.
+fall = {"metrics": ["a - b AS revenue_change", "(a - b) / b AS revenue_change_rate"]}
+change = {"query": fall, "rows": [{"revenue_change": -82051.35, "revenue_change_rate": -0.8296}]}
+check("signed change", grade.check_numbers(entry([change]), "−82,051.35 USD, −83%")[0], True)
+check("unsigned change refused", grade.check_numbers(entry([change]), "down 82,051.35 USD, or 83%")[0], False)
+unsigned = {**change, "query": {**fall, "unsigned": True}}
+check("unsigned change", grade.check_numbers(entry([unsigned]), "down 82,051.35 USD, or 83%")[0], True)
+check("unsigned keeps the value", grade.check_numbers(entry([unsigned]), "down 82,051 USD, or 85%")[0], False)
+rise = {"query": {**fall, "unsigned": True}, "rows": [{"revenue_change": 82051.35, "revenue_change_rate": 0.8296}]}
+check("unsigned rise", grade.check_numbers(entry([rise]), "up 82,051.35 USD, or 83%")[0], True)
+check("unsigned rise with a minus", grade.check_numbers(entry([rise]), "−82,051.35 USD, −83%")[0], False)
+
 # Forbidden numbers: a sum over two currencies, unless a reading states it too.
 forbidden = entry([rows(100, 200, metric="orders.net_revenue")], forbid=[rows(300, metric="orders.net_revenue")])
 check("forbidden stated", grade.check_numbers(forbidden, "100 USD and 200 EUR, 300 in all")[0], False)
@@ -142,6 +164,7 @@ check("from rows", unsourced("shop_us 26, woo_eu 8"), [])
 check("a total added up", unsourced("shop_us 26, woo_eu 8, 34 in all"), ["34"])
 check("a difference", unsourced("18 more in shop_us"), ["18"])
 check("share as percent", unsourced("a share of 24.4%"), [])
+check("a fall as percent", unsourced("down 24.4%", [result((-0.2441,))]), [])
 check("a share worked out", unsourced("76% in shop_us"), ["76%"])
 check("number in a text value", unsourced("Knife (KNI-064)"), [])
 check("count of rows", unsourced("2 stores"), [])
@@ -163,6 +186,12 @@ check("weekday words only", unsourced("Monthly 45, Sunglasses 3, Wednesday 4"), 
 check("shortened, not a year", unsourced("about 2k visits", [result((2610,))]), ["2,000"])
 check("a date gives no day", unsourced("21 orders", [result(("2026-10-21T00:00:00-04:00", 5))]), ["21"])
 check("text after a line break", unsourced("30 days", [json.dumps({"description": "Repeat orders.\n30 days"})]), [])
+check("length of a period", unsourced("November is only 20 days in; the 89 days before it; a 31-day month"), [])
+check("days with decimals, from a query", unsourced("On average 23.6 days.", [result((23.6,))]), [])
+check("days with decimals, worked out", unsourced("On average 23.6 days.", [result((20,))]), ["23.6"])
+check("days in thousands", unsourced("open for 1,250 days", [result((20,))]), ["1,250"])
+check("hours since a time", unsourced("quiet for 31 hours"), ["31"])
+check("code", unsourced('Ran `INTERVAL \'4\' MONTH`:\n```json\n{"limit": 20}\n```\n7 orders'), ["7"])
 check("model with a clock error", unsourced("30 days", [json.dumps({"description": "Within 30 days",
                                                                     "error": "ClickHouse: down"})]), [])
 
@@ -191,7 +220,7 @@ check("run exit code", out.returncode, 0)
 check("run verdicts", [json.loads(line)["passed"] for line in out.stdout.splitlines()], [True, None])
 check("run totals", out.stderr.splitlines()[-1] if out.stderr else "", "all: 1 of 1 right, 1 not graded")
 
-# With tool_results: the numbers not from a query, apart from the verdict.
+# With tool_results: a number not from a query makes the answer wrong.
 answers[0].update(answer="5 orders, 7 last week", tool_results=[result((5,))])
 answers[1]["tool_results"] = []
 with tempfile.TemporaryDirectory() as directory:
@@ -201,9 +230,10 @@ with tempfile.TemporaryDirectory() as directory:
     out = subprocess.run([sys.executable, str(ROOT / "evals" / "grade.py"), *map(str, paths), "--no-judge"],
                          capture_output=True, text=True)
 verdicts = [json.loads(line) for line in out.stdout.splitlines()]
-check("sourced verdicts", [(v["passed"], v["not_from_queries"]) for v in verdicts], [(True, ["7"]), (None, [])])
+check("sourced verdicts", [(v["passed"], v["reasons"], v["not_from_queries"]) for v in verdicts],
+      [(False, ["not from a query 7"], ["7"]), (None, ["not graded: needs a judge for: Asks which store is meant."], [])])
 check("sourced totals", out.stderr.splitlines()[-1] if out.stderr else "",
-      "all: 1 of 1 right, 1 not graded, 1 with numbers not from a query")
+      "all: 0 of 1 right, 1 not graded, 1 wrong for numbers not from a query")
 
 for failure in failures:
     print(failure)

@@ -9,12 +9,13 @@ answers.jsonl holds one JSON object per line: {"id": ..., "database": ..., "answ
 the question's id and database as in expected.json and the agent's final answer as text.
 An optional "tool_results", the text of each tool result of the session, adds to each
 verdict "not_from_queries": the answer's numbers that no tool result gives (unsourced()).
-The verdict does not depend on it.
+An answer with any such number is wrong.
 
 An answer is right when it states every number of one reading of the question (and
 every text value, such as a product's title or a currency's code, as whole words or as
-an alias the query gives), states no number
-the question forbids, and, where the question has a rubric, a reviewing model finds
+an alias the query gives), states no number the question forbids, with tool_results
+states no number that comes from no query, and, where the question has a rubric, a
+reviewing model finds
 that it does what the rubric says. A number is found at the precision the answer
 shows it: 107.82 and 108 both state 107.8181...; a share of 0.244 may be written as
 24.4%. Where every query of a reading is empty and the answer states no reading with
@@ -71,7 +72,12 @@ NOT_SOURCED = [re.compile(p, re.I | re.M) for p in (
     r"\b\d{1,2}\s*[–-]\s*(?=\d{1,2}(?:st|nd|rd|th)?\s+(?:of\s+)?" + MONTH + ")",
     r"\b(?:Mon(?:day)?|Tue(?:s(?:day)?)?|Wed(?:nesday)?|Thu(?:r(?:s(?:day)?)?)?|Fri(?:day)?"
     r"|Sat(?:urday)?|Sun(?:day)?)\b\.?\s+\d{1,2}\b" + WHOLE,
-    r"^\s*\|\s*\d{1,3}\s*(?=\|)")]
+    r"^\s*\|\s*\d{1,3}\s*(?=\|)",
+    # The length of a period, a whole number: "only 20 days in", "the 89 days before it",
+    # "12 months". A number with decimals or grouped thousands (23.6 days) is a value.
+    APART + r"\d+(?:\s+|-)(?:days?|weeks?|months?|years?)\b")]
+# Code: a query the agent shows ("limit": 20, INTERVAL '4' MONTH), no stated value.
+CODE = re.compile(r"```.*?```|`[^`\n]*`", re.S)
 # A number shortened by thousands or millions: 109k, 1.2M.
 THOUSANDFOLD = re.compile(r"(?<![\w.])(\d+(?:\.\d+)?)([kKM])\b")
 DEFAULT_IF_EMPTY = "Says there is none: no such rows, or zero."
@@ -98,11 +104,15 @@ def numbers(text):
     return found
 
 
-def states(text, found, expected, metric):
-    """Whether the answer states the expected value at the precision it shows."""
+def states(text, found, expected, metric, unsigned=False):
+    """Whether the answer states the expected value at the precision it shows; unsigned,
+    a negative value also written without its sign (a fall written as "down 12%"), never
+    a positive one with a minus."""
     if expected == 0:
         return any(value == 0 for value, _, _ in found) or bool(ZERO.search(text))
     for value, decimals, percent in found:
+        if unsigned and expected < 0 < value:
+            value = -value
         tolerance = 0.5 * 10 ** -decimals + 1e-9
         if RATIO.search(metric):
             if percent and abs(value - expected * 100) <= tolerance:
@@ -145,9 +155,19 @@ def names(answer, name, leaves):
     return False
 
 
+# The name an expression over metrics gives its value: the column it comes back as.
+NAMED = re.compile(r"\bAS\s+(\w+)\s*$", re.I)
+
+
+def is_metric(key, query):
+    """Whether a column of the query's rows is a metric's value: a metric of the model
+    (dataset.metric) or an expression over metrics under its name."""
+    return "." in key or any((m := NAMED.search(item)) and m[1] == key for item in query.get("metrics", []))
+
+
 def is_empty(result):
     """A query with no row, or only empty metric values."""
-    return all(v is None for row in result["rows"] for k, v in row.items() if "." in k)
+    return all(v is None for row in result["rows"] for k, v in row.items() if is_metric(k, result["query"]))
 
 
 def describe(query):
@@ -155,19 +175,22 @@ def describe(query):
 
 
 def required(reading):
-    """The metric values a reading's answer must state, and its text values, each with
+    """The metric values a reading's answer must state (metric, value, whether its sign
+    may be left out), and its text values, each with
     the other spellings the query accepts for it (aliases: a code such as US or
     repeat that an answer may write out)."""
     values, texts = [], []
     for result in reading:
         counts = result["query"].get("numbers", True)
+        unsigned = result["query"].get("unsigned", False)
         scale = result["query"].get("scale", 1)
         aliases = result["query"].get("aliases", {})
         for row in result["rows"]:
             for key, value in row.items():
-                if "." in key and isinstance(value, (int, float)) and not isinstance(value, bool):
+                if (is_metric(key, result["query"]) and isinstance(value, (int, float))
+                        and not isinstance(value, bool)):
                     if counts:
-                        values.append((key, float(value) * scale))
+                        values.append((key, float(value) * scale, unsigned))
                 elif (key != "source_id" and not result.get("tied") and isinstance(value, str)
                       and not re.fullmatch(r"[\d\-:T+ .]+", value)):
                     texts.append((value, aliases.get(value, [])))
@@ -187,7 +210,7 @@ def check_numbers(entry, answer):
     misses = []
     for reading in readings:
         values, texts = required([r for r in reading if not is_empty(r)])
-        missing = [f"{m} {v:g}" for m, v in values if not states(text, found, v, m)]
+        missing = [f"{m} {v:g}" for m, v, unsigned in values if not states(text, found, v, m, unsigned)]
         leaves = collections.Counter(value.rsplit(" > ", 1)[-1] for value in {v for v, _ in texts})
         missing += [value for value, aliases in texts if not names(answer, (value, aliases), leaves)]
         if not missing:
@@ -199,8 +222,8 @@ def check_numbers(entry, answer):
             # A reading with no rows: the answer may say there is none.
             return None
         return False, "missing " + " | ".join(", ".join(m) for m in misses), []
-    allowed = [v for reading in entry["readings"] for _, v in required(reading)[0]]
-    forbidden = [(m, v) for m, v in required(entry["forbid"])[0]
+    allowed = [v for reading in entry["readings"] for _, v, _ in required(reading)[0]]
+    forbidden = [(m, v) for m, v, _ in required(entry["forbid"])[0]
                  if v != 0 and not any(math.isclose(v, a, rel_tol=1e-9) for a in allowed)]
     stated = [f"{m} {v:g}" for m, v in forbidden if states(text, found, v, m)]
     if stated:
@@ -251,13 +274,14 @@ def unsourced(entry, answer, tool_results):
     """The numbers of an answer that come from no tool result of its session: not a
     value of a result at the precision the answer shows (by its absolute value, a share
     as a percentage, times a scale of the expected answer, such as hPa from Pa), nor a
-    number of the question, nor zero (a store without a row has zero). From 1,000 up, a
-    whole number's trailing zeros are rounding: about 2,600 states 2,610, and 109k states
-    109,297."""
+    number of the question, nor zero (a store without a row has zero), nor the length of
+    a period in whole days, weeks, months or years (20 days) or a number in code. From
+    1,000 up, a whole number's trailing zeros are rounding: about 2,600 states 2,610, and
+    109k states 109,297."""
     pool = sources(tool_results) + [value for value, _, _ in numbers(entry["question"])]
     scales = {1} | {r["query"].get("scale", 1) for reading in entry["readings"] for r in reading}
     found = []
-    text = answer
+    text = CODE.sub(" ", answer)
     for pattern in NOT_SOURCED:
         text = pattern.sub(" ", text)
     text = THOUSANDFOLD.sub(lambda m: f"{round(float(m[1]) * {'k': 1e3, 'm': 1e6}[m[2].lower()]):,}", text)
@@ -268,7 +292,7 @@ def unsourced(entry, answer, tool_results):
         zeros = len(whole) - len(whole.rstrip("0")) if not decimals and abs(value) >= 1000 else 0
         tolerance = 0.5 * 10 ** (zeros - decimals) + 1e-9
         if not any(abs(abs(value) - abs(r * scale)) <= tolerance
-                   or (percent and abs(value - r * scale * 100) <= tolerance)
+                   or (percent and abs(abs(value) - abs(r * scale * 100)) <= tolerance)
                    for r in pool for scale in scales):
             found.append(f"{value:,.{decimals}f}" + ("%" if percent else ""))
     return found
@@ -349,6 +373,15 @@ def main():
             # Part of the answer has no rows: that part must say so.
             criteria.append(entry.get("if_empty") or
                             "For " + "; and for ".join(result[2]) + ": says there is none, or zero.")
+        if "tool_results" in item:
+            sourced = True
+            verdict["not_from_queries"] = unsourced(entry, answer, item["tool_results"] or [])
+            if verdict["not_from_queries"]:
+                # A number the agent worked out itself, or one it made up: the model does
+                # not stand behind it, right or wrong. No judge is asked.
+                verdict["passed"] = False
+                verdict["reasons"].append("not from a query " + ", ".join(verdict["not_from_queries"]))
+                totals[entry["type"]][3] += 1
         criterion = " ".join(criteria)
         if criterion and verdict["passed"]:
             if args.no_judge:
@@ -364,17 +397,13 @@ def main():
                 passed, reason = judge(task)
                 verdict["passed"] = passed
                 verdict["reasons"].append(("" if passed else "rubric: ") + reason)
-        if "tool_results" in item:
-            sourced = True
-            verdict["not_from_queries"] = unsourced(entry, answer, item["tool_results"] or [])
-            totals[entry["type"]][3] += bool(verdict["not_from_queries"])
         column = {True: 0, False: 1, None: 2}[verdict["passed"]]
         totals[entry["type"]][column] += 1
         print(json.dumps(verdict, ensure_ascii=False), flush=True)
 
     def line(name, right, wrong, open_, unsourced_):
         rest = f", {open_} not graded" if open_ else ""
-        rest += f", {unsourced_} with numbers not from a query" if sourced else ""
+        rest += f", {unsourced_} wrong for numbers not from a query" if sourced else ""
         print(f"{name}: {right} of {right + wrong} right{rest}", file=sys.stderr)
     for kind, counts in sorted(totals.items()):
         line(kind, *counts)

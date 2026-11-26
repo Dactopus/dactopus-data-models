@@ -33,7 +33,8 @@ The difficulties:
 - **absence**: customers who stopped buying, products that never sold,
   sensors that went quiet.
 - **ratio**: a share or a change. Where the model has no metric for it,
-  the agent gives the numbers it has and does not compute the share
+  the agent asks for it as an expression over the model's metrics
+  (dactopus-ossie-clickhouse 0.19 or later) and does not compute it
   itself.
 - **unclear_store**: a store or site named by a word, a currency or a
   platform, or not at all; the agent answers where a label names it and
@@ -44,7 +45,8 @@ The difficulties:
 
 ## Running them
 
-You need dactopus-ossie-clickhouse on the PATH, the models your agent is
+You need dactopus-ossie-clickhouse 0.19.0 or later on the PATH (the
+expected answers ask for shares and changes as expressions), the models your agent is
 served, and the ClickHouse server your packages built into, named by
 `CLICKHOUSE_HOST`, `CLICKHOUSE_PORT` (HTTP), `CLICKHOUSE_USER` and
 `CLICKHOUSE_PASSWORD`.
@@ -106,10 +108,11 @@ answer as a line of JSON:
  "tool_results": ["{\"columns\": [\"sales_events.net_revenue\"], \"rows\": [[13693.68]], ...}"]}
 ```
 
-`tool_results` may be left out. It holds the text of each tool result
-of the session, in order, as the server returned it; with it, the
-grader also lists the numbers of the answer that come from no query
-([below](#how-an-answer-is-graded)).
+`tool_results` holds the text of each tool result of the session, in
+order, as the server returned it. With it, an answer that states a
+number no query returned is wrong
+([below](#how-an-answer-is-graded)); without it, that is not checked,
+and runs with and without it do not compare.
 
 The repository ships no program that asks an agent: that is your
 agent's own API.
@@ -152,15 +155,17 @@ or `null` (not graded), and `reasons` says why:
   is not in it, listed for each accepted reading;
 - `states forbidden <metric> <value>`: the answer states a number it
   must not, such as a sum over two currencies;
+- `not from a query <value>`: with `tool_results`, a number of the
+  answer that no tool result gives;
 - `rubric: ...`: the reviewing model's reason the answer fails its
   rubric;
 - `not graded: ...`: the rubric that needed a judge, with `--no-judge`.
 
 With `tool_results`, `not_from_queries` lists the numbers of the answer
-that come from no tool result, whatever the verdict.
+that come from no tool result.
 
 Stderr counts the right answers per difficulty and, with
-`tool_results`, the answers with numbers not from a query.
+`tool_results`, the answers wrong for numbers not from a query.
 
 ## How an answer is graded
 
@@ -168,7 +173,9 @@ Stderr counts the right answers per difficulty and, with
   reading of the question, at the precision it chooses: 107.82 and 108
   both state 107.818. Thousands may be grouped by a comma or a no-break
   (U+00A0), narrow no-break (U+202F) or thin (U+2009) space, not a plain
-  one. A share may be written as a percentage. Dates, years, list
+  one. A share may be written as a percentage, and a change the question
+  asks as a rise or a fall without its sign (down 12%) where its query
+  allows. Dates, years, list
   markers and the question's own numbers ("the last 7 days") do not
   count as stated values. A zero is stated by 0, zero, none or nothing.
   Where the question asks in other units than the model keeps (hPa for
@@ -186,7 +193,11 @@ Stderr counts the right answers per difficulty and, with
 - **Empty answers.** Where the data has no rows for the question or a
   part of it, the right answer says there are none.
 - **Numbers not from a query.** The server tells the agent to state
-  only numbers its queries return. A number of the answer comes from a
+  only numbers its queries return, and with `tool_results` an answer
+  that states another is wrong, even where the number is right: the
+  model does not stand behind a sum, difference or share the agent works
+  out (a sum over categories counts a product in two of them twice).
+  A number of the answer comes from a
   query when a tool result of the session gives it at the precision the
   answer shows: a value or the count of rows of a query's result, a
   number in one of its text values or in another result (the model's
@@ -198,9 +209,14 @@ Stderr counts the right answers per difficulty and, with
   for 109,297).
   Besides the numbers that are not values above, a month (2026-09), a
   date without its year (11-09), a day as an ordinal or in a range
-  (1–11 Nov) and the rank in a table's first column are not values
-  here. A total, difference or share the agent works out, or the hours
-  since a time, is listed; the verdict does not change.
+  (1–11 Nov), the length of a period in whole days, weeks, months or
+  years (20 days, a 31-day month; 23.6 days is a value), a number in
+  code (a query the agent shows) and the rank in a table's first column
+  are not values here. A total, difference or share the
+  agent works out, a count of rows it counts itself, or the hours since
+  a time, is not from a query. Rubrics leave this to the code: a judge
+  sees the answer alone and cannot tell a share the agent worked out
+  from one its query returned.
 
 The set checks the agent: the expected answers come from the model, so a wrong definition in it would not show here. The model's
 numbers are checked against numbers derived by hand from the test data
