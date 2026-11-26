@@ -354,7 +354,10 @@ questions:
           filters: ["line_brands.brand IS NOT NULL",
                     "orders.order_date >= DATE_TRUNC('MONTH', CURRENT_DATE) - INTERVAL '2' MONTH",
                     "orders.order_date < DATE_TRUNC('MONTH', CURRENT_DATE)"]
-      # Each brand's growth from the month before to last month.
+      # The brand that grew the most, alone, with its growth in percent or in amount: a
+      # brand without sales in the earlier month has none. `unsigned` is for a store
+      # where every brand fell: the one that fell the least, as "fell 4%".
+      # From the month before to last month, in percent.
       - - metrics: ["(line_brands.brand_revenue FILTER (WHERE orders.order_date >= DATE_TRUNC('MONTH', CURRENT_DATE) - INTERVAL '1' MONTH)
                      - line_brands.brand_revenue FILTER (WHERE orders.order_date < DATE_TRUNC('MONTH', CURRENT_DATE) - INTERVAL '1' MONTH))
                      / line_brands.brand_revenue FILTER (WHERE orders.order_date < DATE_TRUNC('MONTH', CURRENT_DATE) - INTERVAL '1' MONTH)
@@ -363,10 +366,44 @@ questions:
           filters: ["line_brands.brand IS NOT NULL",
                     "orders.order_date >= DATE_TRUNC('MONTH', CURRENT_DATE) - INTERVAL '2' MONTH",
                     "orders.order_date < DATE_TRUNC('MONTH', CURRENT_DATE)"]
-          # A brand that fell may be written as "fell 44%".
+          order: [brand_growth_rate desc]
+          limit: 1
+          unsigned: true
+      # The same, in amount.
+      - - metrics: ["line_brands.brand_revenue FILTER (WHERE orders.order_date >= DATE_TRUNC('MONTH', CURRENT_DATE) - INTERVAL '1' MONTH)
+                     - line_brands.brand_revenue FILTER (WHERE orders.order_date < DATE_TRUNC('MONTH', CURRENT_DATE) - INTERVAL '1' MONTH)
+                     AS brand_growth"]
+          dimensions: [orders.currency, line_brands.brand]
+          filters: ["line_brands.brand IS NOT NULL",
+                    "orders.order_date >= DATE_TRUNC('MONTH', CURRENT_DATE) - INTERVAL '2' MONTH",
+                    "orders.order_date < DATE_TRUNC('MONTH', CURRENT_DATE)"]
+          order: [brand_growth desc]
+          limit: 1
+          unsigned: true
+      # From last month to this month so far, in percent.
+      - - metrics: ["(line_brands.brand_revenue FILTER (WHERE orders.order_date >= DATE_TRUNC('MONTH', CURRENT_DATE))
+                     - line_brands.brand_revenue FILTER (WHERE orders.order_date < DATE_TRUNC('MONTH', CURRENT_DATE)))
+                     / line_brands.brand_revenue FILTER (WHERE orders.order_date < DATE_TRUNC('MONTH', CURRENT_DATE))
+                     AS brand_growth_rate"]
+          dimensions: [orders.currency, line_brands.brand]
+          filters: ["line_brands.brand IS NOT NULL",
+                    "orders.order_date >= DATE_TRUNC('MONTH', CURRENT_DATE) - INTERVAL '1' MONTH"]
+          order: [brand_growth_rate desc]
+          limit: 1
+          unsigned: true
+      # The same, in amount.
+      - - metrics: ["line_brands.brand_revenue FILTER (WHERE orders.order_date >= DATE_TRUNC('MONTH', CURRENT_DATE))
+                     - line_brands.brand_revenue FILTER (WHERE orders.order_date < DATE_TRUNC('MONTH', CURRENT_DATE))
+                     AS brand_growth"]
+          dimensions: [orders.currency, line_brands.brand]
+          filters: ["line_brands.brand IS NOT NULL",
+                    "orders.order_date >= DATE_TRUNC('MONTH', CURRENT_DATE) - INTERVAL '1' MONTH"]
+          order: [brand_growth desc]
+          limit: 1
           unsigned: true
     rubric: >-
-      Says which brand grew the most, in amount or in percent.
+      Says which brand grew the most, in amount or in percent, or, where it says that
+      every brand fell, which fell the least.
 
   - id: top-categories-by-units-returned
     type: breakdown
